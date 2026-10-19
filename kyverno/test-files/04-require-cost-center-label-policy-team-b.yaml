@@ -1,0 +1,23 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  # Deliberately the same name as 03-require-cost-center-label-policy-team-a.yaml, in a
+  # different namespace. See test-files/README.md for what this pair is for.
+  name: require-cost-center-label
+  namespace: team-b
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-for-cost-center-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "validation error: the 'cost-center' label is required on all Pods in this namespace."
+        pattern:
+          metadata:
+            labels:
+              cost-center: "?*"

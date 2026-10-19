@@ -36,6 +36,8 @@ import {
   MutatingPolicy,
   ValidatingPolicy,
 } from '../resources/celPolicies';
+import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy';
+import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import {
   ChartDataPoint,
   instantValue,
@@ -82,13 +84,6 @@ interface HealthQueries {
   // controller exists" above, just scoped to breaker telemetry specifically.
   hasBreakerMetrics: boolean;
   breakerTrips: number | null;
-  // kyverno_policy_rule_info_total only ever covers legacy kyverno.io/v1 Policy/ClusterPolicy
-  // rules, current Kyverno does not emit it for any policies.kyverno.io CEL kind at all. Named
-  // explicitly so it's never mistaken for full coverage; the "Policies Not Ready" tile combines
-  // this with celPoliciesNotReady (derived straight from the K8s API below) to actually cover
-  // every policy kind this plugin supports. Counts distinct not-ready policies, not raw rule rows,
-  // see the comment on the query itself for why.
-  legacyPoliciesNotReady: number | null;
   requeueCount: number | null;
   latency: ChartDataPoint[];
 }
@@ -105,7 +100,6 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     denyCountRes,
     hasBreakerMetricsRes,
     breakerTripsRes,
-    legacyPoliciesNotReadyRes,
     requeueCountRes,
     latencyRes,
   ] = await Promise.all([
@@ -139,28 +133,6 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // This fallback is only safe to read once hasBreakerMetrics has confirmed a breaker is
     // actually being invoked and scraped somewhere in this cluster.
     queryInstant(prefix, 'sum(increase(kyverno_breaker_drops_total[1h])) or vector(0)'),
-    // kyverno_policy_rule_info_total is an observable gauge recorded once per rule, by every
-    // controller process (admission and background) and every replica of each, confirmed against
-    // Kyverno's own pkg/metrics/policy_rule.go. A plain sum() over it counts the same not-ready
-    // policy once per rule, per controller, per replica, wildly overcounting, and the raw count is
-    // rules anyway, not policies, an incompatible unit from celPoliciesNotReady below (one legacy
-    // rule in a 10-rule policy versus one whole CEL policy are not the same "1"). The metric's own
-    // description says it plainly: "0 means the rule doesn't exist and has been deleted, 1 means
-    // the rule is currently existent", so a deleted rule's series can stick around at value 0
-    // (same policy_namespace/policy_name/status_ready labels as right before deletion) rather than
-    // vanishing outright; `== 1` filters to only currently-existing rule rows before anything else
-    // runs, so a deleted policy can't leave this tile stuck red. Grouping by
-    // (policy_namespace, policy_name) then collapses every duplicate rule/controller/replica
-    // observation for the same policy into one series, status_ready is itself a policy-level
-    // attribute duplicated onto every rule row so this grouping can't accidentally mix a ready
-    // and a not-ready rule from the same policy together, then the outer count() tallies distinct
-    // not-ready policies. Same idiom Kyverno's own official Grafana dashboard uses
-    // (charts/kyverno/charts/grafana/dashboard/kyverno-dashboard.json) to count policies from this
-    // exact metric.
-    queryInstant(
-      prefix,
-      'count(count(kyverno_policy_rule_info_total{status_ready!="true"} == 1) by (policy_namespace, policy_name)) or vector(0)'
-    ),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
     queryRange(
       prefix,
@@ -183,7 +155,6 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     denyCount: hasAdmissionMetrics ? instantValue(denyCountRes) : null,
     hasBreakerMetrics,
     breakerTrips: hasBreakerMetrics ? instantValue(breakerTripsRes) : null,
-    legacyPoliciesNotReady: instantValue(legacyPoliciesNotReadyRes),
     requeueCount: instantValue(requeueCountRes),
     // Not gated on hasAdmissionMetrics like requestRate/denyCount above: this is a *range* query
     // over the last hour, so it can still hold genuine samples from before the admission
@@ -283,30 +254,46 @@ export function PolicyEngineHealth() {
   const [health, setHealth] = useState<HealthQueries | null>(null);
   const [state, setState] = useState<FetchState>('loading');
 
-  // Prometheus has no readiness signal at all for CEL policy kinds (see the comment on
-  // legacyPoliciesNotReady), but every one of these classes already exposes `ready` straight from
-  // its own K8s object, read directly here instead, no Prometheus involved.
+  // Prometheus has no reliable readiness signal for any policy kind: kyverno_policy_rule_info_total
+  // only ever covers legacy kyverno.io/v1 Policy/ClusterPolicy rules, never policies.kyverno.io CEL
+  // kinds, and even for the legacy kind it undercounts, Kyverno's own Helm chart defaults disable
+  // the policy_namespace label on that exact metric (charts/kyverno/values.yaml,
+  // metricsConfig.metricsExposure.kyverno_policy_rule_info_total.disabledLabelDimensions), so two
+  // unready namespaced policies with the same name in different namespaces collapse into one
+  // series once grouped by (policy_namespace, policy_name). Every one of these classes instead
+  // exposes `ready` straight from its own K8s object (status.conditions, confirmed against
+  // Kyverno's api/kyverno/v1/policy_status.go SetReady/IsReady for the legacy kinds), read
+  // directly here, no Prometheus involved, and no namespace-collision risk since these are real
+  // distinct K8s objects, not metric series collapsed by a label.
+  const [legacyPolicies, legacyPoliciesError] = KyvernoPolicy.useList();
+  const [legacyClusterPolicies, legacyClusterPoliciesError] = KyvernoClusterPolicy.useList();
+  const [cleanupPolicies, cleanupPoliciesError] = CleanupPolicy.useList();
+  const [clusterCleanupPolicies, clusterCleanupPoliciesError] = ClusterCleanupPolicy.useList();
   const [validatingPolicies, validatingPoliciesError] = ValidatingPolicy.useList();
   const [mutatingPolicies, mutatingPoliciesError] = MutatingPolicy.useList();
   const [generatingPolicies, generatingPoliciesError] = GeneratingPolicy.useList();
   const [deletingPolicies, deletingPoliciesError] = DeletingPolicy.useList();
   const [imageValidatingPolicies, imageValidatingPoliciesError] = ImageValidatingPolicy.useList();
 
-  // Each CEL policy kind is its own CRD, and Kyverno's Helm chart allows disabling any one of
-  // them independently of the rest of policies.kyverno.io/v1 (e.g. ImageValidatingPolicy without
-  // the other four), so "CEL support present" was never really a single yes/no per cluster.
-  // Rather than a separate API-group-level discovery probe, each list request's own error already
-  // answers the question for its one kind: the Kubernetes API server returns 404 for a list
-  // against a resource kind that isn't registered at all, confirmed absence, 0 is the honest
-  // count for that kind. Any other failure (403 permission denial, a timeout, a 5xx) means this
-  // plugin genuinely doesn't know whether that kind's policies are ready, not that there are
+  // Every one of these is its own CRD, and Kyverno's Helm chart allows disabling the cleanup
+  // controller or any single CEL kind independently of the rest (e.g. ImageValidatingPolicy
+  // without the other four), so "policy support present" was never really a single yes/no per
+  // cluster. Rather than a separate API-group-level discovery probe, each list request's own
+  // error already answers the question for its one kind: the Kubernetes API server returns 404
+  // for a list against a resource kind that isn't registered at all, confirmed absence, 0 is the
+  // honest count for that kind. Any other failure (403 permission denial, a timeout, a 5xx) means
+  // this plugin genuinely doesn't know whether that kind's policies are ready, not that there are
   // none, and must not collapse to 0 either. One kind being confirmed absent must not blank out
   // the kinds that do exist: this used to key off a single crds.cel boolean that conflated
   // "confirmed absent" with "failed to check" and returned null (unknown) for the whole tile the
   // moment any one list errored, hiding every other kind's real count behind one disabled or
   // momentarily-inaccessible CRD.
-  const celPoliciesNotReady = useMemo((): number | null => {
+  const policiesNotReady = useMemo((): number | null => {
     const lists = [
+      [legacyPolicies, legacyPoliciesError],
+      [legacyClusterPolicies, legacyClusterPoliciesError],
+      [cleanupPolicies, cleanupPoliciesError],
+      [clusterCleanupPolicies, clusterCleanupPoliciesError],
       [validatingPolicies, validatingPoliciesError],
       [mutatingPolicies, mutatingPoliciesError],
       [generatingPolicies, generatingPoliciesError],
@@ -331,6 +318,14 @@ export function PolicyEngineHealth() {
     }
     return unknown ? null : count;
   }, [
+    legacyPolicies,
+    legacyPoliciesError,
+    legacyClusterPolicies,
+    legacyClusterPoliciesError,
+    cleanupPolicies,
+    cleanupPoliciesError,
+    clusterCleanupPolicies,
+    clusterCleanupPoliciesError,
     validatingPolicies,
     validatingPoliciesError,
     mutatingPolicies,
@@ -453,17 +448,6 @@ export function PolicyEngineHealth() {
       </SectionBox>
     );
   }
-
-  // Combines the legacy-policy count Prometheus actually tracks with the CEL-policy count read
-  // straight from the K8s API, so this tile covers every policy kind this plugin supports instead
-  // of silently reporting green whenever only CEL policies are broken. Both sides are counts of
-  // distinct not-ready policies, not rules, see the comment on the legacy query itself for why
-  // that distinction matters. Stays null (unknown) rather than collapsing to a number whenever the
-  // CEL half genuinely can't be determined.
-  const policiesNotReady =
-    celPoliciesNotReady === null
-      ? null
-      : (health.legacyPoliciesNotReady ?? 0) + celPoliciesNotReady;
 
   return (
     <SectionBox title={t('Policy Engine Health')}>
