@@ -52,7 +52,13 @@
   "Next Private Key Secret": "Next Private Key Secret",
   "Certificates": "Certificates",
   "Secret": "Secret",
+  "Expires In": "Expires In",
   "Expires In (Not After)": "Expires In (Not After)",
+  "Expired": "Expired",
+  "Unknown": "Unknown",
+  "1 day": "1 day",
+  "{{count}} days": "{{count}} days",
+  "Failed to load certificates": "Failed to load certificates",
   "DNS Name": "DNS Name",
   "Authorization URL": "Authorization URL",
   "Type": "Type",
@@ -116,5 +122,11 @@
   "Identifier": "Identifier",
   "Initial State": "Initial State",
   "Finalize URL": "Finalize URL",
-  "Orders": "Orders"
+  "Orders": "Orders",
+  "Cluster": "Cluster",
+  "Delete items": "Delete items",
+  "Are you sure you want to delete the following items?": "Are you sure you want to delete the following items?",
+  "Deleting certificates": "Deleting certificates",
+  "Deleted certificates": "Deleted certificates",
+  "Failed to delete certificates": "Failed to delete certificates"
 }

@@ -23,7 +23,7 @@ export function IssuerDetail() {
       namespace={namespace}
       withEvents
       extraInfo={item =>
-        item?.spec && processIssuerExtraInfo(item.spec, item.metadata.namespace, t)
+        item?.spec && processIssuerExtraInfo(item.spec, item.metadata.namespace, t, item.cluster)
       }
       extraSections={item =>
         item && [

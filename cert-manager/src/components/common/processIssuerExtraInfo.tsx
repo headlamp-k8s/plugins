@@ -9,7 +9,8 @@ import {
 export function processIssuerExtraInfo(
   spec: IssuerSpec,
   namespace: string | undefined,
-  t: (key: string) => string
+  t: (key: string) => string,
+  cluster?: string
 ): NameValueTableRow[] {
   const extraInfo: NameValueTableRow[] = [];
 
@@ -38,6 +39,7 @@ export function processIssuerExtraInfo(
                 <SecretKeySelectorComponent
                   selector={spec.acme.privateKeySecretRef}
                   namespace={namespace}
+                  cluster={cluster}
                 />
               ),
             },
@@ -57,6 +59,7 @@ export function processIssuerExtraInfo(
                         <SecretKeySelectorComponent
                           selector={spec.acme.externalAccountBinding.keySecretRef}
                           namespace={namespace}
+                          cluster={cluster}
                         />
                       ),
                     },
@@ -86,7 +89,11 @@ export function processIssuerExtraInfo(
               name: t('Solvers'),
               value: spec.acme.solvers?.map((solver, index) => (
                 <div key={index} style={{ marginBottom: '20px' }}>
-                  <ACMEChallengeSolverComponent solver={solver} namespace={namespace} />
+                  <ACMEChallengeSolverComponent
+                    solver={solver}
+                    namespace={namespace}
+                    cluster={cluster}
+                  />
                 </div>
               )),
             },
@@ -134,6 +141,7 @@ export function processIssuerExtraInfo(
                         <SecretKeySelectorComponent
                           selector={spec.vault.auth.tokenSecretRef}
                           namespace={namespace}
+                          cluster={cluster}
                         />
                       ),
                     },
@@ -150,6 +158,7 @@ export function processIssuerExtraInfo(
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.appRole.secretRef}
                                   namespace={namespace}
+                                  cluster={cluster}
                                 />
                               ),
                             },
@@ -169,6 +178,7 @@ export function processIssuerExtraInfo(
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.kubernetes.secretRef}
                                   namespace={namespace}
+                                  cluster={cluster}
                                 />
                               ),
                             },
@@ -222,6 +232,7 @@ export function processIssuerExtraInfo(
                         <SecretKeySelectorComponent
                           selector={spec.venafi.tpp.credentialsRef}
                           namespace={namespace}
+                          cluster={cluster}
                         />
                       ),
                     },
@@ -242,6 +253,7 @@ export function processIssuerExtraInfo(
                         <SecretKeySelectorComponent
                           selector={spec.venafi.cloud.apiTokenSecretRef}
                           namespace={namespace}
+                          cluster={cluster}
                         />
                       ),
                     },
