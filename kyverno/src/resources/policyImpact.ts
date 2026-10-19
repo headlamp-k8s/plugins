@@ -57,13 +57,27 @@ const STATUS_RANK: Record<PolicyResultStatus, number> = {
   pass: 0,
 };
 
+// A resource's apiVersion is "group/version" (or just "version" for the unnamed core group,
+// e.g. "v1"), and the same live object can be reported under more than one served version of
+// the same group, e.g. an HPA as "autoscaling/v1" from one rule and "autoscaling/v2" from
+// another. Only the group actually identifies which API this resource belongs to; the version
+// is a serialization detail, not part of the resource's identity. Used below for the fallback
+// key so UID-less references to the same resource reconcile across versions instead of
+// splitting into separate rows, while still keeping genuinely different groups apart.
+function apiGroupOf(apiVersion: string | undefined): string {
+  if (!apiVersion) return '';
+  const slashIndex = apiVersion.indexOf('/');
+  return slashIndex === -1 ? '' : apiVersion.slice(0, slashIndex);
+}
+
 function ingest(
   policyName: string,
   policySource: PolicyReportSource,
   results: PolicyReportResult[],
   reportScope: PolicyReportInterface['scope'],
   reportNamespace: string | undefined,
-  byResource: Map<string, ImpactedResource>
+  byResource: Map<string, ImpactedResource>,
+  nameKeyToUid: Map<string, string>
 ) {
   for (const result of results) {
     // PolicyReport / ClusterPolicyReport is the community wgpolicyk8s.io CRD,
@@ -100,12 +114,53 @@ function ingest(
       const namespace = res?.namespace || reportNamespace;
       const uid = res?.uid;
       const apiVersion = res?.apiVersion;
-      // Prefer the UID when it's available. The name-based key alone can
-      // collide for distinct objects that share kind, namespace, and name,
-      // for example the same name used by two different API groups, so the
-      // fallback also folds in apiVersion.
-      const key = uid || `${apiVersion || ''}/${kind}/${namespace || ''}/${name}`;
+      // The name-based key alone can collide for distinct objects that share
+      // kind, namespace, and name, for example the same name used by two
+      // different API groups, so it also folds in the API group. The group
+      // only, not the full apiVersion: two references to the identical
+      // resource can carry different served versions of the same group
+      // (see apiGroupOf above), and those have to reconcile to one entry,
+      // not split into two just because they named different versions.
+      const nameKey = `${apiGroupOf(apiVersion)}/${kind}/${namespace || ''}/${name}`;
+
+      let key: string;
+      if (uid) {
+        key = uid;
+        // First time this exact resource's UID shows up: remember it so a
+        // UID-less reference for the same name-key, arriving in either
+        // input order, resolves to this same slot instead of staying a
+        // separate duplicate. A name-key that already maps to a different
+        // UID is left alone, that's a genuine conflict (two distinct
+        // objects that happen to share kind/namespace/name), not the same
+        // resource reported two ways, so each keeps its own UID-keyed entry.
+        if (!nameKeyToUid.has(nameKey)) {
+          nameKeyToUid.set(nameKey, uid);
+          const orphan = byResource.get(nameKey);
+          if (orphan) {
+            byResource.delete(nameKey);
+            const uidEntry = byResource.get(key);
+            // The UID-keyed slot can already hold an entry from an earlier reference to this
+            // same resource under a different apiVersion. Overwriting it unconditionally would
+            // silently discard whichever of the two actually has the worse status, the exact
+            // guarantee this map exists to preserve. Keep whichever of the two ranks worse.
+            if (!uidEntry || STATUS_RANK[orphan.status] > STATUS_RANK[uidEntry.status]) {
+              byResource.set(key, orphan);
+            }
+          }
+        }
+      } else {
+        // No UID on this reference: resolve to a UID we've already seen for
+        // this exact name-key so it merges instead of duplicating. Falls
+        // back to the name-key itself when no UID has been seen for it yet.
+        key = nameKeyToUid.get(nameKey) || nameKey;
+      }
+
       const existing = byResource.get(key);
+      // Once a UID becomes known for this slot, keep carrying it even when
+      // the winning status below comes from a UID-less reference, losing it
+      // would make a later UID-less reference for the same resource miss
+      // the nameKeyToUid redirect above and duplicate it again.
+      const resolvedUid = uid || existing?.uid;
 
       if (!existing || STATUS_RANK[result.result] > STATUS_RANK[existing.status]) {
         byResource.set(key, {
@@ -114,12 +169,14 @@ function ingest(
           apiVersion,
           name,
           namespace,
-          uid,
+          uid: resolvedUid,
           status: result.result,
           rule: result.rule,
           message: result.message,
           severity: result.severity,
         });
+      } else if (resolvedUid && !existing.uid) {
+        existing.uid = resolvedUid;
       }
     }
   }
@@ -152,6 +209,10 @@ export function collectPolicyImpact(
 ): PolicyImpactSummary {
   const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
   const byResource = new Map<string, ImpactedResource>();
+  // Shared across every report processed below, not reset per report: a UID-less reference to
+  // the same resource can land in a different PolicyReport than the one that first carried its
+  // UID (e.g. one rule's result versus another's), so the redirect has to survive across calls.
+  const nameKeyToUid = new Map<string, string>();
 
   for (const report of policyReports || []) {
     ingest(
@@ -160,11 +221,20 @@ export function collectPolicyImpact(
       report.results,
       report.scope,
       report.jsonData.metadata.namespace,
-      byResource
+      byResource,
+      nameKeyToUid
     );
   }
   for (const report of clusterPolicyReports || []) {
-    ingest(qualifiedName, policySource, report.results, report.scope, undefined, byResource);
+    ingest(
+      qualifiedName,
+      policySource,
+      report.results,
+      report.scope,
+      undefined,
+      byResource,
+      nameKeyToUid
+    );
   }
 
   const resources = Array.from(byResource.values());
@@ -190,63 +260,81 @@ export function collectPolicyImpact(
 }
 
 // Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...) or a wildcard
-// standing in for one, used below to find the kind inside a qualified pattern regardless of how
-// many other segments (group, subresource) surround it. The "*" alternative is confirmed against
-// Kyverno's own versionRegex in pkg/utils/kube/kind.go: it matches a literal "*" explicitly, so a
-// pattern like "*/Pod" means "any version, kind Pod", not a version-less bare pattern whose first
-// segment happens to be "*".
+// standing in for one, confirmed against Kyverno's own versionRegex in pkg/utils/kube/kind.go.
+// Used below only where the real ParseKindSelector itself consults it: to disambiguate the
+// 2-segment and 3-segment forms, never as a general "find the version anywhere" scan. A version
+// segment that does not actually match this regex, like a wildcarded "v*", is still a perfectly
+// valid version in Kyverno's own parser, it just isn't the thing this regex is asked about for
+// those two forms, see the case-3 comment below.
 const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
 
 // Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
-// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also
-// carry a subresource, joined to the kind with a dot rather than a slash
-// ("Pod.status", "apps/v1/Deployment.scale"), confirmed against Kyverno's own
-// ParseKindSelector (pkg/utils/kube/kind.go): it splits on "/" first, then
-// re-splits only the last of those segments on ".". A lone "*/status" is a
-// further special case the same function carves out explicitly, a wildcard kind
-// qualified by subresource, not a version "*" paired with kind "status"; it has
-// to be caught before the generic version-segment lookup below gets a chance to
-// misread "status" as the kind. Report results only ever carry the bare kind, so
-// this walks the pattern to the segment right after whatever looks like a real
-// API version, rather than assuming the kind is always the last segment (which a
-// subresource would break) or always the first (which group/version qualification
-// would break).
+// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also carry a
+// subresource, joined to the kind with a dot rather than a slash ("Pod.status",
+// "apps/v1/Deployment.scale"). This is a direct, segment-count-based port of Kyverno's real
+// ParseKindSelector (pkg/utils/kube/kind.go), returning only the kind component (its third
+// return value). An earlier version of this function instead scanned for "whatever segment
+// looks like a version", which breaks whenever a wildcard group ("*/v1/Pod.status") or a
+// version Kyverno accepts positionally but this regex would not recognize on its own
+// ("apps/v*/Deployment") appears, since positional, not pattern-based, is what the real parser
+// actually does once the segment count disambiguates the form. Report results only ever carry
+// the bare kind, never a qualified pattern, so only the kind is extracted here.
 function normalizeKindPattern(pattern: string): string {
   const slashSegments = pattern.split('/');
   const last = slashSegments[slashSegments.length - 1];
   const dotIndex = last.indexOf('.');
-  const segments =
+  const parts =
     dotIndex === -1
       ? slashSegments
       : [...slashSegments.slice(0, -1), last.slice(0, dotIndex), last.slice(dotIndex + 1)];
 
-  if (segments.length === 2 && segments[0] === '*' && segments[1] === segments[1].toLowerCase()) {
-    return '*';
+  switch (parts.length) {
+    case 1:
+      // Bare kind, nothing to disambiguate.
+      return parts[0];
+    case 2:
+      // "*/*": wildcard kind, wildcard subresource.
+      if (parts[0] === '*' && parts[1] === '*') return '*';
+      // "*/status": a lowercase second segment reads as a subresource name by convention, so
+      // this is wildcard kind + subresource, not version "*" paired with kind "status".
+      if (parts[0] === '*' && parts[1] === parts[1].toLowerCase()) return '*';
+      // "v1/Pod": version + kind.
+      if (K8S_VERSION_SEGMENT.test(parts[0])) return parts[1];
+      // "Pod.status" or "Pod/status": kind + subresource, the only remaining 2-segment form.
+      return parts[0];
+    case 3:
+      // "v1/Pod.status" (version/kind/subresource after the dot-split above) only when the
+      // first segment itself looks like a real version; otherwise this is group/version/kind
+      // with no subresource ("apps/v1/Deployment"), kind is the third segment regardless of
+      // whether the middle one matches K8S_VERSION_SEGMENT, "apps/v*/Deployment" is still a
+      // valid group/version/kind triple in Kyverno's own parser even though "v*" itself is not
+      // recognized by the version regex.
+      return K8S_VERSION_SEGMENT.test(parts[0]) ? parts[1] : parts[2];
+    case 4:
+      // "apps/v1/Deployment.scale" (group/version/kind/subresource after the dot-split) or
+      // "*/v1/Pod.status" (wildcard group/version/kind/subresource): kind is always third.
+      return parts[2];
+    default:
+      // More segments than any real Kyverno kind selector form produces; no kind to extract.
+      return '';
   }
-
-  const versionIndex = segments.findIndex(s => K8S_VERSION_SEGMENT.test(s));
-  if (versionIndex !== -1 && versionIndex + 1 < segments.length) {
-    return segments[versionIndex + 1];
-  }
-  // No version segment found: either a bare kind, or "Kind.subresource" already split above.
-  return segments[0];
 }
 
 // Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real
-// source) runs the parsed kind segment through genuine wildcard matching (ext/wildcard, "*"
-// stands for zero or more characters), not a literal "*"-only check, so a pattern like "Pod*"
-// matches any kind starting with "Pod". Only "*" is mirrored here; the underlying Go library also
-// supports "?" and ".", but no real Kyverno kind pattern is likely to use them, kind names never
-// contain the characters that would make them meaningful.
+// source) runs the parsed kind segment through its ext/wildcard package's genuine glob matching,
+// not a literal-character check: "*" matches zero or more runes, and "?" matches exactly one
+// rune (confirmed against ext/wildcard/match.go), so "Pod*" matches any kind starting with
+// "Pod" and "P?d" matches "Pod". Both are translated into their regex equivalents here; every
+// other character, including any that are themselves regex-special, is escaped literally.
 function kindPatternMatches(pattern: string, kind: string): boolean {
   if (pattern === '*') return true;
-  const regex = new RegExp(
-    `^${pattern
-      .split('*')
-      .map(segment => segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-      .join('.*')}$`
-  );
-  return regex.test(kind);
+  let regexSource = '';
+  for (const ch of pattern) {
+    if (ch === '*') regexSource += '.*';
+    else if (ch === '?') regexSource += '.';
+    else regexSource += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${regexSource}$`).test(kind);
 }
 
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {

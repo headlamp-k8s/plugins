@@ -432,6 +432,323 @@ describe('collectPolicyImpact', () => {
     expect(impact.resources.map(r => r.uid).sort()).toEqual(['widget-a', 'widget-b']);
   });
 
+  test('reconciles a UID-less reference into an already-known UID-backed one, found via Copilot review', () => {
+    // Before this fix, the map key was "uid || nameKey" with no cross-reference between the
+    // two: the same resource reported once with a UID and once without produced two separate
+    // entries, a pass and a fail, instead of one failing resource.
+    const uidFirstReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'uid-first',
+        namespace: 'team-checkout',
+        uid: 'r-uid-first',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'reconciled', namespace: 'team-checkout', uid: 'uid-1' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'reconciled', namespace: 'team-checkout' }],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [uidFirstReport], []);
+
+    expect(impact.resources).toHaveLength(1);
+    expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
+  });
+
+  test('reconciles a UID-backed reference into an already-known UID-less one, found via Copilot review', () => {
+    // Same scenario as above with the input order reversed: UID-less first,
+    // UID-backed second. Reconciliation has to work in both input orders,
+    // real report data has no guaranteed arrival order.
+    const uidLastReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'uid-last',
+        namespace: 'team-checkout',
+        uid: 'r-uid-last',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'reconciled', namespace: 'team-checkout' }],
+        },
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'reconciled', namespace: 'team-checkout', uid: 'uid-1' },
+          ],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact('p', POLICY_REPORT_SOURCE.legacy, [uidLastReport], []);
+
+    expect(impact.resources).toHaveLength(1);
+    expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
+  });
+
+  test('keeps two genuinely distinct, conflicting known UIDs separate when a later UID-less reference arrives, found via Copilot review', () => {
+    // Two different real objects sharing kind/namespace/name (the "same name, different
+    // object" collision apiVersion/UID keying exists to avoid) each get their own UID-keyed
+    // entry; the first UID seen for a name-key is the one a later UID-less reference resolves
+    // to, never a conflicting second UID already recorded for that same name-key. Here that
+    // means the UID-less `fail` reference has to land on the first object (upgrading its
+    // `warn`), leaving the second, genuinely distinct object's `pass` untouched.
+    const conflictingUidReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'conflicting-uid',
+        namespace: 'team-checkout',
+        uid: 'r-conflicting-uid',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'warn',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout', uid: 'uid-first' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout', uid: 'uid-second' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout' }],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [conflictingUidReport],
+      []
+    );
+
+    expect(impact.resources).toHaveLength(2);
+    const byUid = new Map(impact.resources.map(r => [r.uid, r.status]));
+    expect(byUid.get('uid-first')).toBe('fail');
+    expect(byUid.get('uid-second')).toBe('pass');
+  });
+
+  test('preserves the worst status across three references that differ in apiVersion and UID presence, in either input order, found via Copilot review', () => {
+    // An HPA reported three ways: autoscaling/v1 with a UID and `fail`, then autoscaling/v2
+    // without a UID and `pass`, then autoscaling/v2 with the same UID and `pass`. The third
+    // reference's apiVersion differs from the first, so it reaches the orphan-merge path with
+    // a UID-keyed slot that already holds the first reference's `fail` entry. Moving the orphan
+    // into that slot unconditionally would overwrite the `fail` with `pass`, losing it; the
+    // merge has to keep whichever of the two actually ranks worse, in either input order, since
+    // real report data has no guaranteed arrival order.
+    const references = [
+      {
+        policy: 'p',
+        result: 'fail',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v1',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+            uid: 'hpa-uid',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+            uid: 'hpa-uid',
+          },
+        ],
+      },
+    ];
+
+    const forwardReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-forward',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-forward',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: references,
+    } as any);
+
+    const forwardImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [forwardReport],
+      []
+    );
+    expect(forwardImpact.resources).toHaveLength(1);
+    expect(forwardImpact.resources[0]).toMatchObject({
+      name: 'hpa',
+      uid: 'hpa-uid',
+      status: 'fail',
+    });
+
+    const reversedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-reversed',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-reversed',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [...references].reverse(),
+    } as any);
+
+    const reversedImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [reversedReport],
+      []
+    );
+    expect(reversedImpact.resources).toHaveLength(1);
+    expect(reversedImpact.resources[0]).toMatchObject({
+      name: 'hpa',
+      uid: 'hpa-uid',
+      status: 'fail',
+    });
+  });
+
+  test('reconciles two UID-less references to the same resource across API versions, in either input order, found via Copilot review', () => {
+    // No UID anywhere this time, unlike the three-reference test above: an HPA reported as
+    // autoscaling/v1 (failing) and again as autoscaling/v2 (passing), the same live object
+    // under two different served versions of the same group. Folding the full apiVersion into
+    // the fallback key used to treat these as two unrelated resources, producing two rows and
+    // conflicting counts instead of reconciling them into one with the worse status.
+    const versionReferences = [
+      {
+        policy: 'p',
+        result: 'fail',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v1',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+      {
+        policy: 'p',
+        result: 'pass',
+        source: POLICY_REPORT_SOURCE.legacy,
+        resources: [
+          {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            name: 'hpa',
+            namespace: 'team-checkout',
+          },
+        ],
+      },
+    ];
+
+    const forwardReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-version-forward',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-version-forward',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: versionReferences,
+    } as any);
+
+    const forwardImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [forwardReport],
+      []
+    );
+    expect(forwardImpact.resources).toHaveLength(1);
+    expect(forwardImpact.resources[0]).toMatchObject({ name: 'hpa', status: 'fail' });
+
+    const reversedReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'hpa-version-reversed',
+        namespace: 'team-checkout',
+        uid: 'r-hpa-version-reversed',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [...versionReferences].reverse(),
+    } as any);
+
+    const reversedImpact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [reversedReport],
+      []
+    );
+    expect(reversedImpact.resources).toHaveLength(1);
+    expect(reversedImpact.resources[0]).toMatchObject({ name: 'hpa', status: 'fail' });
+  });
+
   test('does not borrow the report scope UID for resources[] entries that omit their own, found via Copilot review', () => {
     // Two distinct resources[] entries, neither with its own uid. Both used
     // to fall back to reportScope.uid, colliding into one entry and losing
@@ -854,6 +1171,105 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(wildcardKindRules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
+  });
+
+  test('recognizes a "?" single-character wildcard in a match selector kind pattern, found via Copilot review', () => {
+    // Confirmed against ext/wildcard/match.go: "?" matches exactly one rune, the same as any
+    // other shell-glob dialect. This was being escaped as a literal "?" instead.
+    const questionMarkRules: PolicyRule[] = [
+      { name: 'check-p-d', match: { any: [{ resources: { kinds: ['P?d'] } }] } },
+    ];
+
+    expect(describeMatchReasons(questionMarkRules, 'Pod')[0]).toContain(
+      'Rule "check-p-d" matches kind "Pod"'
+    );
+  });
+
+  test('does not let a "?" wildcard match a kind of the wrong length, found via Copilot review', () => {
+    // "?" stands for exactly one character, not zero or more, so "P?d" must not match "Pd"
+    // (too short) or "Podd" (too long).
+    const questionMarkRules: PolicyRule[] = [
+      { name: 'check-p-d', match: { any: [{ resources: { kinds: ['P?d'] } }] } },
+    ];
+
+    expect(describeMatchReasons(questionMarkRules, 'Pd')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Pd"'
+    );
+    expect(describeMatchReasons(questionMarkRules, 'Podd')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Podd"'
+    );
+  });
+
+  test('recognizes a "?" wildcard in an exclude selector kind pattern, found via Copilot review', () => {
+    const questionMarkExcludeRules: PolicyRule[] = [
+      {
+        name: 'require-labels',
+        match: { any: [{ resources: { kinds: ['Pod'] } }] },
+        exclude: { any: [{ resources: { kinds: ['P?d'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod');
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
+  });
+
+  test('recognizes a kind pattern with a wildcard version segment Kyverno accepts positionally ("apps/v*/Deployment"), found via Copilot review', () => {
+    // Confirmed against Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go): once there
+    // are 3 segments and the first does not itself look like a version, Kyverno treats them as
+    // group/version/kind unconditionally, it never re-validates the middle segment against its
+    // own version regex. "v*" is a perfectly valid version in that position even though it does
+    // not itself match K8S_VERSION_SEGMENT. The old "scan for a version-like segment" approach
+    // found no match at all here and fell back to returning the group ("apps") as if it were
+    // the kind.
+    const wildcardVersionGroupRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v*/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(wildcardVersionGroupRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('recognizes a wildcard-group, version-qualified, dot-subresource kind pattern ("*/v1/Pod.status"), found via Copilot review', () => {
+    // 4 segments after the dot-split (group "*", version "v1", kind "Pod", subresource
+    // "status"), kind is always the third. The old implementation found the literal "*" at
+    // index 0, assumed a 2-segment version/kind form, and returned the segment right after it
+    // ("v1") as if that were the kind.
+    const wildcardGroupSubresourceRules: PolicyRule[] = [
+      {
+        name: 'check-pod-status',
+        match: { any: [{ resources: { kinds: ['*/v1/Pod.status'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(wildcardGroupSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a fully wildcarded group and version with a dot-subresource kind pattern ("*/*/Deployment.scale"), found via Copilot review', () => {
+    // Same 4-segment shape as above (group "*", version "*", kind "Deployment", subresource
+    // "scale"). The old implementation found the first "*" at index 0 and returned the segment
+    // right after it, the literal "*", as if that were the kind, which would then match every
+    // resource kind rather than only Deployment.
+    const wildcardGroupAndVersionRules: PolicyRule[] = [
+      {
+        name: 'check-deployment-scale',
+        match: { any: [{ resources: { kinds: ['*/*/Deployment.scale'] } }] },
+      },
+    ];
+
+    expect(describeMatchReasons(wildcardGroupAndVersionRules, 'Deployment')[0]).toContain(
+      'Rule "check-deployment-scale" matches kind "Deployment"'
+    );
+    expect(describeMatchReasons(wildcardGroupAndVersionRules, 'Pod')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Pod"'
+    );
   });
 
   test('requires every entry in exclude.all to cover the kind, not just any one of them, found via Copilot review', () => {
