@@ -47,10 +47,21 @@ interface PolicyImpactPanelProps {
  */
 export function PolicyImpactPanel({ policyName, policyNamespace, rules }: PolicyImpactPanelProps) {
   const { i18n, ready, t } = useTranslation();
-  const policyReportQuery = PolicyReport.useList();
+  // A namespaced Policy can only ever match resources in its own namespace (Kyverno enforces
+  // this), so its results only ever land in a namespaced PolicyReport, never a
+  // ClusterPolicyReport, confirmed against policyReport.ts: PolicyReport.isNamespaced = true,
+  // ClusterPolicyReport.isNamespaced = false. Scoping this read to policyNamespace instead of
+  // reading cluster-wide means a user who can only read PolicyReports in their own namespace
+  // still sees this panel; a ClusterPolicy (policyNamespace undefined) still needs the
+  // unscoped read, since it can match resources in any namespace.
+  const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace });
+  // Called unconditionally either way (Rules of Hooks), but its loading state, errors, and
+  // items are deliberately excluded below for a namespaced Policy: requiring cluster-wide
+  // ClusterPolicyReport read access to view a namespaced Policy's impact would deny a user
+  // real, usable data they already have every permission to see.
   const clusterPolicyReportQuery = ClusterPolicyReport.useList();
   const policyReports = policyReportQuery.items;
-  const clusterPolicyReports = clusterPolicyReportQuery.items;
+  const clusterPolicyReports = policyNamespace ? null : clusterPolicyReportQuery.items;
 
   // `items` stays null when a list never resolves, including when the report
   // CRDs are absent or RBAC denies them, so deriving loading from
@@ -60,8 +71,11 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
   // it has to be checked for explicitly below, otherwise it would silently
   // read as "no evaluated resources" or get counted as zero instead of
   // surfacing that this data could not actually be fetched.
-  const loading = policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading;
-  const queryError = policyReportQuery.errors?.[0] || clusterPolicyReportQuery.errors?.[0];
+  const loading =
+    policyReportQuery.isLoading || (!policyNamespace && clusterPolicyReportQuery.isLoading);
+  const queryError =
+    policyReportQuery.errors?.[0] ||
+    (policyNamespace ? undefined : clusterPolicyReportQuery.errors?.[0]);
 
   const impact = useMemo(
     () =>

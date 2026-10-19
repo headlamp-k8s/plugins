@@ -316,23 +316,50 @@ function normalizeKindPattern(pattern: string): string {
   }
 }
 
-// Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real
-// source) runs the parsed kind segment through ext/wildcard's Match, confirmed against its real
-// implementation: "*" matches zero or more characters and "?" matches exactly one, there is no
-// third operator, "." is just a literal character to it. A pattern like "Pod*" matches any kind
-// starting with "Pod", and "Po?" matches "Pod" (one character for the "?"), so both have to be
-// translated as wildcard operators here, not just "*", or a pattern using "?" would wrongly read
-// as never matching anything.
+// Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind) runs the parsed kind segment
+// through its ext/wildcard package (ext/wildcard/match.go, confirmed against the real source):
+// a single-backtrack, two-pointer glob matcher, not a regex engine. "*" matches zero or more
+// characters and "?" matches exactly one. This is a direct port of that algorithm rather than a
+// translation into a regex, since naively turning every "*" into ".*" hands the pattern to the
+// native regex engine's own backtracking, and a pathological pattern (many "*" characters
+// against a long non-matching kind, e.g. "****************Pod" against
+// "HorizontalPodAutoscaler") can make that backtracking combinatorial and freeze this
+// synchronous render. This port is linear in the length of `kind`: each `*` is backtracked to
+// at most once, and every backtrack advances the position it resumes from, so there is no
+// equivalent blowup to guard against.
 function kindPatternMatches(pattern: string, kind: string): boolean {
+  if (pattern === '') return kind === '';
   if (pattern === '*') return true;
-  const regexBody = Array.from(pattern)
-    .map(ch => {
-      if (ch === '*') return '.*';
-      if (ch === '?') return '.';
-      return ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    })
-    .join('');
-  return new RegExp(`^${regexBody}$`).test(kind);
+
+  const p = Array.from(pattern);
+  const s = Array.from(kind);
+  let pIdx = 0;
+  let sIdx = 0;
+  let starIdx = -1; // index in p of the last '*' seen, or -1
+  let sTmpIdx = 0; // s index to resume from after that '*'
+
+  while (sIdx < s.length) {
+    if (pIdx < p.length && p[pIdx] === '*') {
+      starIdx = pIdx;
+      sTmpIdx = sIdx;
+      pIdx++; // '*' provisionally consumes zero characters
+    } else if (pIdx < p.length && (p[pIdx] === '?' || p[pIdx] === s[sIdx])) {
+      sIdx++;
+      pIdx++;
+    } else if (starIdx !== -1) {
+      pIdx = starIdx + 1; // backtrack: let the last '*' consume one more character
+      sTmpIdx++;
+      sIdx = sTmpIdx;
+    } else {
+      return false;
+    }
+  }
+
+  // Consume any trailing '*' in the pattern.
+  while (pIdx < p.length && p[pIdx] === '*') {
+    pIdx++;
+  }
+  return pIdx === p.length;
 }
 
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {

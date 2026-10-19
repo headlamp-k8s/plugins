@@ -1172,6 +1172,28 @@ describe('describeMatchReasons', () => {
     expect(reasons[1]).toContain('also has an exclude block covering kind "Pod"');
   });
 
+  test('does not freeze on a pathological run of wildcards against a non-matching kind, found via Copilot review', () => {
+    // Converting every "*" to ".*" and handing the result to a regex engine lets a pattern like
+    // this one trigger combinatorial backtracking on a non-match: the engine tries every way of
+    // partitioning the input across the repeated ".*" groups before giving up. A linear matcher
+    // settles this in well under a second regardless of how many "*" characters the pattern has.
+    const pathologicalRules: PolicyRule[] = [
+      {
+        name: 'check-pod-like',
+        match: { any: [{ resources: { kinds: [`${'*'.repeat(5000)}Pod`] } }] },
+      },
+    ];
+
+    const start = Date.now();
+    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler');
+    const elapsedMs = Date.now() - start;
+
+    expect(elapsedMs).toBeLessThan(1000);
+    expect(reasons[0]).toContain(
+      'No rule in this policy explicitly lists kind "HorizontalPodAutoscaler"'
+    );
+  });
+
   test('requires every entry in exclude.all to cover the kind, not just any one of them, found via Copilot review', () => {
     // Mirrors the match.all test above: an all[] block requiring both Pod and Deployment kinds
     // can never be satisfied by any single resource, so it can never actually exclude anything.
