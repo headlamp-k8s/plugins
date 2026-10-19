@@ -1,4 +1,5 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KueueCondition } from './clusterQueue';
 import type {
   Admission,
   AdmissionCheckState,
@@ -58,7 +59,10 @@ export function renderPriorityClassName(priorityClassName?: string) {
 }
 
 /** Find a named Workload condition from status.conditions. */
-export function findWorkloadCondition(conditions: WorkloadConditionLike[] = [], type: string) {
+export function findWorkloadCondition<T extends WorkloadConditionLike>(
+  conditions: T[] = [],
+  type: string
+) {
   return conditions.find(condition => condition.type === type);
 }
 
@@ -525,6 +529,142 @@ export function getWorkloadBlocker(
     message: admitted?.message,
     pendingAdmissionChecks,
   };
+}
+
+/** One stage of a Workload's lifecycle, as drawn on the detail page timeline. */
+export interface WorkloadTimelineStep {
+  /** Stage name. */
+  label: string;
+  /**
+   * done: reached; failed: finished with a failure; current: what the Workload waits on now;
+   * deactivated: the stage it would wait on, but it is deactivated so Kueue will not admit it;
+   * skipped: never reached before the Workload finished; untracked: Kueue reports no PodsReady
+   * condition, so readiness is unknown; pending: not reached yet.
+   */
+  state: 'done' | 'failed' | 'current' | 'deactivated' | 'skipped' | 'untracked' | 'pending';
+  /** When the stage was reached. */
+  time?: string;
+  /** Milliseconds since `durationFrom`, or for the current stage, how long it has waited so far. */
+  durationMs?: number;
+  /** The stage, Evicted, or readiness loss that `durationMs` is measured from. */
+  durationFrom?: string;
+  /** Condition reason reported by Kueue. */
+  reason?: string;
+  /** Kueue's own condition message. */
+  message?: string;
+}
+
+/** The lifecycle timeline of a Workload and its last eviction, if it is evicted now. */
+export interface WorkloadTimeline {
+  /** Created, QuotaReserved, Admitted, PodsReady and Finished, in order. */
+  steps: WorkloadTimelineStep[];
+  /** The Evicted condition while it is True. */
+  eviction?: KueueCondition;
+}
+
+const TIMELINE_STAGES = [
+  { type: CONDITION_TYPES.quotaReserved, label: 'Quota reserved' },
+  { type: CONDITION_TYPES.admitted, label: 'Admitted' },
+  { type: CONDITION_TYPES.podsReady, label: 'Pods ready' },
+  { type: CONDITION_TYPES.finished, label: 'Finished' },
+];
+
+// Finished reasons that mean the Workload failed rather than succeeded.
+const FAILED_FINISH_REASONS = ['Failed', 'FailedToStart'];
+
+function elapsedMs(from?: string, to?: string | number) {
+  if (!from || to === undefined) {
+    return undefined;
+  }
+
+  const elapsed = new Date(to).getTime() - new Date(from).getTime();
+  return Number.isNaN(elapsed) || elapsed < 0 ? undefined : elapsed;
+}
+
+/**
+ * Build a Workload's lifecycle timeline from its conditions.
+ * Kubernetes keeps only the latest transition of each condition, so a Workload that was
+ * evicted and admitted again shows the times of its latest attempt, not the first one.
+ */
+export function getWorkloadTimeline(
+  createdAt?: string,
+  conditions: KueueCondition[] = [],
+  active?: boolean,
+  now: number = Date.now()
+): WorkloadTimeline {
+  const finished = isConditionTrue(conditions, CONDITION_TYPES.finished);
+  // Kueue sets DeactivationTarget first and only later patches spec.active to false.
+  const deactivated =
+    active === false || isConditionTrue(conditions, CONDITION_TYPES.deactivationTarget);
+  const evicted = findWorkloadCondition(conditions, CONDITION_TYPES.evicted);
+  const eviction = evicted?.status === 'True' ? evicted : undefined;
+
+  const steps: WorkloadTimelineStep[] = [{ label: 'Created', state: 'done', time: createdAt }];
+  let previousTime = createdAt;
+  let previousLabel = 'Created';
+  let waiting = false;
+
+  for (const { type, label } of TIMELINE_STAGES) {
+    const condition = findWorkloadCondition(conditions, type);
+
+    if (!waiting && condition?.status === 'True') {
+      const time = condition.lastTransitionTime;
+      steps.push({
+        label,
+        state:
+          type === CONDITION_TYPES.finished && FAILED_FINISH_REASONS.includes(condition.reason)
+            ? 'failed'
+            : 'done',
+        time,
+        durationMs: elapsedMs(previousTime, time),
+        durationFrom: previousLabel,
+        reason: condition.reason,
+        message: condition.message,
+      });
+      previousTime = time || previousTime;
+      previousLabel = label;
+    } else if (!waiting && type === CONDITION_TYPES.podsReady && !condition) {
+      // Without a PodsReady condition readiness is unknown, so move on to Finished.
+      steps.push({ label, state: 'untracked' });
+    } else if (!waiting && condition?.reason === 'WaitForRecovery' && finished) {
+      // The pods were ready before they failed; only the time they became ready is lost.
+      steps.push({ label, state: 'done', reason: condition.reason, message: condition.message });
+    } else if (finished) {
+      steps.push({ label, state: type === CONDITION_TYPES.finished ? 'done' : 'skipped' });
+    } else if (!waiting && deactivated) {
+      waiting = true;
+      steps.push({ label, state: 'deactivated' });
+    } else if (!waiting) {
+      waiting = true;
+      let waitingSince = previousTime;
+      let waitingFrom = previousLabel;
+      // An eviction sends the Workload back to the queue, so it has waited since then.
+      if (elapsedMs(waitingSince, eviction?.lastTransitionTime) !== undefined) {
+        waitingSince = eviction?.lastTransitionTime;
+        waitingFrom = 'Evicted';
+      }
+      // PodsReady turns False with WaitForRecovery when a ready Pod fails after admission.
+      if (
+        condition?.reason === 'WaitForRecovery' &&
+        elapsedMs(waitingSince, condition.lastTransitionTime) !== undefined
+      ) {
+        waitingSince = condition.lastTransitionTime;
+        waitingFrom = 'readiness loss';
+      }
+      steps.push({
+        label,
+        state: 'current',
+        durationMs: elapsedMs(waitingSince, now),
+        durationFrom: waitingFrom,
+        reason: condition?.reason,
+        message: condition?.message,
+      });
+    } else {
+      steps.push({ label, state: 'pending' });
+    }
+  }
+
+  return { steps, eviction };
 }
 
 /** Build route params for a namespaced Workload detail link. */
