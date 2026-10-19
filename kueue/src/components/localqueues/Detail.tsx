@@ -3,6 +3,7 @@ import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
+import { getKueueActivityId } from '../../utils/kueueActivity';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderClusterQueueLink } from '../common/KueueResourceLinks';
 import { RelatedWorkloadsSection } from '../common/RelatedResources';
@@ -22,7 +23,7 @@ function getConditionsSection(localQueue: LocalQueue) {
 /** Open a LocalQueue's details in a side panel instead of navigating away. */
 export function openLocalQueueActivity(namespace: string, name: string, cluster?: string) {
   Activity.launch({
-    id: `kueue-localqueue-${cluster ?? ''}-${namespace}-${name}`,
+    id: getKueueActivityId('localqueue', cluster, namespace, name),
     location: 'split-right',
     icon: <Icon icon="mdi:format-list-bulleted" />,
     title: `${namespace}/${name}`,

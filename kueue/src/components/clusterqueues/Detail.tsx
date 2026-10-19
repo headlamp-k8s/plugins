@@ -9,6 +9,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
+import { getKueueActivityId } from '../../utils/kueueActivity';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -222,7 +223,7 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
 /** Open a ClusterQueue's details in a side panel instead of navigating away. */
 export function openClusterQueueActivity(name: string, cluster?: string) {
   Activity.launch({
-    id: `kueue-clusterqueue-${cluster ?? ''}-${name}`,
+    id: getKueueActivityId('clusterqueue', cluster, name),
     location: 'split-right',
     icon: <Icon icon="mdi:queue-first-in-last-out" />,
     title: name,

@@ -32,6 +32,7 @@ import {
   renderTopologyAssignment,
   WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
+import { getKueueActivityId } from '../../utils/kueueActivity';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -610,7 +611,7 @@ function getConditionsSection(workload: Workload) {
 /** Open a Workload's details in a side panel instead of navigating away. */
 export function openWorkloadActivity(namespace: string, name: string, cluster?: string) {
   Activity.launch({
-    id: `kueue-workload-${cluster ?? ''}-${namespace}-${name}`,
+    id: getKueueActivityId('workload', cluster, namespace, name),
     location: 'split-right',
     icon: <Icon icon="mdi:briefcase-outline" />,
     title: `${namespace}/${name}`,
