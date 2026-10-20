@@ -1,6 +1,7 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useVeleroNamespace } from '../../config';
 import { VeleroVolumeSnapshotLocation } from '../../resources/storage';
+import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function VslListContent() {
@@ -14,6 +15,7 @@ function VslListContent() {
       errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
+      filterFunction={veleroListFilterFunction}
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],

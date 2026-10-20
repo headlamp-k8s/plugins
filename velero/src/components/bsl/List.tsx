@@ -2,6 +2,7 @@ import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/li
 import { useVeleroNamespace } from '../../config';
 import { VeleroBackupStorageLocation } from '../../resources/storage';
 import { getStorageStatusColor } from '../../utils/status';
+import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -16,6 +17,7 @@ function BslListContent() {
       errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
+      filterFunction={veleroListFilterFunction}
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
