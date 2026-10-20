@@ -442,6 +442,12 @@ export function PolicyEngineHealth() {
   }
 
   if (!health.hasKyvernoMetrics) {
+    // Still render the latency chart below rather than returning here outright: hasKyvernoMetrics
+    // reflects the current instant canary, but health.latency is a range query over the last hour
+    // (see the comment on it in fetchHealth), so it can still hold genuine pre-outage samples even
+    // once every Kyverno scrape target has gone stale. LatencyChart already renders its own "No
+    // data yet" when that history turns out to be empty too, so nothing here needs to special-case
+    // an outage with no prior samples differently from one with some.
     return (
       <SectionBox title={t('Policy Engine Health')}>
         <Box p={2} display="flex" justifyContent="center">
@@ -451,6 +457,9 @@ export function PolicyEngineHealth() {
             )}
           </EmptyContent>
         </Box>
+        <SectionBox title={t('Admission Review Latency (P95, last hour)')}>
+          <LatencyChart data={health.latency} />
+        </SectionBox>
       </SectionBox>
     );
   }
