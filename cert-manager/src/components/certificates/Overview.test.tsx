@@ -156,6 +156,10 @@ describe('certificate overview and expiry clock', () => {
       store.dispatch({ type: 'select', payload: ['security'] });
     });
     expect(mocks.useList).toHaveBeenLastCalledWith({ namespace: ['security'] });
+    act(() => {
+      store.dispatch({ type: 'select', payload: [] });
+    });
+    expect(mocks.useList).toHaveBeenLastCalledWith({ namespace: undefined });
   });
   it('shows loading and API errors rather than zero-count summaries', () => {
     const view = render(<CertificatesOverview {...props([])} certificates={null} />);

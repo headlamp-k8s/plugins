@@ -179,6 +179,14 @@ describe('CertificatesList with the Headlamp table', () => {
       store.dispatch({ type: 'select', payload: ['security'] });
     });
     expect(mocks.useList).toHaveBeenLastCalledWith({ namespace: ['security'] });
+    act(() => {
+      store.dispatch({ type: 'select', payload: [] });
+    });
+    expect(mocks.useList).toHaveBeenLastCalledWith({ namespace: undefined });
+  });
+  it('requests all allowed namespaces with an initially empty selection', () => {
+    renderList();
+    expect(mocks.useList).toHaveBeenLastCalledWith({ namespace: undefined });
   });
   it('keeps Secret links in the certificate cluster', () => {
     renderList();
