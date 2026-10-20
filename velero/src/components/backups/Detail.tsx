@@ -1,23 +1,29 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useParams } from 'react-router-dom';
 import { VeleroDataUpload, VeleroPodVolumeBackup } from '../../resources/datamovement';
 import { VeleroBackup } from '../../resources/velero';
 import { getBackupStatusColor } from '../../utils/status';
+import { backupNameLabelSelector } from '../../utils/veleroLabel';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { BackupDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function BackupDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
+  const cluster = getCluster() || undefined;
+  const labelSelector = name ? backupNameLabelSelector(name) : undefined;
 
   // CSI / datamover related objects (empty when CRDs are missing on the cluster).
-  const [pvbs] = VeleroPodVolumeBackup.useList({
+  const [pvbs, pvbsError] = VeleroPodVolumeBackup.useList({
     namespace,
-    labelSelector: name ? `velero.io/backup-name=${name}` : undefined,
+    cluster,
+    labelSelector,
   });
-  const [uploads] = VeleroDataUpload.useList({
+  const [uploads, uploadsError] = VeleroDataUpload.useList({
     namespace,
-    labelSelector: name ? `velero.io/backup-name=${name}` : undefined,
+    cluster,
+    labelSelector,
   });
 
   return (
@@ -45,6 +51,7 @@ function BackupDetailContent() {
               <Link
                 routeName={veleroRouteNames.scheduleDetail}
                 params={{ namespace: backup.getNamespace(), name: backup.scheduleName }}
+                activeCluster={backup.cluster}
               >
                 {backup.scheduleName}
               </Link>
@@ -69,7 +76,12 @@ function BackupDetailContent() {
         ];
       }}
       extraSections={() => {
-        const movement = BackupDataMovementSections({ pvbs, uploads });
+        const movement = BackupDataMovementSections({
+          pvbs,
+          uploads,
+          pvbsError,
+          uploadsError,
+        });
         return movement.map((section, index) => ({
           id: `velero-backup-datamovement-${index}`,
           section,

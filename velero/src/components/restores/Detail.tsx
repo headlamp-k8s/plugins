@@ -1,23 +1,29 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { VeleroDataDownload, VeleroPodVolumeRestore } from '../../resources/datamovement';
 import { VeleroRestore } from '../../resources/velero';
 import { getRestoreStatusColor } from '../../utils/status';
+import { restoreNameLabelSelector } from '../../utils/veleroLabel';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { RestoreDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function RestoreDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
+  const cluster = getCluster() || undefined;
+  const labelSelector = name ? restoreNameLabelSelector(name) : undefined;
 
-  const [pvrs] = VeleroPodVolumeRestore.useList({
+  const [pvrs, pvrsError] = VeleroPodVolumeRestore.useList({
     namespace,
-    labelSelector: name ? `velero.io/restore-name=${name}` : undefined,
+    cluster,
+    labelSelector,
   });
-  const [downloads] = VeleroDataDownload.useList({
+  const [downloads, downloadsError] = VeleroDataDownload.useList({
     namespace,
-    labelSelector: name ? `velero.io/restore-name=${name}` : undefined,
+    cluster,
+    labelSelector,
   });
 
   return (
@@ -38,6 +44,7 @@ function RestoreDetailContent() {
             <Link
               routeName={veleroRouteNames.backupDetail}
               params={{ namespace: restore.getNamespace(), name: restore.backupName }}
+              activeCluster={restore.cluster}
             >
               {restore.backupName}
             </Link>
@@ -47,6 +54,7 @@ function RestoreDetailContent() {
             <Link
               routeName={veleroRouteNames.scheduleDetail}
               params={{ namespace: restore.getNamespace(), name: restore.scheduleName }}
+              activeCluster={restore.cluster}
             >
               {`Schedule: ${restore.scheduleName}`}
             </Link>
@@ -101,7 +109,12 @@ function RestoreDetailContent() {
         ];
       }}
       extraSections={() => {
-        const movement = RestoreDataMovementSections({ pvrs, downloads });
+        const movement = RestoreDataMovementSections({
+          pvrs,
+          downloads,
+          pvrsError,
+          downloadsError,
+        });
         return movement.map((section, index) => ({
           id: `velero-restore-datamovement-${index}`,
           section,

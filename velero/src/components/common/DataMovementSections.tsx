@@ -14,17 +14,54 @@ import {
 import { formatByteProgress } from '../../utils/bytes';
 import { getBackupStatusColor } from '../../utils/status';
 
+/** True when the list failed because the CRD is not installed (optional Phase 3). */
+export function isMissingCrdError(error: Error | null | undefined): boolean {
+  if (!error?.message) {
+    return false;
+  }
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes('not found') ||
+    msg.includes('no match') ||
+    msg.includes('could not find') ||
+    msg.includes('the server could not find') ||
+    msg.includes('404')
+  );
+}
+
+function QueryErrorNotice({ title, error }: { title: string; error: Error }) {
+  return (
+    <SectionBox title={title} key={`${title}-error`}>
+      <Typography variant="body2" color="error">
+        Failed to load {title.toLowerCase()}: {error.message}
+      </Typography>
+    </SectionBox>
+  );
+}
+
 /** Renders PVB + CSI DataUpload tables for a Backup (hidden when empty / CRD missing). */
 export function BackupDataMovementSections({
   pvbs,
   uploads,
+  pvbsError,
+  uploadsError,
 }: {
   pvbs: VeleroPodVolumeBackup[] | null;
   uploads: VeleroDataUpload[] | null;
+  pvbsError?: Error | null;
+  uploadsError?: Error | null;
 }): ReactElement[] {
   const sections: ReactElement[] = [];
 
-  if (pvbs && pvbs.length > 0) {
+  if (pvbsError && !isMissingCrdError(pvbsError)) {
+    sections.push(
+      <QueryErrorNotice
+        title="Pod Volume Backups (Data Movement)"
+        error={pvbsError}
+        key="pvb-err"
+      />
+    );
+  } else if (pvbs && pvbs.length > 0) {
     sections.push(
       <SectionBox title="Pod Volume Backups (Data Movement)" key="backup-pvbs">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -53,7 +90,15 @@ export function BackupDataMovementSections({
     );
   }
 
-  if (uploads && uploads.length > 0) {
+  if (uploadsError && !isMissingCrdError(uploadsError)) {
+    sections.push(
+      <QueryErrorNotice
+        title="CSI Data Uploads (Data Movement)"
+        error={uploadsError}
+        key="upload-err"
+      />
+    );
+  } else if (uploads && uploads.length > 0) {
     sections.push(
       <SectionBox title="CSI Data Uploads (Data Movement)" key="backup-uploads">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -93,13 +138,25 @@ export function BackupDataMovementSections({
 export function RestoreDataMovementSections({
   pvrs,
   downloads,
+  pvrsError,
+  downloadsError,
 }: {
   pvrs: VeleroPodVolumeRestore[] | null;
   downloads: VeleroDataDownload[] | null;
+  pvrsError?: Error | null;
+  downloadsError?: Error | null;
 }): ReactElement[] {
   const sections: ReactElement[] = [];
 
-  if (pvrs && pvrs.length > 0) {
+  if (pvrsError && !isMissingCrdError(pvrsError)) {
+    sections.push(
+      <QueryErrorNotice
+        title="Pod Volume Restores (Data Movement)"
+        error={pvrsError}
+        key="pvr-err"
+      />
+    );
+  } else if (pvrs && pvrs.length > 0) {
     sections.push(
       <SectionBox title="Pod Volume Restores (Data Movement)" key="restore-pvrs">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -128,7 +185,15 @@ export function RestoreDataMovementSections({
     );
   }
 
-  if (downloads && downloads.length > 0) {
+  if (downloadsError && !isMissingCrdError(downloadsError)) {
+    sections.push(
+      <QueryErrorNotice
+        title="CSI Data Downloads (Data Movement)"
+        error={downloadsError}
+        key="download-err"
+      />
+    );
+  } else if (downloads && downloads.length > 0) {
     sections.push(
       <SectionBox title="CSI Data Downloads (Data Movement)" key="restore-downloads">
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
