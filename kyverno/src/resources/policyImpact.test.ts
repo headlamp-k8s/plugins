@@ -926,6 +926,25 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('namespaces [prod]');
   });
 
+  test('includes resource-name constraints in the explanation, found via Copilot review', () => {
+    // Omitting a selector's names [] understated the policy's actual scope: a selector
+    // restricted to kinds ['Pod'], namespaces ['prod'], names ['database-*'] used to be
+    // described as covering every Pod in prod, not just the ones matching that name pattern.
+    const namedResourceRules: PolicyRule[] = [
+      {
+        name: 'database-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], namespaces: ['prod'], names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(namedResourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('namespaces [prod]');
+    expect(reasons[0]).toContain('names [database-*]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor

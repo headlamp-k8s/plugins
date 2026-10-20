@@ -385,6 +385,14 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     if (namespaces.length > 0) {
       parts.push(`namespaces [${namespaces.join(', ')}]`);
     }
+    // Same per-selector intersection reasoning as namespaces above applies to name patterns: a
+    // match.all entry restricting names to ['database-*'] alongside another constraining kind
+    // only is still an AND, so omitting it here described the policy's scope as broader than it
+    // actually is, exactly the kind of resource a user would wrongly read as unaffected.
+    const names = selector.resources?.names || [];
+    if (names.length > 0) {
+      parts.push(`names [${names.join(', ')}]`);
+    }
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push('a label selector');
