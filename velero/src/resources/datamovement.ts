@@ -164,7 +164,7 @@ export interface VeleroDataDownloadInterface extends KubeObjectInterface {
 export function formatDataDownloadTargetVolume(
   target: VeleroDataDownloadTargetVolume | undefined
 ): string {
-  if (target == null) {
+  if (target === undefined || target === null) {
     return 'N/A';
   }
   if (typeof target === 'string') {
