@@ -120,8 +120,8 @@ empty state or a silently wrong zero count.
 ```bash
 kubectl delete -f error-scenarios/ -f .
 kubectl delete namespace policy-impact-a policy-impact-b
-kubectl config delete-context policy-impact-ns-viewer --ignore-not-found
-kubectl config delete-context policy-impact-denied-viewer --ignore-not-found
-kubectl config delete-user policy-impact-ns-viewer --ignore-not-found
-kubectl config delete-user policy-impact-denied-viewer --ignore-not-found
+kubectl config delete-context policy-impact-ns-viewer
+kubectl config delete-context policy-impact-denied-viewer
+kubectl config delete-user policy-impact-ns-viewer
+kubectl config delete-user policy-impact-denied-viewer
 ```
