@@ -1,6 +1,6 @@
 /**
- * Velero plugin entry point — Phase 1 coverage panels on resource detail views,
- * plus Phase 2 cluster-wide Schedules, Backups, and Restores pages.
+ * Velero plugin entry point — Phase 1 coverage panels, Phase 2 Schedules/Backups/
+ * Restores, Phase 3 BSL/VSL/BackupRepository + CSI datamover detail sections.
  */
 import {
   registerDetailsViewSectionsProcessor,
@@ -18,12 +18,18 @@ import {
   PersistentVolumeClaimBackupCoveragePanel,
   StatefulSetBackupCoveragePanel,
 } from './components/BackupCoveragePanel';
+import BackupRepositoryDetail from './components/backuprepositories/Detail';
+import BackupRepositoryList from './components/backuprepositories/List';
 import BackupDetail from './components/backups/Detail';
 import BackupList from './components/backups/List';
+import BslDetail from './components/bsl/Detail';
+import BslList from './components/bsl/List';
 import RestoreDetail from './components/restores/Detail';
 import RestoreList from './components/restores/List';
 import ScheduleDetail from './components/schedules/Detail';
 import ScheduleList from './components/schedules/List';
+import VslDetail from './components/vsl/Detail';
+import VslList from './components/vsl/List';
 import { PLUGIN_NAME } from './config';
 import { Settings } from './settings';
 import { veleroRouteNames, veleroRoutePaths } from './utils/veleroRoutes';
@@ -32,7 +38,7 @@ import { registerVeleroIcon, veleroIconName } from './veleroIcon';
 registerPluginSettings(PLUGIN_NAME, Settings, true);
 registerVeleroIcon();
 
-// ---- Phase 2: sidebar + routes ----
+// ---- Phase 2 + 3: sidebar + routes ----
 
 registerSidebarEntry({
   parent: null,
@@ -61,6 +67,27 @@ registerSidebarEntry({
   name: 'velero-restores',
   label: 'Restores',
   url: veleroRoutePaths.restoresList,
+});
+
+registerSidebarEntry({
+  parent: 'velero',
+  name: 'velero-bsl',
+  label: 'Storage Locations',
+  url: veleroRoutePaths.bslList,
+});
+
+registerSidebarEntry({
+  parent: 'velero',
+  name: 'velero-vsl',
+  label: 'Volume Snapshots',
+  url: veleroRoutePaths.vslList,
+});
+
+registerSidebarEntry({
+  parent: 'velero',
+  name: 'velero-backuprepositories',
+  label: 'Backup Repositories',
+  url: veleroRoutePaths.backupRepositoriesList,
 });
 
 registerRoute({
@@ -109,6 +136,54 @@ registerRoute({
   name: veleroRouteNames.restoreDetail,
   exact: true,
   component: () => <RestoreDetail />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.bslList,
+  sidebar: 'velero-bsl',
+  name: veleroRouteNames.bslList,
+  exact: true,
+  component: () => <BslList />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.bslDetail,
+  sidebar: 'velero-bsl',
+  name: veleroRouteNames.bslDetail,
+  exact: true,
+  component: () => <BslDetail />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.vslList,
+  sidebar: 'velero-vsl',
+  name: veleroRouteNames.vslList,
+  exact: true,
+  component: () => <VslList />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.vslDetail,
+  sidebar: 'velero-vsl',
+  name: veleroRouteNames.vslDetail,
+  exact: true,
+  component: () => <VslDetail />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.backupRepositoriesList,
+  sidebar: 'velero-backuprepositories',
+  name: veleroRouteNames.backupRepositoriesList,
+  exact: true,
+  component: () => <BackupRepositoryList />,
+});
+
+registerRoute({
+  path: veleroRoutePaths.backupRepositoryDetail,
+  sidebar: 'velero-backuprepositories',
+  name: veleroRouteNames.backupRepositoryDetail,
+  exact: true,
+  component: () => <BackupRepositoryDetail />,
 });
 
 // ---- Phase 1: detail-view coverage panels ----
