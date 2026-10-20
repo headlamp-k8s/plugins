@@ -14,18 +14,32 @@ import {
 import { formatByteProgress } from '../../utils/bytes';
 import { getBackupStatusColor } from '../../utils/status';
 
-/** True when the list failed because the CRD is not installed (optional Phase 3). */
+type ErrorWithStatus = Error & { status?: number };
+
+/**
+ * True when the list failed because the CRD is not installed (optional Phase 3).
+ * Prefer structured HTTP status: only 404 means missing CRD. Other statuses
+ * (e.g. 403) must surface as real errors — never match bare "404" in message
+ * text (SA names like `viewer-404` would false-positive).
+ */
 export function isMissingCrdError(error: Error | null | undefined): boolean {
-  if (!error?.message) {
+  if (!error) {
+    return false;
+  }
+  const status = (error as ErrorWithStatus).status;
+  if (typeof status === 'number') {
+    return status === 404;
+  }
+  if (!error.message) {
     return false;
   }
   const msg = error.message.toLowerCase();
+  // Message fallback only when no status field (some clients omit it).
   return (
-    msg.includes('not found') ||
-    msg.includes('no match') ||
-    msg.includes('could not find') ||
-    msg.includes('the server could not find') ||
-    msg.includes('404')
+    msg.includes('the server could not find the requested resource') ||
+    msg.includes('could not find the requested resource') ||
+    /\bstatus(?:\s+code)?\s*:?\s*404\b/.test(msg) ||
+    /\bhttp\s*404\b/.test(msg)
   );
 }
 

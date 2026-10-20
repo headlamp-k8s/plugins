@@ -38,6 +38,7 @@ function BslListContent() {
             <Link
               routeName={veleroRouteNames.bslDetail}
               params={{ namespace: item.getNamespace(), name: item.getName() }}
+              activeCluster={item.cluster}
             >
               {item.bucket}
             </Link>
