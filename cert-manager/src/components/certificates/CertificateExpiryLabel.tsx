@@ -10,8 +10,11 @@ export function CertificateExpiryLabel({ notAfter, now }: { notAfter?: string; n
   const expiry = getCertificateExpiry(notAfter, now ?? clockNow);
 
   return (
-    <Tooltip title={notAfter || t('Unknown')}>
-      <span>
+    <Tooltip title={notAfter || t('Unknown')} describeChild>
+      <button
+        type="button"
+        style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit' }}
+      >
         <StatusLabel
           status={expiry.statusLabelStatus}
           sx={
@@ -26,7 +29,7 @@ export function CertificateExpiryLabel({ notAfter, now }: { notAfter?: string; n
         >
           {formatExpiryLabel(expiry, t)}
         </StatusLabel>
-      </span>
+      </button>
     </Tooltip>
   );
 }

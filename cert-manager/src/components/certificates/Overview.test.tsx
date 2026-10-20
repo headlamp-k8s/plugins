@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Certificate } from '../../resources/certificate';
@@ -92,6 +92,19 @@ afterEach(() => {
 });
 
 describe('certificate overview and expiry clock', () => {
+  it('exposes the exact expiration timestamp through keyboard focus', () => {
+    const notAfter = '2030-01-08T12:00:00Z';
+    render(<CertificateExpiryLabel notAfter={notAfter} />);
+    const trigger = screen.getByText('7 days').parentElement!;
+    expect(trigger.tabIndex).toBe(0);
+    act(() => {
+      trigger.focus();
+      fireEvent.focus(trigger);
+      vi.advanceTimersByTime(100);
+    });
+    expect(document.activeElement).toBe(trigger);
+    expect(screen.getByRole('tooltip').textContent).toBe(notAfter);
+  });
   it('moves an unchanged certificate into attention when it crosses 30 days', () => {
     const certificates = [certificate('boundary', 30 * 864e5 + 1000)];
     render(<CertificatesOverview {...props(certificates)} />);
