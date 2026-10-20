@@ -112,13 +112,19 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // counter, no rate/window/label filter, so this only reads empty when the admission
     // controller truly isn't being scraped.
     queryInstant(prefix, 'count(kyverno_admission_requests_total)'),
+    // Deliberately no "or vector(0)" here, unlike denyCount below: rate() needs at least two
+    // samples in the window to compute anything, so right after the admission controller starts
+    // (or right after hasAdmissionMetrics itself first flips true) the raw counter canary already
+    // succeeds while rate() over it still returns empty, not a real 0. A genuinely quiet counter
+    // with enough samples already returns 0 on its own. Falling back to vector(0) here would turn
+    // "not enough samples yet" into a confidently wrong "0.00/s" instead of leaving it unavailable.
+    queryInstant(prefix, 'sum(rate(kyverno_admission_requests_total[5m]))'),
     // "or vector(0)" matters here: sum()/increase() over zero matching series returns an empty
     // result in PromQL, not a 0, e.g. when nothing has been denied in the window at all. Without
     // this every one of these would show "no data" instead of a real 0 on a perfectly healthy
     // cluster, which reads as "unknown" rather than "nothing wrong". This fallback is only safe
     // to read once hasAdmissionMetrics has confirmed the admission controller itself is scraped,
     // hasKyvernoMetrics alone isn't enough, see that comment for why.
-    queryInstant(prefix, 'sum(rate(kyverno_admission_requests_total[5m])) or vector(0)'),
     queryInstant(
       prefix,
       'sum(increase(kyverno_admission_requests_total{request_allowed="false"}[5m])) or vector(0)'
