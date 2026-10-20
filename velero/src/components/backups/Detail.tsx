@@ -1,12 +1,24 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
+import { VeleroDataUpload, VeleroPodVolumeBackup } from '../../resources/datamovement';
 import { VeleroBackup } from '../../resources/velero';
 import { getBackupStatusColor } from '../../utils/status';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
+import { BackupDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function BackupDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
+
+  // CSI / datamover related objects (empty when CRDs are missing on the cluster).
+  const [pvbs] = VeleroPodVolumeBackup.useList({
+    namespace,
+    labelSelector: name ? `velero.io/backup-name=${name}` : undefined,
+  });
+  const [uploads] = VeleroDataUpload.useList({
+    namespace,
+    labelSelector: name ? `velero.io/backup-name=${name}` : undefined,
+  });
 
   return (
     <DetailsGrid
@@ -49,18 +61,25 @@ function BackupDetailContent() {
             value: backup.startTimestamp ? new Date(backup.startTimestamp).toLocaleString() : 'N/A',
           },
           {
-            name: 'Completed',
+            name: 'Completion Time',
             value: backup.completionTimestamp
               ? new Date(backup.completionTimestamp).toLocaleString()
               : 'N/A',
           },
         ];
       }}
+      extraSections={() => {
+        const movement = BackupDataMovementSections({ pvbs, uploads });
+        return movement.map((section, index) => ({
+          id: `velero-backup-datamovement-${index}`,
+          section,
+        }));
+      }}
     />
   );
 }
 
-/** Velero Backup detail page (Phase 2). */
+/** Velero Backup detail — Phase 2 fields + Phase 3 CSI/datamover sections. */
 export default function BackupDetail() {
   return (
     <VeleroInstallCheck>
