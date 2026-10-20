@@ -373,8 +373,13 @@ function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boole
   return kinds.some(pattern => kindPatternMatches(normalizeKindPattern(pattern), kind));
 }
 
-function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
-  const parts = [`kind "${kind}"`];
+// Matches react-i18next's TFunction call shape closely enough for this module's purposes,
+// without taking a direct dependency on i18next's own types: every caller (useTranslation()'s
+// `t`, and the identity translator tests use) satisfies this.
+type Translator = (key: string, options?: Record<string, unknown>) => string;
+
+function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: Translator): string {
+  const parts = [t('kind "{{kind}}"', { kind })];
   // Flattening every selector's namespaces into one list describes their union, but for a
   // match.all block (every selector has to hold at once) the real constraint is their
   // intersection: a selector allowing [dev, prod] alongside one allowing [prod] only ever
@@ -383,7 +388,7 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
   for (const selector of selectors) {
     const namespaces = selector.resources?.namespaces || [];
     if (namespaces.length > 0) {
-      parts.push(`namespaces [${namespaces.join(', ')}]`);
+      parts.push(t('namespaces [{{namespaces}}]', { namespaces: namespaces.join(', ') }));
     }
     // Same per-selector intersection reasoning as namespaces above applies to name patterns: a
     // match.all entry restricting names to ['database-*'] alongside another constraining kind
@@ -391,24 +396,27 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     // actually is, exactly the kind of resource a user would wrongly read as unaffected.
     const names = selector.resources?.names || [];
     if (names.length > 0) {
-      parts.push(`names [${names.join(', ')}]`);
+      parts.push(t('names [{{names}}]', { names: names.join(', ') }));
     }
   }
   if (selectors.some(s => s.resources?.selector)) {
-    parts.push('a label selector');
+    parts.push(t('a label selector'));
   }
   if (selectors.some(s => s.resources?.namespaceSelector)) {
-    parts.push('a namespace label selector');
+    parts.push(t('a namespace label selector'));
   }
-  return parts.join(' and ');
+  return parts.join(` ${t('and')} `);
 }
 
 /**
  * Explains, in plain language, which rule and selector caused a policy to
  * consider a given resource kind. Read directly from the policy spec so the
- * explanation stays accurate even for policies with several rules.
+ * explanation stays accurate even for policies with several rules. `t` is
+ * threaded through (rather than called internally via useTranslation()) so this
+ * stays a plain function callable from a test or from anywhere else that already
+ * has a translator in scope, instead of a hook of its own.
  */
-export function describeMatchReasons(rules: PolicyRule[], kind: string): string[] {
+export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Translator): string[] {
   // An empty or missing rules array is also how a policy type this function
   // was not written for (a CEL ValidatingPolicy has no rules[] at all, only
   // validations[]) reaches here, that is not the same as "rules exist but
@@ -416,7 +424,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
   // implying provenance this function has no basis to claim.
   if (!rules || rules.length === 0) {
     return [
-      `This policy's rules could not be read in a format this explanation understands; provenance for kind "${kind}" is unknown.`,
+      t(
+        'This policy\'s rules could not be read in a format this explanation understands; provenance for kind "{{kind}}" is unknown.',
+        { kind }
+      ),
     ];
   }
 
@@ -435,7 +446,12 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
       : rule.match?.any || [];
     for (const selector of anySelectors) {
       if (!selectorMentionsKind(selector, kind)) continue;
-      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints([selector], kind)}.`);
+      ruleReasons.push(
+        t('Rule "{{rule}}" matches {{constraints}}.', {
+          rule: rule.name,
+          constraints: describeConstraints([selector], kind, t),
+        })
+      );
     }
 
     // match.all is AND, every entry has to hold at once, so the kind check
@@ -446,7 +462,12 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
     // something no single resource could ever satisfy.
     const allSelectors = rule.match?.all || [];
     if (allSelectors.length > 0 && allSelectors.every(s => selectorMentionsKind(s, kind))) {
-      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints(allSelectors, kind)}.`);
+      ruleReasons.push(
+        t('Rule "{{rule}}" matches {{constraints}}.', {
+          rule: rule.name,
+          constraints: describeConstraints(allSelectors, kind, t),
+        })
+      );
     }
 
     // exclude overrides a positive match at runtime for a resource it also
@@ -470,7 +491,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
         excludeDirect.some(s => selectorMentionsKind(s, kind));
       if (excludeMentionsKind) {
         ruleReasons.push(
-          `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
+          t(
+            'Rule "{{rule}}" also has an exclude block covering kind "{{kind}}"; a specific resource matching it would not actually be affected by this rule.',
+            { rule: rule.name, kind }
+          )
         );
       }
     }
@@ -480,7 +504,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
 
   if (reasons.length > 0) return reasons;
   return [
-    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule or a background scan.`,
+    t(
+      'No rule in this policy explicitly lists kind "{{kind}}" in its match block; it was likely reached through a generated rule or a background scan.',
+      { kind }
+    ),
   ];
 }
 

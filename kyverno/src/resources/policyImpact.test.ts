@@ -19,6 +19,15 @@ import { PolicyRule } from './kyvernoPolicy';
 import { collectPolicyImpact, describeMatchReasons, suggestFix } from './policyImpact';
 import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from './policyReport';
 
+// describeMatchReasons takes a translator rather than calling useTranslation() itself (see its
+// own comment in policyImpact.ts), so these tests stand in a real one with i18next's own
+// `{{var}}` interpolation syntax, substituting straight back to English, the same as the actual
+// `en` locale catalogue does for every key.
+function identityT(key: string, options?: Record<string, unknown>): string {
+  if (!options) return key;
+  return key.replace(/\{\{(\w+)\}\}/g, (_, name) => String(options[name] ?? ''));
+}
+
 // policyReport.ts extends KubeObject from @kinvolk/headlamp-plugin/lib/k8s/cluster,
 // which only resolves at real build time through a rollup-only external/globals
 // mapping in the shared vite config (build.rollupOptions.external / output.globals).
@@ -817,7 +826,7 @@ describe('describeMatchReasons', () => {
   ];
 
   test('explains a direct kind match with its namespace scope', () => {
-    const reasons = describeMatchReasons(rules, 'Pod');
+    const reasons = describeMatchReasons(rules, 'Pod', identityT);
 
     expect(reasons).toEqual([
       'Rule "check-pods" matches kind "Pod" and namespaces [team-checkout].',
@@ -825,7 +834,7 @@ describe('describeMatchReasons', () => {
   });
 
   test('admits when no rule explicitly matches the kind, autogen or background scan territory', () => {
-    const reasons = describeMatchReasons(rules, 'Deployment');
+    const reasons = describeMatchReasons(rules, 'Deployment', identityT);
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
   });
@@ -835,7 +844,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-everything', match: { any: [{ resources: { kinds: ['*'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardRules, 'Deployment');
+    const reasons = describeMatchReasons(wildcardRules, 'Deployment', identityT);
 
     expect(reasons[0]).toContain('Rule "check-everything" matches kind "Deployment"');
   });
@@ -850,7 +859,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod');
+    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('a namespace label selector');
   });
@@ -859,7 +868,7 @@ describe('describeMatchReasons', () => {
     // An empty rules array is also how a policy type this function was not
     // written for (a CEL ValidatingPolicy has no rules[] at all) can reach
     // here, that is not the same as "rules exist but none matched".
-    const reasons = describeMatchReasons([], 'Pod');
+    const reasons = describeMatchReasons([], 'Pod', identityT);
 
     expect(reasons[0]).toContain('provenance for kind "Pod" is unknown');
     expect(reasons[0]).not.toContain('background scan');
@@ -878,7 +887,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    expect(describeMatchReasons(impossibleAllRules, 'Pod')).toEqual([
+    expect(describeMatchReasons(impossibleAllRules, 'Pod', identityT)).toEqual([
       expect.stringContaining('No rule in this policy explicitly lists kind "Pod"'),
     ]);
   });
@@ -896,7 +905,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod');
+    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "namespaced-pods" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
@@ -920,7 +929,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(intersectingNamespaceRules, 'Pod');
+    const reasons = describeMatchReasons(intersectingNamespaceRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('namespaces [dev, prod]');
     expect(reasons[0]).toContain('namespaces [prod]');
@@ -939,7 +948,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(namedResourceRules, 'Pod');
+    const reasons = describeMatchReasons(namedResourceRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('namespaces [prod]');
     expect(reasons[0]).toContain('names [database-*]');
@@ -958,7 +967,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(directMatchRules, 'Pod');
+    const reasons = describeMatchReasons(directMatchRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "legacy-style-pods" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
@@ -973,7 +982,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(excludedRules, 'Pod');
+    const reasons = describeMatchReasons(excludedRules, 'Pod', identityT);
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
@@ -988,7 +997,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(directExcludeRules, 'Pod');
+    const reasons = describeMatchReasons(directExcludeRules, 'Pod', identityT);
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
@@ -1004,7 +1013,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
+    const reasons = describeMatchReasons(qualifiedRules, 'Deployment', identityT);
 
     expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
   });
@@ -1014,7 +1023,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pods', match: { any: [{ resources: { kinds: ['v1/Pod'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod');
+    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
   });
@@ -1024,7 +1033,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod/status'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(subresourceRules, 'Pod');
+    const reasons = describeMatchReasons(subresourceRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
   });
@@ -1037,7 +1046,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(qualifiedRules, 'Pod');
+    const reasons = describeMatchReasons(qualifiedRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Pod"');
   });
@@ -1053,7 +1062,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(noKindsRules, 'Pod');
+    const reasons = describeMatchReasons(noKindsRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "require-team-label-namespace" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
@@ -1067,7 +1076,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pods', match: { any: [{ resources: { kinds: ['*/Pod'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardVersionRules, 'Pod');
+    const reasons = describeMatchReasons(wildcardVersionRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
   });
@@ -1080,7 +1089,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod.status'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod');
+    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
   });
@@ -1090,7 +1099,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['v1/Pod.status'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(versionDotSubresourceRules, 'Pod');
+    const reasons = describeMatchReasons(versionDotSubresourceRules, 'Pod', identityT);
 
     expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
   });
@@ -1103,7 +1112,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(groupVersionDotSubresourceRules, 'Deployment');
+    const reasons = describeMatchReasons(groupVersionDotSubresourceRules, 'Deployment', identityT);
 
     expect(reasons[0]).toContain('Rule "check-deployment-scale" matches kind "Deployment"');
   });
@@ -1116,10 +1125,10 @@ describe('describeMatchReasons', () => {
       { name: 'check-any-status', match: { any: [{ resources: { kinds: ['*/status'] } }] } },
     ];
 
-    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod')[0]).toContain(
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod', identityT)[0]).toContain(
       'Rule "check-any-status" matches kind "Pod"'
     );
-    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment')[0]).toContain(
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment', identityT)[0]).toContain(
       'Rule "check-any-status" matches kind "Deployment"'
     );
   });
@@ -1131,10 +1140,10 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
     ];
 
-    expect(describeMatchReasons(wildcardKindRules, 'PodTemplate')[0]).toContain(
+    expect(describeMatchReasons(wildcardKindRules, 'PodTemplate', identityT)[0]).toContain(
       'Rule "check-pod-like" matches kind "PodTemplate"'
     );
-    expect(describeMatchReasons(wildcardKindRules, 'Pod')[0]).toContain(
+    expect(describeMatchReasons(wildcardKindRules, 'Pod', identityT)[0]).toContain(
       'Rule "check-pod-like" matches kind "Pod"'
     );
   });
@@ -1144,7 +1153,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardKindRules, 'Deployment');
+    const reasons = describeMatchReasons(wildcardKindRules, 'Deployment', identityT);
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
   });
@@ -1156,10 +1165,10 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
     ];
 
-    expect(describeMatchReasons(questionMarkRules, 'Pod')[0]).toContain(
+    expect(describeMatchReasons(questionMarkRules, 'Pod', identityT)[0]).toContain(
       'Rule "check-pod-like" matches kind "Pod"'
     );
-    expect(describeMatchReasons(questionMarkRules, 'Pot')[0]).toContain(
+    expect(describeMatchReasons(questionMarkRules, 'Pot', identityT)[0]).toContain(
       'Rule "check-pod-like" matches kind "Pot"'
     );
   });
@@ -1169,10 +1178,10 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
     ];
 
-    expect(describeMatchReasons(questionMarkRules, 'PodTemplate')[0]).toContain(
+    expect(describeMatchReasons(questionMarkRules, 'PodTemplate', identityT)[0]).toContain(
       'No rule in this policy explicitly lists kind "PodTemplate"'
     );
-    expect(describeMatchReasons(questionMarkRules, 'Po')[0]).toContain(
+    expect(describeMatchReasons(questionMarkRules, 'Po', identityT)[0]).toContain(
       'No rule in this policy explicitly lists kind "Po"'
     );
   });
@@ -1186,7 +1195,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod');
+    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod', identityT);
 
     expect(reasons[1]).toContain('also has an exclude block covering kind "Pod"');
   });
@@ -1204,7 +1213,7 @@ describe('describeMatchReasons', () => {
     ];
 
     const start = Date.now();
-    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler');
+    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler', identityT);
     const elapsedMs = Date.now() - start;
 
     expect(elapsedMs).toBeLessThan(1000);
@@ -1228,7 +1237,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(impossibleExcludeAllRules, 'Pod');
+    const reasons = describeMatchReasons(impossibleExcludeAllRules, 'Pod', identityT);
 
     expect(reasons).toHaveLength(1);
     expect(reasons[0]).not.toContain('exclude block');
@@ -1248,7 +1257,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(satisfiableExcludeAllRules, 'Pod');
+    const reasons = describeMatchReasons(satisfiableExcludeAllRules, 'Pod', identityT);
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');

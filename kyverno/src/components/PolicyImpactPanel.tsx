@@ -200,7 +200,7 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
           <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
             {kind} ({resources.length})
           </Typography>
-          {describeMatchReasons(rules, kind).map((reason, i) => (
+          {describeMatchReasons(rules, kind, t).map((reason, i) => (
             <Typography
               key={i}
               variant="caption"
