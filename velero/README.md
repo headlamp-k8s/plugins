@@ -24,6 +24,18 @@ Sidebar entry **Velero** with:
 
 Coverage panels and schedule views load schedule-owned Backups via a `velero.io/schedule-name` label selector, then keep the latest Backup per schedule client-side (long TTLs can still return large histories). The Backups sidebar list still shows the full Backup table. Create actions are deferred to a later phase.
 
+### Phase 3 — Storage + CSI / Datamover visibility
+
+Read-only views aligned with [#939](https://github.com/headlamp-k8s/plugins/issues/939) and Daniel’s CSI+Datamover priority:
+
+- **Storage Locations (BSL)** — provider, bucket, access mode, Available/Unavailable
+- **Volume Snapshots (VSL)** — volume snapshot location provider/config
+- **Backup Repositories** — kopia/restic repos used by datamover / PVB flows
+- **Backup detail** — related **PodVolumeBackup** and **DataUpload** tables when present
+- **Restore detail** — related **PodVolumeRestore** and **DataDownload** tables when present
+
+On clusters without CSI/datamover CRDs (or backups that only save manifests), those tables stay empty — the metadata views still work.
+
 ## Plugin settings
 
 **Settings → Plugins → Velero**
@@ -39,9 +51,22 @@ The Headlamp service account (or user token) needs read access to Velero CRDs:
 ```yaml
 rules:
   - apiGroups: ['velero.io']
-    resources: ['backups', 'schedules', 'restores', 'backupstoragelocations']
+    resources:
+      - backups
+      - schedules
+      - restores
+      - backupstoragelocations
+      - volumesnapshotlocations
+      - backuprepositories
+      - podvolumebackups
+      - podvolumerestores
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['velero.io']
+    resources: ['datauploads', 'datadownloads']
     verbs: ['get', 'list', 'watch']
 ```
+
+(`datauploads` / `datadownloads` are often under `velero.io/v2alpha1` depending on Velero version.)
 
 ## Development
 
@@ -59,6 +84,8 @@ Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
 
 1. Open a Deployment / StatefulSet / Namespace detail page for Phase 1 panels
 2. Open sidebar **Velero → Schedules / Backups / Restores** for Phase 2
+3. Open **Storage Locations / Volume Snapshots / Backup Repositories** for Phase 3
+4. Open a CSI/datamover Backup detail to see Pod Volume Backups / Data Uploads when those CRs exist
 
 ## Screenshots
 
