@@ -27,6 +27,26 @@ export function getBackupStatusColor(phase: string): string {
 /** Alias for Restore phases (same Velero phase vocabulary as Backup). */
 export const getRestoreStatusColor = getBackupStatusColor;
 
+/** StatusLabel tone for BSL / VSL / BackupRepository phases. */
+export function getStorageStatusColor(phase: string): string {
+  switch (phase) {
+    case 'Available':
+    case 'Ready':
+    case 'Completed':
+      return 'success';
+    case 'Unavailable':
+    case 'Failed':
+    case 'NotReady':
+      return 'error';
+    case 'New':
+    case 'InProgress':
+      return 'warning';
+    case 'Unknown':
+    default:
+      return getBackupStatusColor(phase);
+  }
+}
+
 /** StatusLabel tone for Schedule statusDisplay (Active / New / Paused / FailedValidation). */
 export function getScheduleStatusColor(status: string): string {
   switch (status) {
