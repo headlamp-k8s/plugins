@@ -103,6 +103,9 @@ export type VeleroDataDownloadTargetVolume =
 export interface VeleroDataUploadInterface extends KubeObjectInterface {
   spec?: {
     backupStorageLocation?: string;
+    /** CSI DataUpload v2alpha1 field for the source PVC name. */
+    sourcePVC?: string;
+    /** Older / alternate field some fixtures may still use. */
     sourceVolume?: string;
     snapshotType?: string;
   };
@@ -123,8 +126,9 @@ export class VeleroDataUpload extends KubeObject<VeleroDataUploadInterface> {
   static apiVersion = 'velero.io/v2alpha1';
   static isNamespaced = true;
 
+  /** Prefer spec.sourcePVC (Velero v2alpha1); fall back to sourceVolume. */
   get sourceVolume(): string {
-    return this.jsonData.spec?.sourceVolume ?? 'N/A';
+    return this.jsonData.spec?.sourcePVC ?? this.jsonData.spec?.sourceVolume ?? 'N/A';
   }
 
   get snapshotType(): string {
