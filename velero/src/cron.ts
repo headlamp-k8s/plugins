@@ -6,6 +6,14 @@ const CRON_TZ_PREFIX = /^CRON_TZ=(\S+)\s+(.+)$/;
 /** Velero `@every <duration>` (Go time.ParseDuration units). */
 const EVERY_PREFIX = /^@every\s+(\S+)$/i;
 
+/**
+ * Descriptors Velero accepts that `cron-parser` rejects, mapped to an equivalent
+ * it understands. Velero parses schedules with robfig-style `ParseStandard`,
+ * where `@midnight` is an alias of `@daily`. Matched case-sensitively, because
+ * Velero's parser compares descriptors exactly.
+ */
+const DESCRIPTOR_ALIASES = new Map<string, string>([['@midnight', '@daily']]);
+
 /** Go-style duration token: number + unit (ns|us|µs|ms|s|m|h). */
 const GO_DURATION_TOKEN = /([+-]?(?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)/gy;
 
@@ -137,7 +145,7 @@ export function getNextScheduledRun(
   }
 
   try {
-    return CronExpressionParser.parse(cron, {
+    return CronExpressionParser.parse(DESCRIPTOR_ALIASES.get(cron) ?? cron, {
       currentDate: from,
       tz,
     })
