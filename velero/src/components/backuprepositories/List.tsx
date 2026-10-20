@@ -2,6 +2,7 @@ import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/li
 import { useVeleroNamespace } from '../../config';
 import { VeleroBackupRepository } from '../../resources/storage';
 import { getStorageStatusColor } from '../../utils/status';
+import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
@@ -16,6 +17,7 @@ function BackupRepositoryListContent() {
       errorMessage={error?.message}
       enableRowActions={false}
       enableRowSelection={false}
+      filterFunction={veleroListFilterFunction}
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
@@ -39,8 +41,12 @@ function BackupRepositoryListContent() {
           getValue: (item: VeleroBackupRepository) => item.backupStorageLocation,
           render: (item: VeleroBackupRepository) => (
             <Link
-              routeName={veleroRouteNames.backupRepositoryDetail}
-              params={{ namespace: item.getNamespace(), name: item.getName() }}
+              routeName={veleroRouteNames.bslDetail}
+              params={{
+                namespace: item.getNamespace(),
+                name: item.backupStorageLocation,
+              }}
+              activeCluster={item.cluster}
             >
               {item.backupStorageLocation}
             </Link>
