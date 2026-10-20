@@ -45,6 +45,28 @@ interface ListItem {
   };
 }
 
+// Like Promise.any, but over candidates that already resolve to null on failure instead of
+// rejecting: resolves as soon as the first candidate succeeds, without waiting for the rest, and
+// only resolves null once every candidate has settled to null. A plain Promise.all here would
+// make the whole probe wait for its slowest candidate (e.g. a matching pod's unrelated, slow or
+// non-HTTP sidecar port) even after a different candidate already answered successfully.
+function firstSuccessful(promises: Promise<string | null>[]): Promise<string | null> {
+  if (promises.length === 0) return Promise.resolve(null);
+
+  return new Promise(resolve => {
+    let remaining = promises.length;
+    for (const promise of promises) {
+      promise.then(result => {
+        if (result !== null) {
+          resolve(result);
+        } else if (--remaining === 0) {
+          resolve(null);
+        }
+      });
+    }
+  });
+}
+
 function portsFromItem(type: ResourceType, item: ListItem): string[] {
   const ports: string[] =
     type === 'pods'
@@ -86,7 +108,7 @@ async function findByLabel(
       port => `${item.metadata.namespace}/${type}/${item.metadata.name}:${port}`
     );
 
-    const results = await Promise.all(
+    const found = await firstSuccessful(
       candidates.map(async prefix => {
         try {
           const query = await queryInstant(prefix, 'up', cluster);
@@ -96,8 +118,6 @@ async function findByLabel(
         }
       })
     );
-
-    const found = results.find(r => r !== null);
     if (found) return found;
   }
 
