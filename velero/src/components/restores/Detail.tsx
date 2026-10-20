@@ -57,7 +57,9 @@ function RestoreDetailContent() {
           {
             name: 'Status',
             value: (
-              <StatusLabel status={getRestoreStatusColor(restore.phase)}>{restore.phase}</StatusLabel>
+              <StatusLabel status={getRestoreStatusColor(restore.phase)}>
+                {restore.phase}
+              </StatusLabel>
             ),
           },
           {
