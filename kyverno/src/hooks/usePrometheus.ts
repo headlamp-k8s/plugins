@@ -67,6 +67,23 @@ function firstSuccessful(promises: Promise<string | null>[]): Promise<string | n
   });
 }
 
+// A probe that never settles (an unresponsive candidate, not just a failed one) would otherwise
+// hold up firstSuccessful's "every candidate has settled to null" count forever, which blocks
+// discovery and the services-then-pods fallback across every later label tier along with it, even
+// when some other candidate already answered. Bounding each candidate's own wait and resolving it
+// to null on timeout keeps a single unresponsive port from ever holding up the rest.
+const PROBE_TIMEOUT_MS = 5_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: T): Promise<T> {
+  return new Promise(resolve => {
+    const timer = setTimeout(() => resolve(onTimeout), ms);
+    promise.then(value => {
+      clearTimeout(timer);
+      resolve(value);
+    });
+  });
+}
+
 function portsFromItem(type: ResourceType, item: ListItem): string[] {
   const ports: string[] =
     type === 'pods'
@@ -79,9 +96,12 @@ function portsFromItem(type: ResourceType, item: ListItem): string[] {
 }
 
 // A label selector can match several pods/services (e.g. multiple Prometheus replicas, or a
-// stale leftover next to the real one). Trying only the first result would let an unreachable
-// item hide a perfectly reachable one further down the list, so every returned item gets tried,
-// in order, stopping at the first one that actually answers a query.
+// stale leftover next to the real one). Trying only the first match would let an unreachable one
+// hide a perfectly reachable one elsewhere in the list, so every matching item's candidate ports
+// are raced together in one firstSuccessful call, not probed one item at a time: a serialized
+// per-item loop would let a single stalled match (one with a slow or unresponsive port) block
+// every item after it from even starting, this doesn't have that problem since they all start at
+// once, bounded by PROBE_TIMEOUT_MS each.
 //
 // `cluster` is threaded through both the list request and the validation query explicitly,
 // rather than relying on ApiProxy's default "whichever cluster is currently active" behavior:
@@ -103,25 +123,28 @@ async function findByLabel(
     return null;
   }
 
-  for (const item of response.items ?? []) {
-    const candidates = portsFromItem(type, item).map(
+  const candidates = (response.items ?? []).flatMap(item =>
+    portsFromItem(type, item).map(
       port => `${item.metadata.namespace}/${type}/${item.metadata.name}:${port}`
-    );
+    )
+  );
 
-    const found = await firstSuccessful(
-      candidates.map(async prefix => {
-        try {
-          const query = await queryInstant(prefix, 'up', cluster);
-          return query.status === 'success' ? prefix : null;
-        } catch {
-          return null;
-        }
-      })
-    );
-    if (found) return found;
-  }
-
-  return null;
+  return firstSuccessful(
+    candidates.map(prefix =>
+      withTimeout(
+        (async () => {
+          try {
+            const query = await queryInstant(prefix, 'up', cluster);
+            return query.status === 'success' ? prefix : null;
+          } catch {
+            return null;
+          }
+        })(),
+        PROBE_TIMEOUT_MS,
+        null
+      )
+    )
+  );
 }
 
 // Services tried before pods within each label tier: a Service's name is stable across a
