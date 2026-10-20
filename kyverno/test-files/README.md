@@ -35,12 +35,19 @@ kubectl apply -f 07-violating-pods.yaml
 
 | File                                               | What it produces                                                                      | What to check in the Dashboard                                                                     |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `01-require-app-label-clusterpolicy.yaml`           | A legacy `ClusterPolicy` requiring an `app` label on every Pod, audit mode              | Combined with `07-violating-pods.yaml`, drives real Admission Rate, Denied, and Latency chart data |
+| `01-require-app-label-clusterpolicy.yaml`           | A legacy `ClusterPolicy` requiring an `app` label on every Pod, audit mode              | Combined with `07-violating-pods.yaml`, drives real Admission Rate and Latency chart data |
 | `02-team-namespaces.yaml`                           | `team-a` and `team-b` namespaces                                                       | Hosts the two namespaced policies below                                                              |
 | `03-…-team-a.yaml`, `04-…-team-b.yaml`              | Two namespaced `Policy` objects with the **identical name**, `require-cost-center-label`, one in each namespace | See "Verifying the distinct-policy-count fix" below                                                  |
 | `05-cleanup-policy-team-a.yaml`                     | A namespaced `CleanupPolicy` (valid, harmless: it only ever matches ConfigMaps explicitly labeled for this demo) | Confirms CleanupPolicy is now included in "Policies Not Ready" at all (previously omitted entirely) |
 | `06-cluster-cleanup-policy.yaml`                    | The cluster-scoped equivalent, `ClusterCleanupPolicy`                                  | Same, for the cluster-scoped kind                                                                    |
-| `07-violating-pods.yaml`                            | Two Pods that each fail exactly one of the policies above                              | Generates real `fail` results for the Admission Rate/Denied tiles and for the Policy Impact Map (if that panel is open on these policies) |
+| `07-violating-pods.yaml`                            | Two Pods that each fail exactly one of the policies above                              | Generates real `fail` policy-report results for the Admission Rate tile and the Policy Impact Map (if that panel is open on these policies); does not exercise Denied, see note below |
+
+All three validation policies above (`01`, `03`, `04`) are `validationFailureAction: Audit`, so
+`07`'s violating Pods are admitted, not rejected, they only produce `fail` entries in the policy
+reports Kyverno writes after the fact. The "Denied" tile counts
+`kyverno_admission_requests_total{request_allowed="false"}`, which only increments on an actual
+webhook rejection, so these fixtures deliberately don't exercise it. Verifying Denied needs a
+separate policy in `Enforce` mode and a request that violates it.
 
 ## Verifying the distinct-policy-count fix
 
