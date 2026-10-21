@@ -57,6 +57,16 @@ function testConnection(): void {
 }
 
 describe('SettingsPage', () => {
+  it('explains that the API key must be re-entered after reloading Headlamp', () => {
+    render(<SettingsPage />);
+
+    expect(
+      screen.getByText(
+        'The API key is kept in memory only. Re-enter it after reloading or closing Headlamp.'
+      )
+    ).toBeTruthy();
+  });
+
   it('reports a successful connection', async () => {
     listApplications.mockResolvedValue({ applications: [{}, {}], cursor: 'next' });
     render(<SettingsPage />);
@@ -94,6 +104,18 @@ describe('SettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
 
     expect(saveConfig).toHaveBeenCalledWith({ baseURL: '', apiKey: '' });
+  });
+
+  it('lets the API key be cleared while keeping the saved server URL', () => {
+    stored.config = { baseURL: 'https://pipecd.example.com', apiKey: 'old-key' };
+    render(<SettingsPage />);
+    fill('API Key', '');
+    fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
+
+    expect(saveConfig).toHaveBeenCalledWith({
+      baseURL: 'https://pipecd.example.com',
+      apiKey: '',
+    });
   });
 
   it('shows the error when the connection fails', async () => {

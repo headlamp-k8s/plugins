@@ -148,6 +148,10 @@ export function SettingsPage(): JSX.Element {
         )}
       </Typography>
 
+      <Alert severity="info" sx={{ mb: 3 }}>
+        {t('The API key is kept in memory only. Re-enter it after reloading or closing Headlamp.')}
+      </Alert>
+
       <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
         <Stack spacing={3}>
           <Box>
