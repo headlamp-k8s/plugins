@@ -1,10 +1,10 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import {
   AuthVisible,
   EmptyContent,
   Loader,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { ReactNode, useEffect, useState } from 'react';
 import { isKueueInstalled } from '../../utils/kueueInstallation';
@@ -29,7 +29,7 @@ export default function KueueAdminResourceAccess({
   accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
   children,
 }: KueueAdminResourceAccessProps) {
-  const cluster = useCluster();
+  const cluster = K8s.useCluster();
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
@@ -57,7 +57,14 @@ export default function KueueAdminResourceAccess({
       {installed === false && (
         <SectionBox title="Kueue is not installed">
           <EmptyContent color="text.secondary">
-            Kueue custom resources are not available in the selected Kubernetes cluster.
+            Kueue custom resources are not available in the selected Kubernetes cluster.{' '}
+            <a
+              href="https://kueue.sigs.k8s.io/docs/getting-started/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Install Kueue
+            </a>
           </EmptyContent>
         </SectionBox>
       )}
