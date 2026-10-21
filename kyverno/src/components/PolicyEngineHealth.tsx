@@ -41,9 +41,11 @@ import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy'
 import {
   ChartDataPoint,
   instantValue,
+  PrometheusResponse,
   queryInstant,
   queryRange,
   rangeSeries,
+  withGapMarkers,
 } from '../resources/prometheusQueries';
 import { MetricCard, NotInstalledBanner } from './common';
 
@@ -90,6 +92,20 @@ interface HealthQueries {
 
 type FetchState = 'loading' | 'error' | 'success';
 
+// Decides whether a `min(count_over_time(metric[window]))` coverage query establishes enough
+// sample history to trust a sibling "sum(increase(...)) or vector(0)" value query's result.
+// `instantValue` reads null from an empty result, which happens when no series currently matches
+// the underlying metric at all, that's a different situation from a matching series existing with
+// too few samples (a real number below 2), and the two can't be treated the same way: whether an
+// absent series still counts as "fine" depends on whether the caller has some other, independent
+// way to confirm the metric's own controller is actually being scraped (see the allowAbsent
+// comment at each call site in fetchHealth below).
+function hasFullCoverage(res: PrometheusResponse, allowAbsent: boolean): boolean {
+  const min = instantValue(res);
+  if (min === null) return allowAbsent;
+  return min >= 2;
+}
+
 async function fetchHealth(prefix: string): Promise<HealthQueries> {
   const now = Math.floor(Date.now() / 1000);
 
@@ -98,9 +114,12 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     hasAdmissionMetricsRes,
     requestRateRes,
     denyCountRes,
+    denyCoverageRes,
     hasBreakerMetricsRes,
     breakerTripsRes,
+    breakerCoverageRes,
     requeueCountRes,
+    requeueCoverageRes,
     latencyRes,
   ] = await Promise.all([
     // kyverno_info is emitted by every Kyverno controller unconditionally, even with zero
@@ -129,6 +148,18 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
       prefix,
       'sum(increase(kyverno_admission_requests_total{request_allowed="false"}[5m])) or vector(0)'
     ),
+    // Sample-coverage check for the query right above: increase() needs at least two samples
+    // *per series* to produce a value, and sum() silently omits any series that currently has
+    // fewer than that from the total rather than contributing a 0 for it, so a cluster's very
+    // first denial (a brand new "request_allowed=false" series with only one scrape so far) can
+    // coexist with an already-populated "request_allowed=true" series and still read as a
+    // confident, wrong 0 overall. min(count_over_time(...)) reduces to the single
+    // least-covered matching series; see hasFullCoverage below for how an empty result (no
+    // matching series at all, as opposed to one with too few samples) is handled differently.
+    queryInstant(
+      prefix,
+      'min(count_over_time(kyverno_admission_requests_total{request_allowed="false"}[5m]))'
+    ),
     // See the comment on hasBreakerMetrics in HealthQueries.
     queryInstant(prefix, 'count(kyverno_breaker_total)'),
     // kyverno_breaker_total counts every breaker invocation unconditionally, confirmed against
@@ -139,7 +170,21 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // This fallback is only safe to read once hasBreakerMetrics has confirmed a breaker is
     // actually being invoked and scraped somewhere in this cluster.
     queryInstant(prefix, 'sum(increase(kyverno_breaker_drops_total[1h])) or vector(0)'),
+    // Same sample-coverage reasoning as denyCoverageRes above, scoped to kyverno_breaker_drops_total
+    // instead: hasBreakerMetrics only confirms kyverno_breaker_total (a different counter
+    // entirely) is scraped, it says nothing about how many samples the drops counter's own series
+    // have accumulated.
+    queryInstant(prefix, 'min(count_over_time(kyverno_breaker_drops_total[1h]))'),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
+    // Requeues has no equivalent of hasAdmissionMetrics/hasBreakerMetrics: kyverno_info only
+    // proves *some* Kyverno controller is scraped, not specifically the one that would emit
+    // kyverno_controller_requeue_total, and that family is lazily registered (confirmed in this
+    // plugin's own PR description), so it can be legitimately absent on a healthy, idle cluster
+    // that just hasn't requeued anything yet, indistinguishable from "this controller isn't
+    // scraped at all" by presence alone. Without an independent presence signal to fall back on,
+    // an empty result here has to stay unavailable rather than trusted as a real 0, see
+    // hasFullCoverage's `allowAbsent` parameter below.
+    queryInstant(prefix, 'min(count_over_time(kyverno_controller_requeue_total[1h]))'),
     queryRange(
       prefix,
       'histogram_quantile(0.95, sum(rate(kyverno_admission_review_duration_seconds_bucket[5m])) by (le))',
@@ -158,10 +203,27 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // Falls back to null (unavailable), not the "or vector(0)" value, whenever the admission
     // controller itself isn't confirmed scraped, see the comment on hasAdmissionMetrics.
     requestRate: hasAdmissionMetrics ? instantValue(requestRateRes) : null,
-    denyCount: hasAdmissionMetrics ? instantValue(denyCountRes) : null,
+    // Also requires denyCoverageRes to confirm every matching series has enough samples, see the
+    // comment on that query. An absent denial series (allowAbsent: true) is still trusted as a
+    // real 0 here, hasAdmissionMetrics has already confirmed the admission controller itself is
+    // scraped, so "no series for request_allowed=false" genuinely means "nothing denied yet",
+    // not "unscraped".
+    denyCount:
+      hasAdmissionMetrics && hasFullCoverage(denyCoverageRes, true)
+        ? instantValue(denyCountRes)
+        : null,
     hasBreakerMetrics,
-    breakerTrips: hasBreakerMetrics ? instantValue(breakerTripsRes) : null,
-    requeueCount: instantValue(requeueCountRes),
+    // Same reasoning as denyCount above, scoped to breakerCoverageRes: an absent drops series is
+    // trusted as a real 0 once hasBreakerMetrics has confirmed a breaker is scraped somewhere.
+    breakerTrips:
+      hasBreakerMetrics && hasFullCoverage(breakerCoverageRes, true)
+        ? instantValue(breakerTripsRes)
+        : null,
+    // allowAbsent: false here, unlike denyCount/breakerTrips above: see the comment on
+    // requeueCoverageRes for why an absent series can't be trusted as a real 0 for this one
+    // specifically, there's no independent signal confirming the requeue-emitting controller is
+    // actually scraped the way hasAdmissionMetrics/hasBreakerMetrics provide for the other two.
+    requeueCount: hasFullCoverage(requeueCoverageRes, false) ? instantValue(requeueCountRes) : null,
     // Not gated on hasAdmissionMetrics like requestRate/denyCount above: this is a *range* query
     // over the last hour, so it can still hold genuine samples from before the admission
     // controller stopped being scraped even while the instant canary reads empty right now.
@@ -213,7 +275,7 @@ function LatencyChart({ data }: { data: ChartDataPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={data} style={{ fontSize: 14 }}>
+      <AreaChart data={withGapMarkers(data, LATENCY_STEP_SECONDS)} style={{ fontSize: 14 }}>
         <XAxis
           dataKey="timestamp"
           type="number"

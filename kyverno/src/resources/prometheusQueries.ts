@@ -98,3 +98,21 @@ export function rangeSeries(response: PrometheusResponse): ChartDataPoint[] {
     return { timestamp, y: isNaN(num) ? null : num };
   });
 }
+
+// query_range can omit evaluation timestamps entirely for an interval a function like
+// histogram_quantile has no result for, rather than returning an explicit NaN there (which
+// rangeSeries above would already turn into an honest `{ y: null }` point). A missing timestamp
+// isn't a missing point, so a chart's own connectNulls={false} never even sees it: with nothing
+// between the samples on either side of a sufficiently long outage, a line chart draws a straight
+// line across the whole gap as if it were real, continuous data. Inserting an explicit null point
+// whenever two consecutive samples are more than one scrape step apart turns that invented trend
+// back into a visible break.
+export function withGapMarkers(data: ChartDataPoint[], stepSeconds: number): ChartDataPoint[] {
+  return data.flatMap((point, index) => {
+    const previous = data[index - 1];
+    if (previous && point.timestamp - previous.timestamp > stepSeconds) {
+      return [{ timestamp: previous.timestamp + stepSeconds, y: null }, point];
+    }
+    return [point];
+  });
+}
