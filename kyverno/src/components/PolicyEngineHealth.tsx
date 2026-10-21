@@ -88,6 +88,10 @@ interface HealthQueries {
   breakerTrips: number | null;
   requeueCount: number | null;
   latency: ChartDataPoint[];
+  // The `to` timestamp latency's own query_range call was issued with, so LatencyChart can anchor
+  // its axis to the actual queried window instead of the returned samples' own min/max. See the
+  // comment on LatencyChart's domain prop for why that distinction matters.
+  latencyWindowEnd: number;
 }
 
 type FetchState = 'loading' | 'error' | 'success';
@@ -231,6 +235,7 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // LatencyChart already tells a true empty/all-null result apart from this, so nothing here
     // needs the canary's help.
     latency: rangeSeries(latencyRes),
+    latencyWindowEnd: now,
   };
 }
 
@@ -257,7 +262,7 @@ function formatCount(value: number | null): string {
   return value === null ? '—' : String(Math.round(value));
 }
 
-function LatencyChart({ data }: { data: ChartDataPoint[] }) {
+function LatencyChart({ data, windowEnd }: { data: ChartDataPoint[]; windowEnd: number }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const accent = theme.palette.mode === 'dark' ? '#3987e5' : '#2a78d6';
@@ -279,7 +284,15 @@ function LatencyChart({ data }: { data: ChartDataPoint[] }) {
         <XAxis
           dataKey="timestamp"
           type="number"
-          domain={['dataMin', 'dataMax']}
+          // Anchored to the actual queried window (windowEnd - LATENCY_WINDOW_SECONDS to
+          // windowEnd), not ['dataMin', 'dataMax']: when admission scraping stops, query_range can
+          // omit trailing timestamps entirely rather than returning explicit null samples for
+          // them, so the last *returned* sample can sit well before the window's real end.
+          // withGapMarkers only inserts a gap marker between two returned samples, it has nothing
+          // to insert after the last one, so dataMax silently shrinking to that last sample would
+          // make an ongoing trailing outage invisible, the chart would just look like it ends
+          // early instead of showing the missing interval up to now.
+          domain={[windowEnd - LATENCY_WINDOW_SECONDS, windowEnd]}
           tickFormatter={ts =>
             new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
@@ -520,7 +533,7 @@ export function PolicyEngineHealth() {
           </EmptyContent>
         </Box>
         <SectionBox title={t('Admission Review Latency (P95, last hour)')}>
-          <LatencyChart data={health.latency} />
+          <LatencyChart data={health.latency} windowEnd={health.latencyWindowEnd} />
         </SectionBox>
       </SectionBox>
     );
@@ -582,7 +595,7 @@ export function PolicyEngineHealth() {
         </Grid>
       </Grid>
       <SectionBox title={t('Admission Review Latency (P95, last hour)')}>
-        <LatencyChart data={health.latency} />
+        <LatencyChart data={health.latency} windowEnd={health.latencyWindowEnd} />
       </SectionBox>
     </SectionBox>
   );
