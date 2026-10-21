@@ -10,6 +10,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { KatibExperimentClass, KatibParameterSpec } from '../../resources/katibExperiment';
+import { getKatibMetricValue } from '../../resources/katibMetric';
 import { KatibTrialClass } from '../../resources/katibTrial';
 import {
   formatKatibFeasibleSpace,
@@ -203,7 +204,7 @@ export function KatibExperimentsDetail(props: { namespace?: string; name?: strin
                         <NameValueTable
                           rows={optimalMetrics.map(metric => ({
                             name: metric.name ?? 'metric',
-                            value: metric.value ?? '-',
+                            value: getKatibMetricValue(metric, item.spec.objective) || '-',
                           }))}
                         />
                       </SectionBox>
