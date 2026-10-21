@@ -1,3 +1,4 @@
+import { Icon } from '@iconify/react';
 import { clusterAction, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConfirmDialog,
@@ -7,14 +8,15 @@ import {
   DownloadButton,
   EditButton,
   Link,
+  Loader,
   SectionBox,
   SectionFilterHeader,
   Table,
   TableColumn,
   ViewButton,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Button } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { Button, IconButton } from '@mui/material';
+import { useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { useSelectedNamespaces } from '../../hooks/useSelectedNamespaces';
@@ -86,7 +88,8 @@ export function CertificatesListView({
   certificates,
   certificatesError,
 }: CertificatesListViewProps) {
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
+  const lastSelectedRow = useRef<string | null>(null);
   const columns = useMemo<TableColumn<Certificate>[]>(
     () => [
       {
@@ -151,6 +154,11 @@ export function CertificatesListView({
     [t]
   );
 
+  // Headlamp memoizes table cells, so mount only once translated values exist.
+  if (!ready) {
+    return <Loader title={t('Loading certificates') || 'Loading certificates'} />;
+  }
+
   return (
     <SectionBox
       title={
@@ -173,6 +181,45 @@ export function CertificatesListView({
         }
         enableRowActions
         enableRowSelection={import.meta.env.REACT_APP_HEADLAMP_ENABLE_ROW_SELECTION !== 'false'}
+        displayColumnDefOptions={{
+          'mrt-row-select': {
+            Cell: ({ row, table }) => (
+              <IconButton
+                role="checkbox"
+                aria-checked={row.getIsSelected()}
+                aria-label={t('Toggle select row')}
+                disabled={!row.getCanSelect()}
+                size="small"
+                color={row.getIsSelected() ? 'primary' : 'default'}
+                sx={{ padding: 0 }}
+                onClick={event => {
+                  // A button avoids Headlamp's capture handler cancelling native
+                  // checkbox state. Retain shift-click selection in visible order.
+                  const rows = table.getRowModel().rows;
+                  const start = rows.findIndex(item => item.id === lastSelectedRow.current);
+                  const end = rows.findIndex(item => item.id === row.id);
+                  if (event.shiftKey && start !== -1 && end !== -1) {
+                    const selected = Object.fromEntries(
+                      rows
+                        .slice(Math.min(start, end), Math.max(start, end) + 1)
+                        .filter(item => item.getCanSelect())
+                        .map(item => [item.id, true])
+                    );
+                    table.setRowSelection(previous => ({ ...previous, ...selected }));
+                  } else {
+                    row.toggleSelected();
+                    lastSelectedRow.current = row.id;
+                  }
+                }}
+              >
+                <Icon
+                  icon={row.getIsSelected() ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'}
+                  width={20}
+                />
+              </IconButton>
+            ),
+          },
+        }}
         renderRowActionMenuItems={({ row, closeMenu }) => [
           <EditButton key="edit" item={row.original} buttonStyle="menu" afterConfirm={closeMenu} />,
           <DownloadButton key="download" item={row.original} buttonStyle="menu" />,

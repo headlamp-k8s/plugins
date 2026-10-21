@@ -12,12 +12,16 @@ import { CertificatesList } from './List';
 const mocks = vi.hoisted(() => ({
   useList: vi.fn(),
   installed: true as boolean | null,
+  translationsReady: true,
   clusterAction: vi.fn(),
   t: (key: string, options?: { count?: number }) =>
     key.replace('{{count}}', String(options?.count)),
 }));
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
-  useTranslation: () => ({ t: mocks.t }),
+  useTranslation: () => ({
+    t: mocks.translationsReady ? mocks.t : () => '',
+    ready: mocks.translationsReady,
+  }),
   clusterAction: mocks.clusterAction,
   K8s: { ResourceClasses: { Secret: { kind: 'Secret' } } },
 }));
@@ -50,6 +54,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', async () => {
   );
   return {
     Table,
+    Loader: ({ title }: any) => <div role="progressbar">{title}</div>,
     SectionBox: ({ title, children }: any) => (
       <section>
         {title}
@@ -137,6 +142,7 @@ function displayedNames() {
 }
 beforeEach(() => {
   mocks.installed = true;
+  mocks.translationsReady = true;
   mocks.useList.mockReset();
   mocks.clusterAction.mockReset();
   certificates = [
@@ -150,6 +156,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('CertificatesList with the Headlamp table', () => {
+  it('waits for translations before mounting cached table headers and Ready values', () => {
+    mocks.translationsReady = false;
+    const { store } = renderList();
+    expect(screen.queryByRole('table')).toBeNull();
+    mocks.translationsReady = true;
+    act(() => {
+      store.dispatch({ type: 'select', payload: ['production'] });
+    });
+    expect(screen.getByText('Name')).toBeTruthy();
+    expect(screen.getByText('Expires In')).toBeTruthy();
+    expect(screen.getAllByText('Ready').length).toBeGreaterThan(1);
+  });
+  it('keeps checkbox state in sync with individual, range, and cleared selection', () => {
+    renderList();
+    const checked = (element: HTMLElement) =>
+      element instanceof HTMLInputElement
+        ? element.checked
+        : element.getAttribute('aria-checked') === 'true';
+    const rowCheckboxes = () => screen.getAllByRole('checkbox').slice(1);
+    fireEvent.click(rowCheckboxes()[0]);
+    expect(checked(rowCheckboxes()[0])).toBe(true);
+    fireEvent.click(rowCheckboxes()[2], { shiftKey: true });
+    expect(rowCheckboxes().map(checked)).toEqual([true, true, true, false]);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+    expect(rowCheckboxes().map(checked)).toEqual([false, false, false, false]);
+  });
   it('sorts valid expiry dates both ways, keeps unknowns last, and retains name and age sorting', () => {
     renderList();
     expect(displayedNames()).toEqual(['urgent', 'healthy', 'unknown', 'invalid']);
