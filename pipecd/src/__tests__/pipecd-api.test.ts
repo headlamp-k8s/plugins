@@ -94,7 +94,11 @@ const genDeployment = (overrides: Partial<Record<string, unknown>> = {}) => ({
 });
 
 describe('loadConfig / saveConfig', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    saveConfig({ baseURL: '', apiKey: '' });
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 
   it('returns empty strings when nothing is stored', () => {
     const cfg = loadConfig();
@@ -102,11 +106,60 @@ describe('loadConfig / saveConfig', () => {
     expect(cfg.apiKey).toBe('');
   });
 
-  it('round-trips config through localStorage', () => {
+  it('round-trips config in memory without persisting the API key', () => {
     saveConfig({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
     const cfg = loadConfig();
     expect(cfg.baseURL).toBe('https://pipecd.test');
     expect(cfg.apiKey).toBe('key-xyz');
+    expect(localStorage.getItem('pipecd-plugin-base-url')).toBe('https://pipecd.test');
+    expect(localStorage.getItem('pipecd-plugin-api-key')).toBeNull();
+    expect(localStorage.length).toBe(1);
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it('discards legacy credentials as soon as the plugin API module loads', async () => {
+    localStorage.setItem('pipecd-plugin-base-url', 'https://pipecd.test');
+    localStorage.setItem('pipecd-plugin-api-key', 'legacy-key');
+
+    vi.resetModules();
+    const freshApi = await vi.importActual<typeof import('../api/pipecd')>('../api/pipecd');
+
+    expect(localStorage.getItem('pipecd-plugin-api-key')).toBeNull();
+    expect(freshApi.loadConfig()).toEqual({ baseURL: 'https://pipecd.test', apiKey: '' });
+  });
+
+  it('retains only the server URL after a module reload', async () => {
+    saveConfig({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
+
+    vi.resetModules();
+    const freshApi = await vi.importActual<typeof import('../api/pipecd')>('../api/pipecd');
+
+    expect(freshApi.loadConfig()).toEqual({ baseURL: 'https://pipecd.test', apiKey: '' });
+    expect(isConfigured(freshApi.loadConfig())).toBe(false);
+  });
+
+  it('does not pair a saved API key with a URL changed by another tab', () => {
+    saveConfig({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
+    localStorage.setItem('pipecd-plugin-base-url', 'https://other.example.com');
+
+    expect(loadConfig()).toEqual({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
+  });
+
+  it('clears the in-memory key without removing the server URL', () => {
+    saveConfig({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
+    saveConfig({ baseURL: 'https://pipecd.test', apiKey: '' });
+
+    expect(loadConfig()).toEqual({ baseURL: 'https://pipecd.test', apiKey: '' });
+    expect(isConfigured(loadConfig())).toBe(false);
+  });
+
+  it('does not expose mutable references to the in-memory configuration', () => {
+    const config = { baseURL: 'https://pipecd.test', apiKey: 'key-xyz' };
+    saveConfig(config);
+    config.baseURL = 'https://other.example.com';
+    loadConfig().apiKey = 'other-key';
+
+    expect(loadConfig()).toEqual({ baseURL: 'https://pipecd.test', apiKey: 'key-xyz' });
   });
 
   it('isConfigured returns false for empty config', () => {
