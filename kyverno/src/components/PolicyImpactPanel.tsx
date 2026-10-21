@@ -93,6 +93,13 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
   // table is remounted via key once translations are ready.
   const namespaceHeader = t('Namespace');
   const nameHeader = t('Name');
+  // Rows are already grouped by kind (see impact.byKind below), but different API groups can
+  // share the same kind, namespace, and name, e.g. a core v1 "Widget" and an acme.io/v1
+  // "Widget" (confirmed distinct in collectPolicyImpact's own cross-group regression test,
+  // which keys resources by group/kind/namespace/name specifically so this isn't collapsed).
+  // Without apiVersion in the table itself a user has no way to tell which object a given row
+  // actually names.
+  const apiVersionHeader = t('API Version');
   const statusHeader = t('Status');
   const severityHeader = t('Severity');
   const ruleHeader = t('Rule');
@@ -108,6 +115,11 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
         header: nameHeader,
         id: 'name',
         accessorFn: (r: ImpactedResource) => r.name,
+      },
+      {
+        header: apiVersionHeader,
+        id: 'apiVersion',
+        accessorFn: (r: ImpactedResource) => r.apiVersion || '-',
       },
       {
         header: statusHeader,
@@ -131,7 +143,7 @@ export function PolicyImpactPanel({ policyName, policyNamespace, rules }: Policy
         accessorFn: (r: ImpactedResource) => r.rule || '-',
       },
     ],
-    [namespaceHeader, nameHeader, statusHeader, severityHeader, ruleHeader]
+    [namespaceHeader, nameHeader, apiVersionHeader, statusHeader, severityHeader, ruleHeader]
   );
 
   if (loading) {

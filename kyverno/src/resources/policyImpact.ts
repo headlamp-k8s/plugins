@@ -265,8 +265,12 @@ export function collectPolicyImpact(
 // many other segments (group, subresource) surround it. The "*" alternative is confirmed against
 // Kyverno's own versionRegex in pkg/utils/kube/kind.go: it matches a literal "*" explicitly, so a
 // pattern like "*/Pod" means "any version, kind Pod", not a version-less bare pattern whose first
-// segment happens to be "*".
-const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
+// segment happens to be "*". The alpha/beta suffix requires at least one digit ("\d+", not "\d*"),
+// matching Kyverno's own versionRegex exactly: without it, a group name that merely starts with
+// "alpha"/"beta" (e.g. the API group "v1alpha" in a group-qualified pattern like
+// "v1alpha/v1/Widget") gets misread as a version segment, and the 3-segment case below picks
+// segments[1] ("v1") as the kind instead of the real kind in segments[2] ("Widget").
+const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d+)?|\*)$/;
 
 // Faithful port of Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go, confirmed against
 // the Go source), which this plugin only needs the kind out of. It first splits the pattern on

@@ -1018,6 +1018,21 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
   });
 
+  test('does not mistake a group name starting with alpha/beta for a version segment, found via Copilot review', () => {
+    // Kyverno's own versionRegex (pkg/utils/kube/kind.go) requires at least one digit after
+    // "alpha"/"beta", so a 3-segment pattern whose first segment is the API group "v1alpha" (no
+    // trailing digit, not a real version) is "group/version/kind", not "version/kind/subresource".
+    // Allowing zero digits used to misread "v1alpha" as a version and return segments[1] ("v1")
+    // as the kind instead of the real kind in segments[2] ("Widget").
+    const groupQualifiedRules: PolicyRule[] = [
+      { name: 'check-widgets', match: { any: [{ resources: { kinds: ['v1alpha/v1/Widget'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(groupQualifiedRules, 'Widget', identityT);
+
+    expect(reasons[0]).toContain('Rule "check-widgets" matches kind "Widget"');
+  });
+
   test('recognizes a version-qualified kind pattern as a match, found via Copilot review', () => {
     const versionQualifiedRules: PolicyRule[] = [
       { name: 'check-pods', match: { any: [{ resources: { kinds: ['v1/Pod'] } }] } },
