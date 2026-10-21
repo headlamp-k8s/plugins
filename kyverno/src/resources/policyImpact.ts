@@ -397,10 +397,14 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: T
     // Same per-selector intersection reasoning as namespaces above applies to name patterns: a
     // match.all entry restricting names to ['database-*'] alongside another constraining kind
     // only is still an AND, so omitting it here described the policy's scope as broader than it
-    // actually is, exactly the kind of resource a user would wrongly read as unaffected.
+    // actually is, exactly the kind of resource a user would wrongly read as unaffected. Kyverno
+    // supports both the plural `names` (a pattern list) and the singular `name` (one exact name)
+    // on the same ResourceDescription, confirmed against the real CRD schema, so both are folded
+    // into the same constraint instead of only reading the plural form.
     const names = selector.resources?.names || [];
-    if (names.length > 0) {
-      parts.push(t('names [{{names}}]', { names: names.join(', ') }));
+    const allNames = selector.resources?.name ? [selector.resources.name, ...names] : names;
+    if (allNames.length > 0) {
+      parts.push(t('names [{{names}}]', { names: allNames.join(', ') }));
     }
   }
   if (selectors.some(s => s.resources?.selector)) {

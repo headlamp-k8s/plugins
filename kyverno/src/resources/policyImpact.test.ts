@@ -954,6 +954,40 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('names [database-*]');
   });
 
+  test('includes the singular resources.name selector in the explanation, found via Copilot review', () => {
+    // Kyverno supports this singular exact-name form (one name) alongside the plural `names`
+    // (a pattern list) on the same ResourceDescription. Reading only `names` described a rule with
+    // kinds: ['Pod'], name: 'database-primary' as matching every Pod, omitting its name
+    // restriction entirely.
+    const singularNameRules: PolicyRule[] = [
+      {
+        name: 'database-primary-pod',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary' } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(singularNameRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('names [database-primary]');
+  });
+
+  test('combines the singular resources.name with the plural names when both are set, found via Copilot review', () => {
+    const bothNameFormsRules: PolicyRule[] = [
+      {
+        name: 'mixed-name-selector',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary', names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(bothNameFormsRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('names [database-primary, database-*]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor
