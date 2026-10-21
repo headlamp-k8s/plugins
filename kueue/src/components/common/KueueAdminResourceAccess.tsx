@@ -4,8 +4,10 @@ import {
   Loader,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { isKueueInstalled } from '../../utils/kueueInstallation';
 
 interface KueueAdminResourceAccessProps {
   /** Kueue resource class to check access for. */
@@ -27,28 +29,60 @@ export default function KueueAdminResourceAccess({
   accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
   children,
 }: KueueAdminResourceAccessProps) {
+  const cluster = useCluster();
+  const [installed, setInstalled] = useState<boolean | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setInstalled(null);
+    setAllowed(null);
+
+    if (cluster) {
+      isKueueInstalled(cluster).then(result => {
+        if (active) {
+          setInstalled(result);
+        }
+      });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [cluster]);
 
   return (
     <>
-      {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
-      {allowed === false && (
-        <SectionBox title={`Kueue ${resourceLabel}`}>
+      {installed === null && <Loader title="Checking for Kueue" />}
+      {installed === false && (
+        <SectionBox title="Kueue is not installed">
           <EmptyContent color="text.secondary">
-            {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
-              verb === 'get' ? 'view' : 'list'
-            } this page.`}
+            Kueue custom resources are not available in the selected Kubernetes cluster.
           </EmptyContent>
         </SectionBox>
       )}
-      <AuthVisible
-        item={resourceClass}
-        authVerb={verb}
-        onAuthResult={result => setAllowed(result.allowed)}
-        onError={() => setAllowed(false)}
-      >
-        {children}
-      </AuthVisible>
+      {installed === true && (
+        <>
+          {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
+          {allowed === false && (
+            <SectionBox title={`Kueue ${resourceLabel}`}>
+              <EmptyContent color="text.secondary">
+                {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
+                  verb === 'get' ? 'view' : 'list'
+                } this page.`}
+              </EmptyContent>
+            </SectionBox>
+          )}
+          <AuthVisible
+            item={resourceClass}
+            authVerb={verb}
+            onAuthResult={result => setAllowed(result.allowed)}
+            onError={() => setAllowed(false)}
+          >
+            {children}
+          </AuthVisible>
+        </>
+      )}
     </>
   );
 }
