@@ -48,8 +48,7 @@ function renderList(): void {
 }
 
 function setupConfigured(): void {
-  localStorage.setItem('pipecd-plugin-base-url', 'https://pipecd.example.com');
-  localStorage.setItem('pipecd-plugin-api-key', 'test-key-xyz');
+  pipecdApi.saveConfig({ baseURL: 'https://pipecd.example.com', apiKey: 'test-key-xyz' });
 }
 
 function mockListSuccess(): void {
@@ -63,6 +62,8 @@ function mockListFailure(message = 'Network error'): void {
 describe('ApplicationList', () => {
   beforeEach(() => {
     localStorage.clear();
+    // The API key lives in memory now, so reset it between tests.
+    pipecdApi.saveConfig({ baseURL: '', apiKey: '' });
   });
 
   afterEach(() => {
@@ -70,7 +71,7 @@ describe('ApplicationList', () => {
     vi.mocked(pipecdApi.listApplications).mockReset();
   });
 
-  it('shows NotConfigured when no API key in localStorage', () => {
+  it('shows NotConfigured when no API key is set', () => {
     renderList();
 
     expect(screen.getByText(/PipeCD Not Configured/i)).toBeTruthy();
