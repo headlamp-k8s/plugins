@@ -4,6 +4,11 @@ const generateName = () => {
   return 'kompose-' + Math.random().toString(36).substring(7);
 };
 
+// btoa only accepts Latin1 code points, so a compose file with any non-ASCII
+// character (accented names, emoji in a comment, curly quotes) throws
+// "Invalid character" instead of encoding. Route through UTF-8 bytes first.
+const toBase64 = (value: string) => btoa(unescape(encodeURIComponent(value)));
+
 /**
  * Create a Kompose pod to convert a Docker Compose file to Kubernetes resources.
  * @param composeBase64 The base64 encoded Docker Compose file.
@@ -34,7 +39,7 @@ export const komposePod = (composeBase64: string, komposeImage: string = '') => 
               image: komposeImage || 'femtopixel/kompose',
               command: ['sh', '-c'],
               args: [
-                `echo "${btoa(
+                `echo "${toBase64(
                   composeBase64
                 )}" | base64 -d | kompose convert -o /k8s-kompose.yml -f - 2> /k8s-kompose-error.yml && echo KOMPOSE_OUTPUT=$(base64 /k8s-kompose.yml)__ENDOUTPUT__ || echo KOMPOSE_ERROR=$(cat /k8s-kompose-error.yml)__ENDERROR__`,
               ],
