@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getRuleDetailSections } from './NodeReadinessRuleDetails';
+import { getRuleDetailSections } from './RuleDetails';
+
+vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
+  makeCustomResourceClass: vi.fn().mockReturnValue(class MockCRD {}),
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   DateLabel: ({ date }: { date: string }) => <span>{date}</span>,
+  StatusLabel: ({ children }: any) => <span>{children}</span>,
   Resource: {
     DetailsGrid: () => null,
   },

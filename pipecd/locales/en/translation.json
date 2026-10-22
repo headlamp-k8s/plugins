@@ -9,6 +9,7 @@
   "Connection failed: {{error}}": "Connection failed: {{error}}",
   "PipeCD Plugin Settings": "PipeCD Plugin Settings",
   "Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at minimum the {{role}} role.": "Connect this Headlamp plugin to your PipeCD Control Plane. You need a PipeCD API key with at minimum the {{role}} role.",
+  "The API key is kept in memory only. Re-enter it after reloading or closing Headlamp.": "The API key is kept in memory only. Re-enter it after reloading or closing Headlamp.",
   "PipeCD Server URL": "PipeCD Server URL",
   "Use an https:// URL. http:// is only allowed for localhost.": "Use an https:// URL. http:// is only allowed for localhost.",
   "Base URL of your PipeCD Control Plane gateway.": "Base URL of your PipeCD Control Plane gateway.",

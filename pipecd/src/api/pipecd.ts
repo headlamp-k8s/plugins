@@ -53,16 +53,24 @@ export interface PipeCDConfig {
   apiKey: string;
 }
 
+let currentConfig: PipeCDConfig | undefined;
+
+// Remove legacy persisted credentials when the plugin loads, without reading them.
+localStorage.removeItem('pipecd-plugin-api-key');
+
 export function loadConfig(): PipeCDConfig {
+  if (currentConfig) return { ...currentConfig };
+
   return {
     baseURL: localStorage.getItem('pipecd-plugin-base-url') ?? '',
-    apiKey: localStorage.getItem('pipecd-plugin-api-key') ?? '',
+    apiKey: '',
   };
 }
 
 export function saveConfig(config: PipeCDConfig): void {
   localStorage.setItem('pipecd-plugin-base-url', config.baseURL);
-  localStorage.setItem('pipecd-plugin-api-key', config.apiKey);
+  // Keep the key paired with its URL even if another tab updates localStorage.
+  currentConfig = { ...config };
 }
 
 export function isConfigured(config: PipeCDConfig): boolean {

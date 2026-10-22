@@ -14,7 +14,9 @@ last synced time and Git repository. You can search by name or repository, and
 filter by platform.
 
 The Settings page stores the PipeCD server URL and API key, and can test the
-connection to your control plane.
+connection to your control plane. It is read-only, and the settings live in the
+browser: only the server URL is persisted in local storage. The API key is kept
+in memory for the current page lifetime.
 
 Everything is read-only. Coming in later changes:
 
@@ -61,6 +63,20 @@ is sent in a header and would not be encrypted. The exception is localhost, so
 you can still point it at a local server while developing.
 
 Use Test connection to check it works.
+
+Save Settings keeps your key available while navigating within Headlamp. After
+reloading or closing Headlamp, re-enter the API key; the server URL is remembered.
+To clear the key without reloading, empty the API Key field and save.
+
+Previously persisted API keys are deleted from local storage when the plugin
+loads, not restored into memory. Deleting a stored key does not revoke it in
+PipeCD. If you suspect it was exposed, revoke it and generate a new read-only key.
+
+Memory-only storage prevents the plugin from persisting the key, but it does
+not protect against malicious scripts or plugins running in the same renderer.
+Only install trusted plugins. Keeping the PipeCD credential out of frontend
+JavaScript entirely would require an authenticated, authorization-enforcing
+backend or credential broker.
 
 ## Development
 

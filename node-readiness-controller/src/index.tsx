@@ -1,62 +1,42 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
-import NodeReadinessRuleDetails from './NodeReadinessRuleDetails';
-import ReadinessRulesPage from './NodeReadinessRuleList';
-import type {
-  NodeReadinessRuleObject,
-  NodeReadinessRuleSpec,
-  NodeReadinessRuleStatus,
-} from './types';
+import React from 'react';
+import { RuleDetails, RuleList } from './components/rules';
+import { nrcRouteNames, nrcRoutePaths, nrcSidebarNames } from './utils';
 
-export * from './types';
+export * from './components/rules';
+export * from './resources';
+export * from './utils';
 
-const BaseNodeReadinessRule = makeCustomResourceClass({
-  apiInfo: [{ group: 'readiness.node.x-k8s.io', version: 'v1alpha1' }],
-  isNamespaced: false,
-  kind: 'NodeReadinessRule',
-  singularName: 'NodeReadinessRule',
-  pluralName: 'nodereadinessrules',
-});
-
-export class NodeReadinessRule extends BaseNodeReadinessRule {
-  declare jsonData: NodeReadinessRuleObject;
-
-  get spec(): NodeReadinessRuleSpec | undefined {
-    return this.jsonData?.spec;
-  }
-
-  get status(): NodeReadinessRuleStatus | undefined {
-    return this.jsonData?.status;
-  }
-}
-
-// For implement-nrc-ui (Milestone 2), the list page is the main entry point
+// Rules list
 registerRoute({
-  path: '/nrc/rules',
-  component: () => <ReadinessRulesPage />,
+  path: nrcRoutePaths.rulesList,
+  component: () => <RuleList />,
   exact: true,
-  name: 'Readiness Rules',
-  sidebar: 'nrc-rules-list',
+  name: nrcRouteNames.rulesList,
+  sidebar: nrcSidebarNames.rulesList,
 });
 
+// Rule details
 registerRoute({
-  path: '/nrc/rules/:name',
-  component: () => <NodeReadinessRuleDetails />,
+  path: nrcRoutePaths.ruleDetail,
+  component: () => <RuleDetails />,
   exact: true,
-  name: 'nrc-rule-details',
-  sidebar: 'nrc-rules-list',
+  name: nrcRouteNames.ruleDetail,
+  sidebar: nrcSidebarNames.rulesList,
 });
 
+// Parent entry in sidebar
 registerSidebarEntry({
-  name: 'nrc-plugin',
+  name: nrcSidebarNames.root,
   label: 'Node Readiness',
   icon: 'mdi:shield-check',
-  url: '/nrc/rules',
+  url: nrcRoutePaths.rulesList,
 });
 
+// Child entry in sidebar
 registerSidebarEntry({
-  parent: 'nrc-plugin',
-  name: 'nrc-rules-list',
+  parent: nrcSidebarNames.root,
+  name: nrcSidebarNames.rulesList,
   label: 'Readiness Rules',
-  url: '/nrc/rules',
+  url: nrcRoutePaths.rulesList,
 });
