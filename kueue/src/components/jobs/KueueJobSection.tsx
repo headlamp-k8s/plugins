@@ -8,6 +8,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Workload } from '../../resources/workload';
+import KueuePanelLinks from '../common/KueuePanelLinks';
 import { renderLocalQueueLink } from '../common/KueueResourceLinks';
 import { getBlockerSection } from '../workloads/Detail';
 
@@ -54,7 +55,7 @@ function KueueJobDetails({ job, queueName }: { job: KubeObject; queueName: strin
   );
 
   return (
-    <>
+    <KueuePanelLinks>
       <SectionBox title="Kueue">
         <NameValueTable
           rows={[
@@ -72,6 +73,6 @@ function KueueJobDetails({ job, queueName }: { job: KubeObject; queueName: strin
         />
       </SectionBox>
       {workload && getBlockerSection(workload)?.section}
-    </>
+    </KueuePanelLinks>
   );
 }
