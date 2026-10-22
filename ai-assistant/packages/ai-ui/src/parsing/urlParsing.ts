@@ -4,43 +4,50 @@ export const isLogRequest = (url: string): boolean => {
 };
 
 /**
- * Returns whether the URL ends in `/<word>` (optionally with a trailing `/`)
- * after an `/api/` or `/apis/` segment.
+ * Returns whether a relative or absolute URL targets a single Kubernetes resource.
+ * Query strings and fragments do not affect classification.
  *
- * Matches `/\/(?:api|apis)\/.*?\/\w+\/?$/` in linear time; that regex is
- * quadratic on repeated `/api/` text.
+ * @throws {TypeError} If the URL cannot be parsed; callers handle request setup errors.
  */
-function isApiListUrl(url: string): boolean {
-  // `.` doesn't match line terminators, so only the last line can match.
-  const lineStart =
-    Math.max(
-      url.lastIndexOf('\n'),
-      url.lastIndexOf('\r'),
-      url.lastIndexOf('\u2028'),
-      url.lastIndexOf('\u2029')
-    ) + 1;
-  const line = url.slice(lineStart);
-  const end = line.endsWith('/') ? line.length - 1 : line.length;
-  let segmentStart = end;
-  while (segmentStart > 0 && /\w/.test(line[segmentStart - 1])) segmentStart--;
-  if (segmentStart === end || line[segmentStart - 1] !== '/') return false;
-  return /\/apis?\//.test(line.slice(0, segmentStart - 1));
-}
-
-/** Returns whether the URL points to a single Kubernetes resource instead of a list endpoint. */
 export const isSpecificResourceRequestHelper = (url: string): boolean => {
-  // This matches patterns like /api/v1/namespaces/default/pods/my-pod
-  // But doesn't match /api/v1/namespaces/default/pods
+  const segments = new URL(url, 'http://localhost').pathname.split('/').filter(Boolean);
+  let resourceSegments =
+    segments[0] === 'api'
+      ? segments.slice(2)
+      : segments[0] === 'apis'
+      ? segments.slice(3)
+      : segments;
 
-  // Check if this is a simple resource type URL (list endpoint)
-  if (isApiListUrl(url)) {
-    return false;
+  if (resourceSegments[0] === 'namespaces' && resourceSegments.length > 2) {
+    // Core Namespace subresources are not namespaced resource collections.
+    if (
+      segments[0] === 'api' &&
+      resourceSegments.length === 3 &&
+      (resourceSegments[2] === 'status' || resourceSegments[2] === 'finalize')
+    ) {
+      return resourceSegments.every(isResourceSegment);
+    }
+    resourceSegments = resourceSegments.slice(2);
   }
 
-  // More specific resource pattern that should end with a resource name
-  // Pattern like /api/v1/namespaces/default/pods/my-pod
-  const specificResourcePattern = /\/(?:namespaces\/[\w-]+\/)?[\w-]+\/[\w-]+\/?$/;
-  const isSpecific = specificResourcePattern.test(url);
-
-  return isSpecific;
+  return resourceSegments.length >= 2 && resourceSegments.slice(-2).every(isResourceSegment);
 };
+
+function isResourceSegment(value: string): boolean {
+  if (!value) return false;
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (
+      !(
+        (code >= 48 && code <= 57) ||
+        (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        character === '_' ||
+        character === '-'
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}

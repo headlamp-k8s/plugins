@@ -92,6 +92,24 @@ MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
     expect(performance.now() - start).toBeLessThan(500);
   });
 
+  it('preserves incomplete JWT-like values', () => {
+    const input = 'prefix eyJheader.eyJpayload suffix';
+    expect(redactSecrets(input)).toBe(input);
+  });
+
+  it('redacts every valid JWT embedded in surrounding text', () => {
+    const first = 'eyJheader.eyJpayload.signature_one';
+    const second = 'eyJother.eyJclaims.signature-two';
+    expect(redactSecrets(`first=${first}; second=${second}`)).toBe(
+      'first=[REDACTED]; second=[REDACTED]'
+    );
+  });
+
+  it('preserves many unterminated PEM headers', () => {
+    const input = Array.from({ length: 2_000 }, () => '-----BEGIN CERTIFICATE-----').join('\n');
+    expect(redactSecrets(input)).toBe(input);
+  });
+
   it('redacts PEM certificates', () => {
     const cert = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
@@ -125,6 +143,30 @@ MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
   it('redacts password and passwd key-value pairs', () => {
     expect(redactSecrets('password: hunter2')).not.toContain('hunter2');
     expect(redactSecrets('passwd=s3cr3t')).not.toContain('s3cr3t');
+  });
+
+  it('redacts credentials after whitespace before their separator', () => {
+    expect(redactSecrets('password : hunter2')).toBe('password : [REDACTED]');
+    expect(redactSecrets('token\t=abc')).toBe('token\t=[REDACTED]');
+  });
+
+  it('redacts credentials that are not at the start of a line', () => {
+    expect(redactSecrets('url=https://x.io/?token=abc123')).toBe(
+      'url=https://x.io/?token=[REDACTED]'
+    );
+    expect(redactSecrets('export api_key: demo-value')).toBe('export api_key: [REDACTED]');
+    expect(redactSecrets('my password: hunter2')).toBe('my password: [REDACTED]');
+    expect(redactSecrets('The password: hunter2 was leaked')).toBe('The password: [REDACTED]');
+  });
+
+  it('leaves non-credential fields and already-redacted values alone', () => {
+    for (const input of [
+      'url=https://example.com/path',
+      'password: [REDACTED]',
+      'DB_PASSWORD=hunter2',
+    ]) {
+      expect(redactSecrets(input)).toBe(input);
+    }
   });
 
   it('redacts unquoted credential values containing spaces through end-of-line', () => {
@@ -290,6 +332,21 @@ namespace: default`;
     const out = redactSecrets(input);
     expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
     expect(out).toContain('[REDACTED]');
+  });
+
+  it('redacts every fenced JSON Secret after malformed and non-secret blocks', () => {
+    const input = [
+      '```json\n{invalid}\n```',
+      '```json\n{"kind":"ConfigMap","data":{"visible":"yes"}}\n```',
+      '```json\n{"kind":"Secret","data":{"first":"c2VjcmV0MQ=="}}\n```',
+      '```json\n{"kind":"Secret","stringData":{"second":"secret2"}}\n```',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).toContain('{invalid}');
+    expect(out).toContain('"visible":"yes"');
+    expect(out).not.toContain('c2VjcmV0MQ==');
+    expect(out).not.toContain('secret2');
+    expect(out.match(/\[REDACTED\]/g)).toHaveLength(2);
   });
 
   it('redacts all data values of a JSON Kubernetes Secret and List responses', () => {
