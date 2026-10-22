@@ -59,6 +59,9 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   const [refresh, setRefresh] = useState<boolean>(true);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
+  const [timespan, setTimespan] = useState('24h');
+  const [resolution, setResolution] = useState('medium');
+  const [subPath, setSubPath] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const cluster = useCluster();
   const configStore = getConfigStore();
@@ -82,6 +85,13 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
+          
+          const loadedInterval = await getPrometheusInterval(cluster);
+          const loadedRes = await getPrometheusResolution(cluster);
+          const loadedSubPath = await getPrometheusSubPath(cluster);
+          setTimespan(loadedInterval ?? '1h');
+          setResolution(loadedRes ?? 'medium');
+          setSubPath(loadedSubPath);
         } else {
           setState(prometheusState.UNKNOWN);
         }
@@ -95,12 +105,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
     setChartVariant(event.currentTarget.value);
   };
 
-  const interval = getPrometheusInterval(cluster);
-  const graphResolution = getPrometheusResolution(cluster);
-  const subPath = getPrometheusSubPath(cluster);
 
-  const [timespan, setTimespan] = useState(interval ?? '1h');
-  const [resolution, setResolution] = useState(graphResolution ?? 'medium');
 
   if (!isVisible) {
     return null;

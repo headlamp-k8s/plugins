@@ -133,6 +133,9 @@ export function VolcanoChart(props: VolcanoChartProps) {
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [state, setState] = useState<PrometheusState>(PrometheusState.LOADING);
+  const [timespan, setTimespan] = useState('24h');
+  const [resolution, setResolution] = useState('medium');
+  const [subPath, setSubPath] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [selectedChart, setSelectedChart] = useState<string>(
     props.defaultChart || props.chartConfigs[0]?.key || ''
@@ -155,6 +158,13 @@ export function VolcanoChart(props: VolcanoChartProps) {
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(PrometheusState.INSTALLED);
+          
+          const loadedInterval = await getPrometheusInterval(cluster);
+          const loadedRes = await getPrometheusResolution(cluster);
+          const loadedSubPath = await getPrometheusSubPath(cluster);
+          setTimespan(loadedInterval ?? '1h');
+          setResolution(loadedRes ?? 'medium');
+          setSubPath(loadedSubPath);
         } else {
           setState(PrometheusState.UNKNOWN);
         }
@@ -165,12 +175,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
     })();
   }, [clusterConfig, cluster]);
 
-  const interval = getPrometheusInterval(cluster);
-  const graphResolution = getPrometheusResolution(cluster);
-  const subPath = getPrometheusSubPath(cluster);
 
-  const [timespan, setTimespan] = useState(interval ?? '1h');
-  const [resolution, setResolution] = useState(graphResolution ?? 'medium');
 
   if (!isVisible || props.chartConfigs.length === 0) {
     return null;
