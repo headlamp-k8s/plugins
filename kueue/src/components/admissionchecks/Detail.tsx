@@ -15,18 +15,21 @@ function getConditionsSection(admissionCheck: AdmissionCheck) {
   };
 }
 
-export default function AdmissionCheckDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function AdmissionCheckDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={AdmissionCheck}
       resourceLabel="AdmissionChecks"
       verb="get"
+      cluster={cluster}
     >
       <DetailsGrid
         resourceType={AdmissionCheck}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={admissionCheck =>
           admissionCheck
