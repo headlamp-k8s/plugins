@@ -3,7 +3,15 @@ import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Editor from '@monaco-editor/react';
-import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Typography,
+} from '@mui/material';
 import jsYaml from 'js-yaml';
 import { useSnackbar } from 'notistack';
 import React, { useEffect, useState } from 'react';
@@ -15,6 +23,8 @@ type EditorDialogProps = {
   title: string;
   resourceType?: string;
   isDelete?: boolean;
+  /** Null means the assistant could not resolve a target; do not use the current route. */
+  targetCluster?: string | null;
   onSuccess?: (response: any) => void;
   onFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
 };
@@ -26,6 +36,7 @@ export default function EditorDialog({
   title,
   resourceType = 'Resource',
   isDelete = false,
+  targetCluster,
   onSuccess,
   onFailure,
 }: EditorDialogProps) {
@@ -33,6 +44,7 @@ export default function EditorDialog({
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
   const themeName = localStorage.getItem('headlampThemePreference');
+  const cluster = targetCluster === undefined ? getCluster() : targetCluster;
 
   // Reset content when yamlContent prop changes (e.g. when dialog is opened with new content)
   useEffect(() => {
@@ -50,7 +62,6 @@ export default function EditorDialog({
 
   const handleApply = () => {
     try {
-      const cluster = getCluster();
       if (!cluster) {
         throw new Error(t('No cluster selected'));
       }
@@ -131,6 +142,9 @@ export default function EditorDialog({
         </Box>
       </DialogTitle>
       <DialogContent>
+        <Alert severity={cluster ? 'info' : 'warning'} sx={{ mb: 2, overflowWrap: 'anywhere' }}>
+          {cluster ? t('Target cluster: {{cluster}}', { cluster }) : t('No cluster selected')}
+        </Alert>
         <Box height="100%">
           <Editor
             value={content}
@@ -154,7 +168,7 @@ export default function EditorDialog({
             </Button>
           </Box>
           <Box>
-            <Button variant="contained" color="primary" onClick={handleApply}>
+            <Button variant="contained" color="primary" onClick={handleApply} disabled={!cluster}>
               {t('Apply to Cluster')}
             </Button>
           </Box>

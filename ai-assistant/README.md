@@ -19,6 +19,10 @@ The assistant is context-aware, meaning it uses information about your cluster t
 - **Multi-Provider Support**: Choose from a wide range of AI providers.
 - **Configurable Tools**: Fine-tune the AI's capabilities by enabling or disabling specific tools, like direct Kubernetes API access.
 - **Resource Generation**: Ask the AI to generate Kubernetes YAML manifests for deployments, services, and more.
+- **Review and Apply**: Open suggested YAML in the editor and apply it to the assistant's
+  cluster, including from global pages such as settings. The editor shows the target
+  cluster before you apply and retains the target chosen when it opens, even if you
+  navigate before applying. If no cluster is resolved, it shows a warning and disables Apply.
 - **In-depth Analysis**: Get help diagnosing issues, understanding resource configurations, and interpreting logs.
 
 ## Supported Providers
