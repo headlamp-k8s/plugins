@@ -142,7 +142,7 @@ describe('InlineToolConfirmation rendering and actions', () => {
     expect(await screen.findByText('Approving and executing tools...')).toBeTruthy();
     expect(screen.getByRole('progressbar', { name: 'Executing tools' })).toBeTruthy();
     pending.resolve();
-    await waitFor(() => expect(screen.getByText('Tool Execution Required')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Review tool actions')).toBeTruthy());
   });
 
   it('shows and clears denying progress around an asynchronous callback', async () => {
@@ -153,7 +153,7 @@ describe('InlineToolConfirmation rendering and actions', () => {
     expect(await screen.findByText('Denying tool execution...')).toBeTruthy();
     expect(screen.getByRole('progressbar', { name: 'Denying tools' })).toBeTruthy();
     pending.resolve();
-    await waitFor(() => expect(screen.getByText('Tool Execution Required')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Review tool actions')).toBeTruthy());
   });
 
   it.each(['approve', 'deny'] as const)('recovers when %s rejects', async action => {
@@ -169,7 +169,7 @@ describe('InlineToolConfirmation rendering and actions', () => {
       screen.getByRole('button', { name: action === 'approve' ? 'Execute 1 Tool' : 'Deny' })
     );
 
-    await waitFor(() => expect(screen.getByText('Tool Execution Required')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Review tool actions')).toBeTruthy());
     expect(console.error).toHaveBeenCalled();
   });
 });
@@ -236,7 +236,7 @@ describe('InlineToolConfirmation MCP argument editing', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Toggle details for test_tool' }));
 
-    expect(screen.getByText('AI-filled')).toBeTruthy();
+    expect(screen.getByText('AI-suggested')).toBeTruthy();
     expect(screen.getByText('Validation Issues:')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'About note' })).toBeTruthy();
     expect(screen.getAllByText('Required')).toHaveLength(2);

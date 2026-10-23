@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getDiagnosisSummary,
   getStatusIcon,
   getStatusLabel,
   getStepIcon,
@@ -53,27 +54,50 @@ const fakeTheme = {
   },
 };
 
+describe('getDiagnosisSummary', () => {
+  it('summarizes prose without exposing fenced manifests or markdown emphasis', () => {
+    expect(
+      getDiagnosisSummary(
+        makeDiagnosis({
+          diagnosis:
+            '```yaml\nkind: Pod\n```\n\n## Finding\n**Probe port mismatch.** Review the probe.',
+        })
+      )
+    ).toBe('Probe port mismatch. Review the probe.');
+  });
+
+  it('falls back to the event message when only YAML exists', () => {
+    expect(getDiagnosisSummary(makeDiagnosis({ diagnosis: '```yaml\nkind: Pod\n```' }))).toBe(
+      'Back-off restarting'
+    );
+  });
+});
+
 /* ── getStatusIcon ──────────────────────────────────────────────── */
 
 describe('getStatusIcon', () => {
   it('returns ⏳ when loading', () => {
-    expect(getStatusIcon(makeDiagnosis({ loading: true }))).toBe('⏳');
+    expect(getStatusIcon(makeDiagnosis({ loading: true }))).toBe('mdi:progress-clock');
   });
 
   it('returns ⬜ when pending', () => {
-    expect(getStatusIcon(makeDiagnosis({ pending: true }))).toBe('⬜');
+    expect(getStatusIcon(makeDiagnosis({ pending: true }))).toBe('mdi:clock-outline');
   });
 
   it('returns ❌ when error', () => {
-    expect(getStatusIcon(makeDiagnosis({ error: 'timeout' }))).toBe('❌');
+    expect(getStatusIcon(makeDiagnosis({ error: 'timeout' }))).toBe('mdi:alert-circle-outline');
   });
 
   it('returns ✅ when completed', () => {
-    expect(getStatusIcon(makeDiagnosis({ diagnosis: 'all good' }))).toBe('✅');
+    expect(getStatusIcon(makeDiagnosis({ diagnosis: 'all good' }))).toBe(
+      'mdi:check-circle-outline'
+    );
   });
 
   it('prioritises loading over pending', () => {
-    expect(getStatusIcon(makeDiagnosis({ loading: true, pending: true }))).toBe('⏳');
+    expect(getStatusIcon(makeDiagnosis({ loading: true, pending: true }))).toBe(
+      'mdi:progress-clock'
+    );
   });
 });
 
@@ -92,8 +116,8 @@ describe('getStatusLabel', () => {
     expect(getStatusLabel(makeDiagnosis({ error: 'boom' }))).toBe('Failed');
   });
 
-  it('returns Completed otherwise', () => {
-    expect(getStatusLabel(makeDiagnosis())).toBe('Completed');
+  it('reports analysis readiness rather than workload health', () => {
+    expect(getStatusLabel(makeDiagnosis())).toBe('Analysis ready');
   });
 });
 

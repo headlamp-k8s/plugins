@@ -109,6 +109,30 @@ it('contains overscroll within the conversation log', () => {
   ).toBe('contain');
 });
 
+it('places host diagnosis content inside the conversation scroll area', () => {
+  renderStream({ beforeMessages: <section aria-label="AI diagnoses">Diagnosis result</section> });
+
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  expect(log.contains(screen.getByRole('region', { name: 'AI diagnoses' }))).toBe(true);
+  expect(log.textContent).toContain('How do I list pods?');
+});
+
+it('supports Home and End in the focused scroll area without intercepting child controls', () => {
+  renderStream();
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn();
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  fireEvent.keyDown(log, { key: 'Home' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+  fireEvent.keyDown(log, { key: 'End' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 1000, behavior: 'smooth' });
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Open YAML' }), { key: 'Home' });
+  expect(scrollTo).toHaveBeenCalledTimes(2);
+});
+
 it('filters hidden messages and extracts validated tool follow-up text', () => {
   const history: ConversationMessage[] = [
     { role: 'system', content: 'hidden system' },
@@ -128,6 +152,45 @@ it('filters hidden messages and extracts validated tool follow-up text', () => {
   expect(screen.getByText('follow-up ready')).toBeTruthy();
   expect(screen.getByText(/shouldProcessFollowUp/)).toBeTruthy();
   expect(screen.getByText(/LOGS_BUTTON/)).toBeTruthy();
+});
+
+it.each(['Home', 'End'] as const)('%s sets follow mode for later streamed history updates', key => {
+  vi.useFakeTimers();
+  const props = { isLoading: true, apiError: null, ContentRendererSlot: Renderer };
+  const { rerender } = render(<TextStreamContainer {...props} history={basicHistory} />);
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn((options: { top: number }) => {
+    log.scrollTop = Math.min(800, options.top);
+  });
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 200 },
+    scrollTop: { configurable: true, writable: true, value: 800 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  if (key === 'End') {
+    vi.advanceTimersByTime(500);
+    log.scrollTop = 0;
+    fireEvent.scroll(log);
+    scrollTo.mockClear();
+  }
+  fireEvent.keyDown(log, { key });
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  scrollTo.mockClear();
+  rerender(
+    <TextStreamContainer
+      {...props}
+      history={[...basicHistory, { role: 'assistant', content: 'streamed update' }]}
+    />
+  );
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(key === 'Home' ? 0 : 1);
+  if (key === 'Home') {
+    expect(screen.getByRole('button', { name: /scroll to bottom/i })).toBeTruthy();
+  } else {
+    expect(screen.queryByRole('button', { name: /scroll to bottom/i })).toBeNull();
+  }
 });
 
 it('shows and clears content-filter guidance as history changes', () => {

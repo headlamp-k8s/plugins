@@ -16,7 +16,7 @@ import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/t
 import type { ArgumentMap } from '@headlamp-k8s/ai-common/mcp/tools/types';
 import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
-import { useTheme } from '@mui/material';
+import { useMediaQuery, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +62,8 @@ export interface ContentRendererSlotProps {
 
 /** Props for the TextStreamContainer component. */
 export interface TextStreamContainerProps {
+  /** Host content sharing the conversation's scroll area, such as diagnosis results. */
+  beforeMessages?: React.ReactNode;
   /** Conversation messages displayed in chronological order. */
   history: ConversationMessage[];
   /** Whether an assistant request is currently processing. */
@@ -120,15 +122,16 @@ function DefaultEditorDialogAdapter({
   );
 }
 
-function scrollElementTo(element: HTMLElement, top: number): void {
+function scrollElementTo(element: HTMLElement, top: number, behavior: ScrollBehavior): void {
   if (typeof element.scrollTo === 'function') {
-    element.scrollTo({ top, behavior: 'smooth' });
+    element.scrollTo({ top, behavior });
   } else {
     element.scrollTop = top;
   }
 }
 
 const TextStreamContainer = React.memo(function TextStreamContainer({
+  beforeMessages,
   history,
   isLoading,
   apiError,
@@ -148,10 +151,13 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
   const theme = useTheme();
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const scrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
   // Refs for controlling auto-scrolling
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
+  const userScrollVersionRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   // State to track if user has scrolled up
@@ -192,13 +198,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   }, []);
 
   const scrollToBottom = useCallback(() => {
+    userScrollVersionRef.current++;
     wasNearBottomRef.current = true;
     markProgrammaticScroll();
     if (containerRef.current) {
-      scrollElementTo(containerRef.current, containerRef.current.scrollHeight);
+      scrollElementTo(containerRef.current, containerRef.current.scrollHeight, scrollBehavior);
       setShowScrollButton(false);
     }
-  }, [markProgrammaticScroll]);
+  }, [markProgrammaticScroll, scrollBehavior]);
 
   const scrollToShowNewMessage = useCallback(() => {
     if (containerRef.current && history.length > 0) {
@@ -238,11 +245,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               // If user message is larger than viewport, show the bottom of it
               const targetScrollPosition = messageTop + messageHeight - containerHeight;
               markProgrammaticScroll();
-              scrollElementTo(container, Math.max(0, targetScrollPosition));
+              scrollElementTo(container, Math.max(0, targetScrollPosition), scrollBehavior);
             } else {
               // Show the user message at the top of the viewport
               markProgrammaticScroll();
-              scrollElementTo(container, Math.max(0, messageTop));
+              scrollElementTo(container, Math.max(0, messageTop), scrollBehavior);
             }
           }
         } else {
@@ -255,7 +262,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
             // Scroll to show half of the last message
             markProgrammaticScroll();
-            scrollElementTo(container, messageTop);
+            scrollElementTo(container, messageTop, scrollBehavior);
           }
         }
       } else {
@@ -263,7 +270,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         container.scrollTop = container.scrollHeight;
       }
     }
-  }, [history, markProgrammaticScroll]);
+  }, [history, markProgrammaticScroll, scrollBehavior]);
 
   // Handle container scroll event
   const handleScroll = useCallback(() => {
@@ -273,6 +280,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         return;
       }
       const nearBottom = isNearBottom();
+      userScrollVersionRef.current++;
       wasNearBottomRef.current = nearBottom;
       setShowScrollButton(!nearBottom);
     }
@@ -281,6 +289,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
     const timeouts: ReturnType<typeof setTimeout>[] = [];
+    const scrollVersion = userScrollVersionRef.current;
     let latestUserIndex = -1;
     for (let index = history.length - 1; index >= 0; index--) {
       if (history[index].role === 'user') {
@@ -300,14 +309,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       // Keep the newly submitted user message visible at the top of the log.
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (wasNearBottomRef.current) {
       // For non-user messages when near bottom, scroll to show at least 60% of new message
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (history.length > 0) {
@@ -323,7 +332,10 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     previousIsLoadingRef.current = isLoading;
     if (loadingStarted && wasNearBottomRef.current) {
       // Small delay to ensure content has rendered
-      const timeout = setTimeout(scrollToShowNewMessage, 100);
+      const scrollVersion = userScrollVersionRef.current;
+      const timeout = setTimeout(() => {
+        if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
+      }, 100);
       return () => clearTimeout(timeout);
     }
   }, [isLoading, scrollToShowNewMessage]);
@@ -560,7 +572,25 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       <Box
         ref={containerRef}
         onScroll={handleScroll}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget || event.altKey || event.metaKey) return;
+          if (event.key !== 'Home' && event.key !== 'End') return;
+          event.preventDefault();
+          userScrollVersionRef.current++;
+          const nearBottom =
+            event.key === 'End' ||
+            event.currentTarget.scrollHeight <= event.currentTarget.clientHeight;
+          wasNearBottomRef.current = nearBottom;
+          setShowScrollButton(!nearBottom);
+          markProgrammaticScroll();
+          scrollElementTo(
+            event.currentTarget,
+            event.key === 'Home' ? 0 : event.currentTarget.scrollHeight,
+            scrollBehavior
+          );
+        }}
         role="log"
+        tabIndex={0}
         aria-live="polite"
         aria-label={t('Conversation messages')}
         sx={{
@@ -573,8 +603,18 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           flexDirection: 'column',
           maxWidth: '100%',
           minWidth: 0,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: -2,
+          },
         }}
       >
+        {beforeMessages && (
+          <Box aria-live="off" sx={{ flexShrink: 0 }}>
+            {beforeMessages}
+          </Box>
+        )}
         {apiError && history.length === 0 && (
           <Alert severity="error" sx={{ m: 2 }}>
             {apiError}

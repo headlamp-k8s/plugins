@@ -19,6 +19,10 @@ The assistant is context-aware, meaning it uses information about your cluster t
 - **Multi-Provider Support**: Choose from a wide range of AI providers.
 - **Configurable Tools**: Fine-tune the AI's capabilities by enabling or disabling specific tools, like direct Kubernetes API access.
 - **Resource Generation**: Ask the AI to generate Kubernetes YAML manifests for deployments, services, and more.
+- **Review and Apply**: Open suggested YAML in the editor and apply it to the assistant's
+  cluster, including from global pages such as settings. The editor shows the target
+  cluster before you apply and retains the target chosen when it opens, even if you
+  navigate before applying. If no cluster is resolved, it shows a warning and disables Apply.
 - **In-depth Analysis**: Get help diagnosing issues, understanding resource configurations, and interpreting logs.
 
 ## Supported Providers
@@ -101,6 +105,31 @@ command: ['python3', '-u', '/app/experimental/ag-ui/server-agui.py']
 ```bash
 kubectl apply -f rendered.yaml
 ```
+
+## Background AI diagnoses
+
+Enable proactive diagnosis in the plugin settings to analyze recent warning events.
+Diagnoses and the conversation share one scroll area; result cards start compact
+and expand to show the analysis, investigation activity, and reviewable YAML.
+
+- The overview shows cluster scope, event-check time, and separate ready/failed counts.
+- Failed event reads remain errors during retry backoff, rather than appearing
+  as successful checks with no warning events.
+- Pause defers queued analyses after the current item finishes; it does not abort
+  a provider stream. Resume continues the remaining queue. A new explicit
+  single-event analysis can still run while background work is paused.
+- You can draft while analysis runs. Sending pauses background work and queues the
+  message behind the current item. Cancelling restores the queued message if the
+  draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
+  Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
+- Retry failed analyses, analyze an individual result again, or dismiss it.
+  Dismissing hides that event from automatic checks; it does not fix the resource.
+- Check again explicitly refreshes analyses in the current scope and can incur AI
+  provider usage. Open resource to inspect current health after a change:
+  "Analysis ready" and a successful API write do not mean an incident is resolved.
+
+Generic AI entry points and attribution use the same offline sparkle mark.
+Provider logos and operation/status icons retain their distinct meanings.
 
 ## MCP (Model Context Protocol) Server Support
 
