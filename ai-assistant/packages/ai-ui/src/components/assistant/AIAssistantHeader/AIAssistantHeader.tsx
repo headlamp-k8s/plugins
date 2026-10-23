@@ -25,6 +25,10 @@ export interface AIAssistantHeaderProps {
   onClose: () => void;
   /** Callback invoked when the user clicks the settings button. @returns No value. */
   onSettings: () => void;
+  /** Optional callback invoked when the user clicks the export button. @returns No value. */
+  onExport?: () => void;
+  /** Whether the export button should be disabled (e.g. when there is no chat history). */
+  disableExportButton?: boolean;
   /** Component used to render icon action buttons. Falls back to MUI IconButton + Tooltip. */
   ActionButtonSlot?: React.ComponentType<ActionButtonSlotProps>;
 }
@@ -61,6 +65,8 @@ export default function AIAssistantHeader({
   disableSettingsButton,
   onClose,
   onSettings,
+  onExport,
+  disableExportButton = false,
   ActionButtonSlot = DefaultHeaderAction,
 }: AIAssistantHeaderProps) {
   const { t } = useTranslation();
@@ -82,6 +88,14 @@ export default function AIAssistantHeader({
         )}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        {onExport && (
+          <ActionButtonSlot
+            description={t('Export Session')}
+            icon="mdi:export-variant"
+            onClick={onExport}
+            iconButtonProps={{ disabled: disableExportButton, size: 'small' }}
+          />
+        )}
         <ActionButtonSlot
           description={t('Settings')}
           icon="mdi:settings"

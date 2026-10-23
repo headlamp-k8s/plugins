@@ -32,12 +32,14 @@ import { createMockApprovalManager } from '@headlamp-k8s/ai-common/tools/approva
 import { createMockKubernetesToolManager } from '@headlamp-k8s/ai-common/tools/testing/MockToolManager';
 import AIAssistantHeader from '@headlamp-k8s/ai-ui/components/assistant/AIAssistantHeader';
 import type { ChatMode } from '@headlamp-k8s/ai-ui/components/assistant/AllInputSection';
+import ExportSessionDialog from '@headlamp-k8s/ai-ui/components/assistant/ExportSessionDialog';
 import HolmesSetupGuide from '@headlamp-k8s/ai-ui/components/assistant/HolmesSetupGuide';
 import {
   type PromptSuggestion,
   PromptSuggestions,
 } from '@headlamp-k8s/ai-ui/components/assistant/PromptSuggestions';
 import ApiConfirmationDialog from '@headlamp-k8s/ai-ui/components/common/ApiConfirmationDialog';
+import { hasExportableMessages } from '@headlamp-k8s/ai-ui/formatting/sessionExport';
 import { electronMCPClient } from '@headlamp-k8s/ai-ui/mcp/electron-client';
 import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import {
@@ -161,6 +163,7 @@ export default function AIPrompt(props: {
 
   // Chat/agent mode state
   const [chatMode, setChatMode] = React.useState<ChatMode>('chat');
+  const [openExportDialog, setOpenExportDialog] = React.useState(false);
 
   useEffect(() => {
     if (width) {
@@ -1898,6 +1901,8 @@ export default function AIPrompt(props: {
           disableSettingsButton={disableSettingsButton}
           onClose={() => setOpenPopup(false)}
           onSettings={() => history.push(getSettingsURL())}
+          onExport={() => setOpenExportDialog(true)}
+          disableExportButton={!hasExportableMessages(promptHistory)}
         />
 
         <Grid
@@ -2059,6 +2064,15 @@ export default function AIPrompt(props: {
         isLoading={kubernetesUI.apiLoading}
         result={kubernetesUI.apiResponse}
         error={kubernetesUI.apiRequestError}
+      />
+
+      {/* Export Session Dialog */}
+      <ExportSessionDialog
+        open={openExportDialog}
+        onClose={() => setOpenExportDialog(false)}
+        messages={promptHistory}
+        cluster={getCluster()}
+        clusters={selectedClusters}
       />
     </div>
   );
