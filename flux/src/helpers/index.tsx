@@ -14,6 +14,8 @@ import { useSelector } from 'react-redux';
 import Table from '../common/Table';
 import { PluralName } from './pluralName';
 
+export { formatObject } from './formatObject';
+
 export function getSourceNameAndPluralKind(item: KubeObject): {
   name: string;
   pluralKind: string;
@@ -114,14 +116,20 @@ export function ObjectEventsRenderer(props: { events?: Event[] }) {
             header: t('Age'),
             accessorFn: item => {
               if (item.count > 1) {
-                return `${timeAgo(item.lastOccurrence)} (${item.count} times over ${timeAgo(
-                  item.firstOccurrence
-                )})`;
+                return t('{{lastSeen}} ({{count}} times over {{firstSeen}})', {
+                  lastSeen: timeAgo(item.lastOccurrence),
+                  count: item.count,
+                  firstSeen: timeAgo(item.firstOccurrence),
+                });
               }
               const eventDate = timeAgo(item.lastOccurrence, { format: 'mini' });
               let label: string;
               if (item.count > 1) {
-                label = `${eventDate} ${item.count} times since ${timeAgo(item.firstOccurrence)}`;
+                label = t('{{lastSeen}} {{count}} times since {{firstSeen}}', {
+                  lastSeen: eventDate,
+                  count: item.count,
+                  firstSeen: timeAgo(item.firstOccurrence),
+                });
               } else {
                 label = eventDate;
               }

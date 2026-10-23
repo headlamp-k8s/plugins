@@ -137,13 +137,18 @@ function MetricsSection({ metrics }) {
   }
 
   return (
-    <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+    <Box
+      sx={{ maxHeight: 300, overflowY: 'auto' }}
+      role="region"
+      aria-label={t('Metrics')}
+      tabIndex={0}
+    >
       <Grid container spacing={2}>
         {metrics.map((metric, index) => (
           <Grid item xs={12} md={6} key={index}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
-                <Typography variant="h6" color="primary" gutterBottom>
+                <Typography variant="h6" component="h2" color="primary" gutterBottom>
                   {metric?.name || t('Metric {{number}}', { number: index + 1 })}
                 </Typography>
 
@@ -157,33 +162,31 @@ function MetricsSection({ metrics }) {
                       {t('Threshold Range')}
                     </Typography>
                     <Box display="flex" alignItems="center" mt={0.5}>
-                      <Tooltip title={t('Minimum')}>
-                        <Chip
-                          size="small"
-                          label={t('Min: {{value}}', {
-                            value:
-                              metric.thresholdRange.min !== undefined
-                                ? metric.thresholdRange.min
-                                : 'N/A',
-                          })}
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </Tooltip>
-                      <Box mx={1}>-</Box>
-                      <Tooltip title={t('Maximum')}>
-                        <Chip
-                          size="small"
-                          label={t('Max: {{value}}', {
-                            value:
-                              metric.thresholdRange.max !== undefined
-                                ? metric.thresholdRange.max
-                                : 'N/A',
-                          })}
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      </Tooltip>
+                      <Chip
+                        size="small"
+                        label={t('Min: {{value}}', {
+                          value:
+                            metric.thresholdRange.min !== undefined
+                              ? metric.thresholdRange.min
+                              : 'N/A',
+                        })}
+                        color="primary"
+                        variant="outlined"
+                      />
+                      <Box mx={1} aria-hidden="true">
+                        -
+                      </Box>
+                      <Chip
+                        size="small"
+                        label={t('Max: {{value}}', {
+                          value:
+                            metric.thresholdRange.max !== undefined
+                              ? metric.thresholdRange.max
+                              : 'N/A',
+                        })}
+                        color="secondary"
+                        variant="outlined"
+                      />
                     </Box>
                   </Box>
                 )}
@@ -229,17 +232,20 @@ function AnalysisSection({ analysis }) {
               {t('Max Weight')}
             </Typography>
             {analysis.maxWeight !== undefined ? (
-              <Tooltip title={t('Maximum traffic percentage for canary')}>
-                <Box display="flex" alignItems="center">
-                  <Typography variant="body1">{analysis.maxWeight}%</Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={analysis.maxWeight}
-                    sx={{ ml: 1, width: 100, height: 8, borderRadius: 1 }}
-                    color="primary"
-                  />
-                </Box>
-              </Tooltip>
+              <Box display="flex" alignItems="center">
+                <Tooltip title={t('Maximum traffic percentage for canary')} describeChild>
+                  <Typography variant="body1" tabIndex={0}>
+                    {analysis.maxWeight}%
+                  </Typography>
+                </Tooltip>
+                <LinearProgress
+                  variant="determinate"
+                  value={analysis.maxWeight}
+                  sx={{ ml: 1, width: 100, height: 8, borderRadius: 1 }}
+                  color="primary"
+                  aria-hidden="true"
+                />
+              </Box>
             ) : (
               <Typography variant="body1">{t('Not specified')}</Typography>
             )}
@@ -250,8 +256,10 @@ function AnalysisSection({ analysis }) {
               <Typography variant="subtitle2" color="text.secondary">
                 {t('Step Weight')}
               </Typography>
-              <Tooltip title={t('Percentage increment per iteration')}>
-                <Typography variant="body1">{analysis.stepWeight}%</Typography>
+              <Tooltip title={t('Percentage increment per iteration')} describeChild>
+                <Typography variant="body1" tabIndex={0}>
+                  {analysis.stepWeight}%
+                </Typography>
               </Tooltip>
             </Box>
           )}
@@ -303,12 +311,17 @@ function WebhooksSection({ webhooks }) {
   }
 
   return (
-    <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+    <Box
+      sx={{ maxHeight: 400, overflowY: 'auto' }}
+      role="region"
+      aria-label={t('Webhooks')}
+      tabIndex={0}
+    >
       <Stack spacing={2}>
         {webhooks.map((webhook, index) => (
           <Paper key={index} variant="outlined" sx={{ p: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-              <Typography variant="h6" color="primary">
+              <Typography variant="h6" component="h2" color="primary">
                 {webhook?.name || t('Webhook {{number}}', { number: index + 1 })}
               </Typography>
               <Chip
@@ -348,6 +361,11 @@ function WebhooksSection({ webhooks }) {
                 </Typography>
                 <Paper
                   variant="outlined"
+                  role="region"
+                  aria-label={t('Metadata for {{name}}', {
+                    name: webhook?.name || t('Webhook {{number}}', { number: index + 1 }),
+                  })}
+                  tabIndex={0}
                   sx={{
                     p: 1,
                     backgroundColor: 'rgba(0, 0, 0, 0.03)',

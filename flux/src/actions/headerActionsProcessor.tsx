@@ -58,11 +58,18 @@ function FluxManagedIndicator() {
   const { t } = useTranslation();
   return (
     <Tooltip
+      describeChild
       title={t(
         'This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.'
       )}
     >
-      <Chip label={t('Flux managed')} size="small" variant="outlined" color="primary" />
+      <Chip
+        label={t('Flux managed')}
+        size="small"
+        variant="outlined"
+        color="primary"
+        tabIndex={0}
+      />
     </Tooltip>
   );
 }

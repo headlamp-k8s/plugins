@@ -7,12 +7,11 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
-import YAML from 'yaml';
 import { NotSupported } from '../checkflux';
 import SourceLink from '../common/Link';
 import { ImagePolicy, ImageRepository, ImageUpdateAutomation } from '../common/Resources';
 import Table from '../common/Table';
-import { NameLink, useNamespaces } from '../helpers';
+import { formatObject, NameLink, useNamespaces } from '../helpers';
 
 export function ImageAutomation() {
   return (
@@ -52,7 +51,7 @@ function ImageUpdateAutomationList() {
             accessorFn: item =>
               item.jsonData.spec.git?.checkout?.ref && (
                 <ShowHideLabel labelId={item?.metadata.uid}>
-                  {YAML.stringify(item.jsonData.spec.git.checkout.ref)}
+                  {formatObject(item.jsonData.spec.git.checkout.ref)}
                 </ShowHideLabel>
               ),
           },
@@ -64,7 +63,7 @@ function ImageUpdateAutomationList() {
           {
             header: t('Update'),
             accessorFn: item =>
-              item.jsonData.spec.update && YAML.stringify(item.jsonData.spec.update),
+              item.jsonData.spec.update && formatObject(item.jsonData.spec.update),
           },
           'age',
         ]}
@@ -94,7 +93,7 @@ function ImagePolicyList() {
           {
             header: t('Policy'),
             accessorFn: item =>
-              item.jsonData.spec.policy && YAML.stringify(item.jsonData.spec.policy),
+              item.jsonData.spec.policy && formatObject(item.jsonData.spec.policy),
           },
           {
             header: t('Latest'),
