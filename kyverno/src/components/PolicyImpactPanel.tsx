@@ -44,38 +44,91 @@ interface PolicyImpactPanelProps {
  * ClusterPolicy kinds, never the CEL policy kinds.
  *
  * No drill-down link yet, that opens a dialog PR-4 hasn't built yet.
+ *
+ * A namespaced Policy can only ever match resources in its own namespace (Kyverno enforces this),
+ * so its results only ever land in a namespaced PolicyReport, never a ClusterPolicyReport,
+ * confirmed against policyReport.ts: PolicyReport.isNamespaced = true, ClusterPolicyReport.
+ * isNamespaced = false. A ClusterPolicy (policyNamespace undefined) needs the unscoped PolicyReport
+ * read too, since it can match resources in any namespace, plus ClusterPolicyReport for
+ * cluster-scoped ones. Split into two data-fetching wrappers below, selected here, instead of one
+ * component calling both hooks unconditionally and discarding the cluster one's result for a
+ * namespaced Policy: React's Rules of Hooks mean a single component can't conditionally skip
+ * ClusterPolicyReport.useList(), but two separately-mounted components can each call only the hook
+ * their own case needs, so a namespace-only RBAC identity never issues that forbidden cluster-wide
+ * request in the first place.
  */
 export function PolicyImpactPanel({ policyName, policyNamespace, rules }: PolicyImpactPanelProps) {
-  const { i18n, ready, t } = useTranslation();
-  // A namespaced Policy can only ever match resources in its own namespace (Kyverno enforces
-  // this), so its results only ever land in a namespaced PolicyReport, never a
-  // ClusterPolicyReport, confirmed against policyReport.ts: PolicyReport.isNamespaced = true,
-  // ClusterPolicyReport.isNamespaced = false. Scoping this read to policyNamespace instead of
-  // reading cluster-wide means a user who can only read PolicyReports in their own namespace
-  // still sees this panel; a ClusterPolicy (policyNamespace undefined) still needs the
-  // unscoped read, since it can match resources in any namespace.
-  const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace });
-  // Called unconditionally either way (Rules of Hooks), but its loading state, errors, and
-  // items are deliberately excluded below for a namespaced Policy: requiring cluster-wide
-  // ClusterPolicyReport read access to view a namespaced Policy's impact would deny a user
-  // real, usable data they already have every permission to see.
-  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
-  const policyReports = policyReportQuery.items;
-  const clusterPolicyReports = policyNamespace ? null : clusterPolicyReportQuery.items;
+  return policyNamespace ? (
+    <NamespacedPolicyImpact
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      rules={rules}
+    />
+  ) : (
+    <ClusterPolicyImpact policyName={policyName} rules={rules} />
+  );
+}
 
-  // `items` stays null when a list never resolves, including when the report
-  // CRDs are absent or RBAC denies them, so deriving loading from
-  // `items === null` would leave this panel spinning forever. Use the
-  // query's own state instead (see usePolicyResultCounts.ts). Loading
-  // settles on error too, but an errored query's `items` is still null, so
-  // it has to be checked for explicitly below, otherwise it would silently
-  // read as "no evaluated resources" or get counted as zero instead of
-  // surfacing that this data could not actually be fetched.
-  const loading =
-    policyReportQuery.isLoading || (!policyNamespace && clusterPolicyReportQuery.isLoading);
-  const queryError =
-    policyReportQuery.errors?.[0] ||
-    (policyNamespace ? undefined : clusterPolicyReportQuery.errors?.[0]);
+function NamespacedPolicyImpact({
+  policyName,
+  policyNamespace,
+  rules,
+}: {
+  policyName: string;
+  policyNamespace: string;
+  rules: PolicyRule[];
+}) {
+  const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace });
+  return (
+    <PolicyImpactPanelBody
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      rules={rules}
+      policyReports={policyReportQuery.items}
+      // Never fetched for a namespaced Policy, not merely loading: a namespaced Policy can't
+      // match any cluster-scoped resource, so an empty list is the real, complete answer here,
+      // not a placeholder waiting on a request this scope has no business making.
+      clusterPolicyReports={[]}
+      loading={policyReportQuery.isLoading}
+      queryError={policyReportQuery.errors?.[0]}
+    />
+  );
+}
+
+function ClusterPolicyImpact({ policyName, rules }: { policyName: string; rules: PolicyRule[] }) {
+  const policyReportQuery = PolicyReport.useList();
+  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
+  return (
+    <PolicyImpactPanelBody
+      policyName={policyName}
+      policyNamespace={undefined}
+      rules={rules}
+      policyReports={policyReportQuery.items}
+      clusterPolicyReports={clusterPolicyReportQuery.items}
+      loading={policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading}
+      queryError={policyReportQuery.errors?.[0] || clusterPolicyReportQuery.errors?.[0]}
+    />
+  );
+}
+
+function PolicyImpactPanelBody({
+  policyName,
+  policyNamespace,
+  rules,
+  policyReports,
+  clusterPolicyReports,
+  loading,
+  queryError,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+  rules: PolicyRule[];
+  policyReports: PolicyReport[] | null;
+  clusterPolicyReports: ClusterPolicyReport[] | null;
+  loading: boolean;
+  queryError: unknown;
+}) {
+  const { i18n, ready, t } = useTranslation();
 
   const impact = useMemo(
     () =>

@@ -248,6 +248,17 @@ type AssociatedReportResult = PolicyReportResult & {
   reportScope?: ReportResourceRef;
 };
 
+// A namespaced Policy can only ever match (and so only ever be reported on) in its own
+// namespace, never cluster-scoped resources, the same reasoning PolicyImpactPanel's split
+// documents. Split into two data-fetching wrappers, selected by the parent, instead of one
+// component calling both hooks unconditionally: React's Rules of Hooks mean a single component
+// can't conditionally skip ClusterPolicyReport.useList() for a namespaced Policy, but two
+// separately-mounted components can each call only the hook their own case actually needs. The
+// namespace-only RBAC fixture this plugin ships (test-files/policy-impact/error-scenarios/06-)
+// is denied the unscoped ClusterPolicyReport list outright, and was previously denied the
+// unscoped PolicyReport list too, so this section used to issue a forbidden request for a
+// namespaced Policy and then stay on its spinner forever once that identity's lists both landed
+// on `null` from the denial, never reaching the loading check below (see AssociatedReportsBody).
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
@@ -255,9 +266,59 @@ function AssociatedReportsSection({
   policyName: string;
   policyNamespace?: string;
 }) {
-  const { t } = useTranslation();
+  return policyNamespace ? (
+    <NamespacedAssociatedReports policyName={policyName} policyNamespace={policyNamespace} />
+  ) : (
+    <ClusterAssociatedReports policyName={policyName} />
+  );
+}
+
+function NamespacedAssociatedReports({
+  policyName,
+  policyNamespace,
+}: {
+  policyName: string;
+  policyNamespace: string;
+}) {
+  const { items: policyReports } = PolicyReport.useList({ namespace: policyNamespace });
+  return (
+    <AssociatedReportsBody
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      policyReports={policyReports}
+      // Never fetched for a namespaced Policy, not merely loading: ClusterPolicyReport only ever
+      // holds results for cluster-scoped resources, a namespaced Policy can't match any, so an
+      // empty list here is the real, complete answer, not a placeholder waiting on a request.
+      clusterPolicyReports={[]}
+    />
+  );
+}
+
+function ClusterAssociatedReports({ policyName }: { policyName: string }) {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  return (
+    <AssociatedReportsBody
+      policyName={policyName}
+      policyNamespace={undefined}
+      policyReports={policyReports}
+      clusterPolicyReports={clusterPolicyReports}
+    />
+  );
+}
+
+function AssociatedReportsBody({
+  policyName,
+  policyNamespace,
+  policyReports,
+  clusterPolicyReports,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+  policyReports: PolicyReport[] | null;
+  clusterPolicyReports: ClusterPolicyReport[] | null;
+}) {
+  const { t } = useTranslation();
 
   // Wait for BOTH streams before rendering — otherwise we'd briefly show a
   // partial result set as soon as the first list resolves.
