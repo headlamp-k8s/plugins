@@ -10,6 +10,10 @@ The scenarios cover:
 - chatting with the fixture-backed model;
 - troubleshooting a pod with the scripted agent;
 - exploring cluster workloads with the scripted agent.
+- background diagnosis scrolling and compact results at desktop and small-window
+  sizes, stable reading position, drafting, pause/resume, queued-message priority,
+  retry/dismiss, event navigation, and visible cluster scope. AI responses are
+  fixture-backed; the host, event reads, and resource navigation are real.
 
 ## Run
 

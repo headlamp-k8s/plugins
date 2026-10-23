@@ -67,10 +67,12 @@ import ProactiveDiagnosisSection from '@headlamp-k8s/ai-ui/components/assistant/
 import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 import {
   type DiagnosisStepCallback,
+  type EventDigest,
   ProactiveDiagnosisManager,
   proactiveDiagnosisManager,
 } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import { useProactiveDiagnosis } from '@headlamp-k8s/ai-ui/hooks/useProactiveDiagnosis';
+import { AI_ASSISTANT_ICON } from '@headlamp-k8s/ai-ui/icons/aiAssistantIcon';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Grid, Typography } from '@mui/material';
@@ -82,6 +84,7 @@ import { AIInputSection } from './components/assistant/AllInputSection';
 import ContentRenderer from './ContentRenderer';
 import { generateContextDescription } from './context/contextGenerator';
 import EditorDialog from './editordialog';
+import { getHeadlampLink } from './headlampLink';
 import { checkHolmesAgentHealth } from './holmesClient';
 import { HolmesHealthRequestGate } from './holmesHealthRequestGate';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
@@ -160,8 +163,20 @@ export default function AIPrompt(props: {
   const proactiveDiagnosisEnabled = pluginSettings.proactiveDiagnosisEnabled === true;
 
   // Proactive diagnosis UI state
-  const { diagnoses, isCycleRunning, scrollToEventUid, clearScrollTarget } =
+  const { diagnoses, isCycleRunning, isPaused, scrollToEventUid, clearScrollTarget } =
     useProactiveDiagnosis();
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
+  const [nextCheckAt, setNextCheckAt] = useState<number | null>(null);
+  const [diagnosisCheckError, setDiagnosisCheckError] = useState<string | null>(null);
+  const [isSendQueued, setIsSendQueued] = useState(false);
+  const queuedSendRef = useRef<{ prompt: string; controller: AbortController } | null>(null);
+  useEffect(
+    () => () => {
+      queuedSendRef.current?.controller.abort();
+      queuedSendRef.current = null;
+    },
+    []
+  );
 
   // Chat/agent mode state
   const [chatMode, setChatMode] = React.useState<ChatMode>('chat');
@@ -245,9 +260,10 @@ export default function AIPrompt(props: {
   const proactiveDiagnosisEnabledRef = useRef(proactiveDiagnosisEnabled);
   proactiveDiagnosisEnabledRef.current = proactiveDiagnosisEnabled;
 
-  const runProactiveCycle = useCallback(async () => {
+  const runProactiveCycle = useCallback(async (force = false) => {
     if (!proactiveDiagnosisEnabledRef.current) return;
     if (!diagnoseFnRef.current) return; // Don't run if no AI is available yet
+    if (proactiveDiagnosisManager.isPaused()) return;
     if (loadingRef.current || isDiagnosisRunningRef.current) return; // Don't run while user is chatting or another diagnosis is running
 
     // Fetch events on-demand (one-shot API call — no continuous watch)
@@ -257,14 +273,17 @@ export default function AIPrompt(props: {
     try {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
       if (!proactiveDiagnosisEnabledRef.current) return;
+      setLastCheckedAt(Date.now());
+      setDiagnosisCheckError(null);
       if (allWarningEvents.length === 0) return;
 
       const topEvents = ProactiveDiagnosisManager.extractTopEvents(allWarningEvents, 3);
       if (topEvents.length > 0) {
-        await proactiveDiagnosisManager.diagnoseEvents(topEvents);
+        await proactiveDiagnosisManager.diagnoseEvents(topEvents, force);
       }
     } catch (err) {
       console.error('[ProactiveDiagnosis] Cycle error:', err);
+      setDiagnosisCheckError(err instanceof Error ? err.message : String(err));
     }
   }, []); // stable — reads current values via refs
 
@@ -282,6 +301,9 @@ export default function AIPrompt(props: {
       diagnoseFnRef.current = null;
       setDiagnoseFnReady(false);
       initialCycleRanRef.current = false;
+      setLastCheckedAt(null);
+      setNextCheckAt(null);
+      setDiagnosisCheckError(null);
       if (proactiveDiagIntervalRef.current) {
         clearInterval(proactiveDiagIntervalRef.current);
         proactiveDiagIntervalRef.current = null;
@@ -302,6 +324,7 @@ export default function AIPrompt(props: {
     // Track when a diagnosis cycle ends so we can enforce the cooldown
     const handleCycleEnd = () => {
       lastCycleEndRef.current = Date.now();
+      setNextCheckAt(lastCycleEndRef.current + DIAGNOSIS_COOLDOWN_MS);
     };
     proactiveDiagnosisManager.on('cycle-end', handleCycleEnd);
 
@@ -654,11 +677,21 @@ export default function AIPrompt(props: {
   // ─── Connect AI manager to proactive diagnosis (fallback for non-agent mode) ──
   // When not in agent mode but an AI config is available, use a LangChain session as fallback.
   // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
+  const diagnosisContextKey = JSON.stringify({
+    activeConfig,
+    selectedModel,
+    enabledTools,
+    mockTools: pluginSettings?.devOptions?.enableMockTools,
+    proactiveDiagnosisEnabled,
+    isAgentMode,
+    clusterNamesKey,
+  });
+  const diagnosisContextKeyRef = useRef(diagnosisContextKey);
+  diagnosisContextKeyRef.current = diagnosisContextKey;
   useEffect(() => {
-    let diagnosisGeneration = 0;
     // Only set the LangChain fallback if agent mode is NOT active
     if (proactiveDiagnosisEnabled && !isAgentMode && activeConfig) {
-      const generation = ++diagnosisGeneration;
+      const contextKey = diagnosisContextKey;
       const diagnoseFn = async (
         prompt: string,
         onStep?: DiagnosisStepCallback
@@ -668,7 +701,7 @@ export default function AIPrompt(props: {
             ...activeConfig.config,
             model: selectedModel,
           });
-          if (generation !== diagnosisGeneration) {
+          if (contextKey !== diagnosisContextKeyRef.current) {
             throw new Error('Diagnosis provider configuration changed during credential refresh.');
           }
           // Create an isolated manager instance for this single diagnosis
@@ -688,13 +721,16 @@ export default function AIPrompt(props: {
             timestamp: Date.now(),
           });
           const response = await isolatedManager.userSend(prompt);
+          if (response.error || !response.content) {
+            throw new Error(response.content || t('Diagnosis request returned no analysis.'));
+          }
           onStep?.({
             id: `lc-done-${Date.now()}`,
             content: t('Diagnosis response received'),
             type: 'tool-result',
             timestamp: Date.now(),
           });
-          return response.content || t('No diagnosis available.');
+          return response.content;
         } catch (err: unknown) {
           console.error('[ProactiveDiagnosis] diagnoseFn error:', err);
           throw err;
@@ -710,10 +746,8 @@ export default function AIPrompt(props: {
       setDiagnoseFnReady(false);
     }
     // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
-    return () => {
-      diagnosisGeneration += 1;
-    };
   }, [
+    diagnosisContextKey,
     proactiveDiagnosisEnabled,
     isAgentMode,
     activeConfig,
@@ -721,6 +755,7 @@ export default function AIPrompt(props: {
     enabledTools,
     pluginSettings,
     t,
+    resolveCliSentinels,
   ]);
   // ─── End proactive diagnosis connection ─────────────────────────────
 
@@ -1626,6 +1661,84 @@ export default function AIPrompt(props: {
     [selectedClusters, clusters]
   );
 
+  const handleSendPrompt = async (prompt: string) => {
+    if (loadingRef.current || queuedSendRef.current) return;
+    const ticket = { prompt, controller: new AbortController() };
+    const clusterScope = clusterNamesRef.current.join('\0');
+    try {
+      if (proactiveDiagnosisManager.isRunning()) {
+        queuedSendRef.current = ticket;
+        setIsSendQueued(true);
+        await proactiveDiagnosisManager.pauseAndWaitForIdle(ticket.controller.signal);
+        if (queuedSendRef.current !== ticket) return;
+        if (clusterScope !== clusterNamesRef.current.join('\0')) {
+          throw new Error(t('Cluster selection changed. Review and resend your message.'));
+        }
+        queuedSendRef.current = null;
+        setIsSendQueued(false);
+      }
+      if (isAgentMode) await handleAgentSend(prompt);
+      else await AnalyzeResourceBasedOnPrompt(prompt);
+    } catch (error) {
+      if (ticket.controller.signal.aborted) return;
+      setPromptVal(current => current || prompt);
+      setApiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (queuedSendRef.current === ticket) {
+        queuedSendRef.current = null;
+        setIsSendQueued(false);
+      }
+    }
+  };
+
+  const handleCancelQueuedSend = () => {
+    const ticket = queuedSendRef.current;
+    ticket?.controller.abort();
+    queuedSendRef.current = null;
+    setIsSendQueued(false);
+    if (ticket) setPromptVal(current => current || ticket.prompt);
+  };
+
+  const handleDiagnosisPauseToggle = async () => {
+    try {
+      if (proactiveDiagnosisManager.isPaused()) {
+        await proactiveDiagnosisManager.resume();
+        await runProactiveCycle();
+      } else {
+        proactiveDiagnosisManager.pause();
+      }
+    } catch (error) {
+      setDiagnosisCheckError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleRetryDiagnosis = async (eventUid: string) => {
+    try {
+      const result = proactiveDiagnosisManager.getDiagnosis(eventUid);
+      if (!result) throw new Error(t('Diagnosis not found'));
+      await proactiveDiagnosisManager.diagnoseSingleEvent(result.event, true);
+    } catch (error) {
+      setDiagnosisCheckError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleOpenDiagnosisResource = (event: EventDigest) => {
+    try {
+      if (!event.cluster) throw new Error(t('This diagnosis has no cluster context.'));
+      const query = new URLSearchParams({
+        cluster: event.cluster,
+        kind: event.objectKind,
+        resource: event.objectName,
+        ns: event.objectNamespace,
+      });
+      const link = getHeadlampLink(`https://headlamp/resource-details?${query}`);
+      if (!link.url) throw new Error(t('This resource cannot be opened in Headlamp.'));
+      history.push(link.url);
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
     if (!kubernetesUI.apiRequest) return;
@@ -1879,7 +1992,7 @@ export default function AIPrompt(props: {
           {holmesEnabled && (
             <Button
               variant="outlined"
-              startIcon={<Icon icon="mdi:robot" />}
+              startIcon={<Icon icon={AI_ASSISTANT_ICON} />}
               disabled={agentModeStatus === 'checking'}
               onClick={() => {
                 handleUseHolmes();
@@ -1946,17 +2059,38 @@ export default function AIPrompt(props: {
               minWidth: 0,
             }}
           >
-            {proactiveDiagnosisEnabled && (
-              <ProactiveDiagnosisSection
-                diagnoses={diagnoses}
-                scrollToEventUid={scrollToEventUid}
-                onScrollComplete={clearScrollTarget}
-                isCycleRunning={isCycleRunning}
-                onYamlAction={handleYamlAction}
-                ContentRendererSlot={ContentRenderer}
-              />
-            )}
             <AIChatContent
+              beforeMessages={
+                proactiveDiagnosisEnabled ? (
+                  <ProactiveDiagnosisSection
+                    diagnoses={diagnoses}
+                    scrollToEventUid={scrollToEventUid}
+                    onScrollComplete={clearScrollTarget}
+                    isCycleRunning={isCycleRunning}
+                    isPaused={isPaused}
+                    clusters={clusterNames}
+                    lastCheckedAt={lastCheckedAt}
+                    nextCheckAt={nextCheckAt}
+                    checkError={diagnosisCheckError}
+                    controlsDisabled={loading || isSendQueued}
+                    onPauseToggle={handleDiagnosisPauseToggle}
+                    onCheckAgain={() => runProactiveCycle(true)}
+                    onRetry={handleRetryDiagnosis}
+                    onDismiss={eventUid => {
+                      try {
+                        proactiveDiagnosisManager.dismissDiagnosis(eventUid);
+                      } catch (error) {
+                        setDiagnosisCheckError(
+                          error instanceof Error ? error.message : String(error)
+                        );
+                      }
+                    }}
+                    onOpenResource={handleOpenDiagnosisResource}
+                    onYamlAction={handleYamlAction}
+                    ContentRendererSlot={ContentRenderer}
+                  />
+                ) : undefined
+              }
               history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
@@ -1979,13 +2113,12 @@ export default function AIPrompt(props: {
             <PromptSuggestions
               suggestions={suggestions}
               apiError={apiError}
-              loading={loading || isDiagnosisRunning}
+              loading={
+                loading || isDiagnosisRunning || memoizedHistory.length > 0 || diagnoses.length > 0
+              }
               onPromptSelect={suggestion => setPromptVal(suggestion.prompt)}
               onPromptSend={suggestion => {
-                if (isDiagnosisRunning) return;
-                AnalyzeResourceBasedOnPrompt(suggestion.prompt).catch(error => {
-                  setApiError(error.message);
-                });
+                handleSendPrompt(suggestion.prompt);
               }}
               onErrorClear={() => setApiError(null)}
             />
@@ -2000,20 +2133,10 @@ export default function AIPrompt(props: {
               isAgentMode={isAgentMode}
               agentModeStatus={agentModeStatus}
               isDiagnosisRunning={isDiagnosisRunning}
+              isSendQueued={isSendQueued}
+              onCancelQueuedSend={handleCancelQueuedSend}
               enabledTools={enabledTools}
-              onSend={prompt => {
-                // Block chat while proactive diagnosis is running
-                if (isDiagnosisRunning) return;
-                if (isAgentMode) {
-                  handleAgentSend(prompt).catch(error => {
-                    setApiError(error.message);
-                  });
-                } else {
-                  AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                    setApiError(error.message);
-                  });
-                }
-              }}
+              onSend={handleSendPrompt}
               onStop={handleStopRequest}
               onClearHistory={() => {
                 if (isTestMode) {

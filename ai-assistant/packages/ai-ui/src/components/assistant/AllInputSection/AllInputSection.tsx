@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 import { getModelDisplayName, getProviderModelsForChat } from '../../../providers/modelProviders';
 import { DefaultActionButton } from '../../defaults/DefaultSlots/DefaultSlots';
 import type { ActionButtonSlotProps } from '../AIAssistantHeader/AIAssistantHeader';
@@ -58,6 +59,9 @@ export interface AIInputSectionProps {
   agentModeStatus?: 'idle' | 'checking' | 'found' | 'not-found';
   /** Whether a proactive diagnosis cycle is currently running. */
   isDiagnosisRunning?: boolean;
+  /** A user message waiting for the current background item to finish. */
+  isSendQueued?: boolean;
+  onCancelQueuedSend?: () => void;
   /** Array of currently enabled tool identifiers. */
   enabledTools: string[];
   /** Callback to send a user prompt to the AI. */
@@ -101,6 +105,8 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   isAgentMode,
   agentModeStatus = 'idle',
   isDiagnosisRunning = false,
+  isSendQueued = false,
+  onCancelQueuedSend,
   enabledTools,
   onSend,
   onStop,
@@ -116,6 +122,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showToolsDialog, setShowToolsDialog] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const agentModeEnabled = isAgentMode ?? chatMode === 'agent';
   const handleAgentModeChange = (enabled: boolean): void => {
     if (onToggleAgentMode) {
@@ -126,7 +133,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
   };
   const submitPrompt = (): void => {
     const prompt = promptVal.trim();
-    if (!prompt || loading || isDiagnosisRunning) return;
+    if (!prompt || loading || isSendQueued) return;
     setPromptVal('');
     onSend(prompt);
   };
@@ -197,7 +204,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         {providerInfo && (
           <Icon
-            icon={providerInfo.icon || 'mdi:robot'}
+            icon={providerInfo.icon || 'mdi:server'}
             width="16px"
             height="16px"
             style={{ marginRight: 4 }}
@@ -217,7 +224,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
       <TestModeInput onAddTestResponse={onTestModeResponse} isTestMode={isTestMode} />
 
       {/* Proactive diagnosis in-progress banner */}
-      {isDiagnosisRunning && (
+      {(isDiagnosisRunning || isSendQueued) && (
         <Box
           sx={{
             display: 'flex',
@@ -236,12 +243,26 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
             sx={{ color: 'inherit' }}
           />
           <Typography variant="body2">
-            {t('Proactive diagnosis in progress — please wait for it to complete before chatting.')}
+            {isSendQueued
+              ? t('Message queued. Sending after the current analysis finishes.')
+              : t('You can draft a message. Sending pauses queued background analyses.')}
           </Typography>
+          {isSendQueued && onCancelQueuedSend && (
+            <Button
+              color="inherit"
+              onClick={() => {
+                onCancelQueuedSend();
+                inputRef.current?.focus();
+              }}
+            >
+              {t('Cancel queued message')}
+            </Button>
+          )}
         </Box>
       )}
 
       <TextField
+        inputRef={inputRef}
         id="deployment-ai-prompt"
         onChange={event => setPromptVal(event.target.value)}
         onKeyDown={handleKeyDown}
@@ -256,7 +277,6 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
         }
         multiline
         fullWidth
-        disabled={isDiagnosisRunning}
         minRows={2}
         sx={{
           width: '100%',
@@ -277,7 +297,17 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
           },
         }}
       >
-        <Grid item sx={{ display: 'flex', alignItems: 'center' }}>
+        <Grid
+          item
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1,
+            minWidth: 0,
+            flex: '1 1 100%',
+          }}
+        >
           <ActionButtonSlot
             description={t('Clear History')}
             icon="mdi:broom"
@@ -296,13 +326,13 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                   handleAgentModeChange(mode === 'agent');
                 }}
                 size="small"
-                sx={{ minWidth: 150, height: 32 }}
+                sx={{ minWidth: 130, maxWidth: '100%', height: 32 }}
                 variant="outlined"
                 disabled={loading || isDiagnosisRunning || agentModeStatus === 'checking'}
                 renderValue={selected => (
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Icon
-                      icon={selected === 'agent' ? 'mdi:robot' : 'mdi:chat'}
+                      icon={AI_ASSISTANT_ICON}
                       width="16px"
                       height="16px"
                       style={{ marginRight: 6 }}
@@ -316,13 +346,13 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               >
                 <MenuItem value="chat">
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Icon icon="mdi:chat" width="16px" height="16px" aria-hidden="true" />
+                    <Icon icon={AI_ASSISTANT_ICON} width="16px" height="16px" aria-hidden="true" />
                     <Typography variant="body2">{t('Chat')}</Typography>
                   </Box>
                 </MenuItem>
                 <MenuItem value="agent">
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Icon icon="mdi:robot" width="16px" height="16px" aria-hidden="true" />
+                    <Icon icon={AI_ASSISTANT_ICON} width="16px" height="16px" aria-hidden="true" />
                     <Typography variant="body2">{t('Holmes Agent')}</Typography>
                   </Box>
                 </MenuItem>
@@ -332,13 +362,13 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
 
           {/* Provider Selection Dropdown – hidden in agent mode */}
           {availableConfigs.length > 0 && !isTestMode && !agentModeEnabled && (
-            <Box ml={2} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box ml={1} sx={{ display: 'flex', alignItems: 'center' }}>
               <Select
                 inputProps={{ 'aria-label': t('Provider and model') }}
                 value={getCurrentValue()}
                 onChange={e => handleProviderModelChange(String(e.target.value))}
                 size="small"
-                sx={{ minWidth: 180, height: 32 }}
+                sx={{ minWidth: 160, maxWidth: '100%', height: 32 }}
                 variant="outlined"
                 renderValue={renderSelectValue}
                 MenuProps={{
@@ -358,7 +388,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
                       sx={{ display: 'flex', alignItems: 'center', paddingLeft: 1 }}
                     >
                       <Icon
-                        icon={providerInfo?.icon || 'mdi:robot'}
+                        icon={providerInfo?.icon || 'mdi:server'}
                         width="16px"
                         height="16px"
                         style={{ marginRight: 8 }}
@@ -421,7 +451,7 @@ export const AIInputSection: React.FC<AIInputSectionProps> = ({
               endIcon={<Icon icon="mdi:send" width="20px" aria-hidden="true" />}
               onClick={handleSendClick}
               size="small"
-              disabled={loading || isDiagnosisRunning || !promptVal.trim()}
+              disabled={loading || isSendQueued || !promptVal.trim()}
             >
               {t('Send')}
             </Button>

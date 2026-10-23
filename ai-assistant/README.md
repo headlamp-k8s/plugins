@@ -12,6 +12,27 @@ The assistant is context-aware, meaning it uses information about your cluster t
 
 `npm run e2e:playwright` runs only the Playwright scenarios against an already running Headlamp instance. It does not build Headlamp or create the KWOK cluster. See [e2e/README.md](e2e/README.md) for setup and configuration.
 
+## Background AI diagnoses
+
+Enable proactive diagnosis in the plugin settings to analyze recent warning events.
+Diagnoses and the conversation share one scroll area; result cards start compact
+and expand to show the analysis, investigation activity, and reviewable YAML.
+
+- The overview shows cluster scope, event-check time, and separate ready/failed counts.
+- Pause stops queued background items after the current analysis finishes; it does
+  not abort a provider stream. Resume continues the remaining queue.
+- You can draft while analysis runs. Sending pauses background work and queues the
+  message behind the current item. Cancelling restores the queued message if the
+  draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
+- Retry failed analyses, analyze an individual result again, or dismiss it.
+  Dismissing hides that event from automatic checks; it does not fix the resource.
+- Check again explicitly refreshes analyses in the current scope and can incur AI
+  provider usage. Open resource to inspect current health after a change:
+  "Analysis ready" and a successful API write do not mean an incident is resolved.
+
+Generic AI entry points and attribution use the same offline sparkle mark.
+Provider logos and operation/status icons retain their distinct meanings.
+
 ## Key Features
 
 - **Conversational Kubernetes Management**: Interact with your cluster using natural language. Ask questions, get explanations, and issue commands.

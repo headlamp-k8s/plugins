@@ -17,6 +17,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export interface EventDigest {
+  /** Cluster that produced this event. */
+  cluster?: string;
   /** The event UID (metadata.uid) – primary cache key */
   uid: string;
   /** Event name */
@@ -77,12 +79,17 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   private cache = new Map<string, DiagnosisResult>();
   /** Whether a diagnosis cycle is currently running */
   private running = false;
+  private paused = false;
+  private pausedBatchEvents: EventDigest[] = [];
+  private dismissedEvents = new Set<string>();
+  private generation = 0;
   /** Queue for single-event diagnosis requests that arrive while a cycle is running */
   private singleEventQueue: Array<{
     event: EventDigest;
     resolve: (r: DiagnosisResult) => void;
     reject: (error: unknown) => void;
     timeout?: ReturnType<typeof setTimeout>;
+    force?: boolean;
   }> = [];
   /** The function to call to get a diagnosis from the AI */
   private diagnoseFn: DiagnoseFn | null = null;
@@ -105,7 +112,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    */
   private static resourceKey(event: EventDigest): string {
     const baseName = ProactiveDiagnosisManager.stripHashSuffixes(event.objectName);
-    return `${event.objectNamespace || '_'}/${baseName}`;
+    return `${event.cluster || '_'}/${event.objectNamespace || '_'}/${baseName}`;
   }
 
   /**
@@ -141,6 +148,58 @@ export class ProactiveDiagnosisManager extends EventEmitter {
     return this.running;
   }
 
+  isPaused(): boolean {
+    return this.paused;
+  }
+
+  pause(): void {
+    this.paused = true;
+    this.emit('pause-change', true);
+  }
+
+  async resume(): Promise<void> {
+    this.paused = false;
+    this.emit('pause-change', false);
+    if (!this.running && this.pausedBatchEvents.length > 0) {
+      const events = this.pausedBatchEvents.splice(0);
+      await this.diagnoseEvents(events);
+    }
+  }
+
+  /** Stops queued background work without aborting a shared provider stream. */
+  async pauseAndWaitForIdle(signal?: AbortSignal): Promise<void> {
+    this.pause();
+    if (signal?.aborted) throw signal.reason;
+    while (this.running) {
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          this.removeListener('cycle-end', onIdle);
+          signal?.removeEventListener('abort', onAbort);
+        };
+        const onIdle = () => {
+          cleanup();
+          resolve();
+        };
+        const onAbort = () => {
+          cleanup();
+          reject(signal?.reason);
+        };
+        this.once('cycle-end', onIdle);
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+    }
+  }
+
+  dismissDiagnosis(eventUid: string): void {
+    const result = this.cache.get(eventUid);
+    if (!result) throw new Error('Diagnosis not found');
+    if (result.loading || result.pending)
+      throw new Error('Cannot dismiss queued or active analysis');
+    this.dismissedEvents.add(eventUid);
+    this.cache.delete(eventUid);
+    this.emit('diagnosis-removed');
+  }
+
   /**
    * Enables proactive diagnosis cycles scheduled by the host.
    * Safe to call multiple times.
@@ -156,6 +215,9 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    */
   stop(): void {
     this.enabled = false;
+    this.paused = false;
+    this.pausedBatchEvents = [];
+    this.emit('pause-change', false);
     this._rejectSingleEventQueue('Proactive diagnosis was stopped');
     this.emit('status-change', { enabled: false });
   }
@@ -170,10 +232,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   }
 
   /**
-   * Get all cached diagnosis results (most recent first).
+   * Get results in stable insertion order, including while their status changes.
    */
   getAllDiagnoses(): DiagnosisResult[] {
-    return Array.from(this.cache.values()).sort((a, b) => b.diagnosedAt - a.diagnosedAt);
+    return Array.from(this.cache.values());
   }
 
   /**
@@ -239,19 +301,24 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * SSE connections when concurrent requests arrive, so we must process
    * one at a time (same pattern as normal chat).
    */
-  async diagnoseEvents(events: EventDigest[]): Promise<void> {
-    if (!this.enabled) return;
+  async diagnoseEvents(events: EventDigest[], force = false): Promise<void> {
+    if (!this.enabled || this.paused) return;
     if (this.running) return;
     if (!this.diagnoseFn) return;
 
     this.running = true;
     this.emit('cycle-start');
+    const generation = this.generation;
 
     try {
       // Filter out events that already have a successful diagnosis
       // or that target a resource already being diagnosed / diagnosed
       const toDiagnose = events.filter(
-        event => !this.hasDiagnosis(event.uid) && !this.hasDiagnosisForResource(event)
+        event =>
+          !this.dismissedEvents.has(event.uid) &&
+          (force ||
+            this.cache.get(event.uid)?.pending ||
+            (!this.hasDiagnosis(event.uid) && !this.hasDiagnosisForResource(event)))
       );
 
       if (toDiagnose.length === 0) {
@@ -274,9 +341,24 @@ export class ProactiveDiagnosisManager extends EventEmitter {
 
       // Process sequentially — the Holmes server can only handle one
       // SSE stream at a time (concurrent requests cause AbortError).
-      const diagnoseFn = this.diagnoseFn;
-
-      for (const event of toDiagnose) {
+      for (let index = 0; index < toDiagnose.length; index++) {
+        if (generation !== this.generation) break;
+        if (this.paused) {
+          this.pausedBatchEvents = toDiagnose.slice(index);
+          break;
+        }
+        if (!this.enabled) {
+          for (const event of toDiagnose.slice(index)) {
+            const cached = this.cache.get(event.uid);
+            if (cached) {
+              const cancelled = { ...cached, pending: false, error: 'Background analysis stopped' };
+              this.cache.set(event.uid, cancelled);
+              this.emit('diagnosis-update', cancelled);
+            }
+          }
+          break;
+        }
+        const event = toDiagnose[index];
         // Mark the current event as loading (actively processing)
         const loadingResult: DiagnosisResult = {
           eventUid: event.uid,
@@ -295,6 +377,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
 
           // onStep callback: accumulates thinking steps and emits updates
           const onStep: DiagnosisStepCallback = step => {
+            if (generation !== this.generation) return;
             const current = this.cache.get(event.uid);
             if (current) {
               const updated: DiagnosisResult = {
@@ -306,7 +389,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
             }
           };
 
+          const diagnoseFn = this.diagnoseFn;
+          if (!diagnoseFn) throw new Error('Diagnosis function not available');
           const diagnosis = await diagnoseFn(prompt, onStep);
+          if (generation !== this.generation) break;
 
           const result: DiagnosisResult = {
             eventUid: event.uid,
@@ -323,6 +409,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
           this.diagnosedResourceKeys.add(ProactiveDiagnosisManager.resourceKey(event));
           this.emit('diagnosis-update', result);
         } catch (err: unknown) {
+          if (generation !== this.generation) break;
           const errorResult: DiagnosisResult = {
             eventUid: event.uid,
             event,
@@ -349,20 +436,21 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * If a diagnosis cycle is already running, queues this request and processes it
    * after the current cycle completes.
    */
-  async diagnoseSingleEvent(event: EventDigest): Promise<DiagnosisResult> {
+  async diagnoseSingleEvent(event: EventDigest, force = false): Promise<DiagnosisResult> {
     if (!this.enabled) {
       throw new Error('Proactive diagnosis is disabled');
     }
     // Return cached result if available
     const cached = this.cache.get(event.uid);
-    if (cached && !cached.loading && !cached.pending && !cached.error) {
+    if (!force && cached && !cached.loading && !cached.pending && !cached.error) {
       return cached;
     }
+    this.dismissedEvents.delete(event.uid);
 
     // Opening the panel wires the diagnosis function asynchronously. Queue
     // manual requests made while that setup is pending or a cycle is running.
     if (!this.diagnoseFn || this.running) {
-      if (!this.diagnoseFn) {
+      if (!cached?.loading) {
         const pendingResult: DiagnosisResult = {
           eventUid: event.uid,
           event,
@@ -379,6 +467,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
           event,
           resolve,
           reject,
+          force,
         };
         if (!this.diagnoseFn) {
           this._armQueuedRequestTimeout(queuedRequest);
@@ -395,6 +484,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * emits cycle events so the UI can block chat input.
    */
   private async _executeSingleDiagnosis(event: EventDigest): Promise<DiagnosisResult> {
+    const generation = this.generation;
     this.running = true;
     this.emit('cycle-start');
 
@@ -416,6 +506,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
 
       // onStep callback: accumulates thinking steps and emits updates
       const onStep: DiagnosisStepCallback = step => {
+        if (generation !== this.generation) return;
         const current = this.cache.get(event.uid);
         if (current) {
           const updated: DiagnosisResult = {
@@ -430,6 +521,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       const diagnoseFn = this.diagnoseFn;
       if (!diagnoseFn) throw new Error('Diagnosis function not available');
       const diagnosis = await diagnoseFn(prompt, onStep);
+      if (generation !== this.generation) throw new Error('Diagnosis context was cleared');
 
       const result: DiagnosisResult = {
         eventUid: event.uid,
@@ -454,8 +546,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
         pending: false,
         error: err instanceof Error ? err.message : 'Diagnosis failed',
       };
-      this.cache.set(event.uid, errorResult);
-      this.emit('diagnosis-update', errorResult);
+      if (generation === this.generation) {
+        this.cache.set(event.uid, errorResult);
+        this.emit('diagnosis-update', errorResult);
+      }
       return errorResult;
     } finally {
       this.running = false;
@@ -475,7 +569,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
     if (!next) return;
     if (next.timeout) clearTimeout(next.timeout);
     const cached = this.cache.get(next.event.uid);
-    if (cached && !cached.loading && !cached.pending && !cached.error) {
+    if (!next.force && cached && !cached.loading && !cached.pending && !cached.error) {
       next.resolve(cached);
       this._drainSingleEventQueue();
       return;
@@ -529,6 +623,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       '---\n\n' +
       `A Kubernetes ${event.type} event has been detected that requires investigation.\n\n` +
       '## Event Details\n' +
+      (event.cluster ? `- **Cluster:** ${event.cluster}\n` : '') +
       `- **Event UID:** ${event.uid}\n` +
       `- **Event Name:** ${event.name}\n` +
       `- **Type:** ${event.type}\n` +
@@ -547,6 +642,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       'Include exact kubectl commands or manifest changes where applicable.\n' +
       '5. **Prevention:** Suggest best practices or configuration changes to prevent this from recurring.\n\n' +
       '## Formatting Instructions\n' +
+      '- Start with a short prose summary of the likely cause and recommended next step, before the detailed sections.\n' +
       '- Format your response in clear Markdown with headers and bullet points for readability.\n' +
       '- When including any YAML (Kubernetes manifests, configuration snippets, etc.), ' +
       'always wrap it in a markdown code block with the `yaml` language tag (e.g. ```yaml ... ```). ' +
@@ -559,6 +655,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
    * Clear all cached diagnoses.
    */
   clearCache(): void {
+    this.generation++;
+    this._rejectSingleEventQueue('Diagnosis context was cleared');
+    this.pausedBatchEvents = [];
+    this.dismissedEvents.clear();
     this.cache.clear();
     this.diagnosedResourceKeys.clear();
     this.emit('cache-cleared');
@@ -635,7 +735,9 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       const metadata = asRecord(data?.metadata);
       const uid = stringField(metadata, 'uid') || stringField(metadata, 'name');
       const key = baseName
-        ? `${stringField(involvedObject, 'namespace') || '_'}/${baseName}`
+        ? `${stringField(asRecord(event), '_cluster') || '_'}/${
+            stringField(involvedObject, 'namespace') || '_'
+          }/${baseName}`
         : `event:${uid || index}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -649,6 +751,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       const eventName = stringField(metadata, 'name') || 'unknown';
       const eventNamespace = stringField(metadata, 'namespace');
       return {
+        cluster: stringField(asRecord(event), '_cluster') || undefined,
         uid:
           stringField(metadata, 'uid') ||
           (eventName === 'unknown' ? `event-${index}` : `${eventName}-${eventNamespace || '_'}`),

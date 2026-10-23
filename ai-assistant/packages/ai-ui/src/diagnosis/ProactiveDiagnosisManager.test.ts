@@ -56,6 +56,146 @@ describe('ProactiveDiagnosisManager', () => {
     expect(statuses).toEqual([{ enabled: true }, { enabled: false }]);
   });
 
+  it('pauses after the active item and resumes queued items without overlap', async () => {
+    const first = deferred<string>();
+    const diagnose = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('second result');
+    manager.setDiagnoseFn(diagnose);
+    const second = createEvent({ uid: 'second', objectName: 'other-workload' });
+    const cycle = manager.diagnoseEvents([createEvent(), second]);
+    const idle = manager.pauseAndWaitForIdle();
+    expect(manager.isPaused()).toBe(true);
+    expect(diagnose).toHaveBeenCalledTimes(1);
+    first.resolve('first result');
+    await Promise.all([cycle, idle]);
+    expect(manager.isRunning()).toBe(false);
+    expect(manager.getDiagnosis('second')).toMatchObject({ pending: true });
+    expect(diagnose).toHaveBeenCalledTimes(1);
+    await manager.resume();
+    expect(manager.isPaused()).toBe(false);
+    expect(diagnose).toHaveBeenCalledTimes(2);
+    expect(manager.getDiagnosis('second')).toMatchObject({
+      pending: false,
+      diagnosis: 'second result',
+    });
+  });
+
+  it('removes idle listeners when a queued chat message is cancelled without aborting analysis', async () => {
+    const pending = deferred<string>();
+    manager.setDiagnoseFn(() => pending.promise);
+    const cycle = manager.diagnoseEvents([createEvent()]);
+    const controller = new AbortController();
+    const waiting = manager.pauseAndWaitForIdle(controller.signal);
+    const cancelled = expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
+    expect(manager.listenerCount('cycle-end')).toBe(1);
+    controller.abort();
+    await cancelled;
+    expect(manager.listenerCount('cycle-end')).toBe(0);
+    expect(manager.isRunning()).toBe(true);
+    pending.resolve('completed');
+    await cycle;
+  });
+
+  it('permits an explicit re-analysis of a cached result while background work is paused', async () => {
+    const diagnose = vi
+      .fn()
+      .mockResolvedValueOnce('old result')
+      .mockResolvedValueOnce('new result');
+    manager.setDiagnoseFn(diagnose);
+    const event = createEvent();
+    await manager.diagnoseSingleEvent(event);
+    manager.pause();
+    const result = await manager.diagnoseSingleEvent(event, true);
+    expect(result.diagnosis).toBe('new result');
+    expect(diagnose).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not restore cleared results when an old provider request finishes', async () => {
+    const pending = deferred<string>();
+    manager.setDiagnoseFn(() => pending.promise);
+    const cycle = manager.diagnoseEvents([createEvent()]);
+    manager.clearCache();
+    pending.resolve('outdated');
+    await cycle;
+    expect(manager.getAllDiagnoses()).toEqual([]);
+  });
+
+  it('rejects queued requests when their context is cleared', async () => {
+    const pending = deferred<string>();
+    manager.setDiagnoseFn(() => pending.promise);
+    const first = manager.diagnoseSingleEvent(createEvent());
+    const second = manager.diagnoseSingleEvent(createEvent({ uid: 'second', objectName: 'other' }));
+    const rejected = expect(second).rejects.toThrow('Diagnosis context was cleared');
+    expect(manager.getDiagnosis('second')).toMatchObject({ pending: true });
+    manager.clearCache();
+    await rejected;
+    pending.resolve('outdated');
+    await first;
+    expect(manager.getAllDiagnoses()).toEqual([]);
+  });
+
+  it('uses refreshed provider configuration for the next queued item', async () => {
+    const pending = deferred<string>();
+    const oldProvider = vi.fn(() => pending.promise);
+    const newProvider = vi.fn(async () => 'new provider result');
+    manager.setDiagnoseFn(oldProvider);
+    const cycle = manager.diagnoseEvents([
+      createEvent(),
+      createEvent({ uid: 'second', objectName: 'other-workload' }),
+    ]);
+    manager.setDiagnoseFn(newProvider);
+    pending.resolve('first result');
+    await cycle;
+    expect(oldProvider).toHaveBeenCalledTimes(1);
+    expect(newProvider).toHaveBeenCalledTimes(1);
+    expect(manager.getDiagnosis('second')?.diagnosis).toBe('new provider result');
+  });
+
+  it('keeps dismissed events hidden from automatic checks but allows an explicit request', async () => {
+    const diagnose = vi.fn(async () => 'result');
+    manager.setDiagnoseFn(diagnose);
+    const event = createEvent();
+    await manager.diagnoseSingleEvent(event);
+    manager.dismissDiagnosis(event.uid);
+    expect(manager.getAllDiagnoses()).toEqual([]);
+    await manager.diagnoseEvents([event]);
+    expect(diagnose).toHaveBeenCalledTimes(1);
+    await manager.diagnoseSingleEvent(event, true);
+    expect(diagnose).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects dismissing an active analysis', async () => {
+    const pending = deferred<string>();
+    manager.setDiagnoseFn(() => pending.promise);
+    const result = manager.diagnoseSingleEvent(createEvent());
+    expect(() => manager.dismissDiagnosis('uid-1')).toThrow(
+      'Cannot dismiss queued or active analysis'
+    );
+    pending.resolve('done');
+    await result;
+  });
+
+  it('does not deduplicate identically named resources in different clusters', async () => {
+    const diagnose = vi.fn(async (_prompt: string) => 'result');
+    manager.setDiagnoseFn(diagnose);
+    await manager.diagnoseEvents([createEvent({ cluster: 'cluster-a' })]);
+    await manager.diagnoseEvents([createEvent({ uid: 'cluster-b-event', cluster: 'cluster-b' })]);
+    expect(diagnose).toHaveBeenCalledTimes(2);
+    expect(diagnose.mock.calls[1][0]).toContain('**Cluster:** cluster-b');
+  });
+
+  it('preserves cluster provenance when extracting and deduplicating events', () => {
+    const event = {
+      type: 'Warning',
+      metadata: { uid: 'one', name: 'event' },
+      involvedObject: { kind: 'Pod', name: 'same-workload', namespace: 'default' },
+    };
+    const extracted = ProactiveDiagnosisManager.extractTopEvents([
+      { _cluster: 'a', jsonData: event },
+      { _cluster: 'b', jsonData: { ...event, metadata: { uid: 'two', name: 'event' } } },
+    ]);
+    expect(extracted.map(item => item.cluster)).toEqual(['a', 'b']);
+  });
+
   it('rejects manual diagnosis and skips cycles while disabled', async () => {
     manager.stop();
     const diagnose = vi.fn(async () => 'diagnosis');
@@ -69,7 +209,7 @@ describe('ProactiveDiagnosisManager', () => {
     expect(manager.isEnabled()).toBe(false);
   });
 
-  it('getAllDiagnoses returns results sorted by diagnosedAt', async () => {
+  it('keeps results in insertion order as their timestamps change', async () => {
     vi.spyOn(Date, 'now')
       .mockReturnValueOnce(1)
       .mockReturnValueOnce(100)
@@ -82,8 +222,8 @@ describe('ProactiveDiagnosisManager', () => {
     await manager.diagnoseSingleEvent(newerEvent);
 
     expect(manager.getAllDiagnoses().map(result => result.eventUid)).toEqual([
-      'uid-new',
       'uid-old',
+      'uid-new',
     ]);
   });
 

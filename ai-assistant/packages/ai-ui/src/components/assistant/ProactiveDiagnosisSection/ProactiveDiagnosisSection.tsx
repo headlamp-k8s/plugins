@@ -16,6 +16,7 @@ import { Icon } from '@iconify/react';
 import {
   Alert,
   Box,
+  Button,
   ButtonBase,
   Chip,
   CircularProgress,
@@ -29,6 +30,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  getDiagnosisSummary,
   getStatusIcon,
   getStepIcon,
   getStepIconColor,
@@ -39,6 +41,7 @@ import type {
   DiagnosisResult,
   DiagnosisThinkingStep,
 } from '../../../diagnosis/ProactiveDiagnosisManager';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 import { DefaultContentRenderer } from '../../defaults/DefaultSlots/DefaultSlots';
 
 function translateStatusLabel(
@@ -48,7 +51,7 @@ function translateStatusLabel(
   if (diagnosis.loading) return t('Diagnosing…');
   if (diagnosis.pending) return t('Queued');
   if (diagnosis.error) return t('Failed');
-  return t('Completed');
+  return t('Analysis ready');
 }
 
 function translateStepSummary(
@@ -81,8 +84,25 @@ export interface ProactiveDiagnosisSectionProps {
   onScrollComplete: () => void;
   /** Whether a diagnosis cycle is currently in progress. */
   isCycleRunning: boolean;
+  isPaused?: boolean;
+  clusters?: string[];
+  lastCheckedAt?: number | null;
+  nextCheckAt?: number | null;
+  checkError?: string | null;
+  controlsDisabled?: boolean;
+  onPauseToggle?: () => void;
+  onCheckAgain?: () => void;
+  onRetry?: (eventUid: string) => void;
+  onDismiss?: (eventUid: string) => void;
+  onOpenResource?: (event: DiagnosisResult['event']) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action from a diagnosis. */
-  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onYamlAction?: (
+    yaml: string,
+    title: string,
+    resourceType: string,
+    isDelete: boolean,
+    cluster?: string
+  ) => void;
   /** Slot for the content renderer component that handles markdown/YAML display. Falls back to a plain-text renderer. */
   ContentRendererSlot?: React.ComponentType<DiagnosisContentRendererProps>;
 }
@@ -116,9 +136,12 @@ function DiagnosisThinkingBlock({
   // Auto-scroll to latest step when new steps arrive
   useEffect(() => {
     if (expanded && typeof stepsEndRef.current?.scrollIntoView === 'function') {
-      stepsEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      stepsEndRef.current.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'nearest',
+      });
     }
-  }, [steps.length, expanded]);
+  }, [steps.length, expanded, prefersReducedMotion]);
 
   const latestStep = steps[steps.length - 1];
   const summaryLabel = isActive
@@ -195,7 +218,7 @@ function DiagnosisThinkingBlock({
             flex: 1,
           }}
         >
-          {isActive ? t('Thinking…') : t('Thought process')}
+          {isActive ? t('Thinking…') : t('Investigation activity')}
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary', flexShrink: 0, ml: 'auto' }}>
           {summaryLabel}
@@ -407,8 +430,6 @@ function CollapsibleSection({
           sx={{
             px: 1.5,
             py: 1,
-            maxHeight: 500,
-            overflowY: 'auto',
             borderTop: '1px solid',
             borderColor: 'divider',
             bgcolor: theme.palette.background.paper,
@@ -429,20 +450,30 @@ function DiagnosisResultBlock({
   ContentRendererSlot,
 }: {
   diagnosis: DiagnosisResult;
-  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onYamlAction?: ProactiveDiagnosisSectionProps['onYamlAction'];
   ContentRendererSlot: React.ComponentType<DiagnosisContentRendererProps>;
 }): React.ReactElement {
   const { t } = useTranslation();
   const theme = useTheme();
+  const yamlActionRef = useRef(onYamlAction);
+  const translationRef = useRef(t);
+  yamlActionRef.current = onYamlAction;
+  translationRef.current = t;
 
-  // Wrap onYamlAction to match the onYamlDetected signature expected by ContentRenderer
+  // A changing callback would recreate markdown code components and unmount YAML previews.
   const handleYamlDetected = React.useCallback(
     (yaml: string, resourceType: string) => {
-      if (onYamlAction) {
-        onYamlAction(yaml, t('Apply {{resourceType}}', { resourceType }), resourceType, false);
+      if (yamlActionRef.current) {
+        yamlActionRef.current(
+          yaml,
+          translationRef.current('Apply {{resourceType}}', { resourceType }),
+          resourceType,
+          false,
+          diagnosis.event.cluster
+        );
       }
     },
-    [onYamlAction, t]
+    [diagnosis.event.cluster]
   );
 
   if (diagnosis.error) {
@@ -477,7 +508,7 @@ function DiagnosisResultBlock({
         <CollapsibleSection
           icon="mdi:brain"
           iconColor={theme.palette.info.main}
-          title={t('Thought process')}
+          title={t('Investigation activity')}
           subtitle={
             (thinking.match(/🔧/g) || []).length === 1
               ? t('1 tool call')
@@ -588,6 +619,17 @@ export default function ProactiveDiagnosisSection({
   scrollToEventUid,
   onScrollComplete,
   isCycleRunning,
+  isPaused = false,
+  clusters = [],
+  lastCheckedAt,
+  nextCheckAt,
+  checkError,
+  controlsDisabled = false,
+  onPauseToggle,
+  onCheckAgain,
+  onRetry,
+  onDismiss,
+  onOpenResource,
   onYamlAction,
   ContentRendererSlot = DefaultContentRenderer,
 }: ProactiveDiagnosisSectionProps): React.ReactElement | null {
@@ -595,27 +637,36 @@ export default function ProactiveDiagnosisSection({
   const theme = useTheme();
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const headingId = React.useId();
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+  const [highlightedEvent, setHighlightedEvent] = useState<string | null>(null);
 
-  // Handle scroll-to-event from events table click
   useEffect(() => {
     if (!scrollToEventUid) return;
-
-    const timer = setTimeout(() => {
-      const el = itemRefs.current[scrollToEventUid];
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    const el = itemRefs.current[scrollToEventUid];
+    if (!el) return;
+    if (!expandedEvents.has(scrollToEventUid)) {
+      setExpandedEvents(current => new Set(current).add(scrollToEventUid));
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      el.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+      el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+      setHighlightedEvent(scrollToEventUid);
       onScrollComplete();
-    }, 300);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scrollToEventUid, diagnoses, expandedEvents, onScrollComplete, prefersReducedMotion]);
 
+  useEffect(() => {
+    if (!highlightedEvent) return;
+    const timer = setTimeout(() => setHighlightedEvent(null), 3_000);
     return () => clearTimeout(timer);
-  }, [scrollToEventUid, onScrollComplete]);
-
-  if (diagnoses.length === 0 && !isCycleRunning) {
-    return null;
-  }
+  }, [highlightedEvent]);
 
   const completedCount = diagnoses.filter(d => !d.loading && !d.pending).length;
+  const failedCount = diagnoses.filter(d => d.error).length;
+  const hasChecked = lastCheckedAt !== null && lastCheckedAt !== undefined;
   const latestDiagnosis = diagnoses.find(d => d.loading) ?? diagnoses[diagnoses.length - 1];
   const announcement = latestDiagnosis
     ? t('Diagnosis for {{kind}} {{name}}: {{status}}', {
@@ -635,10 +686,11 @@ export default function ProactiveDiagnosisSection({
           gap: 1,
           mb: 1.5,
           px: 1,
+          flexWrap: 'wrap',
         }}
       >
         <Icon
-          icon="mdi:shield-search"
+          icon={AI_ASSISTANT_ICON}
           width={20}
           color={theme.palette.primary.main}
           aria-hidden="true"
@@ -649,7 +701,7 @@ export default function ProactiveDiagnosisSection({
           component="h2"
           sx={{ fontWeight: 600, color: 'primary.main' }}
         >
-          {t('Proactive Diagnosis')}
+          {t('AI diagnoses')}
         </Typography>
         {isCycleRunning && (
           <CircularProgress
@@ -659,7 +711,7 @@ export default function ProactiveDiagnosisSection({
           />
         )}
         <Chip
-          label={t('{{completed}}/{{total}} event', {
+          label={t('{{completed}}/{{total}} processed', {
             completed: completedCount,
             total: diagnoses.length,
             count: diagnoses.length,
@@ -669,6 +721,78 @@ export default function ProactiveDiagnosisSection({
           sx={{ ml: 'auto', fontSize: '0.7rem', height: 20 }}
         />
       </Box>
+      {clusters.length > 0 && (
+        <Typography variant="body2" sx={{ px: 1, overflowWrap: 'anywhere' }}>
+          {t('Clusters: {{clusters}}', { clusters: clusters.join(', ') })}
+        </Typography>
+      )}
+      <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>
+        {isPaused
+          ? isCycleRunning
+            ? t('Paused. The current analysis will finish.')
+            : t('Background analysis paused')
+          : t('Background analysis on. AI provider usage may incur charges.')}
+      </Typography>
+      {hasChecked && (
+        <Typography variant="caption" color="text.secondary" sx={{ px: 1, display: 'block' }}>
+          {t('Last event check: {{time}}', { time: new Date(lastCheckedAt).toLocaleString() })}
+          {!isPaused && !isCycleRunning && nextCheckAt
+            ? t(' · Next check after {{time}}', {
+                time: new Date(nextCheckAt).toLocaleTimeString(),
+              })
+            : ''}
+        </Typography>
+      )}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, px: 1, my: 1 }}>
+        {onPauseToggle && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onPauseToggle}
+            disabled={controlsDisabled}
+          >
+            {isPaused ? t('Resume background analysis') : t('Pause background analysis')}
+          </Button>
+        )}
+        {onCheckAgain && (
+          <Button
+            size="small"
+            onClick={onCheckAgain}
+            disabled={isCycleRunning || isPaused || controlsDisabled}
+          >
+            {t('Check again')}
+          </Button>
+        )}
+        {onRetry && failedCount > 0 && (
+          <Button
+            size="small"
+            disabled={isCycleRunning || controlsDisabled}
+            onClick={() => diagnoses.filter(d => d.error).forEach(d => onRetry(d.eventUid))}
+          >
+            {t('Retry failed analyses')}
+          </Button>
+        )}
+      </Box>
+      {checkError && (
+        <Alert severity="error" sx={{ mx: 1, mb: 1 }}>
+          {checkError}
+        </Alert>
+      )}
+      {diagnoses.length === 0 && !isCycleRunning && !checkError && (
+        <Typography variant="body2" sx={{ px: 1, mb: 1 }}>
+          {isPaused
+            ? t('Resume background analysis to check events.')
+            : hasChecked
+            ? t('No warning events found in this scope.')
+            : t('Waiting for the first event check.')}
+        </Typography>
+      )}
+      <Typography variant="body2" color="text.secondary" sx={{ px: 1, mb: 1 }}>
+        {t('{{ready}} ready, {{failed}} failed', {
+          ready: completedCount - failedCount,
+          failed: failedCount,
+        })}
+      </Typography>
 
       <Box
         role="status"
@@ -695,25 +819,41 @@ export default function ProactiveDiagnosisSection({
             }}
           >
             {/* Status row */}
-            <Box
+            <ButtonBase
+              aria-expanded={expandedEvents.has(d.eventUid)}
+              aria-controls={`${headingId}-${d.eventUid}`}
+              onClick={() =>
+                setExpandedEvents(current => {
+                  const next = new Set(current);
+                  if (next.has(d.eventUid)) next.delete(d.eventUid);
+                  else next.add(d.eventUid);
+                  return next;
+                })
+              }
               sx={{
+                width: '100%',
+                textAlign: 'left',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
+                flexWrap: 'wrap',
                 px: 1,
                 py: 0.5,
                 borderRadius: 1,
                 bgcolor: d.loading ? 'action.hover' : 'transparent',
                 transition: 'background-color 0.2s ease',
-                ...(scrollToEventUid === d.eventUid && {
+                ...(highlightedEvent === d.eventUid && {
                   borderLeft: '3px solid',
                   borderColor: 'primary.main',
                 }),
               }}
             >
-              <Typography aria-hidden="true" variant="body2" sx={{ flexShrink: 0, lineHeight: 1 }}>
-                {getStatusIcon(d)}
-              </Typography>
+              <Icon
+                icon={expandedEvents.has(d.eventUid) ? 'mdi:chevron-down' : 'mdi:chevron-right'}
+                width={18}
+                aria-hidden="true"
+              />
+              <Icon icon={getStatusIcon(d)} width={18} aria-hidden="true" />
               <Icon
                 icon={d.event.type === 'Error' ? 'mdi:alert-circle' : 'mdi:alert'}
                 color={
@@ -726,10 +866,9 @@ export default function ProactiveDiagnosisSection({
               <Typography
                 variant="body2"
                 sx={{
-                  flex: 1,
+                  flex: '1 1 140px',
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
+                  overflowWrap: 'anywhere',
                   fontWeight: d.loading ? 600 : 400,
                 }}
               >
@@ -740,7 +879,11 @@ export default function ProactiveDiagnosisSection({
                 label={d.event.reason}
                 size="small"
                 color={d.event.type === 'Error' ? 'error' : 'warning'}
-                sx={{ fontSize: '0.6rem', height: 18, flexShrink: 0 }}
+                sx={{
+                  fontSize: '0.75rem',
+                  maxWidth: '100%',
+                  '& .MuiChip-label': { whiteSpace: 'normal', py: 0.5 },
+                }}
               />
               <Typography
                 variant="caption"
@@ -748,23 +891,97 @@ export default function ProactiveDiagnosisSection({
               >
                 {translateStatusLabel(t, d)}
               </Typography>
+            </ButtonBase>
+            {!expandedEvents.has(d.eventUid) && (
+              <Typography
+                variant="body2"
+                color={d.error ? 'error.main' : 'text.secondary'}
+                sx={{
+                  px: 1,
+                  mb: 1,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {getDiagnosisSummary(d)}
+              </Typography>
+            )}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ px: 1, display: 'block', overflowWrap: 'anywhere' }}
+            >
+              {t('Cluster: {{cluster}}', { cluster: d.event.cluster || t('Unknown') })}
+              {!d.loading && !d.pending && (
+                <>
+                  {' '}
+                  ·{' '}
+                  {d.error
+                    ? t('Attempted: {{time}}', { time: new Date(d.diagnosedAt).toLocaleString() })
+                    : t('Analyzed: {{time}}', { time: new Date(d.diagnosedAt).toLocaleString() })}
+                </>
+              )}
+              {d.event.lastTimestamp && (
+                <>
+                  {' '}
+                  ·{' '}
+                  {t('Event last seen: {{time}}', {
+                    time: new Date(d.event.lastTimestamp).toLocaleString(),
+                  })}
+                </>
+              )}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, px: 1, mb: 1 }}>
+              {onOpenResource && (
+                <Button size="small" onClick={() => onOpenResource(d.event)}>
+                  {t('Open resource')}
+                </Button>
+              )}
+              {onRetry && !d.loading && !d.pending && (
+                <Button
+                  size="small"
+                  disabled={isCycleRunning || controlsDisabled}
+                  onClick={() => onRetry(d.eventUid)}
+                >
+                  {d.error ? t('Retry analysis') : t('Analyze again')}
+                </Button>
+              )}
+              {onDismiss && !d.loading && !d.pending && (
+                <Button size="small" onClick={() => onDismiss(d.eventUid)}>
+                  {t('Dismiss')}
+                </Button>
+              )}
             </Box>
+            <Collapse
+              in={expandedEvents.has(d.eventUid)}
+              timeout={prefersReducedMotion ? 0 : 200}
+              unmountOnExit
+            >
+              <Box id={`${headingId}-${d.eventUid}`}>
+                {/* Thinking block — only for the currently-processing event */}
+                {d.loading && (
+                  <Box sx={{ ml: 3 }}>
+                    <DiagnosisThinkingBlock
+                      event={d.event}
+                      steps={d.thinkingSteps || []}
+                      isActive
+                    />
+                  </Box>
+                )}
 
-            {/* Thinking block — only for the currently-processing event */}
-            {d.loading && (
-              <Box sx={{ ml: 3 }}>
-                <DiagnosisThinkingBlock event={d.event} steps={d.thinkingSteps || []} isActive />
+                {/* Result block — for completed / errored events */}
+                {!d.loading && !d.pending && (d.diagnosis || d.error) && (
+                  <DiagnosisResultBlock
+                    diagnosis={d}
+                    onYamlAction={onYamlAction}
+                    ContentRendererSlot={ContentRendererSlot}
+                  />
+                )}
               </Box>
-            )}
-
-            {/* Result block — for completed / errored events */}
-            {!d.loading && !d.pending && (d.diagnosis || d.error) && (
-              <DiagnosisResultBlock
-                diagnosis={d}
-                onYamlAction={onYamlAction}
-                ContentRendererSlot={ContentRendererSlot}
-              />
-            )}
+            </Collapse>
           </div>
         ))}
       </Box>
