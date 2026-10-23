@@ -166,6 +166,7 @@ export default function AIPrompt(props: {
   const { diagnoses, isCycleRunning, isPaused, scrollToEventUid, clearScrollTarget } =
     useProactiveDiagnosis();
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
+  const [warningEventCount, setWarningEventCount] = useState<number | null>(null);
   const [nextCheckAt, setNextCheckAt] = useState<number | null>(null);
   const [diagnosisCheckError, setDiagnosisCheckError] = useState<string | null>(null);
   const [isSendQueued, setIsSendQueued] = useState(false);
@@ -274,6 +275,7 @@ export default function AIPrompt(props: {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
       if (!proactiveDiagnosisEnabledRef.current) return;
       setLastCheckedAt(Date.now());
+      setWarningEventCount(allWarningEvents.length);
       setDiagnosisCheckError(null);
       if (allWarningEvents.length === 0) return;
 
@@ -302,6 +304,7 @@ export default function AIPrompt(props: {
       setDiagnoseFnReady(false);
       initialCycleRanRef.current = false;
       setLastCheckedAt(null);
+      setWarningEventCount(null);
       setNextCheckAt(null);
       setDiagnosisCheckError(null);
       if (proactiveDiagIntervalRef.current) {
@@ -677,13 +680,25 @@ export default function AIPrompt(props: {
   // ─── Connect AI manager to proactive diagnosis (fallback for non-agent mode) ──
   // When not in agent mode but an AI config is available, use a LangChain session as fallback.
   // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
-  const diagnosisContextKey = JSON.stringify({
+  const assistantConfiguration = {
     activeConfig,
     selectedModel,
     enabledTools,
     mockTools: pluginSettings?.devOptions?.enableMockTools,
-    proactiveDiagnosisEnabled,
     isAgentMode,
+  };
+  const assistantConfigurationKey = JSON.stringify(assistantConfiguration);
+  const assistantContextRef = useRef({
+    key: assistantConfigurationKey,
+    session: isAgentMode ? holmesAgentRef.current : aiManager,
+  });
+  assistantContextRef.current = {
+    key: assistantConfigurationKey,
+    session: isAgentMode ? holmesAgentRef.current : aiManager,
+  };
+  const diagnosisContextKey = JSON.stringify({
+    ...assistantConfiguration,
+    proactiveDiagnosisEnabled,
     clusterNamesKey,
   });
   const diagnosisContextKeyRef = useRef(diagnosisContextKey);
@@ -1665,6 +1680,7 @@ export default function AIPrompt(props: {
     if (loadingRef.current || queuedSendRef.current) return;
     const ticket = { prompt, controller: new AbortController() };
     const clusterScope = clusterNamesRef.current.join('\0');
+    const assistantContext = assistantContextRef.current;
     try {
       if (proactiveDiagnosisManager.isRunning()) {
         queuedSendRef.current = ticket;
@@ -1673,6 +1689,12 @@ export default function AIPrompt(props: {
         if (queuedSendRef.current !== ticket) return;
         if (clusterScope !== clusterNamesRef.current.join('\0')) {
           throw new Error(t('Cluster selection changed. Review and resend your message.'));
+        }
+        if (
+          assistantContext.key !== assistantContextRef.current.key ||
+          assistantContext.session !== assistantContextRef.current.session
+        ) {
+          throw new Error(t('Assistant configuration changed. Review and resend your message.'));
         }
         queuedSendRef.current = null;
         setIsSendQueued(false);
@@ -1860,7 +1882,10 @@ export default function AIPrompt(props: {
     if (openPopup && aiManager) {
       // Only use dynamic prompts as initial suggestions if there's no conversation history
       // If there's conversation history, suggestions will be parsed from the latest AI response
-      const hasConversation = aiManager.history && aiManager.history.length > 0;
+      const hasConversation = aiManager.history.some(
+        message =>
+          (message.role === 'user' || message.role === 'assistant') && !message.isDisplayOnly
+      );
       if (!hasConversation) {
         setSuggestions(dynamicPrompts);
       }
@@ -2070,6 +2095,7 @@ export default function AIPrompt(props: {
                     isPaused={isPaused}
                     clusters={clusterNames}
                     lastCheckedAt={lastCheckedAt}
+                    warningEventCount={warningEventCount}
                     nextCheckAt={nextCheckAt}
                     checkError={diagnosisCheckError}
                     controlsDisabled={loading || isSendQueued}
@@ -2113,9 +2139,7 @@ export default function AIPrompt(props: {
             <PromptSuggestions
               suggestions={suggestions}
               apiError={apiError}
-              loading={
-                loading || isDiagnosisRunning || memoizedHistory.length > 0 || diagnoses.length > 0
-              }
+              loading={loading || isDiagnosisRunning || isSendQueued}
               onPromptSelect={suggestion => setPromptVal(suggestion.prompt)}
               onPromptSend={suggestion => {
                 handleSendPrompt(suggestion.prompt);

@@ -90,6 +90,8 @@ export class ProactiveDiagnosisManager extends EventEmitter {
     reject: (error: unknown) => void;
     timeout?: ReturnType<typeof setTimeout>;
     force?: boolean;
+    /** A later pause defers queued requests, even ones originally requested while paused. */
+    allowWhilePaused: boolean;
   }> = [];
   /** The function to call to get a diagnosis from the AI */
   private diagnoseFn: DiagnoseFn | null = null;
@@ -131,7 +133,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
         request.timeout = undefined;
       }
       if (!this.running) {
-        this._drainSingleEventQueue();
+        this._drainQueues();
       }
     } else {
       for (const request of this.singleEventQueue) {
@@ -154,15 +156,24 @@ export class ProactiveDiagnosisManager extends EventEmitter {
 
   pause(): void {
     this.paused = true;
+    for (const request of this.singleEventQueue) request.allowWhilePaused = false;
     this.emit('pause-change', true);
   }
 
   async resume(): Promise<void> {
     this.paused = false;
     this.emit('pause-change', false);
-    if (!this.running && this.pausedBatchEvents.length > 0) {
+    if (
+      this.enabled &&
+      this.diagnoseFn &&
+      !this.running &&
+      this.singleEventQueue.length === 0 &&
+      this.pausedBatchEvents.length > 0
+    ) {
       const events = this.pausedBatchEvents.splice(0);
       await this.diagnoseEvents(events);
+    } else {
+      this._drainQueues();
     }
   }
 
@@ -427,7 +438,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       this.running = false;
       this.emit('cycle-end');
       // Process any queued single-event requests
-      this._drainSingleEventQueue();
+      this._drainQueues();
     }
   }
 
@@ -468,6 +479,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
           resolve,
           reject,
           force,
+          allowWhilePaused: this.paused,
         };
         if (!this.diagnoseFn) {
           this._armQueuedRequestTimeout(queuedRequest);
@@ -555,23 +567,33 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       this.running = false;
       this.emit('cycle-end');
       // Process queued single-event requests
-      this._drainSingleEventQueue();
+      this._drainQueues();
     }
   }
 
   /**
-   * Process queued single-event diagnosis requests one by one.
+   * Explicit single-event requests take priority over resumed background work.
    */
-  private _drainSingleEventQueue(): void {
-    if (!this.enabled || !this.diagnoseFn || this.running || this.singleEventQueue.length === 0)
+  private _drainQueues(): void {
+    if (!this.enabled || !this.diagnoseFn || this.running) return;
+    const nextIndex = this.paused
+      ? this.singleEventQueue.findIndex(request => request.allowWhilePaused)
+      : 0;
+    const next = nextIndex < 0 ? undefined : this.singleEventQueue.splice(nextIndex, 1)[0];
+    if (!next) {
+      if (!this.paused && this.pausedBatchEvents.length > 0) {
+        const events = this.pausedBatchEvents.splice(0);
+        this.diagnoseEvents(events).catch(error => {
+          console.error('[ProactiveDiagnosis] Failed to resume background analysis:', error);
+        });
+      }
       return;
-    const next = this.singleEventQueue.shift();
-    if (!next) return;
+    }
     if (next.timeout) clearTimeout(next.timeout);
     const cached = this.cache.get(next.event.uid);
     if (!next.force && cached && !cached.loading && !cached.pending && !cached.error) {
       next.resolve(cached);
-      this._drainSingleEventQueue();
+      this._drainQueues();
       return;
     }
     this._executeSingleDiagnosis(next.event).then(next.resolve).catch(next.reject);

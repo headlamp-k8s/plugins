@@ -109,11 +109,15 @@ Diagnoses and the conversation share one scroll area; result cards start compact
 and expand to show the analysis, investigation activity, and reviewable YAML.
 
 - The overview shows cluster scope, event-check time, and separate ready/failed counts.
-- Pause stops queued background items after the current analysis finishes; it does
-  not abort a provider stream. Resume continues the remaining queue.
+- Failed event reads remain errors during retry backoff, rather than appearing
+  as successful checks with no warning events.
+- Pause defers queued analyses after the current item finishes; it does not abort
+  a provider stream. Resume continues the remaining queue. A new explicit
+  single-event analysis can still run while background work is paused.
 - You can draft while analysis runs. Sending pauses background work and queues the
   message behind the current item. Cancelling restores the queued message if the
   draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
+  Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
 - Retry failed analyses, analyze an individual result again, or dismiss it.
   Dismissing hides that event from automatic checks; it does not fix the resource.
 - Check again explicitly refreshes analyses in the current scope and can incur AI

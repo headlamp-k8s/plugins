@@ -154,6 +154,45 @@ it('filters hidden messages and extracts validated tool follow-up text', () => {
   expect(screen.getByText(/LOGS_BUTTON/)).toBeTruthy();
 });
 
+it.each(['Home', 'End'] as const)('%s sets follow mode for later streamed history updates', key => {
+  vi.useFakeTimers();
+  const props = { isLoading: true, apiError: null, ContentRendererSlot: Renderer };
+  const { rerender } = render(<TextStreamContainer {...props} history={basicHistory} />);
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn((options: { top: number }) => {
+    log.scrollTop = Math.min(800, options.top);
+  });
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 200 },
+    scrollTop: { configurable: true, writable: true, value: 800 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  if (key === 'End') {
+    vi.advanceTimersByTime(500);
+    log.scrollTop = 0;
+    fireEvent.scroll(log);
+    scrollTo.mockClear();
+  }
+  fireEvent.keyDown(log, { key });
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  scrollTo.mockClear();
+  rerender(
+    <TextStreamContainer
+      {...props}
+      history={[...basicHistory, { role: 'assistant', content: 'streamed update' }]}
+    />
+  );
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(key === 'Home' ? 0 : 1);
+  if (key === 'Home') {
+    expect(screen.getByRole('button', { name: /scroll to bottom/i })).toBeTruthy();
+  } else {
+    expect(screen.queryByRole('button', { name: /scroll to bottom/i })).toBeNull();
+  }
+});
+
 it('shows and clears content-filter guidance as history changes', () => {
   const filtered: ConversationMessage[] = [
     { role: 'assistant', content: 'blocked', contentFilterError: true },
