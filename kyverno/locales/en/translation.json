@@ -177,6 +177,7 @@
   "kind \"{{kind}}\"": "kind \"{{kind}}\"",
   "namespaces [{{namespaces}}]": "namespaces [{{namespaces}}]",
   "names [{{names}}]": "names [{{names}}]",
+  "annotations [{{annotations}}]": "annotations [{{annotations}}]",
   "a label selector": "a label selector",
   "a namespace label selector": "a namespace label selector",
   "and": "and",

@@ -406,6 +406,19 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: T
     if (allNames.length > 0) {
       parts.push(t('names [{{names}}]', { names: allNames.join(', ') }));
     }
+    // Same per-selector intersection reasoning again: resources.annotations is a real match
+    // restriction on Kyverno's ResourceDescription, distinct from `selector` (a label selector on
+    // metadata.labels) below. Omitting it described a rule restricted to, say,
+    // annotations: { team: 'platform' } as matching every Pod rather than just the ones carrying
+    // that annotation.
+    const annotations = Object.entries(selector.resources?.annotations || {});
+    if (annotations.length > 0) {
+      parts.push(
+        t('annotations [{{annotations}}]', {
+          annotations: annotations.map(([key, value]) => `${key}=${value}`).join(', '),
+        })
+      );
+    }
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push(t('a label selector'));

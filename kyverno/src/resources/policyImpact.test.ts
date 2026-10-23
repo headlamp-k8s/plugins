@@ -988,6 +988,24 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('names [database-primary, database-*]');
   });
 
+  test('includes resource annotation constraints in the explanation, found via Copilot review', () => {
+    // resources.annotations is a real match restriction on Kyverno's ResourceDescription, distinct
+    // from `selector` (a label selector). Omitting it described a selector restricted to
+    // kinds: ['Pod'], annotations: { team: 'platform' } as matching every Pod.
+    const annotatedResourceRules: PolicyRule[] = [
+      {
+        name: 'platform-team-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], annotations: { team: 'platform' } } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(annotatedResourceRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('annotations [team=platform]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor

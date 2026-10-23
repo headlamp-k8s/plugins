@@ -29,6 +29,10 @@ export interface MatchSelectorEntry {
     names?: string[];
     namespaces?: string[];
     operations?: string[];
+    // A resource-level annotation restriction, confirmed on the real ResourceDescription type
+    // alongside kinds/names/namespaces above, not to be confused with `selector` (a label
+    // selector) below.
+    annotations?: Record<string, string>;
     selector?: Record<string, unknown>;
     namespaceSelector?: Record<string, unknown>;
   };
