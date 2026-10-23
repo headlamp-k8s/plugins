@@ -9,17 +9,9 @@ import {
   SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import {
-  Button,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  InputLabel,
-  MenuItem,
-  Select,
-} from '@mui/material';
+import { Button, DialogActions, DialogContent, DialogContentText } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
 import {
   deleteRelease,
@@ -29,8 +21,12 @@ import {
   rollbackRelease,
 } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
+import { RollbackDialog } from './RollbackDialog';
 
 const { createRouteURL } = Router;
+const DELETE_STATUS_POLLING_INTERVAL = 1000;
+const DELETE_STATUS_MAX_RETRIES = 60;
+
 export default function ReleaseDetail() {
   const { t } = useTranslation();
   const [update, setUpdate] = useState<boolean>(false);
@@ -55,6 +51,9 @@ export default function ReleaseDetail() {
   useEffect(() => {
     getReleaseHistory(namespace, releaseName).then(response => {
       setReleaseHistory(response);
+      if (response?.releases?.length) {
+        setRevertVersion(response.releases[0].version.toString());
+      }
     });
   }, [update]);
 
@@ -87,6 +86,58 @@ export default function ReleaseDetail() {
     setIsEditorOpen(true);
     setIsUpdateRelease(true);
   }
+
+  const handleConfirmRollback = useCallback(() => {
+    if (release) {
+      rollbackRelease(release.namespace, releaseName, Number.parseInt(revertVersion, 10))
+        .then(() => {
+          setRollbackPopup(false);
+          enqueueSnackbar(`Rollback in progress for ${releaseName}`, {
+            variant: 'info',
+          });
+          const checkRollbackStatus = (retryCount = 0) => {
+            if (retryCount >= DELETE_STATUS_MAX_RETRIES) {
+              enqueueSnackbar(`Rollback status check timeout for ${releaseName}`, {
+                variant: 'warning',
+              });
+              setUpdate(prev => !prev);
+              return;
+            }
+            getActionStatus(releaseName, 'rollback')
+              .then(response => {
+                if (response.status === 'success') {
+                  enqueueSnackbar(`Rollback successful for ${releaseName}`, {
+                    variant: 'success',
+                  });
+                  setUpdate(prev => !prev);
+                } else if (response.status === 'failed') {
+                  enqueueSnackbar(`Rollback failed for ${releaseName}`, { variant: 'error' });
+                  setUpdate(prev => !prev);
+                } else {
+                  setTimeout(
+                    () => checkRollbackStatus(retryCount + 1),
+                    DELETE_STATUS_POLLING_INTERVAL
+                  );
+                }
+              })
+              .catch(() => {
+                setTimeout(
+                  () => checkRollbackStatus(retryCount + 1),
+                  DELETE_STATUS_POLLING_INTERVAL
+                );
+              });
+          };
+          checkRollbackStatus();
+        })
+        .catch(error => {
+          console.error('Failed to rollback release:', error);
+          setRollbackPopup(false);
+          enqueueSnackbar(`Failed to rollback ${releaseName}`, {
+            variant: 'error',
+          });
+        });
+    }
+  }, [release, releaseName, revertVersion, enqueueSnackbar]);
 
   return (
     <>
@@ -134,69 +185,15 @@ export default function ReleaseDetail() {
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog
+      <RollbackDialog
         open={rollbackPopup}
-        maxWidth="xs"
-        onClose={() => setRollbackPopup(false)}
-        title={t('Rollback')}
-      >
-        <DialogContent
-          style={{
-            width: '400px',
-            height: '100px',
-          }}
-        >
-          <InputLabel id="revert">{t('Select a version')}</InputLabel>
-          <Select
-            value={revertVersion}
-            defaultValue={releaseHistory?.releases[0]?.version}
-            onChange={event => setRevertVersion(event.target.value as string)}
-            id="revert"
-            fullWidth
-          >
-            {releaseHistory &&
-              releaseHistory.releases.map((release: any) => {
-                return (
-                  <MenuItem value={release?.version}>
-                    {release?.version} - {release?.info?.description || 'N/A'} (
-                    {new Date(release?.info.last_deployed).toLocaleString()})
-                  </MenuItem>
-                );
-              })}
-          </Select>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              rollbackRelease(
-                release.namespace,
-                release.name,
-                Number.parseInt(revertVersion, 10)
-              ).then(() => {
-                setRollbackPopup(false);
-                setUpdate(!update);
-              });
-            }}
-            style={{
-              backgroundColor: '#000',
-              color: 'white',
-              textTransform: 'none',
-            }}
-          >
-            {t('Revert')}
-          </Button>
-          <Button
-            style={{
-              backgroundColor: '#000',
-              color: 'white',
-              textTransform: 'none',
-            }}
-            onClick={() => setRollbackPopup(false)}
-          >
-            {t('Cancel')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        releaseHistory={releaseHistory}
+        revertVersion={revertVersion}
+        onVersionChange={setRevertVersion}
+        onConfirm={handleConfirmRollback}
+        onCancel={() => setRollbackPopup(false)}
+        disabled={!revertVersion}
+      />
 
       {release && (
         <SectionBox
