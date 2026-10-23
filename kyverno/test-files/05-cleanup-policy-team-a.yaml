@@ -1,0 +1,15 @@
+apiVersion: kyverno.io/v2
+kind: CleanupPolicy
+metadata:
+  name: cleanup-demo-configmaps
+  namespace: team-a
+spec:
+  match:
+    any:
+      - resources:
+          kinds:
+            - ConfigMap
+          selector:
+            matchLabels:
+              kyverno-demo-cleanup: "true"
+  schedule: "0 0 * * *"

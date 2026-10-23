@@ -16,7 +16,7 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
+import { Box, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import {
   Bar,
@@ -32,6 +32,8 @@ import {
 } from 'recharts';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import { MetricCard } from './common';
+import { PolicyEngineHealth } from './PolicyEngineHealth';
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -48,29 +50,6 @@ const SEVERITY_COLORS: Record<string, string> = {
   low: '#2196f3',
   info: '#9e9e9e',
 };
-
-function MetricCard({
-  title,
-  value,
-  color,
-}: {
-  title: string;
-  value: string | number;
-  color?: string;
-}) {
-  return (
-    <Card variant="outlined">
-      <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
-        <Typography variant="h4" sx={{ color: color || 'text.primary', fontWeight: 'bold' }}>
-          {value}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function Dashboard() {
   const { t } = useTranslation();
@@ -234,6 +213,8 @@ export function Dashboard() {
           </Grid>
         </Grid>
       </SectionBox>
+
+      <PolicyEngineHealth />
 
       <Grid container spacing={2}>
         {statusData.length > 0 && (
