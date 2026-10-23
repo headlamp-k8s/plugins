@@ -1,13 +1,30 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
+import { VeleroDataDownload, VeleroPodVolumeRestore } from '../../resources/datamovement';
 import { VeleroRestore } from '../../resources/velero';
 import { getRestoreStatusColor } from '../../utils/status';
+import { restoreNameLabelSelector } from '../../utils/veleroLabel';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
+import { RestoreDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function RestoreDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
+  const cluster = getCluster() || undefined;
+  const labelSelector = name ? restoreNameLabelSelector(name) : undefined;
+
+  const [pvrs, pvrsError] = VeleroPodVolumeRestore.useList({
+    namespace,
+    cluster,
+    labelSelector,
+  });
+  const [downloads, downloadsError] = VeleroDataDownload.useList({
+    namespace,
+    cluster,
+    labelSelector,
+  });
 
   return (
     <DetailsGrid
@@ -27,6 +44,7 @@ function RestoreDetailContent() {
             <Link
               routeName={veleroRouteNames.backupDetail}
               params={{ namespace: restore.getNamespace(), name: restore.backupName }}
+              activeCluster={restore.cluster}
             >
               {restore.backupName}
             </Link>
@@ -36,6 +54,7 @@ function RestoreDetailContent() {
             <Link
               routeName={veleroRouteNames.scheduleDetail}
               params={{ namespace: restore.getNamespace(), name: restore.scheduleName }}
+              activeCluster={restore.cluster}
             >
               {`Schedule: ${restore.scheduleName}`}
             </Link>
@@ -82,18 +101,30 @@ function RestoreDetailContent() {
               : 'N/A',
           },
           {
-            name: 'Completed',
+            name: 'Completion Time',
             value: restore.completionTimestamp
               ? new Date(restore.completionTimestamp).toLocaleString()
               : 'N/A',
           },
         ];
       }}
+      extraSections={() => {
+        const movement = RestoreDataMovementSections({
+          pvrs,
+          downloads,
+          pvrsError,
+          downloadsError,
+        });
+        return movement.map((section, index) => ({
+          id: `velero-restore-datamovement-${index}`,
+          section,
+        }));
+      }}
     />
   );
 }
 
-/** Velero Restore detail page (Phase 2; fields inspired by reasonerjt prototype). */
+/** Velero Restore detail — Phase 2 fields + Phase 3 CSI/datamover sections. */
 export default function RestoreDetail() {
   return (
     <VeleroInstallCheck>
