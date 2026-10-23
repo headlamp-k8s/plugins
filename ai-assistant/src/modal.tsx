@@ -359,11 +359,25 @@ export default function AIPrompt(props: {
   const holmesHealthRequestGateRef = React.useRef(new HolmesHealthRequestGate());
   const userSelectedChatRef = React.useRef(false);
 
+  // Same cluster fallback for reads and confirmed writes (which may omit `cluster`).
+  const resolveTargetCluster = React.useCallback(
+    (targetCluster?: string | null): string | undefined =>
+      targetCluster ||
+      (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : undefined) ||
+      getCluster() ||
+      // Only auto-pick when exactly one cluster is configured; with several, leave
+      // it unset so the caller must choose rather than guessing.
+      (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : undefined) ||
+      undefined,
+    [selectedClusters, clusters]
+  );
+
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
   const [editorTitle, setEditorTitle] = React.useState('');
   const [resourceType, setResourceType] = React.useState('');
   const [isDelete, setIsDelete] = React.useState(false);
+  const [editorCluster, setEditorCluster] = React.useState<string | null>(null);
 
   const handleYamlAction = React.useCallback(
     (yaml: string, title: string, type: string, isDeleteOp: boolean) => {
@@ -394,9 +408,10 @@ export default function AIPrompt(props: {
       setEditorTitle(finalTitle);
       setResourceType(type);
       setIsDelete(actualDelete);
+      setEditorCluster(resolveTargetCluster() ?? null);
       setShowEditor(true);
     },
-    [t]
+    [t, resolveTargetCluster]
   );
 
   // Initialize active configuration from plugin settings
@@ -1613,19 +1628,6 @@ export default function AIPrompt(props: {
     }
   };
 
-  // Same cluster fallback for reads and confirmed writes (which may omit `cluster`).
-  const resolveTargetCluster = React.useCallback(
-    (targetCluster?: string | null): string | undefined =>
-      targetCluster ||
-      (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : undefined) ||
-      getCluster() ||
-      // Only auto-pick when exactly one cluster is configured; with several, leave
-      // it unset so the caller must choose rather than guessing.
-      (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : undefined) ||
-      undefined,
-    [selectedClusters, clusters]
-  );
-
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
     if (!kubernetesUI.apiRequest) return;
@@ -2060,6 +2062,7 @@ export default function AIPrompt(props: {
           yamlContent={editorContent}
           title={editorTitle}
           resourceType={resourceType}
+          targetCluster={editorCluster}
           onSuccess={() => {}}
           onFailure={handleOperationFailure}
         />

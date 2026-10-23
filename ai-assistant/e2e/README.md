@@ -10,6 +10,9 @@ The scenarios cover:
 - chatting with the fixture-backed model;
 - troubleshooting a pod with the scripted agent;
 - exploring cluster workloads with the scripted agent.
+- opening a suggested workload-identity ServiceAccount in the editor from a
+  global settings page and applying it to the assistant's cluster. The model
+  response is stubbed; the Kubernetes write and read-back use the real KWOK API.
 
 ## Run
 

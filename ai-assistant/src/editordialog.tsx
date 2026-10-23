@@ -15,6 +15,8 @@ type EditorDialogProps = {
   title: string;
   resourceType?: string;
   isDelete?: boolean;
+  /** Null means the assistant could not resolve a target; do not use the current route. */
+  targetCluster?: string | null;
   onSuccess?: (response: any) => void;
   onFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
 };
@@ -26,6 +28,7 @@ export default function EditorDialog({
   title,
   resourceType = 'Resource',
   isDelete = false,
+  targetCluster,
   onSuccess,
   onFailure,
 }: EditorDialogProps) {
@@ -50,7 +53,7 @@ export default function EditorDialog({
 
   const handleApply = () => {
     try {
-      const cluster = getCluster();
+      const cluster = targetCluster === undefined ? getCluster() : targetCluster;
       if (!cluster) {
         throw new Error(t('No cluster selected'));
       }
