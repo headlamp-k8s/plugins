@@ -1,6 +1,7 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Workload } from '../../resources/workload';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderWorkloadLink } from '../common/KueueResourceLinks';
 
 export default function WorkloadList() {
   return (
@@ -14,7 +15,17 @@ export default function WorkloadList() {
         title="Kueue Workloads"
         resourceClass={Workload}
         columns={[
-          'name',
+          {
+            id: 'name',
+            label: 'Name',
+            getValue: (workload: Workload) => workload.metadata.name,
+            render: (workload: Workload) =>
+              renderWorkloadLink(
+                workload.metadata.name,
+                workload.metadata.namespace,
+                workload.cluster
+              ),
+          },
           'namespace',
           {
             id: 'queue',

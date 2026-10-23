@@ -2,6 +2,7 @@ import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents'
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { LocalQueue } from '../../resources/localQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderLocalQueueLink } from '../common/KueueResourceLinks';
 
 export default function LocalQueueList() {
   return (
@@ -15,7 +16,17 @@ export default function LocalQueueList() {
         title="Kueue LocalQueues"
         resourceClass={LocalQueue}
         columns={[
-          'name',
+          {
+            id: 'name',
+            label: 'Name',
+            getValue: (localQueue: LocalQueue) => localQueue.metadata.name,
+            render: (localQueue: LocalQueue) =>
+              renderLocalQueueLink(
+                localQueue.metadata.name,
+                localQueue.metadata.namespace,
+                localQueue.cluster
+              ),
+          },
           'namespace',
           {
             id: 'clusterQueue',

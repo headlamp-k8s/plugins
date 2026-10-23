@@ -1,6 +1,7 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ResourceFlavor } from '../../resources/resourceFlavor';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderResourceFlavorLink } from '../common/KueueResourceLinks';
 
 export default function ResourceFlavorList() {
   return (
@@ -13,7 +14,13 @@ export default function ResourceFlavorList() {
         title="Kueue ResourceFlavors"
         resourceClass={ResourceFlavor}
         columns={[
-          'name',
+          {
+            id: 'name',
+            label: 'Name',
+            getValue: (resourceFlavor: ResourceFlavor) => resourceFlavor.metadata.name,
+            render: (resourceFlavor: ResourceFlavor) =>
+              renderResourceFlavorLink(resourceFlavor.metadata.name, resourceFlavor.cluster),
+          },
           {
             id: 'nodeLabels',
             label: 'Node Labels',
