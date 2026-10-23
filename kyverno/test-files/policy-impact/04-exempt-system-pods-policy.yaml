@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: exempt-system-pods
+  namespace: policy-impact-a
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-for-owner-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              selector:
+                matchLabels:
+                  policy-impact/exempt: "true"
+      validate:
+        message: "validation error: the 'owner' label is required on all Pods in policy-impact-a."
+        pattern:
+          metadata:
+            labels:
+              owner: "?*"

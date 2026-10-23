@@ -1,0 +1,38 @@
+# Regression fixture for "Scope namespaced policy reads to its namespace":
+# a user who can only read PolicyReports inside policy-impact-a, with no
+# permission to list ClusterPolicyReport cluster-wide, should still see a
+# namespaced Policy's impact data rather than an RBAC error. Bind this
+# identity and view the "exempt-system-pods" Policy (policy-impact-a) with
+# it; the panel should render normally with no error.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: policy-impact-ns-viewer
+  namespace: policy-impact-a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: policy-impact-ns-viewer
+  namespace: policy-impact-a
+rules:
+  - apiGroups: ["kyverno.io"]
+    resources: ["policies"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["wgpolicyk8s.io"]
+    resources: ["policyreports"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: policy-impact-ns-viewer
+  namespace: policy-impact-a
+subjects:
+  - kind: ServiceAccount
+    name: policy-impact-ns-viewer
+    namespace: policy-impact-a
+roleRef:
+  kind: Role
+  name: policy-impact-ns-viewer
+  apiGroup: rbac.authorization.k8s.io
