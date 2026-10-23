@@ -90,6 +90,7 @@ describe('EditorDialog cluster targeting', () => {
   it('applies to the assistant cluster from a page without a cluster in its URL', async () => {
     const { onClose, onSuccess } = openEditor('aks-workload');
 
+    expect(screen.getByRole('alert').textContent).toBe('Target cluster: aks-workload');
     fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
 
     await waitFor(() =>
@@ -107,6 +108,7 @@ describe('EditorDialog cluster targeting', () => {
     openEditor('aks-workload');
     mocks.getCluster.mockReturnValue('different-cluster');
 
+    expect(screen.getByRole('alert').textContent).toBe('Target cluster: aks-workload');
     fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
 
     await waitFor(() =>
@@ -118,6 +120,7 @@ describe('EditorDialog cluster targeting', () => {
     mocks.getCluster.mockReturnValue('route-cluster');
     openEditor();
 
+    expect(screen.getByRole('alert').textContent).toBe('Target cluster: route-cluster');
     fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
 
     await waitFor(() =>
@@ -126,34 +129,45 @@ describe('EditorDialog cluster targeting', () => {
   });
 
   it.each([null, undefined])(
-    'reports a missing target (%s) instead of applying without a cluster',
+    'shows a warning and disables apply when the target is missing (%s)',
     targetCluster => {
-      vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const { onClose } = openEditor(targetCluster);
+      const applyButton = screen.getByRole('button', { name: 'Apply to Cluster' });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
+      expect(screen.getByRole('alert').textContent).toBe('No cluster selected');
+      expect(applyButton.hasAttribute('disabled')).toBe(true);
+      fireEvent.click(applyButton);
 
       expect(mocks.apply).not.toHaveBeenCalled();
       expect(mocks.clusterAction).not.toHaveBeenCalled();
       expect(onClose).not.toHaveBeenCalled();
-      expect(mocks.enqueueSnackbar).toHaveBeenCalledWith(
-        'Error applying resource: No cluster selected',
-        { variant: 'error' }
-      );
+      expect(mocks.enqueueSnackbar).not.toHaveBeenCalled();
     }
   );
 
   it('does not fall back to a newly navigated cluster when the assistant had no target', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     openEditor(null);
     mocks.getCluster.mockReturnValue('unrelated-cluster');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
+    const applyButton = screen.getByRole('button', { name: 'Apply to Cluster' });
+    expect(screen.getByRole('alert').textContent).toBe('No cluster selected');
+    expect(applyButton.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(applyButton);
 
     expect(mocks.apply).not.toHaveBeenCalled();
-    expect(mocks.enqueueSnackbar).toHaveBeenCalledWith(
-      'Error applying resource: No cluster selected',
-      { variant: 'error' }
+    expect(mocks.enqueueSnackbar).not.toHaveBeenCalled();
+  });
+
+  it('applies to the displayed route cluster rather than re-reading the URL on click', async () => {
+    mocks.getCluster.mockReturnValue('displayed-cluster');
+    openEditor();
+    expect(screen.getByRole('alert').textContent).toBe('Target cluster: displayed-cluster');
+    mocks.getCluster.mockReturnValue('different-cluster');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to Cluster' }));
+
+    await waitFor(() =>
+      expect(mocks.apply).toHaveBeenCalledWith(expect.anything(), 'displayed-cluster')
     );
   });
 

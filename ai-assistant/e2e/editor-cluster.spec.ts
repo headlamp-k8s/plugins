@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const screenshotsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'screenshots');
 
-test.use({ viewport: { width: 1440, height: 1100 } });
+test.use({ viewport: { width: 1440, height: 1000 } });
 
 test('applies a suggested ServiceAccount from a page without a cluster URL', async ({ page }) => {
   const clientId = '11111111-1111-1111-1111-111111111111';
@@ -79,6 +79,14 @@ metadata:
     editor.getByRole('heading', { name: 'Apply ServiceAccount', level: 6 })
   ).toBeVisible();
   await expect(page).toHaveURL(/\/settings\/plugins\//);
+  await expect(editor.getByRole('alert')).toHaveText('Target cluster: main');
+  await expect(editor.getByRole('button', { name: 'Apply to Cluster' })).toBeEnabled();
+  await expect(editor.locator('.monaco-editor')).toBeVisible();
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+  await page.screenshot({
+    path: path.join(screenshotsDir, '12-serviceaccount-target-cluster.png'),
+    animations: 'disabled',
+  });
 
   const applied = page.waitForResponse(
     response =>
@@ -113,7 +121,6 @@ metadata:
   await expect(
     page.getByText('Applying ServiceAccount to cluster main...', { exact: true })
   ).toBeHidden();
-  fs.mkdirSync(screenshotsDir, { recursive: true });
   await page.screenshot({
     path: path.join(screenshotsDir, '11-serviceaccount-applied.png'),
     fullPage: true,
