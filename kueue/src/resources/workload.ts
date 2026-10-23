@@ -792,12 +792,19 @@ export class Workload extends KubeObject<KubeWorkload> {
     return renderWorkloadStatus(this.conditions, this.spec.active);
   }
 
-  get blockerStageDisplay() {
+  get blockerStage() {
     const { conditions, admissionChecks, requeueState, admission } = this.status;
-    return renderText(
-      getWorkloadBlocker(conditions, admissionChecks, requeueState, this.spec.active, admission)
-        ?.stage
-    );
+    return getWorkloadBlocker(
+      conditions,
+      admissionChecks,
+      requeueState,
+      this.spec.active,
+      admission
+    )?.stage;
+  }
+
+  get blockerStageDisplay() {
+    return renderText(this.blockerStage);
   }
 
   get admissionClusterQueue() {
