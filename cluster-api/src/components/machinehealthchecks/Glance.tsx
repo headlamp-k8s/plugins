@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
@@ -14,6 +15,7 @@ import {
  * @param props.node - The map node containing the resource.
  */
 export function MachineHealthCheckGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   const kubeObject = node?.kubeObject;
   if (!kubeObject || kubeObject.kind !== MachineHealthCheck.kind || !kubeObject.jsonData) {
     return null;
@@ -36,19 +38,27 @@ export function MachineHealthCheckGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="mhc-glance">
-      <StatusLabel status="">{`Cluster: ${clusterName}`}</StatusLabel>
+      <StatusLabel status="">{t('Cluster: {{clusterName}}', { clusterName })}</StatusLabel>
       <StatusLabel
         status={hasHealthCounts ? (healthy >= expected ? 'success' : 'error') : 'warning'}
       >
-        {hasHealthCounts ? `Healthy: ${healthy}/${expected}` : 'Healthy: unknown'}
+        {hasHealthCounts
+          ? t('Healthy: {{healthy}}/{{expected}}', { healthy, expected })
+          : t('Healthy: unknown')}
       </StatusLabel>
       {maxUnhealthy !== undefined && maxUnhealthy !== null && (
-        <StatusLabel status="">{`Max Unhealthy: ${maxUnhealthy}`}</StatusLabel>
+        <StatusLabel status="">
+          {t('Max Unhealthy: {{maxUnhealthy}}', { maxUnhealthy })}
+        </StatusLabel>
       )}
       {unhealthyRange && (
-        <StatusLabel status="">{`Unhealthy Range: ${unhealthyRange}`}</StatusLabel>
+        <StatusLabel status="">
+          {t('Unhealthy Range: {{unhealthyRange}}', { unhealthyRange })}
+        </StatusLabel>
       )}
-      <StatusLabel status="">{`Timeout: ${nodeStartupTimeout}`}</StatusLabel>
+      <StatusLabel status="">
+        {t('Timeout: {{nodeStartupTimeout}}', { nodeStartupTimeout })}
+      </StatusLabel>
     </Box>
   );
 }
