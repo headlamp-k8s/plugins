@@ -29,6 +29,38 @@ describe('getNextScheduledRun', () => {
     expect(next?.toISOString()).toBe('2026-07-05T08:00:00.000Z');
   });
 
+  test.each([
+    ['@yearly', '2027-01-01T00:00:00.000Z'],
+    ['@annually', '2027-01-01T00:00:00.000Z'],
+    ['@monthly', '2026-11-01T00:00:00.000Z'],
+    ['@weekly', '2026-10-25T00:00:00.000Z'],
+    ['@daily', '2026-10-21T00:00:00.000Z'],
+    ['@midnight', '2026-10-21T00:00:00.000Z'],
+    ['@hourly', '2026-10-20T13:00:00.000Z'],
+  ])('resolves the Velero descriptor %s', (descriptor, expected) => {
+    const from = new Date('2026-10-20T12:00:00Z');
+
+    expect(getNextScheduledRun(descriptor, from)?.toISOString()).toBe(expected);
+  });
+
+  test('treats @midnight as @daily, with and without a CRON_TZ prefix', () => {
+    const from = new Date('2026-10-20T12:00:00Z');
+
+    expect(getNextScheduledRun('@midnight', from)?.toISOString()).toBe(
+      getNextScheduledRun('@daily', from)?.toISOString()
+    );
+    expect(getNextScheduledRun('CRON_TZ=Asia/Kolkata @midnight', from)?.toISOString()).toBe(
+      getNextScheduledRun('CRON_TZ=Asia/Kolkata @daily', from)?.toISOString()
+    );
+  });
+
+  test('leaves manual-only descriptors without a next run', () => {
+    // Velero accepts these, but they never fire on their own, so N/A is correct.
+    expect(getNextScheduledRun('@triggered')).toBeUndefined();
+    expect(getNextScheduledRun('@manual')).toBeUndefined();
+    expect(getNextScheduledRun('@none')).toBeUndefined();
+  });
+
   test('parses Velero @every interval schedules', () => {
     const from = new Date('2026-07-05T06:00:00Z');
     expect(getNextScheduledRun('@every 5m', from)?.toISOString()).toBe('2026-07-05T06:05:00.000Z');
