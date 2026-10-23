@@ -40,6 +40,33 @@ describe('handleActualApiRequest resource links', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    ['/api/v1/namespaces/default/pods/my.pod', 'Pod', 'my.pod'],
+    ['/api/v1/namespaces/default/configmaps/app.properties', 'ConfigMap', 'app.properties'],
+    ['/api/v1/nodes/worker.example.com', 'Node', 'worker.example.com'],
+    [
+      '/apis/apiextensions.k8s.io/v1/customresourcedefinitions/widgets.example.com',
+      'CustomResourceDefinition',
+      'widgets.example.com',
+    ],
+    [
+      '/apis/rbac.authorization.k8s.io/v1/clusterroles/system:discovery',
+      'ClusterRole',
+      'system:discovery',
+    ],
+  ])('requests full resource JSON for %s', async (url, kind, name) => {
+    mocks.clusterRequest.mockResolvedValue({ kind, metadata: { name } });
+
+    await handleActualApiRequest(url, 'GET', '', vi.fn(), { history: [] }, '', 'Headlamp');
+
+    expect(mocks.clusterRequest).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      })
+    );
+  });
+
   it('uses the collection kind for metadata-wrapped table rows', async () => {
     mocks.clusterRequest.mockResolvedValue({
       kind: 'Table',
@@ -70,6 +97,12 @@ describe('handleActualApiRequest resource links', () => {
       'https://headlamp/resource-details?cluster=Headlamp&kind=nodes&resource=aks-agentpool-000001'
     );
     expect(result).not.toContain('kind=PartialObjectMetadata');
+    expect(mocks.clusterRequest).toHaveBeenCalledWith(
+      '/api/v1/nodes',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Accept: expect.stringContaining('as=Table') }),
+      })
+    );
   });
 
   it('extracts the collection kind from namespaced list URLs', async () => {

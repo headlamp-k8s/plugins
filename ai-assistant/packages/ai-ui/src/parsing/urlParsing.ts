@@ -6,6 +6,7 @@ export const isLogRequest = (url: string): boolean => {
 /**
  * Returns whether a relative or absolute URL targets a single Kubernetes resource.
  * Query strings and fragments do not affect classification.
+ * Resource names are opaque path segments and are not validated here.
  *
  * @throws {TypeError} If the URL cannot be parsed; callers handle request setup errors.
  */
@@ -25,29 +26,10 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
       resourceSegments.length === 3 &&
       (resourceSegments[2] === 'status' || resourceSegments[2] === 'finalize')
     ) {
-      return resourceSegments.every(isResourceSegment);
+      return true;
     }
     resourceSegments = resourceSegments.slice(2);
   }
 
-  return resourceSegments.length >= 2 && resourceSegments.slice(-2).every(isResourceSegment);
+  return resourceSegments.length >= 2;
 };
-
-function isResourceSegment(value: string): boolean {
-  if (!value) return false;
-  for (const character of value) {
-    const code = character.charCodeAt(0);
-    if (
-      !(
-        (code >= 48 && code <= 57) ||
-        (code >= 65 && code <= 90) ||
-        (code >= 97 && code <= 122) ||
-        character === '_' ||
-        character === '-'
-      )
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
