@@ -18,6 +18,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   clusterRequest: vi.fn(),
+  isLogRequest: vi.fn<(url: string) => boolean>(),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
@@ -33,11 +34,20 @@ vi.mock('@kinvolk/headlamp-plugin/lib/Utils', () => ({
   getCluster: () => 'Headlamp',
 }));
 
+vi.mock('@headlamp-k8s/ai-ui/parsing/urlParsing', async importOriginal => {
+  const actual = await importOriginal<typeof import('@headlamp-k8s/ai-ui/parsing/urlParsing')>();
+  return { ...actual, isLogRequest: mocks.isLogRequest };
+});
+
 import { handleActualApiRequest } from './clusterActions';
 
 describe('handleActualApiRequest resource links', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const actual = await vi.importActual<typeof import('@headlamp-k8s/ai-ui/parsing/urlParsing')>(
+      '@headlamp-k8s/ai-ui/parsing/urlParsing'
+    );
+    mocks.isLogRequest.mockImplementation(actual.isLogRequest);
   });
 
   it('uses the collection kind for metadata-wrapped table rows', async () => {
@@ -100,5 +110,99 @@ describe('handleActualApiRequest resource links', () => {
     expect(result).toContain(
       'https://headlamp/resource-details?cluster=Headlamp&kind=pods&resource=test-pod&ns=default'
     );
+  });
+});
+
+describe('handleActualApiRequest GET redaction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isLogRequest.mockReturnValue(false);
+  });
+
+  it('redacts Secret data before pushing the response to history', async () => {
+    mocks.clusterRequest.mockResolvedValue({
+      kind: 'Secret',
+      apiVersion: 'v1',
+      metadata: { name: 'db-credentials', namespace: 'default' },
+      data: { DATABASE_PASSWORD: 'aHVudGVyMg==', 'tls.key': 'LS0tLXByaXZhdGUta2V5LS0tLQ==' },
+      type: 'Opaque',
+    });
+
+    const aiManager = { history: [] as Array<{ content: string }> };
+    await handleActualApiRequest(
+      '/api/v1/namespaces/default/secrets/db-credentials',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'db-credentials'
+    );
+
+    const historyContent = aiManager.history.map(entry => entry.content).join('\n');
+    expect(historyContent).not.toContain('aHVudGVyMg==');
+    expect(historyContent).not.toContain('LS0tLXByaXZhdGUta2V5LS0tLQ==');
+    expect(historyContent).toContain('[REDACTED]');
+  });
+
+  it('redacts Secret data in SecretList responses (list of secrets)', async () => {
+    mocks.clusterRequest.mockResolvedValue({
+      kind: 'SecretList',
+      apiVersion: 'v1',
+      metadata: { resourceVersion: '12345' },
+      items: [
+        {
+          metadata: { name: 'db-credentials', namespace: 'default' },
+          data: { DATABASE_PASSWORD: 'aHVudGVyMg==' },
+          type: 'Opaque',
+        },
+      ],
+    });
+
+    const aiManager = { history: [] as Array<{ content: string }> };
+    await handleActualApiRequest(
+      '/api/v1/namespaces/default/secrets',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'secrets'
+    );
+
+    const historyContent = aiManager.history.map(entry => entry.content).join('\n');
+    expect(historyContent).not.toContain('aHVudGVyMg==');
+    expect(historyContent).toContain('[REDACTED]');
+  });
+
+  it('redacts credentials in pod log responses', async () => {
+    mocks.isLogRequest.mockReturnValue(true);
+    mocks.clusterRequest.mockResolvedValue({
+      text: async () => 'starting server\npassword: hunter2\ntoken=abc123xyz\nready',
+    });
+
+    const onSuccess = vi.fn();
+    const aiManager = { history: [] as Array<{ content: string }> };
+    await handleActualApiRequest(
+      '/api/v1/namespaces/default/pods/my-pod/log',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'my-pod',
+      'Headlamp',
+      undefined,
+      onSuccess
+    );
+
+    const historyContent = aiManager.history.map(entry => entry.content).join('\n');
+    expect(historyContent).toContain('LOGS_BUTTON:');
+    expect(historyContent).not.toContain('hunter2');
+    expect(historyContent).not.toContain('abc123xyz');
+    expect(historyContent).toContain('[REDACTED]');
+
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    const callbackPayload = JSON.stringify(onSuccess.mock.calls[0][0]);
+    expect(callbackPayload).not.toContain('hunter2');
+    expect(callbackPayload).not.toContain('abc123xyz');
+    expect(callbackPayload).toContain('[REDACTED]');
   });
 });
