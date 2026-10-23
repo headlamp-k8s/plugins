@@ -67,43 +67,99 @@ describe('handleActualApiRequest resource links', () => {
     );
   });
 
-  it('uses the collection kind for metadata-wrapped table rows', async () => {
-    mocks.clusterRequest.mockResolvedValue({
-      kind: 'Table',
-      columnDefinitions: [{ name: 'Node' }, { name: 'Status' }, { name: 'Pool' }],
-      rows: [
-        {
-          cells: ['aks-agentpool-000001', 'Ready', 'agentpool'],
-          object: {
-            kind: 'PartialObjectMetadata',
-            metadata: { name: 'aks-agentpool-000001' },
-          },
-        },
-      ],
-    });
+  it('preserves full JSON for a Pod named log', async () => {
+    const url = '/api/v1/namespaces/default/pods/log';
+    const resource = {
+      apiVersion: 'v1',
+      kind: 'Pod',
+      metadata: { name: 'log', namespace: 'default' },
+      spec: { containers: [{ name: 'app', image: 'nginx:1.27' }] },
+      status: { phase: 'Running' },
+    };
+    mocks.clusterRequest.mockResolvedValue(resource);
     const aiManager = { history: [] };
 
-    const result = await handleActualApiRequest(
-      '/api/v1/nodes',
-      'GET',
-      '',
-      vi.fn(),
-      aiManager,
-      '',
-      'Headlamp'
-    );
+    const result = await handleActualApiRequest(url, 'GET', '', vi.fn(), aiManager, '', 'Headlamp');
 
-    expect(result).toContain(
-      'https://headlamp/resource-details?cluster=Headlamp&kind=nodes&resource=aks-agentpool-000001'
-    );
-    expect(result).not.toContain('kind=PartialObjectMetadata');
     expect(mocks.clusterRequest).toHaveBeenCalledWith(
-      '/api/v1/nodes',
+      url,
       expect.objectContaining({
-        headers: expect.objectContaining({ Accept: expect.stringContaining('as=Table') }),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        isJSON: true,
+      })
+    );
+    expect(result).toBe(JSON.stringify(resource, null, 2));
+    expect(aiManager.history).toContainEqual({
+      success: true,
+      role: 'tool',
+      content: result,
+    });
+  });
+
+  it('uses text mode for a Pod log subresource', async () => {
+    const url = '/api/v1/namespaces/default/pods/log/log?container=app';
+    const text = vi.fn().mockResolvedValue('startup complete');
+    mocks.clusterRequest.mockResolvedValue({ text });
+    const aiManager = { history: [] };
+
+    await handleActualApiRequest(url, 'GET', '', vi.fn(), aiManager, '', 'Headlamp');
+
+    expect(mocks.clusterRequest).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({ headers: { Accept: '*/*' }, isJSON: false })
+    );
+    expect(text).toHaveBeenCalledOnce();
+    expect(aiManager.history).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        content: expect.stringContaining('startup complete'),
       })
     );
   });
+
+  it.each([
+    ['/api/v1/nodes', '/api/v1/nodes'],
+    ['/api/v1/nodes?continue=token/log', '/api/v1/nodes?continue=token%2Flog'],
+  ])(
+    'uses the collection kind for metadata-wrapped table rows from %s',
+    async (url, cleanedUrl) => {
+      mocks.clusterRequest.mockResolvedValue({
+        kind: 'Table',
+        columnDefinitions: [{ name: 'Node' }, { name: 'Status' }, { name: 'Pool' }],
+        rows: [
+          {
+            cells: ['aks-agentpool-000001', 'Ready', 'agentpool'],
+            object: {
+              kind: 'PartialObjectMetadata',
+              metadata: { name: 'aks-agentpool-000001' },
+            },
+          },
+        ],
+      });
+      const aiManager = { history: [] };
+
+      const result = await handleActualApiRequest(
+        url,
+        'GET',
+        '',
+        vi.fn(),
+        aiManager,
+        '',
+        'Headlamp'
+      );
+
+      expect(result).toContain(
+        'https://headlamp/resource-details?cluster=Headlamp&kind=nodes&resource=aks-agentpool-000001'
+      );
+      expect(result).not.toContain('kind=PartialObjectMetadata');
+      expect(mocks.clusterRequest).toHaveBeenCalledWith(
+        cleanedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Accept: expect.stringContaining('as=Table') }),
+        })
+      );
+    }
+  );
 
   it('extracts the collection kind from namespaced list URLs', async () => {
     mocks.clusterRequest.mockResolvedValue({

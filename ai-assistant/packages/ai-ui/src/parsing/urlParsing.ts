@@ -1,6 +1,9 @@
 /** Returns whether the URL targets a log endpoint. */
 export const isLogRequest = (url: string): boolean => {
-  return url.includes('/log?') || url.endsWith('/log') || url.includes('/log&');
+  const resourceSegments = getResourcePathSegments(url);
+  if (resourceSegments.length < 3) return false;
+  const subresource = resourceSegments[resourceSegments.length - 1];
+  return subresource === 'log' || subresource.startsWith('log&');
 };
 
 /**
@@ -11,6 +14,10 @@ export const isLogRequest = (url: string): boolean => {
  * @throws {TypeError} If the URL cannot be parsed; callers handle request setup errors.
  */
 export const isSpecificResourceRequestHelper = (url: string): boolean => {
+  return getResourcePathSegments(url).length >= 2;
+};
+
+function getResourcePathSegments(url: string): string[] {
   const segments = new URL(url, 'http://localhost').pathname.split('/').filter(Boolean);
   let resourceSegments =
     segments[0] === 'api'
@@ -26,10 +33,10 @@ export const isSpecificResourceRequestHelper = (url: string): boolean => {
       resourceSegments.length === 3 &&
       (resourceSegments[2] === 'status' || resourceSegments[2] === 'finalize')
     ) {
-      return true;
+      return resourceSegments;
     }
     resourceSegments = resourceSegments.slice(2);
   }
 
-  return resourceSegments.length >= 2;
-};
+  return resourceSegments;
+}

@@ -21,6 +21,28 @@ describe('isLogRequest', () => {
   it('returns false for /logs paths', () => {
     expect(isLogRequest('/api/v1/namespaces/default/pods/my-pod/logs')).toBe(false);
   });
+
+  it.each([
+    '/api/v1/pods/log',
+    '/api/v1/namespaces/default/pods/log',
+    '/api/v1/nodes/log',
+    '/api/v1/namespaces/log',
+    '/apis/example.com/v1/namespaces/default/log',
+    '/api/v1/pods?continue=token/log',
+    '/api/v1/pods?continue=token/log?details',
+    '/api/v1/pods?continue=token/log&limit=10',
+    '/api/v1/pods#notes/log',
+  ])('does not classify %s as a log endpoint', url => {
+    expect(isLogRequest(url)).toBe(false);
+  });
+
+  it.each([
+    '/api/v1/pods/my.pod/log?container=app',
+    '/api/v1/namespaces/default/pods/log/log?container=app',
+    'https://cluster.test/api/v1/namespaces/default/pods/my.pod/log?container=app#details',
+  ])('classifies the log subresource of %s', url => {
+    expect(isLogRequest(url)).toBe(true);
+  });
 });
 
 describe('isSpecificResourceRequestHelper', () => {
