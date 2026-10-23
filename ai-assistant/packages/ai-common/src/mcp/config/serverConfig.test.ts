@@ -76,6 +76,16 @@ describe('expandEnvAndResolvePaths', () => {
     expect(result).toEqual([arg]);
   });
 
+  it('preserves commas inside Docker destination paths', () => {
+    const arg = 'type=bind,src=/home/user/dir,dst=/data,with,commas';
+    expect(expandEnvAndResolvePaths([arg], null, 'linux')).toEqual([arg]);
+  });
+
+  it.each(['linux', 'win32'])('preserves empty Docker mount paths on %s', platform => {
+    const args = ['type=bind,src=,dst=/data', 'type=bind,src=/source,dst='];
+    expect(expandEnvAndResolvePaths(args, null, platform)).toEqual(args);
+  });
+
   it('normalizes docker bind args to the first src/dst pair', () => {
     expect(
       expandEnvAndResolvePaths(['--mount=type=bind,src=/a,b,dst=/c,dst=/d'], null, 'linux')
