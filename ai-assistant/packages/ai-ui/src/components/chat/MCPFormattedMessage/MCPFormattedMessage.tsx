@@ -5,6 +5,7 @@ import { Alert, Box, Paper, Typography } from '@mui/material';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toSafeFileName } from '../../../formatting/stringFormatting';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 import MCPOutputDisplay from '../../mcpOutput/MCPOutputDisplay/MCPOutputDisplay';
 
 /** Props for {@link MCPFormattedMessage}. */
@@ -223,7 +224,7 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
             icon={
               mcpContent.isError || mcpContent.mcpOutput.type === 'error'
                 ? 'mdi:alert-circle'
-                : 'mdi:robot'
+                : AI_ASSISTANT_ICON
             }
             style={{
               fontSize: 20,
@@ -268,7 +269,7 @@ const MCPFormattedMessage: React.FC<MCPFormattedMessageProps> = ({
           >
             <Typography variant="caption" color="text.secondary">
               <Icon
-                icon="mdi:sparkles"
+                icon={AI_ASSISTANT_ICON}
                 style={{ marginRight: 4, fontSize: 14 }}
                 aria-hidden="true"
               />

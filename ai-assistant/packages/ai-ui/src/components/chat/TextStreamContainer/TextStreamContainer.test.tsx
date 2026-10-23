@@ -109,6 +109,30 @@ it('contains overscroll within the conversation log', () => {
   ).toBe('contain');
 });
 
+it('places host diagnosis content inside the conversation scroll area', () => {
+  renderStream({ beforeMessages: <section aria-label="AI diagnoses">Diagnosis result</section> });
+
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  expect(log.contains(screen.getByRole('region', { name: 'AI diagnoses' }))).toBe(true);
+  expect(log.textContent).toContain('How do I list pods?');
+});
+
+it('supports Home and End in the focused scroll area without intercepting child controls', () => {
+  renderStream();
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn();
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  fireEvent.keyDown(log, { key: 'Home' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+  fireEvent.keyDown(log, { key: 'End' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 1000, behavior: 'smooth' });
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Open YAML' }), { key: 'Home' });
+  expect(scrollTo).toHaveBeenCalledTimes(2);
+});
+
 it('filters hidden messages and extracts validated tool follow-up text', () => {
   const history: ConversationMessage[] = [
     { role: 'system', content: 'hidden system' },

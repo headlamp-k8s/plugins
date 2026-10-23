@@ -14,6 +14,10 @@ The scenarios cover:
   global settings page, verifying the target cluster is shown before applying,
   and applying it to the assistant's cluster. The model response is stubbed;
   the Kubernetes write and read-back use the real KWOK API.
+- background diagnosis scrolling and compact results at desktop and small-window
+  sizes, stable reading position, drafting, pause/resume, queued-message priority,
+  retry/dismiss, event navigation, and visible cluster scope. AI responses are
+  fixture-backed; the host, event reads, and resource navigation are real.
 
 ## Run
 

@@ -69,6 +69,7 @@ import {
 import { Autocomplete } from '@mui/material';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 import {
   translateProviderDescription,
   translateProviderFieldDescription,
@@ -1334,7 +1335,7 @@ export default function ModelSelector({
               borderColor: 'divider',
             }}
           >
-            <Icon icon="mdi:robot-confused" width="48px" height="48px" style={{ opacity: 0.6 }} />
+            <Icon icon={AI_ASSISTANT_ICON} width="48px" height="48px" style={{ opacity: 0.6 }} />
             <Typography variant="body1" sx={{ mt: 2, mb: 1 }}>
               {t('No AI providers configured yet')}
             </Typography>
@@ -1410,7 +1411,7 @@ export default function ModelSelector({
                       </Box>
 
                       <Icon
-                        icon={savedProvider?.icon || 'mdi:robot'}
+                        icon={savedProvider?.icon || 'mdi:server'}
                         width="32px"
                         height="32px"
                         style={{ marginBottom: '8px' }}
