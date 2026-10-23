@@ -55,7 +55,7 @@ function findTrueCondition(job: TrainJobClass) {
   return (
     job.conditions.find(condition => condition.status === 'True' && condition.type === 'Failed') ??
     job.conditions.find(
-      condition => condition.status === 'True' && condition.type === 'Succeeded'
+      condition => condition.status === 'True' && condition.type === 'Complete'
     ) ??
     job.conditions.find(
       condition => condition.status === 'True' && condition.type === 'Suspended'
@@ -81,7 +81,7 @@ export function getTrainJobStatusInfo(job: TrainJobClass): KubeflowStatusBadgeIn
   const condition = findTrueCondition(job);
   const type = condition?.type ?? job.phase;
 
-  if (type === 'Succeeded') {
+  if (type === 'Complete' && condition?.status === 'True') {
     return {
       label: 'Succeeded',
       status: 'success',
@@ -123,6 +123,13 @@ export function getTrainJobStatusInfo(job: TrainJobClass): KubeflowStatusBadgeIn
     icon: 'mdi:clock-outline',
     reason: 'Waiting for runtime reconciliation',
   };
+}
+
+/**
+ * Whether a TrainJob still counts as running: not suspended, completed or failed.
+ */
+export function isTrainJobRunning(job: TrainJobClass): boolean {
+  return !job.suspended && !job.complete && job.phase !== 'Failed';
 }
 
 /**

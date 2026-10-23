@@ -92,6 +92,13 @@ export class TrainJobClass extends KubeObject<KubeflowTrainJob> {
     return !!this.spec.suspend;
   }
 
+  /** Whether the TrainJob finished successfully, i.e. its Complete condition is True. */
+  get complete(): boolean {
+    return this.conditions.some(
+      condition => condition.type === 'Complete' && condition.status === 'True'
+    );
+  }
+
   get managedBy(): string {
     return this.spec.managedBy ?? '';
   }
@@ -130,7 +137,7 @@ export class TrainJobClass extends KubeObject<KubeflowTrainJob> {
         condition => condition.status === 'True' && condition.type === 'Failed'
       ) ??
       this.conditions.find(
-        condition => condition.status === 'True' && condition.type === 'Succeeded'
+        condition => condition.status === 'True' && condition.type === 'Complete'
       ) ??
       this.conditions.find(
         condition => condition.status === 'True' && condition.type === 'Suspended'
