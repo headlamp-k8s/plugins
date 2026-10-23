@@ -18,6 +18,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
+| [dotnet-monitor](./dotnet-monitor) | Adds .NET diagnostics actions to Pod views for workloads running `dotnet-monitor` as a sidecar. | Feature branch work in progress. | [@jorisdebock](https://github.com/jorisdebock) |
 | [kueue](./kueue) | A UI for viewing Kueue Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads. | 0.1.0-alpha. | |
 | [knative](./knative) | A UI for viewing and managing Knative. | | [@kahirokunn](https://github.com/kahirokunn), [@mudit06mah](https://github.com/mudit06mah) |
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
