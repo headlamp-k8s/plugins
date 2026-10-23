@@ -3,6 +3,8 @@ import { ActionButton, ConfirmDialog } from '@kinvolk/headlamp-plugin/lib/compon
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useSnackbar } from 'notistack';
 import React from 'react';
+import { getSourceClassByPluralName } from '../common/Resources';
+import { getSourceNameAndPluralKind } from '../helpers';
 import { useSource } from '../sources/Source';
 
 function formatError(error: unknown): string {
@@ -14,6 +16,10 @@ function ForceReconciliationAction(props) {
   const { enqueueSnackbar } = useSnackbar();
   const [open, setOpen] = React.useState<boolean>(false);
   const { resource } = props;
+
+  if (!resource?.jsonData?.spec) {
+    return null;
+  }
 
   return (
     <>
@@ -157,7 +163,7 @@ function ResumeAction(props) {
   const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
-  if (!resource.jsonData.spec.suspend) {
+  if (!resource?.jsonData?.spec?.suspend) {
     return null;
   }
   return (
@@ -270,6 +276,16 @@ function SyncAction(props) {
 }
 
 function SyncWithSourceAction(props) {
+  const { resource } = props;
+  const { name, pluralKind } = getSourceNameAndPluralKind(resource);
+  const sourceResourceClass = name ? getSourceClassByPluralName(pluralKind) : undefined;
+
+  if (!sourceResourceClass) return null;
+
+  return <SyncWithSourceActionForSource resource={resource} />;
+}
+
+function SyncWithSourceActionForSource(props) {
   const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
