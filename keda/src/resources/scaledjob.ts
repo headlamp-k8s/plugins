@@ -5,6 +5,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubePodSpec } from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Conditions, KedaTrigger } from './common';
+import { jobBackoffLimitOrDefault, jobsHistoryLimitOrDefault } from './defaults';
 
 export interface JobTargetRef {
   parallelism?: number;
@@ -116,7 +117,7 @@ export class ScaledJob extends KubeObject<KedaScaledJob> {
   }
 
   get jobTargetBackoffLimit(): number {
-    return this.spec.jobTargetRef?.backoffLimit || 6;
+    return jobBackoffLimitOrDefault(this.spec.jobTargetRef?.backoffLimit);
   }
 
   get pollingInterval(): number {
@@ -124,11 +125,11 @@ export class ScaledJob extends KubeObject<KedaScaledJob> {
   }
 
   get successfulJobsHistoryLimit(): number {
-    return this.spec.successfulJobsHistoryLimit || 100;
+    return jobsHistoryLimitOrDefault(this.spec.successfulJobsHistoryLimit);
   }
 
   get failedJobsHistoryLimit(): number {
-    return this.spec.failedJobsHistoryLimit || 100;
+    return jobsHistoryLimitOrDefault(this.spec.failedJobsHistoryLimit);
   }
 
   get envSourceContainerName(): string {
