@@ -87,6 +87,8 @@ export interface ProactiveDiagnosisSectionProps {
   isPaused?: boolean;
   clusters?: string[];
   lastCheckedAt?: number | null;
+  /** Count from the last successful event read, not the number of visible cards. */
+  warningEventCount?: number | null;
   nextCheckAt?: number | null;
   checkError?: string | null;
   controlsDisabled?: boolean;
@@ -622,6 +624,7 @@ export default function ProactiveDiagnosisSection({
   isPaused = false,
   clusters = [],
   lastCheckedAt,
+  warningEventCount,
   nextCheckAt,
   checkError,
   controlsDisabled = false,
@@ -650,8 +653,13 @@ export default function ProactiveDiagnosisSection({
       return;
     }
     const frame = requestAnimationFrame(() => {
-      el.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
-      el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+      const header = el.querySelector<HTMLButtonElement>('button');
+      if (!header) return;
+      header.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'nearest',
+      });
+      header.focus({ preventScroll: true });
       setHighlightedEvent(scrollToEventUid);
       onScrollComplete();
     });
@@ -667,14 +675,29 @@ export default function ProactiveDiagnosisSection({
   const completedCount = diagnoses.filter(d => !d.loading && !d.pending).length;
   const failedCount = diagnoses.filter(d => d.error).length;
   const hasChecked = lastCheckedAt !== null && lastCheckedAt !== undefined;
+  const emptyMessage = isPaused
+    ? t('Resume background analysis to check events.')
+    : hasChecked
+    ? warningEventCount === 0
+      ? t('No warning events found in this scope.')
+      : t('No diagnoses to display.')
+    : t('Waiting for the first event check.');
   const latestDiagnosis = diagnoses.find(d => d.loading) ?? diagnoses[diagnoses.length - 1];
-  const announcement = latestDiagnosis
+  const announcement = checkError
+    ? t('Event check failed: {{message}}', { message: checkError })
+    : isPaused
+    ? isCycleRunning
+      ? t('Paused. The current analysis will finish.')
+      : t('Background analysis paused')
+    : latestDiagnosis
     ? t('Diagnosis for {{kind}} {{name}}: {{status}}', {
         kind: latestDiagnosis.event.objectKind,
         name: latestDiagnosis.event.objectName,
         status: translateStatusLabel(t, latestDiagnosis),
       })
-    : t('Proactive diagnosis is running');
+    : isCycleRunning
+    ? t('Proactive diagnosis is running')
+    : emptyMessage;
 
   return (
     <Box component="section" aria-labelledby={headingId} sx={{ mb: 2 }}>
@@ -780,11 +803,7 @@ export default function ProactiveDiagnosisSection({
       )}
       {diagnoses.length === 0 && !isCycleRunning && !checkError && (
         <Typography variant="body2" sx={{ px: 1, mb: 1 }}>
-          {isPaused
-            ? t('Resume background analysis to check events.')
-            : hasChecked
-            ? t('No warning events found in this scope.')
-            : t('Waiting for the first event check.')}
+          {emptyMessage}
         </Typography>
       )}
       <Typography variant="body2" color="text.secondary" sx={{ px: 1, mb: 1 }}>
@@ -833,6 +852,7 @@ export default function ProactiveDiagnosisSection({
               sx={{
                 width: '100%',
                 textAlign: 'left',
+                scrollMarginBlock: theme.spacing(1),
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,

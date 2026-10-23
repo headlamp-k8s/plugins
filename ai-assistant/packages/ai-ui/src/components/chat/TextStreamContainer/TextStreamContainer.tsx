@@ -157,6 +157,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
+  const userScrollVersionRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   // State to track if user has scrolled up
@@ -197,6 +198,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   }, []);
 
   const scrollToBottom = useCallback(() => {
+    userScrollVersionRef.current++;
     wasNearBottomRef.current = true;
     markProgrammaticScroll();
     if (containerRef.current) {
@@ -278,6 +280,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         return;
       }
       const nearBottom = isNearBottom();
+      userScrollVersionRef.current++;
       wasNearBottomRef.current = nearBottom;
       setShowScrollButton(!nearBottom);
     }
@@ -286,6 +289,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
     const timeouts: ReturnType<typeof setTimeout>[] = [];
+    const scrollVersion = userScrollVersionRef.current;
     let latestUserIndex = -1;
     for (let index = history.length - 1; index >= 0; index--) {
       if (history[index].role === 'user') {
@@ -305,14 +309,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       // Keep the newly submitted user message visible at the top of the log.
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (wasNearBottomRef.current) {
       // For non-user messages when near bottom, scroll to show at least 60% of new message
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (history.length > 0) {
@@ -328,7 +332,10 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     previousIsLoadingRef.current = isLoading;
     if (loadingStarted && wasNearBottomRef.current) {
       // Small delay to ensure content has rendered
-      const timeout = setTimeout(scrollToShowNewMessage, 100);
+      const scrollVersion = userScrollVersionRef.current;
+      const timeout = setTimeout(() => {
+        if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
+      }, 100);
       return () => clearTimeout(timeout);
     }
   }, [isLoading, scrollToShowNewMessage]);
@@ -569,6 +576,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           if (event.target !== event.currentTarget || event.altKey || event.metaKey) return;
           if (event.key !== 'Home' && event.key !== 'End') return;
           event.preventDefault();
+          userScrollVersionRef.current++;
+          const nearBottom =
+            event.key === 'End' ||
+            event.currentTarget.scrollHeight <= event.currentTarget.clientHeight;
+          wasNearBottomRef.current = nearBottom;
+          setShowScrollButton(!nearBottom);
           markProgrammaticScroll();
           scrollElementTo(
             event.currentTarget,

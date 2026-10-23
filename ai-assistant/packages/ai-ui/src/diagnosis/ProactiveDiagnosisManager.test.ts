@@ -79,6 +79,153 @@ describe('ProactiveDiagnosisManager', () => {
     });
   });
 
+  it('resumes the background backlog after active and queued manual analyses, without overlap', async () => {
+    const first = deferred<string>();
+    const manual = deferred<string>();
+    const calls: string[] = [];
+    let active = 0;
+    let maxActive = 0;
+    manager.setDiagnoseFn(async prompt => {
+      const uid = /^- \*\*Event UID:\*\* (.+)$/m.exec(prompt)?.[1];
+      if (!uid) throw new Error('Prompt has no event UID');
+      calls.push(uid);
+      active++;
+      maxActive = Math.max(maxActive, active);
+      try {
+        if (uid === 'first') return await first.promise;
+        if (uid === 'manual') return await manual.promise;
+        return `result for ${uid}`;
+      } finally {
+        active--;
+      }
+    });
+    const cycle = manager.diagnoseEvents([
+      createEvent({ uid: 'first', objectName: 'first-workload' }),
+      createEvent({ uid: 'background', objectName: 'background-workload' }),
+    ]);
+    manager.pause();
+    first.resolve('first result');
+    await cycle;
+    const manualRun = manager.diagnoseSingleEvent(
+      createEvent({ uid: 'manual', objectName: 'manual-workload' })
+    );
+    const queuedRun = manager.diagnoseSingleEvent(
+      createEvent({ uid: 'queued', objectName: 'queued-workload' })
+    );
+    await manager.resume();
+    expect(calls).toEqual(['first', 'manual']);
+    manual.resolve('manual result');
+    await Promise.all([manualRun, queuedRun]);
+    await vi.waitFor(() =>
+      expect(manager.getDiagnosis('background')).toMatchObject({
+        pending: false,
+        diagnosis: 'result for background',
+      })
+    );
+    expect(calls).toEqual(['first', 'manual', 'queued', 'background']);
+    expect(maxActive).toBe(1);
+  });
+
+  it.each(['pause', 'stop', 'clear'] as const)(
+    'does not resume background work after %s while a manual analysis finishes',
+    async action => {
+      const first = deferred<string>();
+      const manual = deferred<string>();
+      const diagnose = vi
+        .fn()
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(manual.promise)
+        .mockResolvedValue('unexpected background work');
+      manager.setDiagnoseFn(diagnose);
+      const cycle = manager.diagnoseEvents([
+        createEvent(),
+        createEvent({ uid: 'background', objectName: 'other-workload' }),
+      ]);
+      manager.pause();
+      first.resolve('first result');
+      await cycle;
+      const manualRun = manager.diagnoseSingleEvent(
+        createEvent({ uid: 'manual', objectName: 'manual-workload' })
+      );
+      await manager.resume();
+      if (action === 'pause') manager.pause();
+      else if (action === 'stop') manager.stop();
+      else manager.clearCache();
+      manual.resolve('manual result');
+      await manualRun;
+      expect(diagnose).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('retains a resumed backlog until the diagnosis provider becomes available', async () => {
+    const first = deferred<string>();
+    manager.setDiagnoseFn(() => first.promise);
+    const cycle = manager.diagnoseEvents([
+      createEvent(),
+      createEvent({ uid: 'background', objectName: 'other-workload' }),
+    ]);
+    manager.pause();
+    first.resolve('first result');
+    await cycle;
+    manager.setDiagnoseFn(null);
+    await manager.resume();
+    expect(manager.getDiagnosis('background')?.pending).toBe(true);
+    const provider = vi.fn(async () => 'resumed result');
+    manager.setDiagnoseFn(provider);
+    await vi.waitFor(() =>
+      expect(manager.getDiagnosis('background')?.diagnosis).toBe('resumed result')
+    );
+    expect(provider).toHaveBeenCalledTimes(1);
+  });
+
+  it('defers queued retries for chat priority and restarts them only on resume', async () => {
+    const first = deferred<string>();
+    const diagnose = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('retried result');
+    manager.setDiagnoseFn(diagnose);
+    const firstRun = manager.diagnoseSingleEvent(createEvent({ uid: 'first' }), true);
+    const secondRun = manager.diagnoseSingleEvent(createEvent({ uid: 'second' }), true);
+    const thirdRun = manager.diagnoseSingleEvent(createEvent({ uid: 'third' }), true);
+    const idle = manager.pauseAndWaitForIdle();
+    first.resolve('first result');
+    await Promise.all([firstRun, idle]);
+    expect(diagnose).toHaveBeenCalledTimes(1);
+    expect(manager.isRunning()).toBe(false);
+    expect(manager.getDiagnosis('second')?.pending).toBe(true);
+    expect(manager.getDiagnosis('third')?.pending).toBe(true);
+    await manager.resume();
+    await Promise.all([secondRun, thirdRun]);
+    expect(diagnose).toHaveBeenCalledTimes(3);
+  });
+
+  it('allows fresh explicit analyses while paused but a new pause defers already-queued requests', async () => {
+    const first = deferred<string>();
+    const fresh = deferred<string>();
+    const diagnose = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(fresh.promise)
+      .mockResolvedValue('resumed result');
+    manager.setDiagnoseFn(diagnose);
+    const firstRun = manager.diagnoseSingleEvent(createEvent({ uid: 'first' }), true);
+    const deferredRun = manager.diagnoseSingleEvent(createEvent({ uid: 'deferred' }), true);
+    manager.pause();
+    const freshRun = manager.diagnoseSingleEvent(createEvent({ uid: 'fresh' }), true);
+    first.resolve('first result');
+    await firstRun;
+    await vi.waitFor(() => expect(diagnose).toHaveBeenCalledTimes(2));
+    expect(manager.getDiagnosis('fresh')?.loading).toBe(true);
+    expect(manager.getDiagnosis('deferred')?.pending).toBe(true);
+    const newerRun = manager.diagnoseSingleEvent(createEvent({ uid: 'newer' }), true);
+    const idle = manager.pauseAndWaitForIdle();
+    fresh.resolve('fresh result');
+    await Promise.all([freshRun, idle]);
+    expect(diagnose).toHaveBeenCalledTimes(2);
+    expect(manager.getDiagnosis('newer')?.pending).toBe(true);
+    await manager.resume();
+    await Promise.all([deferredRun, newerRun]);
+    expect(diagnose).toHaveBeenCalledTimes(4);
+  });
+
   it('removes idle listeners when a queued chat message is cancelled without aborting analysis', async () => {
     const pending = deferred<string>();
     manager.setDiagnoseFn(() => pending.promise);

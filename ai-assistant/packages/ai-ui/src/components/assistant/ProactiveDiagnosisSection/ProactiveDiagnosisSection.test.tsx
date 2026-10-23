@@ -55,15 +55,38 @@ function expandDiagnoses() {
 
 it('distinguishes waiting for a check from finding no warning events', () => {
   const { rerender } = render(<ProactiveDiagnosisSection {...baseDiagnosisArgs} />);
-  expect(screen.getByText('Waiting for the first event check.')).toBeTruthy();
+  expect(screen.getByText('Waiting for the first event check.', { selector: 'p' })).toBeTruthy();
   expect(screen.queryByText('No warning events found in this scope.')).toBeNull();
-  rerender(<ProactiveDiagnosisSection {...baseDiagnosisArgs} lastCheckedAt={0} />);
-  expect(screen.getByText('No warning events found in this scope.')).toBeTruthy();
+  rerender(
+    <ProactiveDiagnosisSection {...baseDiagnosisArgs} lastCheckedAt={0} warningEventCount={0} />
+  );
+  expect(
+    screen.getByText('No warning events found in this scope.', { selector: 'p' })
+  ).toBeTruthy();
+  rerender(
+    <ProactiveDiagnosisSection {...baseDiagnosisArgs} lastCheckedAt={1} warningEventCount={3} />
+  );
+  expect(screen.getByText('No diagnoses to display.', { selector: 'p' })).toBeTruthy();
+  expect(screen.queryByText('No warning events found in this scope.')).toBeNull();
   rerender(
     <ProactiveDiagnosisSection {...baseDiagnosisArgs} lastCheckedAt={1} checkError="Forbidden" />
   );
   expect(screen.getByRole('alert').textContent).toBe('Forbidden');
   expect(screen.queryByText('No warning events found in this scope.')).toBeNull();
+});
+
+it.each([
+  { isPaused: true, isCycleRunning: false, expected: 'Background analysis paused' },
+  { isPaused: true, isCycleRunning: true, expected: 'Paused. The current analysis will finish.' },
+  { isPaused: false, isCycleRunning: true, expected: 'Proactive diagnosis is running' },
+  { isPaused: false, isCycleRunning: false, expected: 'Waiting for the first event check.' },
+  { lastCheckedAt: 0, warningEventCount: 0, expected: 'No warning events found in this scope.' },
+  { lastCheckedAt: 1, warningEventCount: 3, expected: 'No diagnoses to display.' },
+  { checkError: 'Forbidden', expected: 'Event check failed: Forbidden' },
+  { checkError: 'Forbidden', isPaused: true, expected: 'Event check failed: Forbidden' },
+])('exposes accurate empty-state status: $expected', ({ expected, ...state }) => {
+  render(<ProactiveDiagnosisSection {...baseDiagnosisArgs} {...state} />);
+  expect(screen.getByRole('status').textContent).toBe(expected);
 });
 
 it('renders a labeled running section, progress, pending rows, and passes axe', async () => {
@@ -258,6 +281,7 @@ it('retains a missing scroll target until its card mounts, expands, and receives
   await waitFor(() => expect(onScrollComplete).toHaveBeenCalledOnce());
   expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   const button = screen.getByRole('button', { name: /^Pod\// });
+  expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([button]);
   expect(button.getAttribute('aria-expanded')).toBe('true');
   expect(document.activeElement).toBe(button);
 });
