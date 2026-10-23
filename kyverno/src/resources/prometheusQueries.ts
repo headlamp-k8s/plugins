@@ -116,3 +116,38 @@ export function withGapMarkers(data: ChartDataPoint[], stepSeconds: number): Cha
     return [point];
   });
 }
+
+// Decides whether a sibling "sum(increase(...)) or vector(0)" value query's result is trustworthy,
+// from two checks against the same metric: `coverageRes`, a `min(count_over_time(metric[window]))`
+// query, and `baselineRes`, a `count(metric offset window)` query.
+//
+// Coverage alone (>= 2 samples somewhere inside the window) isn't enough: a counter Kyverno only
+// lazily registers on its first real event (confirmed in this plugin's own PR description) can
+// satisfy "two samples within the window" on the very first two scrapes right after being created
+// mid-window, both holding its just-created value, e.g. a brand new "request_allowed=false" series
+// scraped twice in a row at value 1. increase() over two identical-valued samples returns 0,
+// there's no earlier sample to measure the jump from implicit-absent to that first value against,
+// so a real denial still inside the window reads as a confident, wrong 0. baselineRes, queried
+// with Prometheus's `offset` modifier, confirms a sample already existed *before* the window
+// started, a genuine baseline the window's own increase() can be measured against, not just that
+// the window happens to contain two points.
+//
+// `instantValue` reads null from an empty result on either query, which happens when no series
+// currently matches the underlying metric at all. For coverageRes specifically that's a different
+// situation from a matching series existing with too few samples (a real number below 2), and the
+// two can't be treated the same way: whether an absent series still counts as "fine" depends on
+// whether the caller has some other, independent way to confirm the metric's own controller is
+// actually being scraped (see each call site's own allowAbsent comment). An absent baselineRes, by
+// contrast, always means "unavailable": it only argues a series predates the window, it never
+// argues the opposite, so coverage existing inside the window while no baseline predates it is
+// exactly the newly-appearing-counter case this function exists to catch.
+export function hasReliableIncrease(
+  coverageRes: PrometheusResponse,
+  baselineRes: PrometheusResponse,
+  allowAbsent: boolean
+): boolean {
+  const coverage = instantValue(coverageRes);
+  if (coverage === null) return allowAbsent;
+  if (coverage < 2) return false;
+  return (instantValue(baselineRes) ?? 0) > 0;
+}

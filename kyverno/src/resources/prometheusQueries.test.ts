@@ -15,7 +15,22 @@
  */
 
 import { describe, expect, test } from 'vitest';
-import { ChartDataPoint, withGapMarkers } from './prometheusQueries';
+import {
+  ChartDataPoint,
+  hasReliableIncrease,
+  PrometheusResponse,
+  withGapMarkers,
+} from './prometheusQueries';
+
+// Builds the shape an instant query's (`min(count_over_time(...))` or `count(... offset ...)`)
+// response takes, with a single scalar-like result value, or no result at all for an absent
+// series.
+function instantResult(value: number | undefined): PrometheusResponse {
+  if (value === undefined) {
+    return { status: 'success', data: { result: [] } };
+  }
+  return { status: 'success', data: { result: [{ value: [0, String(value)] }] } };
+}
 
 describe('withGapMarkers', () => {
   const STEP = 30;
@@ -80,5 +95,34 @@ describe('withGapMarkers', () => {
       { timestamp: 360, y: null },
       { timestamp: 600, y: 4 },
     ]);
+  });
+});
+
+describe('hasReliableIncrease', () => {
+  test('rejects a newly appearing counter whose first two scrapes both hold the same value, found via Copilot review', () => {
+    // Two samples (coverage == 2) is normally considered enough for increase() to produce a
+    // value, but a lazily registered series' first two scrapes can both hold its just-created
+    // value (e.g. the first denial creates the "request_allowed=false" series at 1, which is
+    // still 1 on the next scrape), and increase() over that returns 0, masking a real event.
+    // baselineRes (count(metric offset window)) is empty here: no sample existed before the
+    // window, confirming this series is new rather than merely quiet.
+    expect(hasReliableIncrease(instantResult(2), instantResult(undefined), true)).toBe(false);
+  });
+
+  test('trusts a series with coverage and a baseline predating the window', () => {
+    expect(hasReliableIncrease(instantResult(2), instantResult(1), true)).toBe(true);
+  });
+
+  test('rejects a series with fewer than two samples in the window regardless of baseline', () => {
+    expect(hasReliableIncrease(instantResult(1), instantResult(1), true)).toBe(false);
+  });
+
+  test('allowAbsent decides whether a totally absent series is trusted as a real zero', () => {
+    expect(hasReliableIncrease(instantResult(undefined), instantResult(undefined), true)).toBe(
+      true
+    );
+    expect(hasReliableIncrease(instantResult(undefined), instantResult(undefined), false)).toBe(
+      false
+    );
   });
 });

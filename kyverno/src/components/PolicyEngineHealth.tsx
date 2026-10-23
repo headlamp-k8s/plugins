@@ -40,8 +40,8 @@ import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy'
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import {
   ChartDataPoint,
+  hasReliableIncrease,
   instantValue,
-  PrometheusResponse,
   queryInstant,
   queryRange,
   rangeSeries,
@@ -96,20 +96,6 @@ interface HealthQueries {
 
 type FetchState = 'loading' | 'error' | 'success';
 
-// Decides whether a `min(count_over_time(metric[window]))` coverage query establishes enough
-// sample history to trust a sibling "sum(increase(...)) or vector(0)" value query's result.
-// `instantValue` reads null from an empty result, which happens when no series currently matches
-// the underlying metric at all, that's a different situation from a matching series existing with
-// too few samples (a real number below 2), and the two can't be treated the same way: whether an
-// absent series still counts as "fine" depends on whether the caller has some other, independent
-// way to confirm the metric's own controller is actually being scraped (see the allowAbsent
-// comment at each call site in fetchHealth below).
-function hasFullCoverage(res: PrometheusResponse, allowAbsent: boolean): boolean {
-  const min = instantValue(res);
-  if (min === null) return allowAbsent;
-  return min >= 2;
-}
-
 async function fetchHealth(prefix: string): Promise<HealthQueries> {
   const now = Math.floor(Date.now() / 1000);
 
@@ -119,11 +105,14 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRateRes,
     denyCountRes,
     denyCoverageRes,
+    denyBaselineRes,
     hasBreakerMetricsRes,
     breakerTripsRes,
     breakerCoverageRes,
+    breakerBaselineRes,
     requeueCountRes,
     requeueCoverageRes,
+    requeueBaselineRes,
     latencyRes,
   ] = await Promise.all([
     // kyverno_info is emitted by every Kyverno controller unconditionally, even with zero
@@ -164,6 +153,12 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
       prefix,
       'min(count_over_time(kyverno_admission_requests_total{request_allowed="false"}[5m]))'
     ),
+    // Baseline check for the same query, see hasReliableIncrease's comment for why coverage alone
+    // isn't enough to trust increase() on a lazily registered series.
+    queryInstant(
+      prefix,
+      'count(kyverno_admission_requests_total{request_allowed="false"} offset 5m)'
+    ),
     // See the comment on hasBreakerMetrics in HealthQueries.
     queryInstant(prefix, 'count(kyverno_breaker_total)'),
     // kyverno_breaker_total counts every breaker invocation unconditionally, confirmed against
@@ -179,6 +174,8 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // entirely) is scraped, it says nothing about how many samples the drops counter's own series
     // have accumulated.
     queryInstant(prefix, 'min(count_over_time(kyverno_breaker_drops_total[1h]))'),
+    // Same baseline reasoning as denyBaselineRes above, scoped to kyverno_breaker_drops_total.
+    queryInstant(prefix, 'count(kyverno_breaker_drops_total offset 1h)'),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
     // Requeues has no equivalent of hasAdmissionMetrics/hasBreakerMetrics: kyverno_info only
     // proves *some* Kyverno controller is scraped, not specifically the one that would emit
@@ -189,6 +186,8 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // an empty result here has to stay unavailable rather than trusted as a real 0, see
     // hasFullCoverage's `allowAbsent` parameter below.
     queryInstant(prefix, 'min(count_over_time(kyverno_controller_requeue_total[1h]))'),
+    // Same baseline reasoning as denyBaselineRes above, scoped to kyverno_controller_requeue_total.
+    queryInstant(prefix, 'count(kyverno_controller_requeue_total offset 1h)'),
     queryRange(
       prefix,
       'histogram_quantile(0.95, sum(rate(kyverno_admission_review_duration_seconds_bucket[5m])) by (le))',
@@ -207,27 +206,30 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // Falls back to null (unavailable), not the "or vector(0)" value, whenever the admission
     // controller itself isn't confirmed scraped, see the comment on hasAdmissionMetrics.
     requestRate: hasAdmissionMetrics ? instantValue(requestRateRes) : null,
-    // Also requires denyCoverageRes to confirm every matching series has enough samples, see the
-    // comment on that query. An absent denial series (allowAbsent: true) is still trusted as a
-    // real 0 here, hasAdmissionMetrics has already confirmed the admission controller itself is
-    // scraped, so "no series for request_allowed=false" genuinely means "nothing denied yet",
-    // not "unscraped".
+    // Also requires denyCoverageRes/denyBaselineRes to confirm every matching series has enough
+    // samples AND predates the window, see hasReliableIncrease's comment. An absent denial series
+    // (allowAbsent: true) is still trusted as a real 0 here, hasAdmissionMetrics has already
+    // confirmed the admission controller itself is scraped, so "no series for
+    // request_allowed=false" genuinely means "nothing denied yet", not "unscraped".
     denyCount:
-      hasAdmissionMetrics && hasFullCoverage(denyCoverageRes, true)
+      hasAdmissionMetrics && hasReliableIncrease(denyCoverageRes, denyBaselineRes, true)
         ? instantValue(denyCountRes)
         : null,
     hasBreakerMetrics,
-    // Same reasoning as denyCount above, scoped to breakerCoverageRes: an absent drops series is
-    // trusted as a real 0 once hasBreakerMetrics has confirmed a breaker is scraped somewhere.
+    // Same reasoning as denyCount above, scoped to breakerCoverageRes/breakerBaselineRes: an
+    // absent drops series is trusted as a real 0 once hasBreakerMetrics has confirmed a breaker is
+    // scraped somewhere.
     breakerTrips:
-      hasBreakerMetrics && hasFullCoverage(breakerCoverageRes, true)
+      hasBreakerMetrics && hasReliableIncrease(breakerCoverageRes, breakerBaselineRes, true)
         ? instantValue(breakerTripsRes)
         : null,
     // allowAbsent: false here, unlike denyCount/breakerTrips above: see the comment on
     // requeueCoverageRes for why an absent series can't be trusted as a real 0 for this one
     // specifically, there's no independent signal confirming the requeue-emitting controller is
     // actually scraped the way hasAdmissionMetrics/hasBreakerMetrics provide for the other two.
-    requeueCount: hasFullCoverage(requeueCoverageRes, false) ? instantValue(requeueCountRes) : null,
+    requeueCount: hasReliableIncrease(requeueCoverageRes, requeueBaselineRes, false)
+      ? instantValue(requeueCountRes)
+      : null,
     // Not gated on hasAdmissionMetrics like requestRate/denyCount above: this is a *range* query
     // over the last hour, so it can still hold genuine samples from before the admission
     // controller stopped being scraped even while the instant canary reads empty right now.
@@ -394,6 +396,18 @@ export function PolicyEngineHealth() {
         continue;
       }
       for (const policy of list) {
+        // CleanupPolicy/ClusterCleanupPolicy's `ready` reads false both for a genuinely broken
+        // policy and for a perfectly healthy one Kyverno simply never set a Ready condition on
+        // (see the comment on CleanupPolicyBase.readyUnknown), so a confirmed-false `ready` alone
+        // isn't enough to count it as not-ready for these two kinds specifically; fall back to the
+        // tile's existing unknown handling instead of a false positive.
+        if (
+          (policy instanceof CleanupPolicy || policy instanceof ClusterCleanupPolicy) &&
+          policy.readyUnknown
+        ) {
+          unknown = true;
+          continue;
+        }
         if (!policy.ready) count++;
       }
     }
