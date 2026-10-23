@@ -8,7 +8,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
-import { Cohort } from '../../resources/cohort';
+import { buildCohortTrees, Cohort } from '../../resources/cohort';
 import { getChildCohorts, getCohortClusterQueues } from '../../resources/cohortRelations';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
@@ -17,6 +17,7 @@ import {
   renderParentCohortLink,
   renderResourceFlavorLink,
 } from '../common/KueueResourceLinks';
+import { CohortTreeView } from './CohortTree';
 
 /** Build the detail section that shows spec.resourceGroups as a table. */
 function getResourceGroupsSection(cohort: Cohort) {
@@ -229,6 +230,78 @@ function getMemberClusterQueuesSection(
 }
 
 /** Detail view for a cluster-scoped Kueue Cohort resource. */
+function getCohortTreeSection(
+  cohort: Cohort,
+  clusterQueues: ClusterQueue[] | null,
+  clusterQueuesError: unknown,
+  cohorts: Cohort[] | null,
+  cohortsError: unknown
+) {
+  if (clusterQueuesError || cohortsError) {
+    return {
+      id: 'cohort-tree',
+      section: (
+        <SectionBox title="Cohort Relationship Tree">
+          <EmptyContent color="text.secondary">
+            Cohort relationship tree is unavailable.
+          </EmptyContent>
+        </SectionBox>
+      ),
+    };
+  }
+
+  if (!clusterQueues || !cohorts) {
+    return {
+      id: 'cohort-tree',
+      section: <Loader title="Loading Cohort relationship tree..." />,
+    };
+  }
+
+  const trees = buildCohortTrees(clusterQueues, cohorts);
+  const findRootContaining = (
+    nodes: typeof trees,
+    cohortName: string
+  ): (typeof trees)[number] | undefined => {
+    for (const root of nodes) {
+      if (root.name === cohortName) return root;
+      const visited = new Set<string>();
+      const hasDescendant = (node: (typeof trees)[number]): boolean => {
+        if (visited.has(node.name)) return false;
+        visited.add(node.name);
+        for (const child of node.children ?? []) {
+          if (child.name === cohortName) return true;
+          if (hasDescendant(child)) return true;
+        }
+        return false;
+      };
+      if (hasDescendant(root)) return root;
+    }
+    return undefined;
+  };
+  const matchingTree = findRootContaining(trees, cohort.metadata.name) || {
+    name: cohort.metadata.name,
+    parentName: cohort.spec.parentName,
+    members: getCohortClusterQueues(clusterQueues, cohort.metadata.name).map(cq => ({
+      name: cq.metadata.name,
+      cohort: cohort.metadata.name,
+    })),
+    children: getChildCohorts(cohorts, cohort.metadata.name).map(c => ({
+      name: c.metadata.name,
+      parentName: cohort.metadata.name,
+      members: getCohortClusterQueues(clusterQueues, c.metadata.name).map(cq => ({
+        name: cq.metadata.name,
+        cohort: c.metadata.name,
+      })),
+      children: [],
+    })),
+  };
+
+  return {
+    id: 'cohort-tree',
+    section: <CohortTreeView cohort={matchingTree} />,
+  };
+}
+
 export default function CohortDetail() {
   const { name } = useParams<{ name: string }>();
   const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
@@ -273,6 +346,13 @@ export default function CohortDetail() {
                 getReferencedFlavorsSection(cohort),
                 getChildCohortsSection(cohort, cohorts, cohortsError),
                 getMemberClusterQueuesSection(cohort, clusterQueues, clusterQueuesError),
+                getCohortTreeSection(
+                  cohort,
+                  clusterQueues,
+                  clusterQueuesError,
+                  cohorts,
+                  cohortsError
+                ),
               ].filter(Boolean)
             : []
         }
