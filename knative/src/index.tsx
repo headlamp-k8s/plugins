@@ -28,8 +28,10 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrokerDetail } from './components/brokers/Detail';
+import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { SubscriptionDetail } from './components/subscriptions/Detail';
 import { TriggerDetail } from './components/triggers/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
@@ -37,7 +39,12 @@ import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
-import { KnativeBroker, KnativeTrigger } from './resources/knative';
+import {
+  KnativeBroker,
+  KnativeChannel,
+  KnativeSubscription,
+  KnativeTrigger,
+} from './resources/knative';
 import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
@@ -118,6 +125,20 @@ registerRoute({
   sidebar: 'knative-triggers',
   name: KnativeTrigger.detailsRoute,
   component: withQueryClient(TriggerDetail),
+});
+
+registerRoute({
+  path: '/knative/channels/:namespace/:name',
+  sidebar: 'knative-channels',
+  name: KnativeChannel.detailsRoute,
+  component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: '/knative/subscriptions/:namespace/:name',
+  sidebar: 'knative-subscriptions',
+  name: KnativeSubscription.detailsRoute,
+  component: withQueryClient(SubscriptionDetail),
 });
 
 knativeNavigationItems.forEach(item => {

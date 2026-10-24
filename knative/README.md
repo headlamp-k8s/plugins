@@ -66,6 +66,11 @@ Selecting a Broker or Trigger opens its detail page. A Broker's page shows its c
 settings ConfigMap; a Trigger's page shows its Broker, filter, subscriber, and the URI the
 subscriber resolved to. Both show conditions and events.
 
+Selecting a Channel or Subscription opens its detail page. A Channel's page shows its backing
+Channel, address, and Subscriptions with the state of each; a Subscription's page shows its
+Channel, subscriber, reply, and the endpoints Knative resolved for them. Both show conditions and
+events.
+
 ## Resource Map
 
 Application owners and Serving troubleshooters use Headlamp's Map to see how a Service expands
