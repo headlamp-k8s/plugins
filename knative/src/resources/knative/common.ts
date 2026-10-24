@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-type ConditionStatus = 'True' | 'False' | 'Unknown';
+/** Whether a condition holds: `True`, `False` or `Unknown`. */
+export type ConditionStatus = 'True' | 'False' | 'Unknown';
 
 /** One observation of a Knative resource's current state. */
 export interface Condition {

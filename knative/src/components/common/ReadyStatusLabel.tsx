@@ -16,9 +16,10 @@
 
 import { LightTooltip, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box } from '@mui/material';
+import type { ConditionStatus } from '../../resources/knative/common';
 
 interface ReadyStatusLabelProps {
-  status: 'True' | 'False' | 'Unknown';
+  status: ConditionStatus;
   reason?: string;
   message?: string;
   isReadyType?: boolean;

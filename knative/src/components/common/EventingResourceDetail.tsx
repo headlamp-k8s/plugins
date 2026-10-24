@@ -17,6 +17,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid, type NameValueTableRow } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import type { ConditionedStatus } from '../../resources/knative/conditionedResource';
@@ -25,10 +26,11 @@ import { NotInstalledBanner } from './NotInstalledBanner';
 
 /**
  * Shows the detail page of a Knative Eventing resource: its metadata, the caller's rows, its
- * conditions and its events, or a banner when Knative Eventing is not installed in the cluster the
- * page is for.
+ * conditions, the caller's sections and its events, or a banner when Knative Eventing is not
+ * installed in the cluster the page is for.
  *
- * @param props - The resource class to load, and the rows to show once the resource is loaded.
+ * @param props - The resource class to load, and the rows and sections to show once the resource
+ * is loaded.
  * @returns The detail page, or the banner.
  */
 export function EventingResourceDetail<
@@ -36,11 +38,19 @@ export function EventingResourceDetail<
 >({
   resourceType,
   extraInfo,
+  extraSections,
 }: {
   /** The resource class to load. */
   resourceType: T;
   /** Builds the rows shown below the metadata. */
   extraInfo: (item: InstanceType<T>) => NameValueTableRow[];
+  /** Builds the sections shown after the conditions, each with an `id` unique on the page. */
+  extraSections?: (item: InstanceType<T>) => {
+    /** Identifies the section on the page. */
+    id: string;
+    /** The section's content. */
+    section: ReactNode;
+  }[];
 }) {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const cluster = K8s.useCluster();
@@ -62,13 +72,16 @@ export function EventingResourceDetail<
       withEvents
       extraInfo={item => (item ? extraInfo(item) : null)}
       extraSections={item => {
-        const conditions = item?.status?.conditions;
-        if (!conditions) return [];
+        if (!item) return [];
+        const conditions = item.status?.conditions;
+        const extra = extraSections?.(item) ?? [];
+        if (!conditions) return extra;
         return [
           {
             id: `knative.${resourceType.kind.toLowerCase()}-conditions`,
             section: <ConditionsSection conditions={conditions} />,
           },
+          ...extra,
         ];
       }}
     />
