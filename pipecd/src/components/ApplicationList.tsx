@@ -260,7 +260,7 @@ export function ApplicationList(): JSX.Element {
 
       {loading && <LoadingSkeleton />}
 
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && !error && lastFetched !== null && filtered.length === 0 && (
         <Box textAlign="center" py={8}>
           <Typography color="text.secondary" mb={1}>
             {apps.length === 0
