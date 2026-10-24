@@ -24,6 +24,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Stands in for i18next's `t`: fills `{{name}}` placeholders and returns the key. */
+function t(key: string, options: Record<string, unknown> = {}): string {
+  return key.replace(/{{(\w+)}}/g, (_, name) => String(options[name]));
+}
+
 function freezeClock(): void {
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
@@ -50,22 +55,22 @@ describe('formatTimestamp', () => {
 
 describe('relativeTime', () => {
   it('returns a placeholder for missing or zero timestamps', () => {
-    expect(relativeTime(undefined)).toBe(EMPTY);
-    expect(relativeTime(0)).toBe(EMPTY);
+    expect(relativeTime(undefined, t)).toBe(EMPTY);
+    expect(relativeTime(0, t)).toBe(EMPTY);
   });
 
   it('describes a timestamp from seconds ago as "just now"', () => {
     freezeClock();
 
-    expect(relativeTime(NOW / 1000 - 30)).toBe('just now');
+    expect(relativeTime(NOW / 1000 - 30, t)).toBe('just now');
   });
 
   it('describes minutes, hours and days', () => {
     freezeClock();
 
-    expect(relativeTime(NOW / 1000 - 5 * 60)).toBe('5m ago');
-    expect(relativeTime(NOW / 1000 - 3 * 60 * 60)).toBe('3h ago');
-    expect(relativeTime(NOW / 1000 - 2 * 24 * 60 * 60)).toBe('2d ago');
+    expect(relativeTime(NOW / 1000 - 5 * 60, t)).toBe('5m ago');
+    expect(relativeTime(NOW / 1000 - 3 * 60 * 60, t)).toBe('3h ago');
+    expect(relativeTime(NOW / 1000 - 2 * 24 * 60 * 60, t)).toBe('2d ago');
   });
 });
 

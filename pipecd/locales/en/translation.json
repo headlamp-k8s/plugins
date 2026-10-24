@@ -49,5 +49,9 @@
   "Synced": "Synced",
   "Deploying": "Deploying",
   "Out of Sync": "Out of Sync",
-  "Invalid Config": "Invalid Config"
+  "Invalid Config": "Invalid Config",
+  "just now": "just now",
+  "{{minutes}}m ago": "{{minutes}}m ago",
+  "{{hours}}h ago": "{{hours}}h ago",
+  "{{days}}d ago": "{{days}}d ago"
 }

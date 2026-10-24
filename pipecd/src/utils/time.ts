@@ -25,15 +25,18 @@ export function formatTimestamp(unix: number | undefined): string {
   });
 }
 
+/** The `t` function from `useTranslation`, narrowed to what the formatters need. */
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
 /** Formats a PipeCD unix timestamp (seconds) as a short relative time, e.g. "3h ago". */
-export function relativeTime(unix: number | undefined): string {
+export function relativeTime(unix: number | undefined, t: Translate): string {
   if (!unix || unix === 0) return EMPTY;
   const diffMin = Math.floor((Date.now() - unix * 1000) / 60_000);
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return t('just now');
+  if (diffMin < 60) return t('{{minutes}}m ago', { minutes: diffMin });
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  return `${Math.floor(diffH / 24)}d ago`;
+  if (diffH < 24) return t('{{hours}}h ago', { hours: diffH });
+  return t('{{days}}d ago', { days: Math.floor(diffH / 24) });
 }
 
 /** Formats the gap between two PipeCD unix timestamps (seconds) as a duration. */

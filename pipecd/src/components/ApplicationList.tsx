@@ -82,7 +82,14 @@ function LoadingSkeleton(): JSX.Element {
   );
 }
 
-const ALL_KINDS: ApplicationKind[] = ['KUBERNETES', 'TERRAFORM', 'CLOUD_RUN', 'LAMBDA', 'ECS'];
+const ALL_KINDS: ApplicationKind[] = [
+  'KUBERNETES',
+  'TERRAFORM',
+  'CLOUD_RUN',
+  'LAMBDA',
+  'ECS',
+  'UNKNOWN',
+];
 
 export function ApplicationList(): JSX.Element {
   const { t } = useTranslation();
@@ -323,7 +330,7 @@ export function ApplicationList(): JSX.Element {
 
                 <TableCell>
                   <Tooltip title={formatTimestamp(lastSyncedAt(app))} arrow>
-                    <Typography variant="body2">{relativeTime(lastSyncedAt(app))}</Typography>
+                    <Typography variant="body2">{relativeTime(lastSyncedAt(app), t)}</Typography>
                   </Tooltip>
                   {app.mostRecentSuccessfulDeployment?.summary && (
                     <Typography variant="caption" color="text.secondary" noWrap>
