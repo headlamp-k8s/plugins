@@ -34,6 +34,9 @@ required_crds=(
   "inmemorychannels.messaging.knative.dev"
   "channels.messaging.knative.dev"
   "subscriptions.messaging.knative.dev"
+  "pingsources.sources.knative.dev"
+  "apiserversources.sources.knative.dev"
+  "sinkbindings.sources.knative.dev"
 )
 for crd_name in "${required_crds[@]}"; do
   if ! kubectl get crd "${crd_name}" >/dev/null 2>&1; then
@@ -46,6 +49,7 @@ echo "Using kubectl context: $(kubectl config current-context)"
 apply_manifest "00-namespace-and-sink.yaml"
 apply_manifest "01-broker-and-triggers.yaml"
 apply_manifest "02-channel-and-subscriptions.yaml"
+apply_manifest "03-sources.yaml"
 
 wait_for_ready "broker.eventing.knative.dev/default"
 wait_for_ready "trigger.eventing.knative.dev/catch-all"
@@ -53,6 +57,9 @@ wait_for_ready "trigger.eventing.knative.dev/uri-subscriber"
 wait_for_ready "trigger.eventing.knative.dev/order-created"
 wait_for_ready "channel.messaging.knative.dev/orders"
 wait_for_ready "subscription.messaging.knative.dev/orders-to-display"
+wait_for_ready "pingsource.sources.knative.dev/heartbeat"
+wait_for_ready "apiserversource.sources.knative.dev/k8s-events"
+wait_for_ready "sinkbinding.sources.knative.dev/bind-heartbeat"
 
 echo
 echo "Knative Eventing test resources are ready in namespace ${TEST_NAMESPACE}."
