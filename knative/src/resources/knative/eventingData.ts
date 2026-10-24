@@ -14,11 +14,75 @@
  * limitations under the License.
  */
 
+import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { stringify } from 'yaml';
 import type { Destination, KReference } from './common';
+import type { KnativeResourceClass } from './customResourceLinks';
 import type { KnativeTrigger } from './trigger';
 
 const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
+
+export const KNATIVE_SOURCE_KINDS: KnativeResourceClass[] = [
+  {
+    kind: 'ApiServerSource',
+    apiName: 'apiserversources',
+    apiVersion: 'sources.knative.dev/v1',
+    isNamespaced: true,
+  },
+  {
+    kind: 'ContainerSource',
+    apiName: 'containersources',
+    apiVersion: 'sources.knative.dev/v1',
+    isNamespaced: true,
+  },
+  {
+    kind: 'PingSource',
+    apiName: 'pingsources',
+    apiVersion: 'sources.knative.dev/v1',
+    isNamespaced: true,
+  },
+  {
+    kind: 'SinkBinding',
+    apiName: 'sinkbindings',
+    apiVersion: 'sources.knative.dev/v1',
+    isNamespaced: true,
+  },
+];
+
+/**
+ * Picks the API version to request a CRD's resources with.
+ *
+ * @param spec - The CRD's group and versions.
+ * @returns `<group>/<version>` of the version the CRD stores when it is served, otherwise of its
+ * first served version, or undefined when it serves none.
+ */
+export function getPreferredApiVersion(
+  spec: Pick<KubeCRD['spec'], 'group' | 'versions'>
+): string | undefined {
+  const version =
+    spec.versions.find(item => item.served && item.storage) ??
+    spec.versions.find(item => item.served);
+  return version && `${spec.group}/${version.name}`;
+}
+
+/**
+ * Reads what a Source class needs from a Source CRD.
+ *
+ * @param crd - A Source CRD.
+ * @returns The kind, its plural name, scope and the API version to request, or undefined when the
+ * CRD serves no version.
+ */
+export function getSourceKindInfo(crd: KubeCRD): KnativeResourceClass | undefined {
+  const apiVersion = getPreferredApiVersion(crd.spec);
+  return (
+    apiVersion && {
+      kind: crd.spec.names.kind,
+      apiName: crd.spec.names.plural,
+      apiVersion,
+      isNamespaced: crd.spec.scope === 'Namespaced',
+    }
+  );
+}
 
 /**
  * Reads a Broker's class from its annotations.
