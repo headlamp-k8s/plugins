@@ -9,7 +9,6 @@ import {
 import { useMemo } from 'react';
 import { LocalQueue } from '../../resources/localQueue';
 import { Workload } from '../../resources/workload';
-import { getWorkloadBlocker } from '../../resources/workloadFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 
 interface RelatedLocalQueuesSectionProps {
@@ -187,17 +186,7 @@ function RelatedLocalQueueWorkloadsSection({
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
 }
 
-function getBlocker(workload: Workload) {
-  return getWorkloadBlocker(
-    workload.conditions,
-    workload.status.admissionChecks,
-    workload.status.requeueState,
-    workload.spec.active,
-    workload.status.admission
-  );
-}
-
-function RelatedWorkloadsTable({
+export function RelatedWorkloadsTable({
   workloads,
   loadWarning,
 }: {
@@ -250,7 +239,7 @@ function RelatedWorkloadsTable({
           {
             label: 'Blocked On',
             getter: (workload: Workload) => {
-              const blocker = getBlocker(workload);
+              const blocker = workload.blocker;
 
               if (!blocker) {
                 return '-';
@@ -265,11 +254,7 @@ function RelatedWorkloadsTable({
           },
           {
             label: 'Why',
-            getter: (workload: Workload) => {
-              const blocker = getBlocker(workload);
-              // Kueue's message names the exact cause, so prefer it over the generic explanation.
-              return blocker?.message || blocker?.explanation || '-';
-            },
+            getter: (workload: Workload) => workload.blockerWhyDisplay,
           },
         ]}
       />

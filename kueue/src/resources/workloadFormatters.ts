@@ -531,6 +531,18 @@ export function getWorkloadBlocker(
   };
 }
 
+/**
+ * Render Kueue's message or explanation for why a Workload is blocked.
+ * Workloads that are admitted, finished, or have no blocker return '-'.
+ */
+export function renderWorkloadBlockerWhy(blocker?: WorkloadBlocker | null) {
+  if (!blocker) {
+    return '-';
+  }
+
+  return blocker.message?.trim() || blocker.explanation || '-';
+}
+
 /** One stage of a Workload's lifecycle, as drawn on the detail page timeline. */
 export interface WorkloadTimelineStep {
   /** Stage name. */
