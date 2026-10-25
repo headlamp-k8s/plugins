@@ -26,6 +26,27 @@ export interface YamlDisplayProps {
   onOpenInEditor?: (yaml: string, resourceType: string, title?: string) => void;
 }
 
+function copyWithExecCommand(text: string): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  try {
+    textArea.select();
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    if (textArea.parentNode) {
+      textArea.parentNode.removeChild(textArea);
+    }
+  }
+}
+
 /**
  * Renders Kubernetes YAML in a read-only editor with resource metadata.
  * Exact document markers and decorative horizontal separators are removed,
@@ -159,6 +180,48 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(({ yaml, title, onOpe
     );
   }, [formattedYaml, onOpenInEditor, parsedInfo.resourceType, t, title]);
 
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const copied = copiedText !== null && copiedText === formattedYaml;
+
+  const handleCopy = useCallback(async () => {
+    const textToCopy = formattedYaml;
+    let success = false;
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === 'function'
+    ) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        success = true;
+      } catch {
+        success = copyWithExecCommand(textToCopy);
+      }
+    } else {
+      success = copyWithExecCommand(textToCopy);
+    }
+
+    if (success) {
+      setCopiedText(textToCopy);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedText(null);
+      }, 2000);
+    }
+  }, [formattedYaml]);
+
   // Memoize the theme value to prevent re-renders when theme object changes
   const editorTheme = useMemo(() => {
     return theme.palette.mode === 'dark' ? 'vs-dark' : 'light';
@@ -200,8 +263,11 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(({ yaml, title, onOpe
         <Box
           sx={{
             display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
             justifyContent: 'space-between',
             alignItems: 'center',
+            whiteSpace: 'normal',
             px: 2,
             py: 1,
             bgcolor: theme =>
@@ -211,21 +277,50 @@ const YamlDisplay: React.FC<YamlDisplayProps> = React.memo(({ yaml, title, onOpe
               theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
           }}
         >
-          <Typography variant="caption" fontWeight="bold">
+          <Typography
+            variant="caption"
+            fontWeight="bold"
+            sx={{
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+            }}
+          >
             {parsedInfo.resourceType === 'Resource' ? t('Resource') : parsedInfo.resourceType}
             {parsedInfo.resourceName ? `: ${parsedInfo.resourceName}` : ''}
           </Typography>
 
-          {onOpenInEditor && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 1,
+              whiteSpace: 'normal',
+            }}
+          >
             <Button
-              variant="contained"
+              variant="outlined"
               size="small"
-              startIcon={<Icon icon="mdi:file-edit-outline" aria-hidden="true" />}
-              onClick={handleOpenInEditor}
+              startIcon={
+                <Icon icon={copied ? 'mdi:check' : 'mdi:content-copy'} aria-hidden="true" />
+              }
+              onClick={handleCopy}
+              color={copied ? 'success' : 'primary'}
             >
-              {t('Open In Editor')}
+              {copied ? t('Copied!') : t('Copy YAML')}
             </Button>
-          )}
+
+            {onOpenInEditor && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Icon icon="mdi:file-edit-outline" aria-hidden="true" />}
+                onClick={handleOpenInEditor}
+              >
+                {t('Open In Editor')}
+              </Button>
+            )}
+          </Box>
         </Box>
 
         <Box
