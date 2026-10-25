@@ -137,3 +137,112 @@ it('renders without ResizeObserver support', () => {
   const mount = editorProps.mock.lastCall?.[0].onMount as (editor: typeof editorInstance) => void;
   expect(() => act(() => mount(editorInstance))).not.toThrow();
 });
+
+it('copies formatted YAML to clipboard with feedback', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+  });
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  expect(copyButton).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('name: nginx-deployment'));
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+});
+
+it('falls back to execCommand when clipboard writeText rejects', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(true);
+  document.execCommand = execSpy;
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+  delete (document as any).execCommand;
+});
+
+it('does not show copied feedback and cleans up textarea when execCommand returns false', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(false);
+  document.execCommand = execSpy;
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.queryByRole('button', { name: 'Copied!' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Copy YAML' })).toBeTruthy();
+  expect(document.querySelector('textarea')).toBeNull();
+  delete (document as any).execCommand;
+});
+
+it('resets copied feedback immediately when formatted YAML changes', async () => {
+  const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: writeTextSpy },
+    configurable: true,
+  });
+
+  const { rerender } = render(
+    <YamlDisplay yaml={'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: initial'} />
+  );
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+
+  rerender(<YamlDisplay yaml={'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: updated'} />);
+  expect(screen.queryByRole('button', { name: 'Copied!' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Copy YAML' })).toBeTruthy();
+});
+
+it('allows header and action group to wrap with normal whitespace in narrow containers', async () => {
+  const onOpenInEditor = vi.fn();
+  const { container } = render(
+    <main style={{ width: 300 }}>
+      <YamlDisplay {...deploymentYamlArgs} onOpenInEditor={onOpenInEditor} />
+    </main>
+  );
+
+  const copyBtn = screen.getByRole('button', { name: 'Copy YAML' });
+  const openBtn = screen.getByRole('button', { name: 'Open In Editor' });
+  expect(copyBtn).toBeTruthy();
+  expect(openBtn).toBeTruthy();
+
+  // Verify header container has flex-wrap and normal whitespace
+  const header = container.querySelector('.MuiPaper-root > .MuiBox-root') as HTMLElement;
+  expect(header).toBeTruthy();
+  expect(window.getComputedStyle(header).whiteSpace).toBe('normal');
+
+  fireEvent.click(openBtn);
+  expect(onOpenInEditor).toHaveBeenCalled();
+
+  await expect(runAxe()).resolves.toEqual([]);
+});
