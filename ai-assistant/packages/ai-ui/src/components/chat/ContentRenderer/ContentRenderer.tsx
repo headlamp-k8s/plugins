@@ -26,7 +26,16 @@
  * ai-ui modules — no headlamp-plugin imports.
  */
 
-import { Alert, Box, Button, Link as MuiLink, Typography } from '@mui/material';
+import { Icon } from '@iconify/react';
+import {
+  Alert,
+  Box,
+  Button,
+  IconButton,
+  Link as MuiLink,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import jsYaml from 'js-yaml';
 import React, { useMemo, useState } from 'react';
@@ -85,8 +94,8 @@ const DefaultLinkRenderer = React.memo(({ href, children, ...props }: LinkRender
   const safeHref = href?.startsWith('//')
     ? `https:${href}`
     : href && /^(https?:|mailto:|#|\/(?!\/))/i.test(href)
-    ? href
-    : '#';
+      ? href
+      : '#';
   const isExternal = /^https?:\/\//i.test(safeHref);
   return (
     <MuiLink
@@ -129,7 +138,7 @@ export const parseJsonContent = (content: string): ParseResult<unknown> => {
  */
 export const parseLogsButtonData = (
   content: string,
-  logsButtonIndex: number
+  logsButtonIndex: number,
 ): ParseResult<LogsButtonData> => {
   try {
     // Find the start of the JSON object
@@ -428,6 +437,165 @@ markdownComponents.ol.displayName = 'MarkdownOl';
 markdownComponents.li.displayName = 'MarkdownLi';
 markdownComponents.blockquote.displayName = 'MarkdownBlockquote';
 
+interface CodeBlockProps extends React.HTMLAttributes<HTMLElement> {
+  className?: string;
+  children: React.ReactNode;
+  textContent: string;
+}
+
+function copyWithExecCommand(text: string): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  try {
+    textArea.select();
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    if (textArea.parentNode) {
+      textArea.parentNode.removeChild(textArea);
+    }
+  }
+}
+
+const CodeBlock: React.FC<CodeBlockProps> = React.memo(
+  ({ className, children, textContent, ...props }) => {
+    const { t } = useTranslation();
+    const [copied, setCopied] = useState(false);
+    const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    React.useEffect(() => {
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }, []);
+
+    const languageMatch = (className || '').match(/(?:^|\s)language-(\S+)/);
+    const language = languageMatch ? languageMatch[1] : '';
+    const displayLanguage = language ? language.toUpperCase() : 'CODE';
+
+    const handleCopy = React.useCallback(async () => {
+      let success = false;
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function'
+      ) {
+        try {
+          await navigator.clipboard.writeText(textContent);
+          success = true;
+        } catch {
+          success = copyWithExecCommand(textContent);
+        }
+      } else {
+        success = copyWithExecCommand(textContent);
+      }
+
+      if (success) {
+        setCopied(true);
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = setTimeout(() => {
+          setCopied(false);
+        }, 2000);
+      }
+    }, [textContent]);
+
+    return (
+      <Box
+        sx={{
+          my: 1,
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: (theme: Theme) =>
+            theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300],
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            px: 1.5,
+            py: 0.5,
+            backgroundColor: (theme: Theme) =>
+              theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[200],
+            borderBottom: '1px solid',
+            borderColor: (theme: Theme) =>
+              theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300],
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              letterSpacing: '0.05em',
+              color: 'text.secondary',
+              textTransform: 'uppercase',
+            }}
+          >
+            {displayLanguage}
+          </Typography>
+          <Tooltip title={copied ? t('Copied!') : t('Copy code')}>
+            <IconButton
+              size="small"
+              aria-label={copied ? t('Copied!') : t('Copy code')}
+              onClick={handleCopy}
+              sx={{
+                p: 0.5,
+                color: copied ? 'success.main' : 'text.secondary',
+                '&:hover': {
+                  color: copied ? 'success.dark' : 'text.primary',
+                },
+              }}
+            >
+              <Icon
+                icon={copied ? 'mdi:check' : 'mdi:content-copy'}
+                width={16}
+                height={16}
+                aria-hidden="true"
+              />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Box
+          component="pre"
+          sx={{
+            margin: 0,
+            backgroundColor: (theme: Theme) =>
+              theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
+            color: (theme: Theme) =>
+              theme.palette.mode === 'dark' ? theme.palette.grey[100] : theme.palette.grey[900],
+            padding: 2,
+            overflowX: 'auto',
+            '& code': {
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+            },
+          }}
+        >
+          <Box component="code" className={className} {...props}>
+            {children}
+          </Box>
+        </Box>
+      </Box>
+    );
+  },
+);
+
+CodeBlock.displayName = 'CodeBlock';
+
 /**
  * Renders AI assistant message content with rich formatting.
  *
@@ -507,26 +675,9 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
 
         // Regular code block styling
         return isBlock ? (
-          <Box
-            component="pre"
-            sx={{
-              backgroundColor: (theme: Theme) =>
-                theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
-              color: (theme: Theme) =>
-                theme.palette.mode === 'dark' ? theme.palette.grey[100] : theme.palette.grey[900],
-              padding: 2,
-              borderRadius: 1,
-              overflowX: 'auto',
-              '& code': {
-                whiteSpace: 'pre-wrap',
-                wordWrap: 'break-word',
-              },
-            }}
-          >
-            <Box component="code" className={className} {...props}>
-              {children}
-            </Box>
-          </Box>
+          <CodeBlock className={className} textContent={textContent} {...props}>
+            {children}
+          </CodeBlock>
         ) : (
           <Box
             component="code"
@@ -557,7 +708,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
         code: CodeComponent,
         a: LinkRendererSlot,
       }),
-      [CodeComponent, LinkRendererSlot]
+      [CodeComponent, LinkRendererSlot],
     );
 
     // Helper function to process content with unformatted YAML
@@ -585,7 +736,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                   yaml={yamlContent}
                   title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
-                />
+                />,
               );
               return;
             }
@@ -607,7 +758,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                   yaml={trimmedPart}
                   title={`${parsed.resourceType}${parsed.name ? ` - ${parsed.name}` : ''}`}
                   onOpenInEditor={onYamlDetected}
-                />
+                />,
               );
             } else {
               // Not valid YAML, display as code
@@ -632,7 +783,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                   }}
                 >
                   {trimmedPart}
-                </Box>
+                </Box>,
               );
             }
           } else {
@@ -648,14 +799,14 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
                 }}
               >
                 {trimmedPart}
-              </ReactMarkdown>
+              </ReactMarkdown>,
             );
           }
         });
 
         return <Box>{sections}</Box>;
       },
-      [onYamlDetected, LinkRendererSlot, CodeComponent]
+      [onYamlDetected, LinkRendererSlot, CodeComponent],
     );
 
     // Process content and detect standalone YAML blocks and logs buttons
@@ -818,7 +969,7 @@ const ContentRenderer: React.FC<ContentRendererProps> = React.memo(
       prevProps.promptWidth === nextProps.promptWidth &&
       prevProps.LinkRendererSlot === nextProps.LinkRendererSlot
     );
-  }
+  },
 );
 
 ContentRenderer.displayName = 'ContentRenderer';
