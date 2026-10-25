@@ -28,6 +28,7 @@ import {
   renderStringMap,
   renderText,
   renderTopologyAssignment,
+  renderWorkloadBlockerWhy,
   renderWorkloadStatus,
 } from './workloadFormatters';
 
@@ -472,6 +473,33 @@ describe('Workload formatters', () => {
       stage: 'Evicted',
       pendingAdmissionChecks: [{ name: 'retry-check', state: 'Retry' }],
     });
+  });
+
+  it('renders blocker why explanations and falls back safely', () => {
+    expect(renderWorkloadBlockerWhy(null)).toBe('-');
+    expect(renderWorkloadBlockerWhy(undefined)).toBe('-');
+    expect(
+      renderWorkloadBlockerWhy({
+        stage: 'Waiting for quota',
+        message: 'insufficient unused quota for cpu in flavor default-flavor, 200m more needed',
+        explanation: 'Kueue could not find enough quota in this ClusterQueue.',
+        pendingAdmissionChecks: [],
+      })
+    ).toBe('insufficient unused quota for cpu in flavor default-flavor, 200m more needed');
+    expect(
+      renderWorkloadBlockerWhy({
+        stage: 'Waiting for quota',
+        message: '',
+        explanation: 'Kueue could not find enough quota in this ClusterQueue.',
+        pendingAdmissionChecks: [],
+      })
+    ).toBe('Kueue could not find enough quota in this ClusterQueue.');
+    expect(
+      renderWorkloadBlockerWhy({
+        stage: 'Not evaluated',
+        pendingAdmissionChecks: [],
+      })
+    ).toBe('-');
   });
 
   describe('getWorkloadTimeline', () => {
