@@ -18,11 +18,11 @@ import type { KubeDeployment } from '@kinvolk/headlamp-plugin/lib/k8s/deployment
 import { useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import React from 'react';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../../../../utils/request';
 import { useNotify } from '../../../common/notifications/useNotify';
 import {
   initialRestartState,
   MAX_ROLLOUT_TIMEOUT_MS,
-  REQUEST_TIMEOUT_MS,
   type RestartableDeployment,
   restartReducer,
 } from './restartMachine';
@@ -48,30 +48,6 @@ type UseRestartRolloutOptions = {
    */
   onFinished: (callOnDone: boolean) => void;
 };
-
-/**
- * Waits for a request, but no longer than {@link REQUEST_TIMEOUT_MS}.
- *
- * @param request - The request to wait for.
- * @param what - What the request does, for the timeout error: `Timed out ${what}`.
- * @returns The request's result.
- * @throws The request's own error, or a timeout error.
- */
-function withTimeout<T>(request: Promise<T>, what: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timed out ${what}`)), REQUEST_TIMEOUT_MS);
-    request.then(
-      value => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      err => {
-        clearTimeout(timer);
-        reject(err);
-      }
-    );
-  });
-}
 
 /**
  * Restarts a Knative Service's running Deployments the way `kubectl rollout restart` does and

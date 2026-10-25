@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { CustomResourceDefinition } from './resources/k8s/customResourceDefinition';
 import { isNotFoundError } from './utils/error';
+import { withTimeout } from './utils/request';
 
 /**
  * Knative components install independently of each other, so a cluster may
@@ -36,47 +38,33 @@ const COMPONENT_CRD_NAME: Record<KnativeComponent, string> = {
   eventing: 'brokers.eventing.knative.dev',
 };
 
-function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
-  return new Promise(resolve => {
-    let cancelFn: (() => void) | null = null;
-    let settled = false;
-
-    function settle(result: boolean) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve(result);
-      if (cancelFn) {
-        cancelFn();
-      }
-    }
-
-    const request = CustomResourceDefinition.apiGet(
-      () => settle(true),
-      crdName,
-      undefined,
-      // Only a confirmed 404 means the CRD is genuinely absent.
-      // Other failures (403, 5xx, network) do not prove absence.
-      err => settle(!isNotFoundError(err)),
-      { cluster }
+/**
+ * Checks whether a CRD exists in a cluster with one request. It reads the CRD once instead of
+ * watching it, so that no watch stays open after the answer.
+ *
+ * @param cluster - The cluster to check.
+ * @param crdName - The name of the CRD.
+ * @returns False when the cluster answers 404. Any other failure (403, 5xx, network, or no
+ * answer within two minutes) does not prove that the CRD is absent, so it returns true.
+ */
+async function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
+  const { apiVersion, apiName } = CustomResourceDefinition;
+  try {
+    await withTimeout(
+      ApiProxy.clusterRequest(`/apis/${apiVersion}/${apiName}/${crdName}`, { cluster }),
+      `reading CRD ${crdName}`
     );
-
-    request()
-      .then(cancel => {
-        cancelFn = cancel;
-      })
-      .catch(() => {
-        settle(false);
-      });
-  });
+    return true;
+  } catch (err) {
+    return !isNotFoundError(err);
+  }
 }
 
 /**
  * Checks whether a single Knative component is installed.
  *
- * @param component The Knative component to look for.
- * @param clusters The clusters to check.
+ * @param component - The Knative component to look for.
+ * @param clusters - The clusters to check.
  * @returns True when the component is present in every given cluster.
  */
 export async function isKnativeComponentInstalled(
