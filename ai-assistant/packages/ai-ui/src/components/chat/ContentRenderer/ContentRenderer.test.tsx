@@ -1,5 +1,6 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
 import { formattedTableContent } from '../MCPFormattedMessage/MCPFormattedMessage.stories';
@@ -286,4 +287,83 @@ it('escapes raw HTML in markdown instead of executing it (XSS regression)', () =
   expect(container.textContent).toContain('onerror');
   expect(container.textContent).toContain('alert(2)');
   expect(screen.getByText(/hello/)).toBeTruthy();
+});
+
+it('renders language header and copies code block to clipboard with feedback', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+  });
+
+  render(<ContentRenderer content={'```bash\nkubectl get pods\n```'} />);
+
+  expect(screen.getByText('BASH')).toBeTruthy();
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  expect(copyBtn).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(writeText).toHaveBeenCalledWith('kubectl get pods\n');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+});
+
+it('renders fallback CODE label when fenced block specifies no language', () => {
+  render(<ContentRenderer content={'```\nplain text\n```'} />);
+
+  expect(screen.getByText('CODE')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+  expect(screen.getByText('plain text')).toBeTruthy();
+});
+
+it('falls back to execCommand when clipboard writeText rejects', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(true);
+  document.execCommand = execSpy;
+
+  render(<ContentRenderer content={'```python\nprint("hello")\n```'} />);
+
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+  delete (document as any).execCommand;
+});
+
+it('does not show copied state and cleans up textarea when execCommand returns false', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(false);
+  document.execCommand = execSpy;
+
+  render(<ContentRenderer content={'```python\nprint("hello")\n```'} />);
+
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.queryByRole('button', { name: 'Copied!' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+  expect(document.querySelector('textarea')).toBeNull();
+  delete (document as any).execCommand;
+});
+
+it('preserves punctuation in language identifiers like c++ and c#', () => {
+  render(<ContentRenderer content={'```c++\nint x = 0;\n```'} />);
+  expect(screen.getByText('C++')).toBeTruthy();
+
+  render(<ContentRenderer content={'```c#\nint x = 0;\n```'} />);
+  expect(screen.getByText('C#')).toBeTruthy();
 });
