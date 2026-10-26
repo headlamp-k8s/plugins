@@ -1,9 +1,9 @@
+import yaml from 'js-yaml';
 import { spawnSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
 
 interface Kubeconfig {
   clusters: Array<{ name: string; cluster: Record<string, unknown> }>;
@@ -170,11 +170,15 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const result = spawnSync(executable('npm'), ['run', 'e2e:playwright'], {
-    cwd: rootDir,
-    env: { ...process.env, HEADLAMP_URL: headlampUrl, HEADLAMP_TOKEN: headlampToken },
-    stdio: 'inherit',
-  });
+  const result = spawnSync(
+    executable('npm'),
+    ['run', 'e2e:playwright', '--', ...process.argv.slice(2)],
+    {
+      cwd: rootDir,
+      env: { ...process.env, HEADLAMP_URL: headlampUrl, HEADLAMP_TOKEN: headlampToken },
+      stdio: 'inherit',
+    }
+  );
   if (result.error) {
     throw result.error;
   }

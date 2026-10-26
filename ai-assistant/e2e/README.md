@@ -11,8 +11,9 @@ The scenarios cover:
 - troubleshooting a pod with the scripted agent;
 - exploring cluster workloads with the scripted agent.
 - background diagnosis scrolling and compact results at desktop and small-window
-  sizes, stable reading position, drafting, pause/resume, queued-message priority,
-  retry/dismiss, event navigation, and visible cluster scope. AI responses are
+  sizes, stable reading position, drafting, pause/resume, queued-message priority
+  (including chat started during an event read), retry/dismiss, event navigation,
+  and visible cluster scope. AI responses are
   fixture-backed; the host, event reads, and resource navigation are real.
 
 ## Run
@@ -22,6 +23,12 @@ Install Docker, kwokctl v0.8.0, kubectl, Node.js, and npm, then run:
 ```sh
 npm ci
 npm run e2e
+```
+
+To run a focused scenario with the same build and cluster setup, pass Playwright arguments:
+
+```sh
+npm run e2e -- proactive-diagnosis.spec.ts --grep "chat starts during an event read"
 ```
 
 The cross-platform TypeScript runner builds the plugin and Headlamp image, creates the KWOK cluster, runs Headlamp and Chromium, and deletes the cluster afterward. Set `KEEP_E2E_CLUSTER=true` to retain it for debugging. Each run writes local, untracked screenshots to `e2e/screenshots`.

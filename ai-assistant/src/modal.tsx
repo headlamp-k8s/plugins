@@ -265,7 +265,7 @@ export default function AIPrompt(props: {
     if (!proactiveDiagnosisEnabledRef.current) return;
     if (!diagnoseFnRef.current) return; // Don't run if no AI is available yet
     if (proactiveDiagnosisManager.isPaused()) return;
-    if (loadingRef.current || isDiagnosisRunningRef.current) return; // Don't run while user is chatting or another diagnosis is running
+    if (loadingRef.current || queuedSendRef.current || isDiagnosisRunningRef.current) return;
 
     // Fetch events on-demand (one-shot API call — no continuous watch)
     const clusters = clusterNamesRef.current;
@@ -278,6 +278,9 @@ export default function AIPrompt(props: {
       setWarningEventCount(allWarningEvents.length);
       setDiagnosisCheckError(null);
       if (allWarningEvents.length === 0) return;
+
+      // Chat can start or queue while the event read is pending.
+      if (loadingRef.current || queuedSendRef.current) return;
 
       const topEvents = ProactiveDiagnosisManager.extractTopEvents(allWarningEvents, 3);
       if (topEvents.length > 0) {

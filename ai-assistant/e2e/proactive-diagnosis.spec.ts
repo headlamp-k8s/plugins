@@ -415,6 +415,102 @@ test('lets users draft, cancel a queued message, and send before remaining backg
   }
 });
 
+test('does not start diagnosis if chat starts during an event read', async ({ page }) => {
+  await configure(page);
+  const eventsStarted = deferred();
+  const releaseEvents = deferred();
+  const chatStarted = deferred();
+  const releaseChat = deferred();
+  const requests: string[] = [];
+  let active = 0;
+  let maxActive = 0;
+  await page.route('**/ux-model/v1/chat/completions', async route => {
+    const request: { messages: Array<{ content: string }> } = route.request().postDataJSON();
+    const diagnosis = request.messages.some(message =>
+      message.content.includes('## Event Details')
+    );
+    requests.push(diagnosis ? 'diagnosis' : 'chat');
+    active++;
+    maxActive = Math.max(maxActive, active);
+    if (!diagnosis) {
+      chatStarted.resolve();
+      await releaseChat.promise;
+    }
+    await route.fulfill({
+      json: {
+        id: 'event-read-chat-priority',
+        object: 'chat.completion',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: diagnosis
+                ? 'Analysis complete.'
+                : 'Chat completed without overlapping background analysis.',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+      },
+    });
+    active--;
+  });
+
+  try {
+    await openAssistant(page);
+    const section = page.getByRole('region', { name: 'AI diagnoses' });
+    await expect(section.getByText('3 ready, 0 failed', { exact: true })).toBeVisible();
+    const lastChecked = section.getByText(/^Last event check:/);
+    const previousCheck = await lastChecked.textContent();
+    expect(previousCheck).toBeTruthy();
+    await page.route('**/clusters/main/api/v1/events?*', async route => {
+      const response = await route.fetch();
+      eventsStarted.resolve();
+      await releaseEvents.promise;
+      await route.fulfill({ response });
+    });
+    // Expire the event cache without waiting 30 seconds in real time.
+    await page.clock.setFixedTime(new Date(Date.now() + 31_000));
+    await section.getByRole('button', { name: 'Check again', exact: true }).click();
+    await eventsStarted.promise;
+
+    const input = page.locator('#deployment-ai-prompt');
+    await input.fill('Explain this workload while the event check finishes.');
+    await input.press('Enter');
+    await chatStarted.promise;
+    expect(requests).toEqual(['diagnosis', 'diagnosis', 'diagnosis', 'chat']);
+
+    releaseEvents.resolve();
+    await expect(lastChecked).not.toHaveText(previousCheck!);
+    await expect(section.getByText('3 ready, 0 failed', { exact: true })).toBeVisible();
+    expect(requests).toEqual(['diagnosis', 'diagnosis', 'diagnosis', 'chat']);
+    expect(maxActive).toBe(1);
+
+    releaseChat.resolve();
+    await expect(
+      page.getByText('Chat completed without overlapping background analysis.', { exact: true })
+    ).toBeVisible();
+    await section.getByRole('button', { name: 'Check again', exact: true }).click();
+    await expect
+      .poll(() => requests)
+      .toEqual([
+        'diagnosis',
+        'diagnosis',
+        'diagnosis',
+        'chat',
+        'diagnosis',
+        'diagnosis',
+        'diagnosis',
+      ]);
+    await expect(section.getByText('3 ready, 0 failed', { exact: true })).toBeVisible();
+    expect(maxActive).toBe(1);
+  } finally {
+    releaseEvents.resolve();
+    releaseChat.resolve();
+  }
+});
+
 test('shows initial and response suggestions as reviewable drafts while idle', async ({ page }) => {
   await configure(page, { proactiveDiagnosisEnabled: false });
   let calls = 0;
