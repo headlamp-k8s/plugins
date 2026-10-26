@@ -347,6 +347,27 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(target).toBeInViewport({ ratio: 1 });
     await expect(target).toHaveAttribute('aria-expanded', 'true');
     expect(modelCalls).toBe(3);
+
+    await page
+      .getByRole('complementary', { name: 'AI Assistant panel' })
+      .getByRole('button', { name: 'Close', exact: true })
+      .click();
+    await expect(log).toBeHidden();
+    await row.getByRole('button', { name: 'Diagnose with AI', exact: true }).click();
+    await expect(target).toBeFocused();
+    await expect(target).toHaveAttribute('aria-expanded', 'true');
+    await expect(target).toHaveCSS('border-left-width', '3px');
+    await expect(target).toHaveCSS('border-left-width', '0px');
+    await expect(target).toBeInViewport({ ratio: 1 });
+    expect(modelCalls).toBe(3);
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(target).toBeFocused();
+    await expect(target).toHaveClass(/Mui-focusVisible/);
+    await expect(target).toHaveCSS('outline-style', 'solid');
+    await expect(target).toHaveCSS('outline-width', '2px');
+    await expect(target).toBeInViewport({ ratio: 1 });
   });
 }
 

@@ -29,6 +29,7 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConversationScrollContext } from '../../../contexts/ConversationScrollContext';
 import {
   getDiagnosisSummary,
   getStatusIcon,
@@ -638,6 +639,7 @@ export default function ProactiveDiagnosisSection({
 }: ProactiveDiagnosisSectionProps): React.ReactElement | null {
   const { t } = useTranslation();
   const theme = useTheme();
+  const suspendFollowing = React.useContext(ConversationScrollContext);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const headingId = React.useId();
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -655,6 +657,7 @@ export default function ProactiveDiagnosisSection({
     const frame = requestAnimationFrame(() => {
       const header = el.querySelector<HTMLButtonElement>('button');
       if (!header) return;
+      suspendFollowing?.();
       header.scrollIntoView({
         behavior: prefersReducedMotion ? 'auto' : 'smooth',
         block: 'nearest',
@@ -664,7 +667,14 @@ export default function ProactiveDiagnosisSection({
       onScrollComplete();
     });
     return () => cancelAnimationFrame(frame);
-  }, [scrollToEventUid, diagnoses, expandedEvents, onScrollComplete, prefersReducedMotion]);
+  }, [
+    scrollToEventUid,
+    diagnoses,
+    expandedEvents,
+    onScrollComplete,
+    prefersReducedMotion,
+    suspendFollowing,
+  ]);
 
   useEffect(() => {
     if (!highlightedEvent) return;
@@ -862,6 +872,11 @@ export default function ProactiveDiagnosisSection({
                 borderRadius: 1,
                 bgcolor: d.loading ? 'action.hover' : 'transparent',
                 transition: 'background-color 0.2s ease',
+                '&.Mui-focusVisible': {
+                  outline: '2px solid',
+                  outlineColor: 'primary.main',
+                  outlineOffset: -2,
+                },
                 ...(highlightedEvent === d.eventUid && {
                   borderLeft: '3px solid',
                   borderColor: 'primary.main',

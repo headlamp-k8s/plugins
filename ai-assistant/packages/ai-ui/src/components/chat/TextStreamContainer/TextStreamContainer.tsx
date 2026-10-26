@@ -20,6 +20,7 @@ import { useMediaQuery, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConversationScrollContext } from '../../../contexts/ConversationScrollContext';
 import AgentThinkingSteps from '../../agent/AgentThinkingSteps/AgentThinkingSteps';
 import AgentThinkingBlock from '../../assistant/AgentThinkingBlock/AgentThinkingBlock';
 import InlineToolConfirmation from '../../common/InlineToolConfirmation/InlineToolConfirmation';
@@ -195,6 +196,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       container.scrollHeight - container.scrollTop - container.clientHeight;
 
     return distanceFromBottom <= threshold;
+  }, []);
+
+  const suspendFollowing = useCallback(() => {
+    userScrollVersionRef.current++;
+    wasNearBottomRef.current = false;
+    setShowScrollButton(true);
   }, []);
 
   const scrollToBottom = useCallback(() => {
@@ -612,7 +619,9 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       >
         {beforeMessages && (
           <Box aria-live="off" sx={{ flexShrink: 0 }}>
-            {beforeMessages}
+            <ConversationScrollContext.Provider value={suspendFollowing}>
+              {beforeMessages}
+            </ConversationScrollContext.Provider>
           </Box>
         )}
         {apiError && history.length === 0 && (

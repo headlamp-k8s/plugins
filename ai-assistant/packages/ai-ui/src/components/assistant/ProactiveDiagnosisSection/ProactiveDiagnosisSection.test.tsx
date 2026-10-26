@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
 import type { DiagnosisContentRendererProps } from './ProactiveDiagnosisSection';
@@ -284,6 +284,16 @@ it('retains a missing scroll target until its card mounts, expands, and receives
   expect(vi.mocked(Element.prototype.scrollIntoView).mock.contexts).toEqual([button]);
   expect(button.getAttribute('aria-expanded')).toBe('true');
   expect(document.activeElement).toBe(button);
+});
+
+it('gives keyboard-focused diagnosis headers a visible outline', () => {
+  render(<ProactiveDiagnosisSection {...completedDiagnosesArgs} />);
+  const header = screen.getByRole('button', { name: /^Pod\// });
+  fireEvent.keyDown(document, { key: 'Tab' });
+  act(() => header.focus());
+
+  expect(header.classList.contains('Mui-focusVisible')).toBe(true);
+  expect(getComputedStyle(header).outline).toContain('2px solid');
 });
 
 it('disables chevron transitions for reduced motion', () => {

@@ -120,6 +120,9 @@ and expand to show the analysis, investigation activity, and reviewable YAML.
   Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
 - Retry failed analyses, analyze an individual result again, or dismiss it.
   Dismissing hides that event from automatic checks; it does not fix the resource.
+- Opening a diagnosis from Events expands and focuses its header, including cached
+  results when the panel reopens. This pauses automatic chat following so it does
+  not scroll past the result. Keyboard-focused headers have a visible outline.
 - Check again explicitly refreshes analyses in the current scope and can incur AI
   provider usage. Open resource to inspect current health after a change:
   "Analysis ready" and a successful API write do not mean an incident is resolved.

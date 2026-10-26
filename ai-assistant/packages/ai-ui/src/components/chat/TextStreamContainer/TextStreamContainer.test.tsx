@@ -1,7 +1,12 @@
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
+import ProactiveDiagnosisSection from '../../assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection';
+import {
+  baseDiagnosisArgs,
+  createDiagnosis,
+} from '../../assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection.stories';
 import TextStreamContainer, {
   type ContentRendererSlotProps,
   type EditorDialogSlotProps,
@@ -116,6 +121,72 @@ it('places host diagnosis content inside the conversation scroll area', () => {
   expect(log.contains(screen.getByRole('region', { name: 'AI diagnoses' }))).toBe(true);
   expect(log.textContent).toContain('How do I list pods?');
 });
+
+it.each([
+  { name: 'greeting', history: [{ role: 'assistant', content: 'Welcome back.' }] },
+  { name: 'existing conversation', history: basicHistory },
+] satisfies Array<{ name: string; history: ConversationMessage[] }>)(
+  'preserves diagnosis navigation through pending and later $name history scrolling',
+  ({ history }) => {
+    vi.useFakeTimers();
+    const onScrollComplete = vi.fn();
+    const diagnosisProps = {
+      ...baseDiagnosisArgs,
+      diagnoses: [createDiagnosis({ diagnosis: 'A cached diagnosis answer.' })],
+      onScrollComplete,
+    };
+    const props = { isLoading: true, apiError: null, ContentRendererSlot: Renderer };
+    const { rerender } = render(
+      <TextStreamContainer
+        {...props}
+        history={history}
+        beforeMessages={
+          <ProactiveDiagnosisSection {...diagnosisProps} scrollToEventUid="event-1" />
+        }
+      />
+    );
+    const log = screen.getByRole('log', { name: 'Conversation messages' });
+    const header = screen.getByRole('button', { name: /^Pod\// });
+    const scrollIntoView = vi.fn();
+    const scrollTo = vi.fn((options: { top: number }) => {
+      log.scrollTop = options.top;
+    });
+    Object.defineProperties(log, {
+      scrollHeight: { configurable: true, value: 2000 },
+      clientHeight: { configurable: true, value: 200 },
+      scrollTop: { configurable: true, writable: true, value: 0 },
+      scrollTo: { configurable: true, value: scrollTo },
+      getBoundingClientRect: { value: () => new DOMRect(0, 0, 500, 200) },
+    });
+    for (const message of log.querySelectorAll('[data-message-index]')) {
+      Object.defineProperty(message, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 1800, 500, 80),
+      });
+    }
+    // An already-visible header causes no scroll event.
+    Object.defineProperty(header, 'scrollIntoView', { value: scrollIntoView });
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(onScrollComplete).toHaveBeenCalledOnce();
+    expect(scrollIntoView).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(header);
+    expect(log.scrollTop).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    rerender(
+      <TextStreamContainer
+        {...props}
+        history={[...history, { role: 'assistant', content: 'A later streamed update.' }]}
+        beforeMessages={<ProactiveDiagnosisSection {...diagnosisProps} scrollToEventUid={null} />}
+      />
+    );
+    act(() => vi.advanceTimersByTime(150));
+    expect(log.scrollTop).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(header);
+    expect(screen.getByRole('button', { name: /scroll to bottom/i })).toBeTruthy();
+  }
+);
 
 it('supports Home and End in the focused scroll area without intercepting child controls', () => {
   renderStream();
