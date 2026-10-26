@@ -100,6 +100,24 @@ async function openAssistant(page: Page, startPath = '/c/main/nodes') {
   await page.getByRole('button', { name: 'AI Assistant', exact: true }).click();
 }
 
+async function addSecondaryCluster(page: Page) {
+  await page.route('**/config', async route => {
+    const response = await route.fetch();
+    const config = await response.json();
+    const main = config.clusters.find((cluster: { name: string }) => cluster.name === 'main');
+    expect(main, 'The test host must expose the main cluster').toBeTruthy();
+    await route.fulfill({
+      response,
+      json: { ...config, clusters: [...config.clusters, { ...main, name: 'secondary' }] },
+    });
+  });
+  await page.route('**/clusters/secondary/**', route =>
+    route.continue({
+      url: route.request().url().replace('/clusters/secondary/', '/clusters/main/'),
+    })
+  );
+}
+
 for (const viewport of [
   { width: 1280, height: 720 },
   { width: 1440, height: 900 },
@@ -510,6 +528,116 @@ test('does not start diagnosis if chat starts during an event read', async ({ pa
     releaseChat.resolve();
   }
 });
+
+for (const outcome of ['empty', 'warnings', 'error'] as const) {
+  test(`ignores stale ${outcome} event reads after switching cluster scope`, async ({ page }) => {
+    await configure(page);
+    await addSecondaryCluster(page);
+    const mainStarted = deferred();
+    const releaseMain = deferred();
+    const secondaryStarted = deferred();
+    const releaseSecondary = deferred();
+    let mainReads = 0;
+    let modelCalls = 0;
+    await page.route('**/ux-model/v1/chat/completions', route => {
+      modelCalls++;
+      return route.fulfill({
+        json: {
+          id: 'scope-regression',
+          object: 'chat.completion',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'Analysis complete.' },
+              finish_reason: 'stop',
+            },
+          ],
+        },
+      });
+    });
+    await page.route(
+      url =>
+        url.pathname === '/clusters/main/api/v1/events' &&
+        url.searchParams.get('fieldSelector') === 'type!=Normal',
+      async route => {
+        if (++mainReads === 1) {
+          await route.fulfill({ json: { items: [] } });
+          return;
+        }
+        const response = await route.fetch();
+        mainStarted.resolve();
+        await releaseMain.promise;
+        if (outcome === 'error') {
+          await route.fulfill({
+            status: 403,
+            json: { message: 'Stale main event check forbidden', reason: 'Forbidden' },
+          });
+        } else if (outcome === 'empty') {
+          await route.fulfill({ json: { items: [] } });
+        } else {
+          await route.fulfill({ response });
+        }
+      }
+    );
+    await page.route(
+      url =>
+        url.pathname === '/clusters/secondary/api/v1/events' &&
+        url.searchParams.get('fieldSelector') === 'type!=Normal',
+      async route => {
+        secondaryStarted.resolve();
+        await releaseSecondary.promise;
+        await route.fulfill({ json: { items: [] } });
+      }
+    );
+    try {
+      await openAssistant(page);
+      const section = page.getByRole('region', { name: 'AI diagnoses' });
+      const noWarnings = section
+        .locator('p')
+        .filter({ hasText: /^No warning events found in this scope\.$/ });
+      await expect(noWarnings).toBeVisible();
+      await expect(section.getByText(/^Last event check:/)).toBeVisible();
+      await page.clock.setFixedTime(new Date(Date.now() + 31_000));
+      await section.getByRole('button', { name: 'Check again', exact: true }).click();
+      await mainStarted.promise;
+
+      await page.getByRole('button', { name: 'main', exact: true }).click();
+      await page.getByRole('option', { name: 'secondary', exact: true }).click();
+      await expect(section.getByText('Clusters: secondary', { exact: true })).toBeVisible();
+      await expect(section.getByText(/^Last event check:/)).toHaveCount(0);
+      await expect(noWarnings).toHaveCount(0);
+      await section.getByRole('button', { name: 'Check again', exact: true }).click();
+      await secondaryStarted.promise;
+
+      const staleResponse = page.waitForResponse(
+        response =>
+          new URL(response.url()).pathname === '/clusters/main/api/v1/events' &&
+          new URL(response.url()).searchParams.get('fieldSelector') === 'type!=Normal'
+      );
+      releaseMain.resolve();
+      await (await staleResponse).finished();
+      await page.evaluate(
+        () =>
+          new Promise<void>(resolve =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      await expect(section.getByText(/^Last event check:/)).toHaveCount(0);
+      await expect(section.getByRole('alert')).toHaveCount(0);
+      await expect(noWarnings).toHaveCount(0);
+      expect(modelCalls).toBe(0);
+
+      releaseSecondary.resolve();
+      await expect(noWarnings).toBeVisible();
+      await expect(section.getByText(/^Last event check:/)).toBeVisible();
+      await expect(section.getByRole('alert')).toHaveCount(0);
+      expect(modelCalls).toBe(0);
+    } finally {
+      releaseMain.resolve();
+      releaseSecondary.resolve();
+    }
+  });
+}
 
 test('shows initial and response suggestions as reviewable drafts while idle', async ({ page }) => {
   await configure(page, { proactiveDiagnosisEnabled: false });

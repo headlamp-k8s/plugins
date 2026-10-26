@@ -13,8 +13,10 @@ The scenarios cover:
 - background diagnosis scrolling and compact results at desktop and small-window
   sizes, stable reading position, drafting, pause/resume, queued-message priority
   (including chat started during an event read), retry/dismiss, event navigation,
-  and visible cluster scope. AI responses are
-  fixture-backed; the host, event reads, and resource navigation are real.
+  and visible cluster scope. Stale event results and errors are discarded after
+  switching clusters. AI responses are fixture-backed; the host, event reads, and
+  resource navigation are real. Scope-switch tests add a second cluster fixture
+  backed by the same KWOK API.
 
 ## Run
 

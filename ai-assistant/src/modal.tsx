@@ -212,7 +212,19 @@ export default function AIPrompt(props: {
 
   // Effects key off this instead of the array so a new array with the same
   // clusters does not re-trigger event fetching.
-  const clusterNamesKey = clusterNames.join(',');
+  const clusterNamesKey = JSON.stringify(clusterNames);
+  const [diagnosisScope, setDiagnosisScope] = useState(() => ({ key: clusterNamesKey }));
+  const diagnosisScopeRef = useRef(diagnosisScope);
+  diagnosisScopeRef.current = diagnosisScope;
+
+  // Reset before rendering another scope, even if its event read has not completed.
+  if (diagnosisScope.key !== clusterNamesKey) {
+    setDiagnosisScope({ key: clusterNamesKey });
+    setLastCheckedAt(null);
+    setWarningEventCount(null);
+    setNextCheckAt(null);
+    setDiagnosisCheckError(null);
+  }
 
   // Fetch cluster warnings on-demand for context generation (replaces
   // the continuous useClusterWarnings hook).
@@ -270,10 +282,11 @@ export default function AIPrompt(props: {
     // Fetch events on-demand (one-shot API call — no continuous watch)
     const clusters = clusterNamesRef.current;
     if (!clusters || clusters.length === 0) return;
+    const scope = diagnosisScopeRef.current;
 
     try {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
-      if (!proactiveDiagnosisEnabledRef.current) return;
+      if (!proactiveDiagnosisEnabledRef.current || scope !== diagnosisScopeRef.current) return;
       setLastCheckedAt(Date.now());
       setWarningEventCount(allWarningEvents.length);
       setDiagnosisCheckError(null);
@@ -288,6 +301,7 @@ export default function AIPrompt(props: {
       }
     } catch (err) {
       console.error('[ProactiveDiagnosis] Cycle error:', err);
+      if (!proactiveDiagnosisEnabledRef.current || scope !== diagnosisScopeRef.current) return;
       setDiagnosisCheckError(err instanceof Error ? err.message : String(err));
     }
   }, []); // stable — reads current values via refs
