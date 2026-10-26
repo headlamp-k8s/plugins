@@ -15,6 +15,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [backstage](./backstage) | Provides links to the resource's views in Backstage. | See also the [Headlamp integration for Backstage](https://github.com/headlamp-k8s/backstage-plugin). | [@yolossn](https://github.com/yolossn) |
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | | [@yolossn](https://github.com/yolossn) |
 | [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). | [@mboersma](https://github.com/mboersma) [@ChayanDass](https://github.com/ChayanDass) |
+| [external-secrets](./external-secrets) | View External Secrets Operator resources and their sync status. | | [@vtushar06](https://github.com/vtushar06) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |

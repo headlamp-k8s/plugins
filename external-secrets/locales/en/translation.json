@@ -1,0 +1,22 @@
+{
+  "External Secrets Operator was not detected on your cluster. If you haven't already, please install it.": "External Secrets Operator was not detected on your cluster. If you haven't already, please install it.",
+  "Learn how to": "Learn how to",
+  "install": "install",
+  "External Secrets Operator": "External Secrets Operator",
+  "Ready": "Ready",
+  "Not Ready": "Not Ready",
+  "(all extracted keys)": "(all extracted keys)",
+  "Data": "Data",
+  "No data mappings defined.": "No data mappings defined.",
+  "Target Secret Key": "Target Secret Key",
+  "Remote Reference": "Remote Reference",
+  "API Version": "API Version",
+  "Store": "Store",
+  "Target Secret": "Target Secret",
+  "Status Message": "Status Message",
+  "Refresh Interval": "Refresh Interval",
+  "Refresh Policy": "Refresh Policy",
+  "Last Refresh": "Last Refresh",
+  "Synced Resource Version": "Synced Resource Version",
+  "ExternalSecrets": "ExternalSecrets"
+}
