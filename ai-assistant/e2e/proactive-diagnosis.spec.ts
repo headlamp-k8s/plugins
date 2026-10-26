@@ -701,6 +701,128 @@ test('shows initial and response suggestions as reviewable drafts while idle', a
   expect(calls).toBe(1);
 });
 
+test('uses the current provider for an event opened after the previous panel unmounts', async ({
+  page,
+}) => {
+  await configure(page, { additionalProvider: true });
+  const requests: string[] = [];
+  await page.route('**/ux-model*/v1/chat/completions', route => {
+    const provider = route.request().url().includes('/ux-model-second/') ? 'second' : 'first';
+    requests.push(provider);
+    return route.fulfill({
+      json: {
+        id: 'panel-provider-lifecycle',
+        object: 'chat.completion',
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: `Diagnosis from ${provider} provider.` },
+            finish_reason: 'stop',
+          },
+        ],
+      },
+    });
+  });
+  await openAssistant(page);
+  const section = page.getByRole('region', { name: 'AI diagnoses' });
+  await expect(section.getByText('3 ready, 0 failed', { exact: true })).toBeVisible();
+  await section
+    .getByRole('button', { name: /^Deployment\/web/ })
+    .locator('..')
+    .getByRole('button', { name: 'Dismiss', exact: true })
+    .click();
+  const panel = page.getByRole('complementary', { name: 'AI Assistant panel' });
+  await panel.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/plugins\//);
+  await panel.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(panel).toBeHidden();
+
+  await page.getByRole('button', { name: 'More options for Second provider', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Make Default', exact: true }).click();
+  await expect(
+    page.getByText('Second provider', { exact: true }).locator('..').getByText('Default', {
+      exact: true,
+    })
+  ).toBeVisible();
+  expect(requests).toEqual(['first', 'first', 'first']);
+
+  await page.locator('a[href="/c/main/"]').click();
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'Web replicas are waiting for scheduling.' })
+    .getByRole('button', { name: 'Diagnose with AI', exact: true })
+    .click();
+  await expect.poll(() => requests.length).toBe(4);
+  expect(requests).toEqual(['first', 'first', 'first', 'second']);
+  await expect(section.getByText('Diagnosis from second provider.', { exact: true })).toBeVisible();
+});
+
+test('preserves an active diagnosis while closing and reopening the panel', async ({ page }) => {
+  await configure(page);
+  const started = deferred();
+  const release = deferred();
+  let requests = 0;
+  let active = 0;
+  let maxActive = 0;
+  const failures: string[] = [];
+  page.on('requestfailed', request => {
+    if (request.url().includes('/ux-model/v1/chat/completions')) failures.push(request.url());
+  });
+  await page.route('**/ux-model/v1/chat/completions', async route => {
+    const first = ++requests === 1;
+    active++;
+    maxActive = Math.max(maxActive, active);
+    if (first) {
+      started.resolve();
+      await release.promise;
+    }
+    await route.fulfill({
+      json: {
+        id: 'active-panel-close',
+        object: 'chat.completion',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: first
+                ? 'Active diagnosis completed after closing the panel.'
+                : 'Background analysis resumed with the current provider.',
+            },
+            finish_reason: 'stop',
+          },
+        ],
+      },
+    });
+    active--;
+  });
+  try {
+    await openAssistant(page);
+    await started.promise;
+    const panel = page.getByRole('complementary', { name: 'AI Assistant panel' });
+    await panel.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(panel).toBeHidden();
+    const response = page.waitForResponse('**/ux-model/v1/chat/completions');
+    release.resolve();
+    const completed = await response;
+    expect(completed.ok()).toBe(true);
+    await completed.finished();
+
+    await page.getByRole('button', { name: 'AI Assistant', exact: true }).click();
+    const section = page.getByRole('region', { name: 'AI diagnoses' });
+    await expect(section.getByText('3 ready, 0 failed', { exact: true })).toBeVisible();
+    await section.getByRole('button', { name: /^Pod\/checkout-crashloop/ }).click();
+    await expect(
+      section.getByText('Active diagnosis completed after closing the panel.', { exact: true })
+    ).toBeVisible();
+    expect(requests).toBe(3);
+    expect(maxActive).toBe(1);
+    expect(failures).toEqual([]);
+  } finally {
+    release.resolve();
+  }
+});
+
 test('restores a queued message for review when its provider or model changes', async ({
   page,
 }) => {

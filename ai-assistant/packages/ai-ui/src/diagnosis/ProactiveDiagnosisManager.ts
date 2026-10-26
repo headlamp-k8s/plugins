@@ -95,6 +95,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   }> = [];
   /** The function to call to get a diagnosis from the AI */
   private diagnoseFn: DiagnoseFn | null = null;
+  private diagnoseFnRegistration = 0;
   /** Whether proactive diagnosis is enabled */
   private enabled = false;
   /** The event UID the user wants to scroll to */
@@ -120,13 +121,19 @@ export class ProactiveDiagnosisManager extends EventEmitter {
   /**
    * Set the diagnosis function. This is called by the modal/AI manager
    * when the AI infrastructure is ready.
+   *
+   * @returns Cleanup that detaches only this registration, not a newer one.
    */
-  setDiagnoseFn(fn: DiagnoseFn | null): void {
+  setDiagnoseFn(fn: DiagnoseFn | null): () => void {
+    const registration = ++this.diagnoseFnRegistration;
+    const detach = () => {
+      if (registration === this.diagnoseFnRegistration) this.setDiagnoseFn(null);
+    };
     this.diagnoseFn = fn;
     if (fn) {
       if (!this.enabled) {
         this._rejectSingleEventQueue('Proactive diagnosis is disabled');
-        return;
+        return detach;
       }
       for (const request of this.singleEventQueue) {
         if (request.timeout) clearTimeout(request.timeout);
@@ -140,6 +147,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
         this._armQueuedRequestTimeout(request);
       }
     }
+    return detach;
   }
 
   /**
@@ -354,10 +362,6 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       // SSE stream at a time (concurrent requests cause AbortError).
       for (let index = 0; index < toDiagnose.length; index++) {
         if (generation !== this.generation) break;
-        if (this.paused) {
-          this.pausedBatchEvents = toDiagnose.slice(index);
-          break;
-        }
         if (!this.enabled) {
           for (const event of toDiagnose.slice(index)) {
             const cached = this.cache.get(event.uid);
@@ -367,6 +371,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
               this.emit('diagnosis-update', cancelled);
             }
           }
+          break;
+        }
+        if (this.paused || !this.diagnoseFn) {
+          this.pausedBatchEvents = toDiagnose.slice(index);
           break;
         }
         const event = toDiagnose[index];

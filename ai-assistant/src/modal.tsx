@@ -242,6 +242,17 @@ export default function AIPrompt(props: {
   // This function is passed to the proactive diagnosis manager so it can call
   // the AI without blocking the user's chat.
   const diagnoseFnRef = useRef<((prompt: string) => Promise<string>) | null>(null);
+  const detachDiagnoseFnRef = useRef<(() => void) | null>(null);
+  const diagnosisOwnerMountedRef = useRef(false);
+  useEffect(() => {
+    diagnosisOwnerMountedRef.current = true;
+    return () => {
+      diagnosisOwnerMountedRef.current = false;
+      detachDiagnoseFnRef.current?.();
+      detachDiagnoseFnRef.current = null;
+      diagnoseFnRef.current = null;
+    };
+  }, []);
   // Track whether the diagnose function is ready (agent or AI manager available)
   const [diagnoseFnReady, setDiagnoseFnReady] = useState(false);
   // Track whether proactive diagnosis is currently running (blocks chat input)
@@ -286,7 +297,12 @@ export default function AIPrompt(props: {
 
     try {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
-      if (!proactiveDiagnosisEnabledRef.current || scope !== diagnosisScopeRef.current) return;
+      if (
+        !proactiveDiagnosisEnabledRef.current ||
+        !diagnoseFnRef.current ||
+        scope !== diagnosisScopeRef.current
+      )
+        return;
       setLastCheckedAt(Date.now());
       setWarningEventCount(allWarningEvents.length);
       setDiagnosisCheckError(null);
@@ -301,7 +317,12 @@ export default function AIPrompt(props: {
       }
     } catch (err) {
       console.error('[ProactiveDiagnosis] Cycle error:', err);
-      if (!proactiveDiagnosisEnabledRef.current || scope !== diagnosisScopeRef.current) return;
+      if (
+        !proactiveDiagnosisEnabledRef.current ||
+        !diagnoseFnRef.current ||
+        scope !== diagnosisScopeRef.current
+      )
+        return;
       setDiagnosisCheckError(err instanceof Error ? err.message : String(err));
     }
   }, []); // stable — reads current values via refs
@@ -733,7 +754,7 @@ export default function AIPrompt(props: {
             ...activeConfig.config,
             model: selectedModel,
           });
-          if (contextKey !== diagnosisContextKeyRef.current) {
+          if (!diagnosisOwnerMountedRef.current || contextKey !== diagnosisContextKeyRef.current) {
             throw new Error('Diagnosis provider configuration changed during credential refresh.');
           }
           // Create an isolated manager instance for this single diagnosis
@@ -769,8 +790,14 @@ export default function AIPrompt(props: {
         }
       };
       diagnoseFnRef.current = diagnoseFn;
-      proactiveDiagnosisManager.setDiagnoseFn(diagnoseFn);
+      const detach = proactiveDiagnosisManager.setDiagnoseFn(diagnoseFn);
+      detachDiagnoseFnRef.current = detach;
       setDiagnoseFnReady(true);
+      return () => {
+        detach();
+        if (diagnoseFnRef.current === diagnoseFn) diagnoseFnRef.current = null;
+        if (detachDiagnoseFnRef.current === detach) detachDiagnoseFnRef.current = null;
+      };
     } else if (!isAgentMode) {
       // No agent and no AI config — clear
       diagnoseFnRef.current = null;
@@ -1427,7 +1454,7 @@ export default function AIPrompt(props: {
 
         if (proactiveDiagnosisEnabled) {
           diagnoseFnRef.current = agentDiagnoseFn;
-          proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
+          detachDiagnoseFnRef.current = proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
           setDiagnoseFnReady(true);
           console.log('[ProactiveDiagnosis] Agent diagnose function ready');
         }

@@ -118,6 +118,8 @@ and expand to show the analysis, investigation activity, and reviewable YAML.
   message behind the current item. Cancelling restores the queued message if the
   draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
   Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
+- Closing the panel detaches its diagnosis provider without aborting an active
+  analysis. New requests wait for the current provider setup when the panel reopens.
 - Retry failed analyses, analyze an individual result again, or dismiss it.
   Dismissing hides that event from automatic checks; it does not fix the resource.
 - Opening a diagnosis from Events expands and focuses its header, including cached

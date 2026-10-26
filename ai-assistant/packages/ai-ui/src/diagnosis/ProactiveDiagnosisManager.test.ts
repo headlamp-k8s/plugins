@@ -297,6 +297,75 @@ describe('ProactiveDiagnosisManager', () => {
     expect(manager.getDiagnosis('second')?.diagnosis).toBe('new provider result');
   });
 
+  it('queues new requests after the owning provider detaches', async () => {
+    const oldProvider = vi.fn(async () => 'old result');
+    const detach = manager.setDiagnoseFn(oldProvider);
+    detach();
+    const pending = manager.diagnoseSingleEvent(createEvent());
+    expect(oldProvider).not.toHaveBeenCalled();
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({ pending: true });
+
+    const newProvider = vi.fn(async () => 'current result');
+    manager.setDiagnoseFn(newProvider);
+    await expect(pending).resolves.toMatchObject({ diagnosis: 'current result' });
+    expect(newProvider).toHaveBeenCalledOnce();
+    detach();
+    const next = await manager.diagnoseSingleEvent(
+      createEvent({ uid: 'next', objectName: 'next-workload' })
+    );
+    expect(next.diagnosis).toBe('current result');
+  });
+
+  it.each([false, true])(
+    'does not detach a newer registration even if it reuses the callback (%s)',
+    reuseCallback => {
+      const oldProvider = vi.fn(async () => 'old result');
+      const newProvider = reuseCallback ? oldProvider : vi.fn(async () => 'new result');
+      const detach = manager.setDiagnoseFn(oldProvider);
+      manager.setDiagnoseFn(newProvider);
+      detach();
+      return expect(manager.diagnoseSingleEvent(createEvent())).resolves.toMatchObject({
+        diagnosis: reuseCallback ? 'old result' : 'new result',
+      });
+    }
+  );
+
+  it('lets an active analysis finish and retains the batch until a new provider is ready', async () => {
+    const active = deferred<string>();
+    const oldProvider = vi.fn(() => active.promise);
+    const detach = manager.setDiagnoseFn(oldProvider);
+    const cycle = manager.diagnoseEvents([
+      createEvent(),
+      createEvent({ uid: 'background', objectName: 'background-workload' }),
+    ]);
+    detach();
+    expect(manager.isRunning()).toBe(true);
+    const queued = manager.diagnoseSingleEvent(
+      createEvent({ uid: 'manual', objectName: 'manual-workload' })
+    );
+    active.resolve('completed active analysis');
+    await cycle;
+    expect(oldProvider).toHaveBeenCalledOnce();
+    expect(manager.getDiagnosis('uid-1')).toMatchObject({
+      diagnosis: 'completed active analysis',
+      loading: false,
+    });
+    expect(manager.getDiagnosis('background')).toMatchObject({ pending: true });
+    expect(manager.getDiagnosis('background')?.error).toBeUndefined();
+    expect(manager.getDiagnosis('manual')).toMatchObject({ pending: true });
+
+    const calls: string[] = [];
+    manager.setDiagnoseFn(async prompt => {
+      calls.push(prompt.includes('**Event UID:** manual') ? 'manual' : 'background');
+      return 'new provider result';
+    });
+    await queued;
+    await vi.waitFor(() =>
+      expect(manager.getDiagnosis('background')?.diagnosis).toBe('new provider result')
+    );
+    expect(calls).toEqual(['manual', 'background']);
+  });
+
   it('keeps dismissed events hidden from automatic checks but allows an explicit request', async () => {
     const diagnose = vi.fn(async () => 'result');
     manager.setDiagnoseFn(diagnose);

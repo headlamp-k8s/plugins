@@ -18,6 +18,8 @@ The scenarios cover:
   switching clusters. AI responses are fixture-backed; the host, event reads, and
   resource navigation are real. Scope-switch tests add a second cluster fixture
   backed by the same KWOK API.
+- replacing the default provider in settings while the panel is closed, then
+  diagnosing an uncached event with the newly configured provider.
 
 ## Run
 
