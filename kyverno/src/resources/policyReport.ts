@@ -41,6 +41,28 @@ export interface PolicyReportResult {
   properties?: Record<string, string>;
 }
 
+/**
+ * Exact `source` values Kyverno's reports controller stamps onto a
+ * PolicyReportResult, confirmed against pkg/utils/report/source.go and
+ * results.go (ToPolicyReportResult) in github.com/kyverno/kyverno. PolicyReport
+ * and ClusterPolicyReport are the community wgpolicyk8s.io CRD, not exclusive
+ * to Kyverno, and nothing stops a legacy ClusterPolicy and a CEL
+ * ValidatingPolicy from sharing a bare name, so `source` (not `policy` alone)
+ * is what actually disambiguates which engine produced a given result.
+ *
+ * DeletingPolicy has no entry here: ToPolicyReportResult's policy-kind switch
+ * has no case for it, so it is not part of this reporting path today.
+ */
+export const POLICY_REPORT_SOURCE = {
+  legacy: 'kyverno',
+  validating: 'KyvernoValidatingPolicy',
+  mutating: 'KyvernoMutatingPolicy',
+  generating: 'KyvernoGeneratingPolicy',
+  imageValidating: 'KyvernoImageValidatingPolicy',
+} as const;
+
+export type PolicyReportSource = (typeof POLICY_REPORT_SOURCE)[keyof typeof POLICY_REPORT_SOURCE];
+
 export interface PolicyReportSummary {
   pass?: number;
   fail?: number;
