@@ -18,6 +18,7 @@ import { Icon } from '@iconify/react';
 import { Box, Button, Chip, Link, Paper, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 
 /** Default HolmesGPT installation documentation URL. */
 export const DEFAULT_HOLMES_DOCS_URL =
@@ -92,7 +93,7 @@ export function HolmesSetupGuide({
         sx={{ p: 3, maxWidth: 560, width: '100%', textAlign: 'center' }}
       >
         <Icon
-          icon="mdi:robot-outline"
+          icon={AI_ASSISTANT_ICON}
           width={40}
           height={40}
           aria-hidden="true"

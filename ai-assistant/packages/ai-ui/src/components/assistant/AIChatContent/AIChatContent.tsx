@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 
 /** Props forwarded to the host-provided chat stream renderer. */
 export interface AIChatTextStreamProps {
+  /** Host content rendered before messages in the same scroll area. */
+  beforeMessages?: React.ReactNode;
   /** Conversation messages to render. */
   history: ConversationMessage[];
   /** Whether an assistant response is being generated. */
@@ -27,6 +29,8 @@ export interface AIChatTextStreamProps {
 
 /** Props for the AIChatContent component that renders the chat message history. */
 export interface AIChatContentProps {
+  /** Host content rendered before messages in the same scroll area. */
+  beforeMessages?: React.ReactNode;
   /** Array of chat messages (prompts and responses) to display. */
   history: ConversationMessage[];
   /** Whether an AI response is currently being generated. */
@@ -56,6 +60,7 @@ export interface AIChatContentProps {
  * @returns Scrollable chat content and optional error alert.
  */
 export default function AIChatContent({
+  beforeMessages,
   history,
   isLoading,
   apiError,
@@ -96,6 +101,7 @@ export default function AIChatContent({
 
       <Box sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden' }}>
         <TextStreamSlot
+          beforeMessages={beforeMessages}
           history={history}
           isLoading={isLoading}
           apiError={apiError}

@@ -87,7 +87,7 @@ it('sends trimmed prompts by Enter and button, then clears input', () => {
   expect(props.onSend).toHaveBeenCalledTimes(2);
 });
 
-it('does not send blank, shift-enter, composing, loading, or diagnosis-blocked prompts', () => {
+it('guards invalid submissions but allows a draft to be submitted during background analysis', () => {
   const blank = renderInput({ promptVal: '   ' });
   expect(screen.getByRole('button', { name: 'Send' })).toHaveProperty('disabled', true);
   cleanup();
@@ -105,11 +105,23 @@ it('does not send blank, shift-enter, composing, loading, or diagnosis-blocked p
   cleanup();
 
   const diagnosis = renderInput({ promptVal: 'hello', isDiagnosisRunning: true });
-  expect(screen.getByRole('textbox')).toHaveProperty('disabled', true);
+  expect(screen.getByRole('textbox')).toHaveProperty('disabled', false);
   expect(screen.getByRole('progressbar', { name: 'Proactive diagnosis progress' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Clear History' })).toHaveProperty('disabled', true);
-  expect(diagnosis.onSend).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  expect(diagnosis.onSend).toHaveBeenCalledWith('hello');
   expect(blank.onSend).not.toHaveBeenCalled();
+});
+
+it('prevents duplicate queued sends and allows cancellation with focus restored to the draft', () => {
+  const onCancelQueuedSend = vi.fn();
+  const props = renderInput({ promptVal: 'next draft', isSendQueued: true, onCancelQueuedSend });
+  expect(screen.getByRole('textbox')).toHaveProperty('disabled', false);
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+  expect(props.onSend).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel queued message' }));
+  expect(onCancelQueuedSend).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(screen.getByRole('textbox'));
 });
 
 it('stops loading requests and clears history while idle', () => {

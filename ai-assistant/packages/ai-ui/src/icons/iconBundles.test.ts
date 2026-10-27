@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { AI_ASSISTANT_ICON } from './aiAssistantIcon';
 
 const iconifyMocks = vi.hoisted(() => ({
   addCollection: vi.fn(),
@@ -16,6 +17,16 @@ vi.mock('@iconify/react', async importOriginal => {
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+});
+
+it('renders the shared sparkle mark without a registry lookup or network request', () => {
+  const fetch = vi.spyOn(globalThis, 'fetch');
+  const { container } = render(
+    React.createElement(Icon, { icon: AI_ASSISTANT_ICON, 'aria-label': 'AI Assistant' })
+  );
+  expect(container.querySelectorAll('svg[aria-label="AI Assistant"] path')).toHaveLength(4);
+  expect(fetch).not.toHaveBeenCalled();
+  fetch.mockRestore();
 });
 
 it('registers provider and assistant icon collections for offline use', async () => {

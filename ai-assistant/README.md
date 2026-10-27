@@ -102,6 +102,36 @@ command: ['python3', '-u', '/app/experimental/ag-ui/server-agui.py']
 kubectl apply -f rendered.yaml
 ```
 
+## Background AI diagnoses
+
+Enable proactive diagnosis in the plugin settings to analyze recent warning events.
+Diagnoses and the conversation share one scroll area; result cards start compact
+and expand to show the analysis, investigation activity, and reviewable YAML.
+
+- The overview shows cluster scope, event-check time, and separate ready/failed counts.
+- Failed event reads remain errors during retry backoff, rather than appearing
+  as successful checks with no warning events.
+- Pause defers queued analyses after the current item finishes; it does not abort
+  a provider stream. Resume continues the remaining queue. A new explicit
+  single-event analysis can still run while background work is paused.
+- You can draft while analysis runs. Sending pauses background work and queues the
+  message behind the current item. Cancelling restores the queued message if the
+  draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
+  Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
+- Closing the panel detaches its diagnosis provider without aborting an active
+  analysis. New requests wait for the current provider setup when the panel reopens.
+- Retry failed analyses, analyze an individual result again, or dismiss it.
+  Dismissing hides that event from automatic checks; it does not fix the resource.
+- Opening a diagnosis from Events expands and focuses its header, including cached
+  results when the panel reopens. This pauses automatic chat following so it does
+  not scroll past the result. Keyboard-focused headers have a visible outline.
+- Check again explicitly refreshes analyses in the current scope and can incur AI
+  provider usage. Open resource to inspect current health after a change:
+  "Analysis ready" and a successful API write do not mean an incident is resolved.
+
+Generic AI entry points and attribution use the same offline sparkle mark.
+Provider logos and operation/status icons retain their distinct meanings.
+
 ## MCP (Model Context Protocol) Server Support
 
 The AI Assistant supports [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, allowing you to extend the assistant's capabilities by connecting it to external tools and data sources.

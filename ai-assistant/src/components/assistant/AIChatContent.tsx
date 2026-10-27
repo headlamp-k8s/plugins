@@ -7,6 +7,8 @@ import TextStreamContainer from '../../textstream';
 
 /** Props for the AIChatContent component that renders the chat message history. */
 interface AIChatContentProps {
+  /** Diagnosis results sharing the conversation's scroll area. */
+  beforeMessages?: React.ReactNode;
   /** Array of chat messages (prompts and responses) to display. */
   history: ConversationMessage[];
   /** Whether an AI response is currently being generated. */
