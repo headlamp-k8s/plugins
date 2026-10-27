@@ -15,14 +15,30 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type {
   Addressable,
   AppliedEventPolicyRef,
   AuthStatus,
+  ConditionStatus,
   DeliverySpec,
   KReference,
 } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
+
+/** The state a Channel reports for one of its Subscriptions. */
+export interface ChannelSubscriberStatus {
+  /** Details used for OIDC authentication. */
+  auth?: AuthStatus;
+  /** A human-readable message with details about the Ready status. */
+  message?: string;
+  /** Generation of the Subscription with the UID `uid`. */
+  observedGeneration?: number;
+  /** Whether the subscriber is ready: `True`, `False` or `Unknown`. */
+  ready?: ConditionStatus;
+  /** UID of the Subscription this status belongs to. */
+  uid?: string;
+}
 
 /** A Knative Channel, as the v1 `channels.messaging.knative.dev` CRD defines it. */
 interface KnativeChannelResource extends KubeObjectInterface {
@@ -96,18 +112,7 @@ interface KnativeChannelResource extends KubeObjectInterface {
     /** The EventPolicies applied to the Channel. */
     policies?: AppliedEventPolicyRef[];
     /** The state of each Subscription to this Channel. */
-    subscribers?: {
-      /** Details used for OIDC authentication. */
-      auth?: AuthStatus;
-      /** A human-readable message with details about the Ready status. */
-      message?: string;
-      /** Generation of the Subscription with the UID `uid`. */
-      observedGeneration?: number;
-      /** Whether the subscriber is ready: `True`, `False` or `Unknown`. */
-      ready?: string;
-      /** UID of the Subscription this status belongs to. */
-      uid?: string;
-    }[];
+    subscribers?: ChannelSubscriberStatus[];
   };
 }
 
@@ -117,6 +122,24 @@ export class KnativeChannel extends ConditionedKnativeCustomResource<KnativeChan
   static apiName = 'channels';
   static apiVersion = 'messaging.knative.dev/v1';
   static isNamespaced = true;
+
+  /**
+   * The plugin route that shows one Channel.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeChannelDetails';
+  }
+
+  /**
+   * The plugin route that lists Channels.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeChannels';
+  }
 
   /**
    * The address that event producers send events to.

@@ -19,6 +19,17 @@ import { vi } from 'vitest';
 import { isKnativeComponentInstalled } from '../../isKnativeInstalled';
 import { EventingResourceDetail } from './EventingResourceDetail';
 
+/** The props of Headlamp's `DetailsGrid` that the test records. */
+type GridProps = {
+  /** Builds the sections shown after the details, for the loaded item. */
+  extraSections?: (item: unknown) => {
+    /** Identifies the section on the page. */
+    id: string;
+  }[];
+};
+
+const grid = vi.hoisted(() => ({} as GridProps));
+
 const context = vi.hoisted(() => ({
   cluster: 'cluster-a' as string | null,
   selectedClusters: ['cluster-a', 'cluster-b'],
@@ -45,11 +56,15 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
     cluster,
     name,
     namespace,
-  }: {
+    extraSections,
+  }: GridProps & {
     cluster?: string;
     name: string;
     namespace: string;
-  }) => <div>{`${cluster}/${namespace}/${name}`}</div>,
+  }) => {
+    grid.extraSections = extraSections;
+    return <div>{`${cluster}/${namespace}/${name}`}</div>;
+  },
 }));
 
 vi.mock('./ConditionsSection', () => ({ default: () => null }));
@@ -108,6 +123,25 @@ describe('EventingResourceDetail', () => {
 
     expect(await screen.findByText(/Knative Eventing was not detected/)).toBeTruthy();
     expect(isKnativeComponentInstalled).toHaveBeenCalledWith('eventing', []);
+  });
+
+  it("adds the caller's sections after the conditions, also when there are none", async () => {
+    render(
+      <EventingResourceDetail
+        resourceType={resourceType}
+        extraInfo={() => []}
+        extraSections={() => [{ id: 'extra', section: null }]}
+      />
+    );
+    expect(await screen.findByText('cluster-a/orders/default')).toBeTruthy();
+
+    const sectionIds = (item: unknown) => grid.extraSections?.(item).map(section => section.id);
+    expect(sectionIds({ status: { conditions: [{ type: 'Ready', status: 'True' }] } })).toEqual([
+      'knative.broker-conditions',
+      'extra',
+    ]);
+    expect(sectionIds({ status: {} })).toEqual(['extra']);
+    expect(sectionIds(null)).toEqual([]);
   });
 
   it('checks the new resource cluster when navigation changes it', async () => {
