@@ -196,20 +196,28 @@ it('renders failure details in an expanded section', () => {
   expect(screen.getByText(/timed out/)).toBeTruthy();
 });
 
-it('forwards detected YAML with a translated action title', () => {
-  const onYamlAction = vi.fn();
-  render(
-    <ProactiveDiagnosisSection
-      {...baseDiagnosisArgs}
-      diagnoses={[createDiagnosis({ diagnosis: 'Answer' })]}
-      ContentRendererSlot={ContentRenderer}
-      onYamlAction={onYamlAction}
-    />
-  );
-  expandDiagnoses();
-  fireEvent.click(screen.getByRole('button', { name: 'Apply YAML' }));
-  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
-});
+it.each([undefined, 'route-cluster', 'other-cluster'])(
+  'requires an explicit YAML target when diagnosis request provenance is unknown (%s)',
+  cluster => {
+    const onYamlAction = vi.fn();
+    render(
+      <ProactiveDiagnosisSection
+        {...baseDiagnosisArgs}
+        diagnoses={[
+          createDiagnosis({
+            diagnosis: 'Answer',
+            event: { ...createDiagnosis().event, cluster },
+          }),
+        ]}
+        ContentRendererSlot={ContentRenderer}
+        onYamlAction={onYamlAction}
+      />
+    );
+    expandDiagnoses();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply YAML' }));
+    expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, null);
+  }
+);
 
 it('keeps YAML renderer callbacks stable across host rerenders while invoking the latest action', () => {
   const callbacks: Array<DiagnosisContentRendererProps['onYamlDetected']> = [];
@@ -230,7 +238,7 @@ it('keeps YAML renderer callbacks stable across host rerenders while invoking th
   expect(callbacks.at(-1)).toBe(callbacks[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Review YAML' }));
   expect(first).not.toHaveBeenCalled();
-  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
+  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, null);
 });
 
 it('shows paused state, scope, failures, and recovery actions without claiming resource health', () => {

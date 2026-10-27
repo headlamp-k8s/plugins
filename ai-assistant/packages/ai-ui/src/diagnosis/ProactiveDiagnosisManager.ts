@@ -737,6 +737,8 @@ export class ProactiveDiagnosisManager extends EventEmitter {
     };
     const stringField = (record: Record<string, unknown> | null, key: string): string =>
       typeof record?.[key] === 'string' ? record[key] : '';
+    const eventCluster = (event: unknown): string =>
+      stringField(asRecord(event), '_cluster') || stringField(asRecord(event), 'cluster');
 
     const warningOrError = events.filter(event => {
       const type = stringField(eventData(event), 'type');
@@ -765,10 +767,10 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       const metadata = asRecord(data?.metadata);
       const uid = stringField(metadata, 'uid') || stringField(metadata, 'name');
       const key = baseName
-        ? `${stringField(asRecord(event), '_cluster') || '_'}/${
+        ? `${eventCluster(event) || '_'}/${
             stringField(involvedObject, 'namespace') || '_'
           }/${baseName}`
-        : `event:${uid || index}`;
+        : `${eventCluster(event) || '_'}/event:${uid || index}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -781,7 +783,7 @@ export class ProactiveDiagnosisManager extends EventEmitter {
       const eventName = stringField(metadata, 'name') || 'unknown';
       const eventNamespace = stringField(metadata, 'namespace');
       return {
-        cluster: stringField(asRecord(event), '_cluster') || undefined,
+        cluster: eventCluster(event) || undefined,
         uid:
           stringField(metadata, 'uid') ||
           (eventName === 'unknown' ? `event-${index}` : `${eventName}-${eventNamespace || '_'}`),

@@ -99,7 +99,13 @@ export interface ProactiveDiagnosisSectionProps {
   onDismiss?: (eventUid: string) => void;
   onOpenResource?: (event: DiagnosisResult['event']) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action from a diagnosis. */
-  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onYamlAction?: (
+    yaml: string,
+    title: string,
+    resourceType: string,
+    isDelete: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Slot for the content renderer component that handles markdown/YAML display. Falls back to a plain-text renderer. */
   ContentRendererSlot?: React.ComponentType<DiagnosisContentRendererProps>;
 }
@@ -464,7 +470,9 @@ function DiagnosisResultBlock({
         yaml,
         translationRef.current('Apply {{resourceType}}', { resourceType }),
         resourceType,
-        false
+        false,
+        // Event origin does not establish which cluster the diagnosis agent queried.
+        null
       );
     }
   }, []);

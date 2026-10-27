@@ -44,6 +44,30 @@ describe('ProactiveDiagnosisManager', () => {
     manager.start();
   });
 
+  it('retains the source cluster when extracting otherwise identical events', () => {
+    const data = {
+      type: 'Warning',
+      metadata: { uid: 'a', name: 'warning' },
+      involvedObject: { kind: 'Pod', name: 'same-workload', namespace: 'demo' },
+    };
+    const events = ProactiveDiagnosisManager.extractTopEvents([
+      { _cluster: 'cluster-a', jsonData: data },
+      {
+        _cluster: 'cluster-b',
+        jsonData: { ...data, metadata: { uid: 'b', name: 'warning' } },
+      },
+    ]);
+    expect(events.map(event => event.cluster)).toEqual(['cluster-a', 'cluster-b']);
+  });
+
+  it('does not reuse another cluster diagnosis for an identically named resource', async () => {
+    const diagnose = vi.fn(async () => 'Analysis');
+    manager.setDiagnoseFn(diagnose);
+    await manager.diagnoseEvents([createEvent({ cluster: 'cluster-a' })]);
+    await manager.diagnoseEvents([createEvent({ uid: 'b', cluster: 'cluster-b' })]);
+    expect(diagnose).toHaveBeenCalledTimes(2);
+  });
+
   it('start and stop emit status-change events', () => {
     manager.stop();
     const statuses: Array<{ enabled: boolean }> = [];

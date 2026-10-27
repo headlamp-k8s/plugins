@@ -20,10 +20,98 @@ import { extractTextContent, processToolContent, sanitizeContent } from './conte
 import {
   findLastAssistantWithTools,
   getLastAssistantMessage,
+  getMessageTargetCluster,
   hasToolResponses,
   validateToolCallAlignment,
 } from './history';
 import type { ConversationMessage as Prompt } from './types';
+
+describe('getMessageTargetCluster', () => {
+  const firstTurn: Prompt[] = [
+    { role: 'user', content: 'Inspect the workload.' },
+    { role: 'tool', content: '{}', cluster: 'cluster-a' },
+    { role: 'assistant', content: 'Suggested manifest.' },
+  ];
+
+  it('uses the actual cluster even when the response text names another cluster', () => {
+    const history = [...firstTurn];
+    history[2] = { role: 'assistant', content: 'Example mentioning cluster-b.' };
+    expect(getMessageTargetCluster(history, 2)).toBe('cluster-a');
+  });
+
+  it('requires a choice when the same turn involved multiple clusters', () => {
+    const history: Prompt[] = [
+      ...firstTurn,
+      { role: 'tool', content: '{}', cluster: 'cluster-b' },
+      { role: 'assistant', content: 'Another manifest.' },
+    ];
+    expect(getMessageTargetCluster(history, 4)).toBeNull();
+    expect(getMessageTargetCluster(history, 2)).toBe('cluster-a');
+  });
+
+  it('does not let later turns retarget earlier responses', () => {
+    const history: Prompt[] = [
+      ...firstTurn,
+      { role: 'user', content: 'Now inspect B.' },
+      { role: 'tool', content: '{}', cluster: 'cluster-b' },
+      { role: 'assistant', content: 'Manifest for B.' },
+    ];
+    expect(getMessageTargetCluster(history, 2)).toBe('cluster-a');
+    expect(getMessageTargetCluster(history, 5)).toBe('cluster-b');
+  });
+
+  it('does not inherit a previous turn without request provenance', () => {
+    expect(
+      getMessageTargetCluster(
+        [
+          ...firstTurn,
+          { role: 'user', content: 'Create a new manifest.' },
+          { role: 'assistant', content: 'No requests were made.' },
+        ],
+        4
+      )
+    ).toBeUndefined();
+  });
+
+  it('does not trust prose, assistant metadata, or display-only placeholders', () => {
+    const history: Prompt[] = [
+      { role: 'user', content: 'Mention cluster-a.', cluster: 'cluster-a' },
+      { role: 'tool', content: '{}', cluster: 'cluster-b', isDisplayOnly: true },
+      { role: 'assistant', content: 'cluster-c', cluster: 'cluster-c' },
+    ];
+    expect(getMessageTargetCluster(history, 2)).toBeUndefined();
+  });
+
+  it('does not infer a turn from truncated history', () => {
+    expect(getMessageTargetCluster(firstTurn.slice(1), 1)).toBeUndefined();
+  });
+
+  it('retains host-captured response provenance after tool messages have been removed', () => {
+    expect(
+      getMessageTargetCluster([
+        { role: 'user', content: 'Inspect B.' },
+        { role: 'assistant', content: 'Manifest.', targetCluster: 'cluster-b' },
+      ])
+    ).toBe('cluster-b');
+    expect(getMessageTargetCluster([])).toBeUndefined();
+  });
+
+  it('does not discard earlier ambiguity when more requests are made in the same turn', () => {
+    expect(
+      getMessageTargetCluster([
+        { role: 'user', content: 'Inspect A and B.' },
+        { role: 'assistant', content: 'First response.', targetCluster: null },
+        { role: 'tool', content: '{}', cluster: 'cluster-b' },
+        { role: 'assistant', content: 'Another manifest.' },
+      ])
+    ).toBeNull();
+  });
+
+  it('rejects invalid history indices explicitly', () => {
+    expect(() => getMessageTargetCluster(firstTurn, -1)).toThrow(RangeError);
+    expect(() => getMessageTargetCluster(firstTurn, firstTurn.length)).toThrow(RangeError);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // extractTextContent

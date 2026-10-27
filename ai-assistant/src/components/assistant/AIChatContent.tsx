@@ -20,7 +20,13 @@ interface AIChatContentProps {
   /** Callback invoked when a Kubernetes API operation fails. */
   onOperationFailure: (error: any, operationType: string, resourceInfo?: any) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action. */
-  onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onYamlAction: (
+    yaml: string,
+    title: string,
+    type: string,
+    isDeleteOp: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Callback to retry a failed tool invocation with the given name and arguments. */
   onRetryTool?: (toolName: string, args: Record<string, any>) => void;
   /** Live thinking steps streamed from the AKS agent during processing. */

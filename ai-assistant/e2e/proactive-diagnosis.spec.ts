@@ -80,6 +80,18 @@ async function configure(
     },
     { additionalProvider, proactiveDiagnosisEnabled }
   );
+  // Diagnosis fixtures stay single-cluster; the editor routing scenarios use both real clusters.
+  await page.route('**/config', async route => {
+    const response = await route.fetch();
+    const config = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...config,
+        clusters: config.clusters.filter((cluster: { name: string }) => cluster.name === 'main'),
+      },
+    });
+  });
 }
 
 async function openAssistant(page: Page, startPath = '/c/main/nodes') {
@@ -108,7 +120,13 @@ async function addSecondaryCluster(page: Page) {
     expect(main, 'The test host must expose the main cluster').toBeTruthy();
     await route.fulfill({
       response,
-      json: { ...config, clusters: [...config.clusters, { ...main, name: 'secondary' }] },
+      json: {
+        ...config,
+        clusters: [
+          ...config.clusters.filter((cluster: { name: string }) => cluster.name !== 'secondary'),
+          { ...main, name: 'secondary' },
+        ],
+      },
     });
   });
   await page.route('**/clusters/secondary/**', route =>
@@ -123,7 +141,7 @@ for (const viewport of [
   { width: 1440, height: 900 },
 ]) {
   test.describe(`Proactive diagnosis at ${viewport.width}x${viewport.height}`, () => {
-    test.use({ viewport, reducedMotion: 'reduce' });
+    test.use({ viewport, contextOptions: { reducedMotion: 'reduce' } });
 
     test('keeps long results, recovery actions, and the conversation reachable', async ({
       page,
@@ -199,7 +217,16 @@ for (const viewport of [
       const box = await log.boundingBox();
       expect(box).toBeTruthy();
       await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-      for (let index = 0; index < 8; index++) await page.mouse.wheel(0, 1200);
+      await log.evaluate(element => {
+        element.setAttribute('data-test-scroll-ended', 'false');
+        element.addEventListener(
+          'scrollend',
+          () => element.setAttribute('data-test-scroll-ended', 'true'),
+          { once: true }
+        );
+      });
+      await page.mouse.wheel(0, 9600);
+      await expect(log).toHaveAttribute('data-test-scroll-ended', 'true');
       await expect(cards.last()).toBeInViewport();
       expect(await log.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
       expect(await page.evaluate(() => window.scrollY)).toBe(backgroundScroll);

@@ -18,6 +18,43 @@ import { getStoredToolCalls } from './toolCalls';
 import type { ConversationMessage } from './types';
 
 /**
+ * Resolves a response's target from attempted Kubernetes operations in its own turn.
+ *
+ * @param history - Conversation history containing trusted request-cluster metadata.
+ * @param messageIndex - Message whose YAML is being reviewed; defaults to the latest message.
+ * @returns One known cluster, null for multiple clusters, or undefined without provenance.
+ * @throws When the message index is outside the history.
+ */
+export function getMessageTargetCluster(
+  history: ConversationMessage[],
+  messageIndex: number = history.length - 1
+): string | null | undefined {
+  if (history.length === 0 && messageIndex === -1) return undefined;
+  if (!Number.isInteger(messageIndex) || messageIndex < 0 || messageIndex >= history.length) {
+    throw new RangeError('Message index is outside the conversation history');
+  }
+  const response = history[messageIndex];
+  if (response.role === 'assistant' && response.targetCluster !== undefined) {
+    return response.targetCluster;
+  }
+  const clusters = new Set<string>();
+  for (let index = messageIndex; index >= 0; index--) {
+    const message = history[index];
+    if (message.role === 'user') {
+      if (clusters.size > 1) return null;
+      return clusters.values().next().value;
+    }
+    if (message.role === 'tool' && !message.isDisplayOnly && message.cluster) {
+      clusters.add(message.cluster);
+    } else if (message.role === 'assistant') {
+      if (message.targetCluster === null) return null;
+      if (message.targetCluster) clusters.add(message.targetCluster);
+    }
+  }
+  return undefined;
+}
+
+/**
  * Checks whether history contains an actionable tool response.
  *
  * @param history - Conversation messages to search.

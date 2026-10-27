@@ -20,7 +20,13 @@ export interface AIChatTextStreamProps {
   /** Receives a failed Kubernetes operation and optional resource metadata. */
   onOperationFailure: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Applies or deletes a YAML resource through the host. */
-  onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onYamlAction: (
+    yaml: string,
+    title: string,
+    type: string,
+    isDeleteOp: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Retries a named tool with its validated argument map. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Live agent activity displayed while a response is generated. */
@@ -42,7 +48,13 @@ export interface AIChatContentProps {
   /** Callback invoked when a Kubernetes API operation fails. */
   onOperationFailure: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action. */
-  onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onYamlAction: (
+    yaml: string,
+    title: string,
+    type: string,
+    isDeleteOp: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Callback to retry a failed tool invocation with the given name and arguments. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Live thinking steps streamed from the agent during processing. */
