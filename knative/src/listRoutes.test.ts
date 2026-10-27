@@ -36,6 +36,7 @@ vi.mock('./components/revisions/List', () => ({ RevisionsList: () => null }));
 vi.mock('./components/routes/List', () => ({ RoutesList: () => null }));
 vi.mock('./components/serverlessservices/List', () => ({ ServerlessServicesList: () => null }));
 vi.mock('./components/subscriptions/List', () => ({ SubscriptionsList: () => null }));
+vi.mock('./components/sources/List', () => ({ SourcesList: () => null }));
 vi.mock('./components/triggers/List', () => ({ TriggersList: () => null }));
 
 import { getKnativeListRouteComponent, knativeListRouteComponents } from './listRoutes';
