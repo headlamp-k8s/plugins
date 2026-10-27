@@ -319,6 +319,45 @@ export function parseSkillFile(
 }
 
 /**
+ * Parses a generic Markdown skill or a titled documentation page.
+ *
+ * Explicit skill metadata remains strict. Documentation uses its title as
+ * metadata and must have a nonempty body within the same per-skill byte limit.
+ */
+export function parseMarkdownFile(
+  raw: string,
+  source: string,
+  maxSizeBytes: number = DEFAULT_MAX_SKILL_SIZE_BYTES
+): ParsedSkill {
+  const [frontMatter, content] = parseFrontMatter(raw);
+  if (
+    frontMatter.name !== undefined ||
+    typeof frontMatter.title !== 'string' ||
+    !frontMatter.title.trim()
+  ) {
+    return parseSkillFile(raw, source, maxSizeBytes);
+  }
+
+  const title = frontMatter.title.trim();
+  if (!content) {
+    throw new Error(`Documentation file ${source} has no content`);
+  }
+  const contentSizeBytes = new TextEncoder().encode(content).length;
+  if (contentSizeBytes > maxSizeBytes) {
+    throw new Error(
+      `Documentation '${title}' content is ${contentSizeBytes} bytes, ` +
+        `exceeding the ${maxSizeBytes} byte limit`
+    );
+  }
+  return {
+    metadata: { name: title, description: `Documentation: ${title}` },
+    content,
+    contentSizeBytes,
+    source,
+  };
+}
+
+/**
  * Parses a GitHub Copilot instructions file (`.instructions.md` or `copilot-instructions.md`).
  *
  * These files may have optional YAML front-matter with `applyTo` glob patterns.

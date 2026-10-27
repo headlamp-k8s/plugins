@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { KUBERNETES_DOCS_SOURCE } from './documentationSources';
 import type { ParsedSkill } from './parseSkill';
 import { isValidGitUrl, SkillSource } from './SkillLoader';
 
@@ -155,12 +156,18 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
   if (sha256 && !/^[a-fA-F0-9]{64}$/.test(sha256)) return null;
   const ref = typeof value.ref === 'string' ? value.ref.trim() : '';
   const path = typeof value.path === 'string' ? normalizeSkillSourcePath(value.path) : undefined;
+  // Only migrate the old suggestion; preserve user-retargeted or hash-pinned sources.
+  const isLegacyKubernetesDocs =
+    url === KUBERNETES_DOCS_SOURCE.url &&
+    path === 'content/en/docs' &&
+    ref === KUBERNETES_DOCS_SOURCE.ref &&
+    !sha256;
   return {
     type: 'git',
     url,
     enabled: value.enabled,
     ...(ref ? { ref } : {}),
-    ...(path ? { path } : {}),
+    ...(path ? { path: isLegacyKubernetesDocs ? KUBERNETES_DOCS_SOURCE.path : path } : {}),
     ...(sha256 ? { sha256 } : {}),
   };
 }

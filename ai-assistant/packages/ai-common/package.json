@@ -54,6 +54,7 @@
     "./skills/adapters/browser": "./src/skills/adapters/browser.ts",
     "./skills/builtinSources": "./src/skills/builtinSources.ts",
     "./skills/config": "./src/skills/config.ts",
+    "./skills/documentationSources": "./src/skills/documentationSources.ts",
     "./skills/routing/EmbeddingSkillRouter": "./src/skills/routing/EmbeddingSkillRouter.ts",
     "./skills/routing/KeywordSkillRouter": "./src/skills/routing/KeywordSkillRouter.ts",
     "./skills/testing/MockSkillManager": "./src/skills/testing/MockSkillManager.ts",

@@ -1,4 +1,5 @@
 import { getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
+import { KUBERNETES_DOCS_SOURCE } from '@headlamp-k8s/ai-common/skills/documentationSources';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
@@ -192,6 +193,37 @@ it('immediately persists suggested repos and scopes the viewer load', async () =
   fireEvent.click(screen.getByRole('button', { name: 'View Loaded Skills' }));
   expect(screen.getByText('All skills')).toBeTruthy();
 });
+
+it.each([false, true])(
+  'toggles the bounded Kubernetes Docs suggestion without retaining the oversized source, legacy=%s',
+  async legacy => {
+    const store = createMemoryConfigStore({
+      skills: {
+        ...configuredSkills,
+        sources: legacy
+          ? [{ type: 'git', ...KUBERNETES_DOCS_SOURCE, path: 'content/en/docs', enabled: false }]
+          : [],
+      },
+    });
+    const loadSkills = vi.fn().mockResolvedValue([]);
+    renderSettings({ configStore: store, loadSkills });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Kubernetes Docs' }));
+    expect(getSkillsConfig(store.data()).sources).toEqual([
+      { type: 'git', ...KUBERNETES_DOCS_SOURCE, enabled: true },
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Load viewer skills' }));
+    await waitFor(() =>
+      expect(loadSkills).toHaveBeenCalledWith(
+        undefined,
+        getSkillSourceIdentity({ type: 'git', ...KUBERNETES_DOCS_SOURCE }),
+        undefined
+      )
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Close viewer' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Kubernetes Docs' }));
+    expect(getSkillsConfig(store.data()).sources[0].enabled).toBe(false);
+  }
+);
 
 it('disables an existing suggested repo immediately without opening the viewer', () => {
   const store = createMemoryConfigStore({

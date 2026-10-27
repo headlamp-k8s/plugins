@@ -26,6 +26,7 @@ import {
   SkillsConfig,
   toggleSkill,
 } from './config';
+import { KUBERNETES_DOCS_SOURCE } from './documentationSources';
 import type { ParsedSkill } from './parseSkill';
 
 function makeSkill(name: string, source: string): ParsedSkill {
@@ -38,6 +39,40 @@ function makeSkill(name: string, source: string): ParsedSkill {
 }
 
 describe('getSkillsConfig', () => {
+  it.each([true, false])('migrates the old Kubernetes Docs suggestion, enabled=%s', enabled => {
+    const oldSource = { type: 'git', ...KUBERNETES_DOCS_SOURCE, path: 'content/en/docs', enabled };
+    const data = { skills: { sources: [oldSource] } };
+    expect(getSkillsConfig(data).sources).toEqual([
+      { ...oldSource, path: KUBERNETES_DOCS_SOURCE.path },
+    ]);
+    expect(data.skills.sources[0].path).toBe('content/en/docs');
+  });
+
+  it('preserves custom Kubernetes sources while deduplicating the migrated suggestion', () => {
+    const oldSource = {
+      type: 'git',
+      ...KUBERNETES_DOCS_SOURCE,
+      path: 'content/en/docs',
+      enabled: true,
+    };
+    const customSources = [
+      { ...oldSource, ref: 'v1.35.0' },
+      { ...oldSource, sha256: 'a'.repeat(64) },
+      { ...oldSource, path: 'content/en/docs/tasks' },
+      { ...oldSource, url: 'https://github.com/example/website' },
+    ];
+    expect(
+      getSkillsConfig({
+        skills: {
+          sources: [oldSource, { ...oldSource, path: KUBERNETES_DOCS_SOURCE.path }],
+        },
+      }).sources
+    ).toEqual([{ ...oldSource, path: KUBERNETES_DOCS_SOURCE.path }]);
+    for (const source of customSources) {
+      expect(getSkillsConfig({ skills: { sources: [source] } }).sources).toEqual([source]);
+    }
+  });
+
   it('should return defaults for null data', () => {
     const config = getSkillsConfig(null);
     expect(config).toEqual(DEFAULT_SKILLS_CONFIG);

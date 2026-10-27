@@ -20,9 +20,60 @@ import {
   parseCopilotInstructionsFile,
   ParsedSkill,
   parseFrontMatter,
+  parseMarkdownFile,
   parseSimpleYaml,
   parseSkillFile,
 } from './parseSkill';
+
+describe('parseMarkdownFile', () => {
+  it('loads Kubernetes-style documentation without requiring skill metadata', () => {
+    const raw = `---
+title: Kubernetes Components
+content_type: concept
+description: >
+  Components of a Kubernetes cluster.
+---
+## Control Plane
+
+The control plane manages the cluster.`;
+    expect(parseMarkdownFile(raw, 'overview/components.md')).toEqual({
+      metadata: {
+        name: 'Kubernetes Components',
+        description: 'Documentation: Kubernetes Components',
+      },
+      content: '## Control Plane\n\nThe control plane manages the cluster.',
+      contentSizeBytes: 56,
+      source: 'overview/components.md',
+    });
+  });
+
+  it('preserves explicit skill metadata and strict SKILL.md validation', () => {
+    const raw = '---\nname: original\ndescription: Skill description\ntitle: Page\n---\nBody';
+    expect(parseMarkdownFile(raw, 'guide.md')).toEqual(parseSkillFile(raw, 'guide.md'));
+    expect(() => parseSkillFile('---\ntitle: Page\n---\nBody', 'SKILL.md')).toThrow(
+      "missing required 'name'"
+    );
+    expect(() => parseMarkdownFile('---\nname: 42\ntitle: Page\n---\nBody', 'guide.md')).toThrow(
+      "missing required 'name'"
+    );
+  });
+
+  it.each(['', '---\ntitle: 42\n---\nBody', '---\ntitle: " "\n---\nBody', '# Notes'])(
+    'does not promote untitled or malformed Markdown to a skill: %s',
+    raw => {
+      expect(() => parseMarkdownFile(raw, 'guide.md')).toThrow();
+    }
+  );
+
+  it('rejects empty documentation and enforces the UTF-8 byte limit', () => {
+    expect(() => parseMarkdownFile('---\ntitle: Index\n---\n', '_index.md')).toThrow(
+      'has no content'
+    );
+    const raw = '---\ntitle: Page\n---\néé';
+    expect(parseMarkdownFile(raw, 'guide.md', 4).contentSizeBytes).toBe(4);
+    expect(() => parseMarkdownFile(raw, 'guide.md', 3)).toThrow('exceeding the 3 byte limit');
+  });
+});
 
 describe('parseFrontMatter', () => {
   it('should parse valid front-matter with --- delimiters', () => {

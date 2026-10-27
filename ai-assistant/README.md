@@ -36,6 +36,20 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 
 You will need to provide your own API keys and endpoint information for the provider you choose to use. Please note that using AI providers may incur costs, so check the pricing details of your chosen provider.
 
+## Skills and Documentation
+
+In the AI Assistant settings, enable **Kubernetes Docs** under **Suggested Skill
+Repositories** to load the pinned English **Concepts** section of the official
+Kubernetes documentation. This subset stays below the 10 MiB download/extraction
+limit; the full documentation tree exceeds it. Previously saved, unmodified
+Kubernetes Docs suggestions are upgraded to the Concepts path while preserving
+their enabled state. Custom refs, paths, and content hashes are left unchanged.
+
+Generic Markdown pages with a nonempty `title` in YAML front matter and a
+nonempty body can be loaded as documentation skills. Their title supplies the
+display name and description. `SKILL.md` files still require `name` and
+`description`, and the existing per-skill and total prompt size limits still apply.
+
 ## Adding Holmes Agent to Your Cluster
 
 The AI Assistant can connect to a [HolmesGPT](https://holmesgpt.dev) agent running in your cluster for enhanced Kubernetes diagnostics and troubleshooting. Follow the steps below to deploy Holmes.
