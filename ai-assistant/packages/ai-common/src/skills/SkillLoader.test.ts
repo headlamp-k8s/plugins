@@ -323,6 +323,51 @@ Content`,
   });
 
   describe('single-file loading', () => {
+    it.each([
+      String.raw`C:\docs\SKILL.md`,
+      String.raw`C:\docs/SKILL.md`,
+      String.raw`C:/docs\SKILL.md`,
+      '/docs/SKILL.md',
+    ])('keeps direct SKILL.md validation strict for %s', async filePath => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const loader = new SkillLoader(
+          createMockFs({ [filePath]: '---\ntitle: Not a skill\n---\nDocumentation body.' })
+        );
+        expect(await loader.loadFromDirectory(filePath)).toEqual([]);
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Error loading skill from ${filePath}:`,
+          expect.objectContaining({ message: expect.stringContaining("missing required 'name'") })
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it.each([
+      {
+        filePath: String.raw`C:\docs\SKILL.md`,
+        content: '---\nname: direct\ndescription: Direct skill\n---\nContent',
+        name: 'direct',
+      },
+      {
+        filePath: String.raw`C:\docs\one.instructions.md`,
+        content: 'Use strict types.',
+        name: 'one',
+      },
+      {
+        filePath: String.raw`C:\docs\guide.md`,
+        content: '---\ntitle: Windows documentation\n---\nContent',
+        name: 'Windows documentation',
+      },
+    ])('loads a valid direct Windows file: $filePath', async ({ filePath, content, name }) => {
+      const loader = new SkillLoader(createMockFs({ [filePath]: content }));
+      const skills = await loader.loadFromDirectory(filePath);
+      expect(skills).toHaveLength(1);
+      expect(skills[0].metadata.name).toBe(name);
+      expect(skills[0].source).toBe(filePath);
+    });
+
     it('loads instruction and skill files directly', async () => {
       const fs = createMockFs({
         '/one.instructions.md': '---\ndescription: Instructions\n---\nUse strict types.',

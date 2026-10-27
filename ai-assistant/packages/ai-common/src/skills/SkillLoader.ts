@@ -702,7 +702,7 @@ export class SkillLoader {
    */
   private async loadSingleFile(filePath: string): Promise<ParsedSkill[]> {
     const content = await this.fs.readFile(filePath);
-    const fileName = filePath.split('/').pop() || filePath;
+    const fileName = filePath.split(/[/\\]/).pop() || filePath;
 
     try {
       if (fileName.endsWith('.instructions.md')) {
