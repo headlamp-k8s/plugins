@@ -209,6 +209,27 @@ export function labelKeys(hosts: KubeObject[]): string[] {
   return [...keys].sort();
 }
 
+/** The fleet name used when no grouping label is selected. */
+export const ALL_HOSTS_FLEET = 'All hosts';
+
+/**
+ * The fleet name a host belongs to under a given grouping label. Missing label vs
+ * a present-but-empty value are distinct, and both need a usable name, so they map
+ * to "(no <key>)" and "(empty)" respectively rather than to a blank cell. Shared by
+ * the fleet grouping and the per-host Fleet columns so the two always agree.
+ *
+ * @param labels - The host's `metadata.labels`, if any.
+ * @param labelKey - The grouping label, or '' for no grouping.
+ * @returns The fleet name to display.
+ */
+export function fleetNameFor(labels: Record<string, string> | undefined, labelKey: string): string {
+  if (!labelKey) {
+    return ALL_HOSTS_FLEET;
+  }
+  const value = labels?.[labelKey];
+  return value === undefined ? `(no ${labelKey})` : value === '' ? '(empty)' : value;
+}
+
 /**
  * Groups hosts into fleets by the value of a label key. Hosts missing the label
  * fall into a "(no <key>)" fleet. An empty key returns a single "All hosts" fleet,
@@ -219,13 +240,11 @@ export function labelKeys(hosts: KubeObject[]): string[] {
  */
 export function groupByLabel(hosts: KubeObject[], labelKey: string): Fleet[] {
   if (!labelKey) {
-    return [{ name: 'All hosts', hosts }];
+    return [{ name: ALL_HOSTS_FLEET, hosts }];
   }
   const groups = new Map<string, KubeObject[]>();
   hosts.forEach(h => {
-    const value = h.jsonData.metadata?.labels?.[labelKey];
-    // Missing label vs a present-but-empty value are distinct; both need a usable name.
-    const name = value === undefined ? `(no ${labelKey})` : value === '' ? '(empty)' : value;
+    const name = fleetNameFor(h.jsonData.metadata?.labels, labelKey);
     if (!groups.has(name)) {
       groups.set(name, []);
     }
