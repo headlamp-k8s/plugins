@@ -44,6 +44,8 @@ Kubernetes documentation. This subset stays below the 10 MiB download/extraction
 limit; the full documentation tree exceeds it. Previously saved, unmodified
 Kubernetes Docs suggestions are upgraded to the Concepts path while preserving
 their enabled state. Custom refs, paths, and content hashes are left unchanged.
+If a Concepts source is already configured, it takes precedence over the old
+suggestion, retaining its ref, content hash, and enabled state.
 
 Generic Markdown pages with a nonempty `title` in YAML front matter and a
 nonempty body can be loaded as documentation skills. Their title supplies the

@@ -225,6 +225,37 @@ it.each([false, true])(
   }
 );
 
+it('preserves a custom Concepts source when toggling a colliding legacy suggestion', () => {
+  const conceptsSource = {
+    type: 'git',
+    ...KUBERNETES_DOCS_SOURCE,
+    ref: 'v1.35.0',
+    sha256: 'a'.repeat(64),
+    enabled: false,
+  };
+  const store = createMemoryConfigStore({
+    skills: {
+      ...configuredSkills,
+      sources: [
+        {
+          type: 'git',
+          ...KUBERNETES_DOCS_SOURCE,
+          path: 'content/en/docs',
+          enabled: true,
+        },
+        conceptsSource,
+      ],
+    },
+  });
+  renderSettings({ configStore: store });
+  const toggle = screen.getByRole('checkbox', { name: 'Enable Kubernetes Docs' });
+  expect(toggle).toHaveProperty('checked', false);
+  fireEvent.click(toggle);
+  expect(getSkillsConfig(store.data()).sources).toEqual([{ ...conceptsSource, enabled: true }]);
+  fireEvent.click(toggle);
+  expect(getSkillsConfig(store.data()).sources).toEqual([conceptsSource]);
+});
+
 it('disables an existing suggested repo immediately without opening the viewer', () => {
   const store = createMemoryConfigStore({
     skills: {

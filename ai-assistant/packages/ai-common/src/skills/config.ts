@@ -156,18 +156,12 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
   if (sha256 && !/^[a-fA-F0-9]{64}$/.test(sha256)) return null;
   const ref = typeof value.ref === 'string' ? value.ref.trim() : '';
   const path = typeof value.path === 'string' ? normalizeSkillSourcePath(value.path) : undefined;
-  // Only migrate the old suggestion; preserve user-retargeted or hash-pinned sources.
-  const isLegacyKubernetesDocs =
-    url === KUBERNETES_DOCS_SOURCE.url &&
-    path === 'content/en/docs' &&
-    ref === KUBERNETES_DOCS_SOURCE.ref &&
-    !sha256;
   return {
     type: 'git',
     url,
     enabled: value.enabled,
     ...(ref ? { ref } : {}),
-    ...(path ? { path: isLegacyKubernetesDocs ? KUBERNETES_DOCS_SOURCE.path : path } : {}),
+    ...(path ? { path } : {}),
     ...(sha256 ? { sha256 } : {}),
   };
 }
@@ -183,17 +177,34 @@ export function getSkillsConfig(data: unknown): SkillsConfig {
     return { ...DEFAULT_SKILLS_CONFIG };
   }
   const storedConfig = data.skills;
-  const seenSources = new Set<string>();
-  const sources = Array.isArray(storedConfig.sources)
+  const normalizedSources = Array.isArray(storedConfig.sources)
     ? storedConfig.sources.flatMap(value => {
         const source = normalizeSkillSource(value);
-        if (!source) return [];
-        const identity = getSkillSourceIdentity(source);
-        if (seenSources.has(identity)) return [];
-        seenSources.add(identity);
-        return [source];
+        return source ? [source] : [];
       })
     : [];
+  const conceptsIdentity = getSkillSourceIdentity({ type: 'git', ...KUBERNETES_DOCS_SOURCE });
+  const hasConceptsSource = normalizedSources.some(
+    source => getSkillSourceIdentity(source) === conceptsIdentity
+  );
+  const seenSources = new Set<string>();
+  const sources = normalizedSources.flatMap(source => {
+    const isLegacyKubernetesDocs =
+      source.type === 'git' &&
+      source.url === KUBERNETES_DOCS_SOURCE.url &&
+      source.path === 'content/en/docs' &&
+      source.ref === KUBERNETES_DOCS_SOURCE.ref &&
+      !source.sha256;
+    // An explicitly configured destination takes precedence over the old suggestion.
+    if (isLegacyKubernetesDocs && hasConceptsSource) return [];
+    const migratedSource = isLegacyKubernetesDocs
+      ? { ...source, path: KUBERNETES_DOCS_SOURCE.path }
+      : source;
+    const identity = getSkillSourceIdentity(migratedSource);
+    if (seenSources.has(identity)) return [];
+    seenSources.add(identity);
+    return [migratedSource];
+  });
   return {
     sources,
     disabledSkills: Array.isArray(storedConfig.disabledSkills)

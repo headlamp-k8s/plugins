@@ -73,6 +73,88 @@ describe('getSkillsConfig', () => {
     }
   });
 
+  it.each([
+    { overrides: {}, enabled: false },
+    { overrides: { ref: 'v1.35.0' }, enabled: false },
+    { overrides: { sha256: 'a'.repeat(64) }, enabled: true },
+    { overrides: { ref: 'v1.35.0', sha256: 'b'.repeat(64) }, enabled: false },
+  ])(
+    'preserves an existing Concepts source over the legacy suggestion: %j',
+    ({ overrides, enabled }) => {
+      const conceptsSource = {
+        type: 'git',
+        ...KUBERNETES_DOCS_SOURCE,
+        ...overrides,
+        enabled,
+      };
+      const legacySource = {
+        type: 'git',
+        ...KUBERNETES_DOCS_SOURCE,
+        path: 'content/en/docs',
+        enabled: !enabled,
+      };
+      for (const sources of [
+        [legacySource, conceptsSource],
+        [conceptsSource, legacySource],
+      ]) {
+        const config = getSkillsConfig({ skills: { sources } });
+        expect(config.sources).toEqual([conceptsSource]);
+        const saved = saveSkillsConfig({}, config);
+        expect(saved.skills.sources).toEqual([conceptsSource]);
+        expect(getSkillsConfig(saved).sources).toEqual([conceptsSource]);
+      }
+    }
+  );
+
+  it('detects existing Concepts sources after normalization', () => {
+    const legacySource = {
+      type: 'git',
+      ...KUBERNETES_DOCS_SOURCE,
+      path: 'content/en/docs',
+      enabled: true,
+    };
+    const conceptsSource = {
+      type: 'git',
+      ...KUBERNETES_DOCS_SOURCE,
+      ref: 'v1.35.0',
+      sha256: 'a'.repeat(64),
+      enabled: false,
+    };
+    expect(
+      getSkillsConfig({
+        skills: {
+          sources: [
+            legacySource,
+            {
+              ...conceptsSource,
+              url: `${conceptsSource.url}.git`,
+              path: `/${conceptsSource.path}/`,
+            },
+          ],
+        },
+      }).sources
+    ).toEqual([conceptsSource]);
+  });
+
+  it('does not let invalid Concepts sources prevent migration', () => {
+    const legacySource = {
+      type: 'git',
+      ...KUBERNETES_DOCS_SOURCE,
+      path: 'content/en/docs',
+      enabled: true,
+    };
+    expect(
+      getSkillsConfig({
+        skills: {
+          sources: [
+            legacySource,
+            { ...legacySource, path: KUBERNETES_DOCS_SOURCE.path, sha256: 'invalid' },
+          ],
+        },
+      }).sources
+    ).toEqual([{ ...legacySource, path: KUBERNETES_DOCS_SOURCE.path }]);
+  });
+
   it('should return defaults for null data', () => {
     const config = getSkillsConfig(null);
     expect(config).toEqual(DEFAULT_SKILLS_CONFIG);
