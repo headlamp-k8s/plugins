@@ -1,46 +1,42 @@
 /** Returns whether the URL targets a log endpoint. */
 export const isLogRequest = (url: string): boolean => {
-  return url.includes('/log?') || url.endsWith('/log') || url.includes('/log&');
+  const resourceSegments = getResourcePathSegments(url);
+  if (resourceSegments.length < 3) return false;
+  const subresource = resourceSegments[resourceSegments.length - 1];
+  return subresource === 'log' || subresource.startsWith('log&');
 };
 
 /**
- * Returns whether the URL ends in `/<word>` (optionally with a trailing `/`)
- * after an `/api/` or `/apis/` segment.
+ * Returns whether a relative or absolute URL targets a single Kubernetes resource.
+ * Query strings and fragments do not affect classification.
+ * Resource names are opaque path segments and are not validated here.
  *
- * Matches `/\/(?:api|apis)\/.*?\/\w+\/?$/` in linear time; that regex is
- * quadratic on repeated `/api/` text.
+ * @throws {TypeError} If the URL cannot be parsed; callers handle request setup errors.
  */
-function isApiListUrl(url: string): boolean {
-  // `.` doesn't match line terminators, so only the last line can match.
-  const lineStart =
-    Math.max(
-      url.lastIndexOf('\n'),
-      url.lastIndexOf('\r'),
-      url.lastIndexOf('\u2028'),
-      url.lastIndexOf('\u2029')
-    ) + 1;
-  const line = url.slice(lineStart);
-  const end = line.endsWith('/') ? line.length - 1 : line.length;
-  let segmentStart = end;
-  while (segmentStart > 0 && /\w/.test(line[segmentStart - 1])) segmentStart--;
-  if (segmentStart === end || line[segmentStart - 1] !== '/') return false;
-  return /\/apis?\//.test(line.slice(0, segmentStart - 1));
-}
-
-/** Returns whether the URL points to a single Kubernetes resource instead of a list endpoint. */
 export const isSpecificResourceRequestHelper = (url: string): boolean => {
-  // This matches patterns like /api/v1/namespaces/default/pods/my-pod
-  // But doesn't match /api/v1/namespaces/default/pods
+  return getResourcePathSegments(url).length >= 2;
+};
 
-  // Check if this is a simple resource type URL (list endpoint)
-  if (isApiListUrl(url)) {
-    return false;
+function getResourcePathSegments(url: string): string[] {
+  const segments = new URL(url, 'http://localhost').pathname.split('/').filter(Boolean);
+  let resourceSegments =
+    segments[0] === 'api'
+      ? segments.slice(2)
+      : segments[0] === 'apis'
+      ? segments.slice(3)
+      : segments;
+
+  if (resourceSegments[0] === 'namespaces' && resourceSegments.length > 2) {
+    // Core Namespace subresources are not namespaced resource collections.
+    if (
+      segments[0] === 'api' &&
+      resourceSegments.length === 3 &&
+      (resourceSegments[2] === 'status' || resourceSegments[2] === 'finalize')
+    ) {
+      return resourceSegments;
+    }
+    resourceSegments = resourceSegments.slice(2);
   }
 
-  // More specific resource pattern that should end with a resource name
-  // Pattern like /api/v1/namespaces/default/pods/my-pod
-  const specificResourcePattern = /\/(?:namespaces\/[\w-]+\/)?[\w-]+\/[\w-]+\/?$/;
-  const isSpecific = specificResourcePattern.test(url);
-
-  return isSpecific;
-};
+  return resourceSegments;
+}

@@ -90,7 +90,7 @@ function parseSuggestionLabels(suggestionsText: string): string[] {
  * Extracts inline prompt suggestions from an untrusted model response.
  *
  * @param content - String, text block, text-block array, or primitive model response.
- * @returns Remaining response content and up to three plain-text suggestions.
+ * @returns Remaining response content and up to three plain-text suggestions from the marker's line.
  */
 export function parseSuggestionsFromResponse(content: unknown): {
   cleanContent: string;
@@ -114,17 +114,20 @@ export function parseSuggestionsFromResponse(content: unknown): {
     }
   }
 
-  const suggestionPattern = /SUGGESTIONS:\s*(.+?)(?:\n|$)/i;
-  const match = processedContent.match(suggestionPattern);
+  // Search the original text because Unicode case folding can shift string offsets.
+  const markerMatch = /SUGGESTIONS:/i.exec(processedContent);
 
-  if (match) {
-    const suggestionsText = match[1];
-    const suggestions = parseSuggestionLabels(suggestionsText);
+  if (markerMatch) {
+    const markerIndex = markerMatch.index;
+    const valueStart = markerIndex + markerMatch[0].length;
+    const lineEndOffset = processedContent.slice(valueStart).search(/[\r\n\u2028\u2029]/);
+    const lineEnd = lineEndOffset < 0 ? processedContent.length : valueStart + lineEndOffset;
+    const suggestions = parseSuggestionLabels(processedContent.slice(valueStart, lineEnd));
+    const nextLineStart = lineEnd + (processedContent.startsWith('\r\n', lineEnd) ? 2 : 1);
+    const cleanContent =
+      processedContent.slice(0, markerIndex) + processedContent.slice(nextLineStart);
 
-    // Remove the suggestions line from the content
-    const cleanContent = processedContent.replace(suggestionPattern, '').trim();
-
-    return { cleanContent, suggestions };
+    return { cleanContent: cleanContent.trim(), suggestions };
   }
 
   return { cleanContent: processedContent, suggestions: [] };
