@@ -225,6 +225,54 @@ Claude content`,
   });
 
   describe('loadFromSource', () => {
+    it('loads titled documentation from Git and local sources without accepting invalid SKILL.md', async () => {
+      const documentation =
+        '---\ntitle: Kubernetes Components\n---\nThe control plane manages nodes.';
+      const invalid = '---\ntitle: Not a skill\n---\nMissing required metadata.';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const loader = new SkillLoader(
+          createMockFs({
+            '/docs': 'DIR',
+            '/docs/components.md': documentation,
+            '/docs/SKILL.md': invalid,
+          }),
+          {
+            fetchFiles: async () =>
+              new Map([
+                ['overview/components.md', documentation],
+                ['SKILL.md', invalid],
+                ['_index.md', '---\ntitle: Empty index\n---'],
+                ['notes.md', '# Not documentation'],
+              ]),
+          }
+        );
+        const gitSkills = await loader.loadFromSource({
+          type: 'git',
+          url: 'https://github.com/kubernetes/website',
+          ref: 'v1.36.0',
+          path: 'content/en/docs/concepts',
+          enabled: true,
+        });
+        const localSkills = await loader.loadFromDirectory('/docs');
+        const directSkills = await loader.loadFromDirectory('/docs/components.md');
+        for (const skills of [gitSkills, localSkills, directSkills]) {
+          expect(skills).toHaveLength(1);
+          expect(skills[0].metadata.name).toBe('Kubernetes Components');
+          expect(skills[0].content).toBe('The control plane manages nodes.');
+        }
+        expect(gitSkills[0].source).toBe(
+          'https://github.com/kubernetes/website@v1.36.0/content/en/docs/concepts/overview/components.md'
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('SKILL.md'),
+          expect.any(Error)
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
     it('should skip disabled sources', async () => {
       const fs = createMockFs({});
       const loader = new SkillLoader(fs);
@@ -275,6 +323,51 @@ Content`,
   });
 
   describe('single-file loading', () => {
+    it.each([
+      String.raw`C:\docs\SKILL.md`,
+      String.raw`C:\docs/SKILL.md`,
+      String.raw`C:/docs\SKILL.md`,
+      '/docs/SKILL.md',
+    ])('keeps direct SKILL.md validation strict for %s', async filePath => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const loader = new SkillLoader(
+          createMockFs({ [filePath]: '---\ntitle: Not a skill\n---\nDocumentation body.' })
+        );
+        expect(await loader.loadFromDirectory(filePath)).toEqual([]);
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Error loading skill from ${filePath}:`,
+          expect.objectContaining({ message: expect.stringContaining("missing required 'name'") })
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it.each([
+      {
+        filePath: String.raw`C:\docs\SKILL.md`,
+        content: '---\nname: direct\ndescription: Direct skill\n---\nContent',
+        name: 'direct',
+      },
+      {
+        filePath: String.raw`C:\docs\one.instructions.md`,
+        content: 'Use strict types.',
+        name: 'one',
+      },
+      {
+        filePath: String.raw`C:\docs\guide.md`,
+        content: '---\ntitle: Windows documentation\n---\nContent',
+        name: 'Windows documentation',
+      },
+    ])('loads a valid direct Windows file: $filePath', async ({ filePath, content, name }) => {
+      const loader = new SkillLoader(createMockFs({ [filePath]: content }));
+      const skills = await loader.loadFromDirectory(filePath);
+      expect(skills).toHaveLength(1);
+      expect(skills[0].metadata.name).toBe(name);
+      expect(skills[0].source).toBe(filePath);
+    });
+
     it('loads instruction and skill files directly', async () => {
       const fs = createMockFs({
         '/one.instructions.md': '---\ndescription: Instructions\n---\nUse strict types.',
