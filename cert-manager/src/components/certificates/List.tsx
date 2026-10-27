@@ -1,9 +1,9 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { DateLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Link, ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
 import { NotInstalledBanner } from '../common/CommonComponents';
+import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 
 export function CertificatesList() {
   const { t } = useTranslation();
@@ -24,21 +24,35 @@ export function CertificatesList() {
         {
           id: 'secret',
           label: t('Secret'),
-          getValue: item => item.spec.secretName,
+          render: item => {
+            const secretName = item.spec?.secretName;
+            const namespace = item.metadata?.namespace;
+            if (!secretName) {
+              return '-';
+            }
+            return namespace ? (
+              <Link
+                routeName={K8s.ResourceClasses.Secret.kind}
+                params={{ name: secretName, namespace }}
+                activeCluster={item.cluster}
+              >
+                {secretName}
+              </Link>
+            ) : (
+              secretName
+            );
+          },
+          getValue: item => item.spec?.secretName ?? '',
         },
         {
           id: 'expiresIn',
           label: t('Expires In (Not After)'),
-          render: item => {
-            return item?.status?.notAfter ? (
-              <DateLabel date={item.status.notAfter} format="mini" />
-            ) : null;
-          },
+          render: item => <CertificateExpiryLabel notAfter={item?.status?.notAfter} />,
           getValue: item => item.status?.notAfter ?? '',
           sort: (a, b) => {
-            const dateA = new Date(a.status?.notAfter);
-            const dateB = new Date(b.status?.notAfter);
-            return dateA.getTime() - dateB.getTime();
+            const dateA = a.status?.notAfter ? new Date(a.status.notAfter).getTime() : 0;
+            const dateB = b.status?.notAfter ? new Date(b.status.notAfter).getTime() : 0;
+            return dateA - dateB;
           },
         },
         'age',
