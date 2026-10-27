@@ -208,7 +208,7 @@ it('forwards detected YAML with a translated action title', () => {
   );
   expandDiagnoses();
   fireEvent.click(screen.getByRole('button', { name: 'Apply YAML' }));
-  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, 'demo-cluster');
+  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
 });
 
 it('keeps YAML renderer callbacks stable across host rerenders while invoking the latest action', () => {
@@ -230,7 +230,7 @@ it('keeps YAML renderer callbacks stable across host rerenders while invoking th
   expect(callbacks.at(-1)).toBe(callbacks[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Review YAML' }));
   expect(first).not.toHaveBeenCalled();
-  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, 'demo-cluster');
+  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
 });
 
 it('shows paused state, scope, failures, and recovery actions without claiming resource health', () => {

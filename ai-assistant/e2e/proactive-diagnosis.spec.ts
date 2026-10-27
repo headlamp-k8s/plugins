@@ -235,7 +235,9 @@ for (const viewport of [
       const reviewYaml = section.getByRole('button', { name: 'Open In Editor', exact: true });
       await reviewYaml.click();
       const editor = page.getByRole('dialog');
-      await expect(editor.getByRole('alert')).toHaveText('Target cluster: main');
+      await expect(
+        editor.getByRole('heading', { name: 'Apply ServiceAccount', level: 6 })
+      ).toBeVisible();
       await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
       await expect(editor).toBeHidden();
       await expect(reviewYaml).toBeFocused();

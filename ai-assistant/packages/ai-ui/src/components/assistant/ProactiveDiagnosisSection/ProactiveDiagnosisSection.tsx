@@ -99,13 +99,7 @@ export interface ProactiveDiagnosisSectionProps {
   onDismiss?: (eventUid: string) => void;
   onOpenResource?: (event: DiagnosisResult['event']) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action from a diagnosis. */
-  onYamlAction?: (
-    yaml: string,
-    title: string,
-    resourceType: string,
-    isDelete: boolean,
-    cluster?: string
-  ) => void;
+  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
   /** Slot for the content renderer component that handles markdown/YAML display. Falls back to a plain-text renderer. */
   ContentRendererSlot?: React.ComponentType<DiagnosisContentRendererProps>;
 }
@@ -464,20 +458,16 @@ function DiagnosisResultBlock({
   translationRef.current = t;
 
   // A changing callback would recreate markdown code components and unmount YAML previews.
-  const handleYamlDetected = React.useCallback(
-    (yaml: string, resourceType: string) => {
-      if (yamlActionRef.current) {
-        yamlActionRef.current(
-          yaml,
-          translationRef.current('Apply {{resourceType}}', { resourceType }),
-          resourceType,
-          false,
-          diagnosis.event.cluster
-        );
-      }
-    },
-    [diagnosis.event.cluster]
-  );
+  const handleYamlDetected = React.useCallback((yaml: string, resourceType: string) => {
+    if (yamlActionRef.current) {
+      yamlActionRef.current(
+        yaml,
+        translationRef.current('Apply {{resourceType}}', { resourceType }),
+        resourceType,
+        false
+      );
+    }
+  }, []);
 
   if (diagnosis.error) {
     return (
