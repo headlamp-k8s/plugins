@@ -12,6 +12,7 @@
  */
 
 import type { AgentThinkingStep } from '@headlamp-k8s/ai-common/agents/types';
+import { getMessageTargetCluster } from '@headlamp-k8s/ai-common/conversation/history';
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
 import type { ArgumentMap } from '@headlamp-k8s/ai-common/mcp/tools/types';
 import { Icon } from '@iconify/react';
@@ -43,6 +44,8 @@ export interface EditorDialogSlotProps {
   resourceType?: string;
   /** Whether the requested operation deletes rather than applies a resource. */
   isDelete?: boolean;
+  /** Captured request target; null prevents falling back to an unrelated route. */
+  targetCluster?: string | null;
   /** Reports a successful editor operation to the host. */
   onSuccess?: (response: unknown) => void;
   /** Reports a failed editor operation and optional resource details. */
@@ -76,7 +79,13 @@ export interface TextStreamContainerProps {
   /** Receives failed YAML editor operation details. */
   onOperationFailure?: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Delegates YAML actions instead of opening the default editor. */
-  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onYamlAction?: (
+    yaml: string,
+    title: string,
+    resourceType: string,
+    isDelete: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Retries a failed tool call from rendered assistant content. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Optional CSS width forwarded to message content renderers. */
@@ -131,6 +140,24 @@ function scrollElementTo(element: HTMLElement, top: number, behavior: ScrollBeha
   }
 }
 
+function ContextualContentRenderer({
+  targetCluster,
+  onYamlDetected,
+  ContentRendererSlot,
+  ...props
+}: Omit<ContentRendererSlotProps, 'onYamlDetected'> & {
+  targetCluster: string | null | undefined;
+  onYamlDetected: (yaml: string, resourceType: string, cluster?: string | null) => void;
+  ContentRendererSlot: React.ComponentType<ContentRendererSlotProps>;
+}) {
+  const actionRef = useRef({ targetCluster, onYamlDetected });
+  actionRef.current = { targetCluster, onYamlDetected };
+  const handleYamlDetected = useCallback((yaml: string, resourceType: string) => {
+    actionRef.current.onYamlDetected(yaml, resourceType, actionRef.current.targetCluster);
+  }, []);
+  return <ContentRendererSlot {...props} onYamlDetected={handleYamlDetected} />;
+}
+
 const TextStreamContainer = React.memo(function TextStreamContainer({
   beforeMessages,
   history,
@@ -151,6 +178,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const [editorTitle, setEditorTitle] = useState('');
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
+  const [editorCluster, setEditorCluster] = useState<string | null | undefined>();
   const theme = useTheme();
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const scrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
@@ -351,11 +379,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   );
 
   const handleYamlDetected = useCallback(
-    (yaml: string, detectedResourceType: string) => {
+    (yaml: string, detectedResourceType: string, targetCluster?: string | null) => {
       setEditorContent(yaml);
       setEditorTitle(t('Apply {{resourceType}}', { resourceType: detectedResourceType }));
       setResourceType(detectedResourceType);
       setIsDelete(false);
+      setEditorCluster(targetCluster);
       setShowEditor(true);
     },
     [t]
@@ -363,11 +392,17 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
   // Memoize the onYamlDetected callback to prevent ContentRenderer from re-rendering
   const memoizedOnYamlDetected = useCallback(
-    (yaml: string, resourceType: string) => {
+    (yaml: string, resourceType: string, targetCluster?: string | null) => {
       if (onYamlAction) {
-        onYamlAction(yaml, t('Apply {{resourceType}}', { resourceType }), resourceType, false);
+        onYamlAction(
+          yaml,
+          t('Apply {{resourceType}}', { resourceType }),
+          resourceType,
+          false,
+          targetCluster
+        );
       } else {
-        handleYamlDetected(yaml, resourceType);
+        handleYamlDetected(yaml, resourceType, targetCluster);
       }
     },
     [onYamlAction, handleYamlDetected, t]
@@ -377,6 +412,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     (prompt: ConversationMessage, index: number) => {
       if (
         prompt.role === 'system' ||
+        (prompt.role === 'tool' && prompt.alreadyDisplayed) ||
         (prompt.role === 'tool' && typeof prompt.content !== 'string') ||
         // Hide tool responses that have a toolCallId — these are intermediate API data
         // that the LLM will analyze and present as a descriptive response instead.
@@ -540,7 +576,9 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                       />
                     ) : showContent && prompt.content ? (
                       /* Use ContentRenderer for all assistant content */
-                      <ContentRendererSlot
+                      <ContextualContentRenderer
+                        ContentRendererSlot={ContentRendererSlot}
+                        targetCluster={getMessageTargetCluster(history, index)}
                         content={displayContent || ''}
                         onYamlDetected={memoizedOnYamlDetected}
                         onRetryTool={onRetryTool}
@@ -556,7 +594,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       );
     },
     [
-      history.length,
+      history,
       theme.palette,
       memoizedOnYamlDetected,
       ContentRendererSlot,
@@ -696,6 +734,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         title={editorTitle}
         resourceType={resourceType}
         isDelete={isDelete}
+        targetCluster={editorCluster}
         onSuccess={response => {
           if (onOperationSuccess) {
             onOperationSuccess(response);

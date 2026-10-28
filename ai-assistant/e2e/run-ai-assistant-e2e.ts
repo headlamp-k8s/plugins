@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 interface Kubeconfig {
   clusters: Array<{ name: string; cluster: Record<string, unknown> }>;
-  contexts: Array<{ name: string; context: { cluster: string } }>;
+  contexts: Array<{ name: string; context: { cluster: string; user: string } }>;
+  users: Array<{ name: string; user: Record<string, unknown> }>;
   'current-context': string;
 }
 
@@ -17,6 +18,14 @@ const headlampUrl = process.env.HEADLAMP_URL || 'http://127.0.0.1:4466';
 const headlampPort = new URL(headlampUrl).port || '4466';
 const headlampContainerName = `${clusterName}-headlamp`;
 const kubeconfigPath = path.join(tmpdir(), `${clusterName}-kubeconfig`);
+const testClusters = [
+  { name: clusterName, context: 'main', kubeconfigPath },
+  {
+    name: `${clusterName}-secondary`,
+    context: 'secondary',
+    kubeconfigPath: path.join(tmpdir(), `${clusterName}-secondary-kubeconfig`),
+  },
+];
 const headlampKubeconfigPath = path.join(tmpdir(), `${clusterName}-headlamp-kubeconfig`);
 const commandSuffix = process.platform === 'win32' ? '.cmd' : '';
 
@@ -55,8 +64,8 @@ function ensureCommands(): void {
   }
 }
 
-function deleteCluster(): void {
-  spawnSync('kwokctl', ['delete', 'cluster', '--name', clusterName], {
+function deleteCluster(name: string): void {
+  spawnSync('kwokctl', ['delete', 'cluster', '--name', name], {
     cwd: rootDir,
     stdio: 'ignore',
   });
@@ -68,10 +77,12 @@ function deleteHeadlampContainer(): void {
 
 function cleanup(): void {
   deleteHeadlampContainer();
-  if (process.env.KEEP_E2E_CLUSTER !== 'true') {
-    deleteCluster();
+  for (const cluster of testClusters) {
+    if (process.env.KEEP_E2E_CLUSTER !== 'true') {
+      deleteCluster(cluster.name);
+    }
+    rmSync(cluster.kubeconfigPath, { force: true });
   }
-  rmSync(kubeconfigPath, { force: true });
   rmSync(headlampKubeconfigPath, { force: true });
 }
 
@@ -97,56 +108,70 @@ async function main(): Promise<void> {
   run('npx', ['playwright', 'install', 'chromium']);
 
   deleteHeadlampContainer();
-  deleteCluster();
-  run('kwokctl', [
-    'create',
-    'cluster',
-    '--name',
-    clusterName,
-    '--runtime',
-    'docker',
-    '--kubeconfig',
-    kubeconfigPath,
-  ]);
+  const clusterTokens: Record<string, string> = {};
+  for (const cluster of testClusters) {
+    deleteCluster(cluster.name);
+    run('kwokctl', [
+      'create',
+      'cluster',
+      '--name',
+      cluster.name,
+      '--runtime',
+      'docker',
+      '--kubeconfig',
+      cluster.kubeconfigPath,
+    ]);
+    process.env.KUBECONFIG = cluster.kubeconfigPath;
+    run('kubectl', ['apply', '-f', 'e2e/kwok-fixtures.yaml']);
+    run('kubectl', ['wait', 'node/kwok-worker', '--for=condition=Ready', '--timeout=120s']);
+    clusterTokens[cluster.context] = run(
+      'kubectl',
+      ['create', 'token', 'headlamp', '--namespace', 'headlamp-e2e', '--duration', '1h'],
+      true
+    );
+  }
   process.env.KUBECONFIG = kubeconfigPath;
-  run('kubectl', ['apply', '-f', 'e2e/kwok-fixtures.yaml']);
-  run('kubectl', ['wait', 'node/kwok-worker', '--for=condition=Ready', '--timeout=120s']);
-  const headlampToken = run(
-    'kubectl',
-    ['create', 'token', 'headlamp', '--namespace', 'headlamp-e2e', '--duration', '1h'],
-    true
-  );
 
   run('docker', ['build', '-f', 'e2e/Dockerfile.headlamp', '-t', 'headlamp-ai-e2e:local', '.']);
-  const generatedContextName = `kwok-${clusterName}`;
-  const headlampKubeconfig = yaml.load(
-    run(
-      'kwokctl',
-      [
-        'get',
-        'kubeconfig',
-        '--name',
-        clusterName,
-        '--host',
-        'host.docker.internal',
-        '--insecure-skip-tls-verify',
-      ],
-      true
-    )
-  ) as Kubeconfig;
-  const cluster = headlampKubeconfig.clusters.find(item => item.name === generatedContextName);
-  const context = headlampKubeconfig.contexts.find(item => item.name === generatedContextName);
-  if (!cluster || !context) {
-    throw new Error(`kwokctl kubeconfig does not contain context ${generatedContextName}`);
+  const headlampKubeconfig: Kubeconfig = {
+    clusters: [],
+    contexts: [],
+    users: [],
+    'current-context': 'main',
+  };
+  for (const testCluster of testClusters) {
+    const generatedContextName = `kwok-${testCluster.name}`;
+    const generated = yaml.load(
+      run(
+        'kwokctl',
+        [
+          'get',
+          'kubeconfig',
+          '--name',
+          testCluster.name,
+          '--host',
+          'host.docker.internal',
+          '--insecure-skip-tls-verify',
+        ],
+        true
+      )
+    ) as Kubeconfig;
+    const cluster = generated.clusters.find(item => item.name === generatedContextName);
+    const context = generated.contexts.find(item => item.name === generatedContextName);
+    const user = generated.users.find(item => item.name === context?.context.user);
+    if (!cluster || !context || !user) {
+      throw new Error(`kwokctl kubeconfig does not contain context ${generatedContextName}`);
+    }
+    const { 'certificate-authority-data': unusedCertificateAuthority, ...clusterConfig } =
+      cluster.cluster;
+    void unusedCertificateAuthority;
+    headlampKubeconfig.clusters.push({ name: testCluster.context, cluster: clusterConfig });
+    headlampKubeconfig.contexts.push({
+      name: testCluster.context,
+      context: { ...context.context, cluster: testCluster.context, user: testCluster.context },
+    });
+    headlampKubeconfig.users.push({ ...user, name: testCluster.context });
   }
-  const { 'certificate-authority-data': unusedCertificateAuthority, ...headlampClusterConfig } =
-    cluster.cluster;
-  void unusedCertificateAuthority;
-  cluster.cluster = headlampClusterConfig;
-  cluster.name = 'main';
-  context.name = 'main';
-  context.context.cluster = 'main';
-  headlampKubeconfig['current-context'] = 'main';
   writeFileSync(headlampKubeconfigPath, yaml.dump(headlampKubeconfig));
   run('docker', [
     'run',
@@ -175,7 +200,12 @@ async function main(): Promise<void> {
     ['run', 'e2e:playwright', '--', ...process.argv.slice(2)],
     {
       cwd: rootDir,
-      env: { ...process.env, HEADLAMP_URL: headlampUrl, HEADLAMP_TOKEN: headlampToken },
+      env: {
+        ...process.env,
+        HEADLAMP_URL: headlampUrl,
+        HEADLAMP_TOKEN: clusterTokens.main,
+        HEADLAMP_SECONDARY_TOKEN: clusterTokens.secondary,
+      },
       stdio: 'inherit',
     }
   );

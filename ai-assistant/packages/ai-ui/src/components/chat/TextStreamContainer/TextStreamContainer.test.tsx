@@ -87,6 +87,100 @@ function renderStream(overrides: Partial<TextStreamContainerProps> = {}): TextSt
   return props;
 }
 
+it.each([
+  { clusters: ['chat-cluster'], expected: 'chat-cluster' },
+  { clusters: ['cluster-a', 'cluster-b'], expected: null },
+])('carries response-scoped YAML targets: $clusters', ({ clusters, expected }) => {
+  const onYamlAction = vi.fn();
+  renderStream({
+    history: [
+      { role: 'user', content: 'Suggest a manifest for these resources.' },
+      ...clusters.map((cluster, index) => ({
+        role: 'tool',
+        content: '{}',
+        toolCallId: `call-${index}`,
+        cluster,
+      })),
+      { role: 'assistant', content: 'Suggested manifest.' },
+    ],
+    onYamlAction,
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, expected);
+});
+
+it('keeps an older manifest bound to its own request rather than the latest cluster', () => {
+  const onYamlAction = vi.fn();
+  renderStream({
+    history: [
+      { role: 'user', content: 'Inspect cluster A.' },
+      { role: 'tool', content: '{}', toolCallId: 'a', cluster: 'cluster-a' },
+      { role: 'assistant', content: 'Manifest for A.' },
+      { role: 'user', content: 'Now inspect cluster B.' },
+      { role: 'tool', content: '{}', toolCallId: 'b', cluster: 'cluster-b' },
+      { role: 'assistant', content: 'Manifest for B.' },
+    ],
+    onYamlAction,
+  });
+  const buttons = screen.getAllByRole('button', { name: 'Open YAML' });
+  fireEvent.click(buttons[0]);
+  fireEvent.click(buttons[1]);
+  expect(onYamlAction).toHaveBeenNthCalledWith(
+    1,
+    'kind: Pod',
+    'Apply Pod',
+    'Pod',
+    false,
+    'cluster-a'
+  );
+  expect(onYamlAction).toHaveBeenNthCalledWith(
+    2,
+    'kind: Pod',
+    'Apply Pod',
+    'Pod',
+    false,
+    'cluster-b'
+  );
+});
+
+it('preserves the target for a host editor slot without an external YAML action', () => {
+  function TargetEditor({ open, targetCluster }: EditorDialogSlotProps) {
+    return open ? <div role="dialog">{targetCluster}</div> : null;
+  }
+  renderStream({
+    history: [
+      { role: 'user', content: 'Inspect the workload.' },
+      { role: 'tool', content: '{}', toolCallId: 'target', cluster: 'chat-cluster' },
+      { role: 'assistant', content: 'Manifest.' },
+    ],
+    EditorDialogSlot: TargetEditor,
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(screen.getByRole('dialog').textContent).toBe('chat-cluster');
+});
+
+it('keeps each YAML callback stable while using the latest host handler', () => {
+  const callbacks: Array<ContentRendererSlotProps['onYamlDetected']> = [];
+  function StableRenderer(props: ContentRendererSlotProps) {
+    callbacks.push(props.onYamlDetected);
+    return <Renderer {...props} />;
+  }
+  const history: ConversationMessage[] = [
+    { role: 'user', content: 'Inspect the workload.' },
+    { role: 'tool', content: '{}', toolCallId: 'target', cluster: 'chat-cluster' },
+    { role: 'assistant', content: 'Manifest.' },
+  ];
+  const first = vi.fn();
+  const latest = vi.fn();
+  const props = { history, isLoading: false, apiError: null, ContentRendererSlot: StableRenderer };
+  const { rerender } = render(<TextStreamContainer {...props} onYamlAction={first} />);
+  rerender(<TextStreamContainer {...props} onYamlAction={latest} />);
+  expect(callbacks.at(-1)).toBe(callbacks[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(first).not.toHaveBeenCalled();
+  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, 'chat-cluster');
+});
+
 it('renders Storybook conversation semantics and passes axe', async () => {
   render(
     <main>
@@ -120,6 +214,25 @@ it('places host diagnosis content inside the conversation scroll area', () => {
   const log = screen.getByRole('log', { name: 'Conversation messages' });
   expect(log.contains(screen.getByRole('region', { name: 'AI diagnoses' }))).toBe(true);
   expect(log.textContent).toContain('How do I list pods?');
+});
+
+it('shows a mutation error once while retaining its separately recorded tool provenance', () => {
+  const content = 'Mutation was forbidden.';
+  renderStream({
+    history: [
+      { role: 'user', content: 'Apply the change.' },
+      {
+        role: 'tool',
+        cluster: 'cluster-b',
+        content,
+        error: true,
+        alreadyDisplayed: true,
+      },
+      { role: 'assistant', content, error: true },
+    ],
+  });
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
+  expect(screen.getAllByText(content)).toHaveLength(1);
 });
 
 it.each([
@@ -326,7 +439,7 @@ it('opens the editor or delegates YAML actions and forwards operation callbacks'
     />
   );
   fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
-  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
+  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, undefined);
   expect(screen.queryByRole('dialog', { name: 'YAML editor' })).toBeNull();
 });
 

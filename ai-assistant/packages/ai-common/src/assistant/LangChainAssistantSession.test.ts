@@ -25,7 +25,7 @@
 import { AIMessage, AIMessageChunk, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { describe, expect, it, vi } from 'vitest';
-import { sanitizeToolAlignment } from '../conversation/history';
+import { getMessageTargetCluster, sanitizeToolAlignment } from '../conversation/history';
 import { convertPromptsToMessages } from '../conversation/langchain/messages';
 import type { ConversationMessage as Prompt } from '../conversation/types';
 import type { ToolClient } from '../mcp/client/ToolClient';
@@ -39,11 +39,11 @@ import type { NormalizedToolCall } from '../tools/calls/processToolCalls';
 import type { KubernetesToolContext } from '../tools/kubernetes/context';
 import type { RecommendedTool } from '../tools/langchain/ToolPlanner';
 import { ToolPlanner } from '../tools/langchain/ToolPlanner';
-import type { ToolCall } from '../tools/types';
 import {
   createMockKubernetesToolManager,
   createMockToolManager,
 } from '../tools/testing/MockToolManager';
+import type { ToolCall } from '../tools/types';
 import type { CacheEntry } from './cache/responseCache';
 import type { LangChainToolRuntime as ToolManagerAdapter } from './langchain/LangChainToolBinding';
 import LangChainAssistantSession from './LangChainAssistantSession';
@@ -1306,6 +1306,105 @@ describe('MockApprovalManager + MCP tool flow', () => {
 // =============================================================================
 // analyzeAndCorrectResponse / getCorrectedResponse (kubectl correction path)
 // =============================================================================
+
+describe('YAML target provenance through tool-response cleanup', () => {
+  it.each([
+    { clusters: ['cluster-b'], expected: 'cluster-b' },
+    { clusters: ['cluster-a', 'cluster-b'], expected: null },
+  ])('retains the request scope: $clusters', async ({ clusters, expected }) => {
+    const manager = createIntegrationManager();
+    privateManager(manager).history.push(
+      { role: 'user', content: 'Inspect the workloads and suggest YAML.' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: clusters.map((cluster, index) => ({
+          id: `request-${index}`,
+          type: 'function',
+          function: {
+            name: 'kubernetes_api_request',
+            arguments: JSON.stringify({ cluster, method: 'GET', url: '/api/v1/pods' }),
+          },
+        })),
+      },
+      ...clusters.map((cluster, index) => ({
+        role: 'tool',
+        content: '{}',
+        name: 'kubernetes_api_request',
+        toolCallId: `request-${index}`,
+        cluster,
+      }))
+    );
+    privateManager(manager).model = {
+      invoke: vi.fn().mockResolvedValue({ content: 'Suggested manifest.', tool_calls: [] }),
+      stream: async function* () {},
+    };
+
+    const response = await manager.processToolResponses();
+    expect(manager.history.some(message => message.role === 'tool')).toBe(false);
+    expect(response.targetCluster).toBe(expected);
+    expect(getMessageTargetCluster(manager.history)).toBe(expected);
+  });
+});
+
+describe('mutation failures in follow-up model requests', () => {
+  it.each([
+    'Failed to create ConfigMap: request was forbidden.',
+    'Error deleting resource: request was forbidden.',
+    'Error updating resource: request was forbidden.',
+  ])('retains the redacted assistant error after orphan tool cleanup: %s', async failure => {
+    const manager = createIntegrationManager();
+    const redactedFailure = `${failure} Credential: [REDACTED]`;
+    manager.history.push(
+      { role: 'user', content: 'Inspect A, then update B.' },
+      { role: 'assistant', content: 'Read A completed.', targetCluster: 'cluster-a' },
+      {
+        role: 'assistant',
+        content: 'Applying the requested change on B.',
+        toolCalls: [
+          {
+            id: 'mutation-b',
+            function: { name: 'kubernetes_api_request', arguments: '{"cluster":"cluster-b"}' },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        cluster: 'cluster-b',
+        content: redactedFailure,
+        error: true,
+        alreadyDisplayed: true,
+      },
+      { role: 'assistant', content: redactedFailure, error: true },
+      {
+        role: 'tool',
+        toolCallId: 'unmatched-confirmation-error',
+        content: 'Authorization: Bearer model-context-secret',
+        error: true,
+      }
+    );
+    expect(getMessageTargetCluster(manager.history)).toBeNull();
+    const invoke = vi
+      .fn<(input: unknown, options?: unknown) => Promise<AIMessage>>()
+      .mockResolvedValue(new AIMessage('Review the failure before retrying.'));
+    const model = { invoke };
+    privateManager(manager).model = model;
+    privateManager(manager).boundModel = model;
+    privateManager(manager).useDirectToolCalling = true;
+
+    const response = await manager.userSend('Explain the failed operation and how to fix it.');
+    expect(response.content).toBe('Review the failure before retrying.');
+    const messages = invoke.mock.calls.at(-1)?.[0];
+    if (!Array.isArray(messages)) throw new Error('Model was not invoked with chat messages');
+    expect(
+      messages.filter(
+        message => message instanceof AIMessage && message.content === redactedFailure
+      )
+    ).toHaveLength(1);
+    expect(messages.some(message => message instanceof ToolMessage)).toBe(false);
+    expect(JSON.stringify(messages)).not.toContain('model-context-secret');
+  });
+});
 
 describe('kubectl correction via processToolResponses', () => {
   it('getCorrectedResponse triggers when model suggests kubectl', async () => {
@@ -3045,10 +3144,7 @@ describe('handleMultipleToolExecution', () => {
       },
     ];
 
-    await privateManager(manager).handleMultipleToolExecution(
-      'reconcile and observe',
-      recommended
-    );
+    await privateManager(manager).handleMultipleToolExecution('reconcile and observe', recommended);
 
     const fluxTool = capturedToolCalls.find(t => t.name === 'flux__reconcile_kustomization');
     expect(fluxTool).toBeDefined();

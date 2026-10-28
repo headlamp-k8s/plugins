@@ -14,19 +14,26 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getMessageTargetCluster,
+  sanitizeToolAlignment,
+} from '@headlamp-k8s/ai-common/conversation/history';
+import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   clusterRequest: vi.fn(),
+  apply: vi.fn(),
+  clusterAction: vi.fn<(action: () => Promise<unknown>) => Promise<unknown>>(),
   isLogRequest: vi.fn<(url: string) => boolean>(),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
-  clusterAction: vi.fn(),
+  clusterAction: mocks.clusterAction,
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/ApiProxy', () => ({
-  apply: vi.fn(),
+  apply: mocks.apply,
   clusterRequest: mocks.clusterRequest,
 }));
 
@@ -49,6 +56,28 @@ describe('handleActualApiRequest resource links', () => {
     );
     mocks.isLogRequest.mockImplementation(actual.isLogRequest);
   });
+
+  it.each([{ kind: 'ServiceAccount', metadata: { name: 'default' } }, 'resource output', null])(
+    'records the actual request cluster on tool history: %j',
+    async response => {
+      mocks.clusterRequest.mockResolvedValue(response);
+      const history: Array<{ role: string; cluster?: string }> = [];
+      await handleActualApiRequest(
+        '/api/v1/namespaces/demo/serviceaccounts/default',
+        'GET',
+        '',
+        vi.fn(),
+        { history },
+        '',
+        'chat-cluster'
+      );
+      expect(mocks.clusterRequest).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ cluster: 'chat-cluster' })
+      );
+      expect(history.at(-1)).toMatchObject({ role: 'tool', cluster: 'chat-cluster' });
+    }
+  );
 
   it.each([
     ['/api/v1/namespaces/default/pods/my.pod', 'Pod', 'my.pod'],
@@ -102,6 +131,7 @@ describe('handleActualApiRequest resource links', () => {
     expect(aiManager.history).toContainEqual({
       success: true,
       role: 'tool',
+      cluster: 'Headlamp',
       content: result,
     });
   });
@@ -198,6 +228,265 @@ describe('handleActualApiRequest resource links', () => {
 
     expect(result).toContain(
       'https://headlamp/resource-details?cluster=Headlamp&kind=pods&resource=test-pod&ns=default'
+    );
+  });
+});
+
+describe('handleActualApiRequest handled log failures', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const actual = await vi.importActual<typeof import('@headlamp-k8s/ai-ui/parsing/urlParsing')>(
+      '@headlamp-k8s/ai-ui/parsing/urlParsing'
+    );
+    mocks.isLogRequest.mockImplementation(actual.isLogRequest);
+  });
+
+  it.each([
+    'a container name must be specified for pod test-pod, choose one of: [app sidecar]',
+    'Bad Request',
+  ])('retains a failed log request in multi-cluster provenance: %s', async message => {
+    const history: ConversationMessage[] = [
+      { role: 'user', content: 'Inspect cluster A and get the logs from cluster B.' },
+    ];
+    mocks.clusterRequest
+      .mockResolvedValueOnce({ kind: 'Pod', metadata: { name: 'test-pod' } })
+      .mockRejectedValueOnce(new Error(message));
+    await handleActualApiRequest(
+      '/api/v1/namespaces/demo/pods/test-pod',
+      'GET',
+      '',
+      vi.fn(),
+      { history },
+      '',
+      'cluster-a'
+    );
+    const result = await handleActualApiRequest(
+      '/api/v1/namespaces/demo/pods/test-pod/log',
+      'GET',
+      '',
+      vi.fn(),
+      { history },
+      '',
+      'cluster-b'
+    );
+
+    expect(getMessageTargetCluster(history)).toBeNull();
+    expect(
+      history.filter(entry => entry.role === 'tool' && entry.cluster === 'cluster-b')
+    ).toHaveLength(1);
+    const guidance = history.find(entry => entry.role === 'assistant');
+    expect(guidance?.content).toContain('test-pod');
+    expect(JSON.parse(result)).toEqual({
+      error: false,
+      role: 'assistant',
+      content: guidance?.content,
+    });
+    expect(mocks.clusterRequest).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('handleActualApiRequest failed mutation provenance', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.clusterRequest.mockReset();
+    mocks.apply.mockReset();
+    mocks.clusterAction.mockReset();
+    mocks.isLogRequest.mockReturnValue(false);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const resource = { kind: 'ConfigMap', name: 'example', namespace: 'demo' };
+  const url = '/api/v1/namespaces/demo/configmaps/example';
+  const resourceBody = JSON.stringify({
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: { name: resource.name, namespace: resource.namespace },
+  });
+
+  async function readClusterA(): Promise<ConversationMessage[]> {
+    const history: ConversationMessage[] = [
+      { role: 'user', content: 'Inspect A, then update the resource in B.' },
+    ];
+    mocks.clusterRequest.mockResolvedValueOnce({ kind: 'Pod', metadata: { name: 'test-pod' } });
+    await handleActualApiRequest(
+      '/api/v1/namespaces/demo/pods/test-pod',
+      'GET',
+      '',
+      vi.fn(),
+      { history },
+      '',
+      'cluster-a'
+    );
+    return history;
+  }
+
+  it.each([
+    { method: 'POST', operation: 'POST' },
+    { method: 'DELETE', operation: 'DELETE' },
+    { method: 'PUT', operation: 'PATCH' },
+  ])(
+    'retains the confirmed target after a failed $method mutation',
+    async ({ method, operation }) => {
+      const actions: Promise<unknown>[] = [];
+      mocks.clusterAction.mockImplementation(action => {
+        const result = action();
+        actions.push(result);
+        return result;
+      });
+      const failure = new Error('Mutation was forbidden');
+      mocks.clusterRequest.mockRejectedValue(failure);
+      mocks.apply.mockRejectedValue(failure);
+      const history = await readClusterA();
+      const body =
+        method === 'POST'
+          ? resourceBody
+          : method === 'DELETE'
+          ? JSON.stringify(resource)
+          : JSON.stringify({ data: { setting: 'updated' } });
+      const callbackTargets: Array<string | null | undefined> = [];
+      const onFailure = vi.fn(() => {
+        callbackTargets.push(getMessageTargetCluster(history));
+        history.push({
+          role: 'tool',
+          toolCallId: 'unmatched-confirmation-error',
+          error: true,
+          content: failure.message,
+        });
+      });
+      await handleActualApiRequest(
+        url,
+        method,
+        body,
+        vi.fn(),
+        { history },
+        JSON.stringify(resource),
+        'cluster-b',
+        onFailure
+      );
+      await Promise.all(actions);
+
+      expect(callbackTargets).toEqual([null]);
+      expect(getMessageTargetCluster(history)).toBeNull();
+      expect(sanitizeToolAlignment(history)).toContainEqual(
+        expect.objectContaining({
+          role: 'assistant',
+          error: true,
+          content: expect.stringContaining(failure.message),
+        })
+      );
+      expect(
+        history.filter(entry => entry.role === 'tool' && entry.cluster === 'cluster-b')
+      ).toHaveLength(1);
+      expect(onFailure).toHaveBeenCalledWith(failure, operation, resource);
+      if (method === 'POST') {
+        expect(mocks.apply).toHaveBeenCalledWith(expect.anything(), 'cluster-b');
+      } else {
+        expect(mocks.clusterRequest).toHaveBeenLastCalledWith(
+          expect.any(String),
+          expect.objectContaining({ method: operation, cluster: 'cluster-b' })
+        );
+      }
+    }
+  );
+
+  it.each([
+    { method: 'POST', operation: 'POST', phase: 'parse' },
+    { method: 'DELETE', operation: 'DELETE', phase: 'parse' },
+    { method: 'PUT', operation: 'PUT', phase: 'parse' },
+    { method: 'PUT', operation: 'PUT', phase: 'resource-info' },
+    { method: 'POST', operation: 'POST', phase: 'setup' },
+    { method: 'PUT', operation: 'PATCH', phase: 'setup' },
+  ])(
+    'retains the confirmed target when $method fails during $phase',
+    async ({ method, operation, phase }) => {
+      const history = await readClusterA();
+      mocks.clusterAction.mockImplementation(() => {
+        throw new Error('Could not start the cluster action');
+      });
+      const callbackTargets: Array<string | null | undefined> = [];
+      const onFailure = vi.fn(() => callbackTargets.push(getMessageTargetCluster(history)));
+      await handleActualApiRequest(
+        url,
+        method,
+        phase === 'parse' ? '[invalid' : resourceBody,
+        vi.fn(),
+        { history },
+        phase === 'resource-info' ? '[invalid' : JSON.stringify(resource),
+        'cluster-b',
+        onFailure
+      );
+
+      expect(callbackTargets).toEqual([null]);
+      expect(getMessageTargetCluster(history)).toBeNull();
+      expect(
+        history.filter(entry => entry.role === 'tool' && entry.cluster === 'cluster-b')
+      ).toHaveLength(1);
+      expect(onFailure).toHaveBeenCalledWith(expect.any(Error), operation, expect.any(Object));
+      expect(mocks.clusterRequest).toHaveBeenCalledTimes(1);
+      expect(mocks.apply).not.toHaveBeenCalled();
+      expect(mocks.clusterAction).toHaveBeenCalledTimes(phase === 'setup' ? 1 : 0);
+    }
+  );
+
+  it('records a terminal update failure once after the strategic-patch fallback', async () => {
+    const history = await readClusterA();
+    const actions: Promise<unknown>[] = [];
+    mocks.clusterAction.mockImplementation(action => {
+      const result = action();
+      actions.push(result);
+      return result;
+    });
+    mocks.clusterRequest
+      .mockRejectedValueOnce(Object.assign(new Error('Unsupported media type'), { status: 415 }))
+      .mockRejectedValueOnce(new Error('Mutation was forbidden'));
+    const onFailure = vi.fn(() => expect(getMessageTargetCluster(history)).toBeNull());
+    await handleActualApiRequest(
+      url,
+      'PUT',
+      resourceBody,
+      vi.fn(),
+      { history },
+      JSON.stringify(resource),
+      'cluster-b',
+      onFailure
+    );
+    await Promise.all(actions);
+
+    expect(onFailure).toHaveBeenCalledOnce();
+    expect(mocks.clusterRequest).toHaveBeenCalledTimes(3);
+    expect(mocks.clusterRequest).toHaveBeenLastCalledWith(
+      url,
+      expect.objectContaining({
+        cluster: 'cluster-b',
+        headers: expect.objectContaining({ 'Content-Type': 'application/merge-patch+json' }),
+      })
+    );
+    expect(
+      history.filter(entry => entry.role === 'tool' && entry.cluster === 'cluster-b')
+    ).toHaveLength(1);
+  });
+
+  it('redacts mutation failure content before recording trusted request history', async () => {
+    const history = await readClusterA();
+    mocks.clusterRequest.mockRejectedValue(new Error('Authorization: Bearer mutation-test-secret'));
+    await handleActualApiRequest(
+      url,
+      'DELETE',
+      JSON.stringify(resource),
+      vi.fn(),
+      { history },
+      '',
+      'cluster-b'
+    );
+    expect(getMessageTargetCluster(history)).toBeNull();
+    const failure = history.find(entry => entry.role === 'tool' && entry.cluster === 'cluster-b');
+    expect(failure?.error).toBe(true);
+    expect(failure?.content).toContain('[REDACTED]');
+    expect(failure?.content).not.toContain('mutation-test-secret');
+    expect(history.find(entry => entry.role === 'assistant' && entry.error)?.content).toBe(
+      failure?.content
     );
   });
 });

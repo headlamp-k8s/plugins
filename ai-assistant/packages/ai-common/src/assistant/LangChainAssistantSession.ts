@@ -24,6 +24,7 @@ import { extractTextContent, processToolContent } from '../conversation/content'
 import {
   findLastAssistantWithTools,
   getLastAssistantMessage,
+  getMessageTargetCluster,
   hasToolResponses,
   sanitizeToolAlignment,
   validateToolCallAlignment,
@@ -1375,6 +1376,7 @@ export default class LangChainAssistantSession extends AssistantSession {
     userMessage: string,
     toolResults: Record<string, ToolResult>
   ): Promise<ConversationMessage> {
+    const targetCluster = getMessageTargetCluster(this.history);
     try {
       // Use the UNBOUND model to force text output, not more tool calls
       const model = this.model;
@@ -1423,6 +1425,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: this.extractTextContent(response.content),
+        ...(targetCluster !== undefined && { targetCluster }),
       };
 
       this.history.push(assistantPrompt);
@@ -1432,6 +1435,7 @@ Please analyze this data and provide a specific, detailed response that directly
 
       const fallbackPrompt: ConversationMessage = {
         role: 'assistant',
+        ...(targetCluster !== undefined && { targetCluster }),
         content: `I executed the requested tools and gathered information. There was an error generating a comprehensive summary, but here are the raw results:\n\n${Object.entries(
           toolResults
         )
@@ -2035,6 +2039,7 @@ Please analyze this data and provide a specific, detailed response that directly
       return getLastAssistantMessage(this.history);
     }
 
+    const targetCluster = getMessageTargetCluster(this.history);
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
 
@@ -2051,7 +2056,7 @@ Please analyze this data and provide a specific, detailed response that directly
         systemPrompt: this.createToolResponseSystemPrompt(), // Use specialized prompt for tool responses
       });
 
-      return this.handleToolResponseResult(response);
+      return this.handleToolResponseResult(response, targetCluster);
     } catch (error) {
       return this.handleToolResponseError(error);
     }
@@ -2075,6 +2080,7 @@ Please analyze this data and provide a specific, detailed response that directly
       return lastMessage;
     }
 
+    const targetCluster = getMessageTargetCluster(this.history);
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
 
@@ -2108,6 +2114,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: fullContent,
+        ...(targetCluster !== undefined && { targetCluster }),
       };
 
       this.history.push(assistantPrompt);
@@ -2259,7 +2266,8 @@ Please analyze this data and provide a specific, detailed response that directly
    * @returns Corrected, formatted-output, fallback, or standard assistant message.
    */
   private async handleToolResponseResult(
-    response: ModelToolResponse
+    response: ModelToolResponse,
+    targetCluster?: string | null
   ): Promise<ConversationMessage> {
     // Analyze and potentially correct kubectl suggestions
     const correctedResponse = await this.analyzeAndCorrectResponse(response);
@@ -2279,6 +2287,7 @@ Please analyze this data and provide a specific, detailed response that directly
         if (isMCPFormattedOutput(singleResponse.content)) {
           const assistantPrompt: ConversationMessage = {
             role: 'assistant',
+            ...(targetCluster !== undefined && { targetCluster }),
             content: singleResponse.content,
             toolCalls: [],
           };
@@ -2299,6 +2308,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: fallbackContent.trim(),
+        ...(targetCluster !== undefined && { targetCluster }),
         toolCalls: [], // Don't include additional tool calls
       };
 
@@ -2315,6 +2325,7 @@ Please analyze this data and provide a specific, detailed response that directly
     const assistantPrompt: ConversationMessage = {
       role: 'assistant',
       content: extractedContent,
+      ...(targetCluster !== undefined && { targetCluster }),
       toolCalls: correctedResponse.tool_calls?.length
         ? mapCorrectedResponseToolCalls(correctedResponse.tool_calls)
         : [],
