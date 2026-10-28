@@ -270,7 +270,7 @@ describe('handleActualApiRequest GET redaction', () => {
 
     const onSuccess = vi.fn();
     const aiManager = { history: [] as Array<{ content: string }> };
-    await handleActualApiRequest(
+    const result = await handleActualApiRequest(
       '/api/v1/namespaces/default/pods/my-pod/log',
       'GET',
       '',
@@ -281,6 +281,11 @@ describe('handleActualApiRequest GET redaction', () => {
       undefined,
       onSuccess
     );
+
+    expect(result).toContain('starting server');
+    expect(result).not.toContain('hunter2');
+    expect(result).not.toContain('abc123xyz');
+    expect(result).toContain('[REDACTED]');
 
     const historyContent = aiManager.history.map(entry => entry.content).join('\n');
     expect(historyContent).toContain('LOGS_BUTTON:');
@@ -293,5 +298,101 @@ describe('handleActualApiRequest GET redaction', () => {
     expect(callbackPayload).not.toContain('hunter2');
     expect(callbackPayload).not.toContain('abc123xyz');
     expect(callbackPayload).toContain('[REDACTED]');
+  });
+
+  it('returns a bounded tail of logs for large log outputs and separates model-facing history', async () => {
+    mocks.isLogRequest.mockReturnValue(true);
+    const manyLines = Array.from({ length: 150 }, (_, i) => `log line ${i + 1}`).join('\n');
+    mocks.clusterRequest.mockResolvedValue({
+      text: async () => manyLines,
+    });
+
+    const aiManager = {
+      history: [] as Array<{
+        content: string;
+        role?: string;
+        isDisplayOnly?: boolean;
+        toolCallId?: string;
+        name?: string;
+      }>,
+    };
+    const result = await handleActualApiRequest(
+      '/api/v1/namespaces/default/pods/large-pod/log',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'large-pod',
+      'Headlamp'
+    );
+
+    expect(result).toContain('Logs retrieved for pods "large-pod" in namespace "default".');
+    expect(result).toContain('... [truncated, showing most recent logs] ...');
+    expect(result).toContain('log line 150');
+    expect(result).not.toContain('log line 1\n');
+
+    // The LOGS_BUTTON entry in history preserves the complete logs for UI inspection
+    expect(aiManager.history).toHaveLength(2);
+    const uiEntry = aiManager.history[0];
+    expect(uiEntry.isDisplayOnly).toBe(true);
+    expect(uiEntry.content).toContain('LOGS_BUTTON:');
+    expect(uiEntry.content).toContain('log line 1');
+    expect(uiEntry.content).toContain('log line 150');
+
+    // The separate model-facing entry stores the bounded text without LOGS_BUTTON,
+    // prefixed with the logSummary to attribute workload source (pod/namespace/container)
+    const modelEntry = aiManager.history[1];
+    expect(modelEntry.isDisplayOnly).toBeFalsy();
+    expect(modelEntry.content).not.toContain('LOGS_BUTTON:');
+    expect(modelEntry.content).toContain(
+      'Logs retrieved for pods "large-pod" in namespace "default".'
+    );
+    expect(modelEntry.content).toContain('... [truncated, showing most recent logs] ...');
+    expect(modelEntry.content).toContain('log line 150');
+    expect(modelEntry.content).not.toContain('log line 1\n');
+
+    // Integration assertion: simulate KubernetesTool tagging and model message selection
+    for (let i = aiManager.history.length - 1; i >= 0; i--) {
+      if (aiManager.history[i].role === 'tool' && !aiManager.history[i].toolCallId) {
+        aiManager.history[i].toolCallId = 'tc-logs';
+        aiManager.history[i].name = 'kubernetes_api_request';
+        break;
+      }
+    }
+
+    // Prepare model responses as LangChainAssistantSession does
+    const modelToolResponses = aiManager.history.filter(
+      p => p.role === 'tool' && p.toolCallId && !p.isDisplayOnly
+    );
+    expect(modelToolResponses).toHaveLength(1);
+    expect(modelToolResponses[0].content).not.toContain('LOGS_BUTTON:');
+    expect(modelToolResponses[0].content).toContain(
+      'Logs retrieved for pods "large-pod" in namespace "default".'
+    );
+    expect(modelToolResponses[0].content).toContain('log line 150');
+    expect(modelToolResponses[0].content).not.toContain('log line 1\n');
+  });
+
+  it('returns localized fallback message when pod logs are empty', async () => {
+    mocks.isLogRequest.mockReturnValue(true);
+    mocks.clusterRequest.mockResolvedValue({
+      text: async () => '',
+    });
+
+    const aiManager = { history: [] as Array<{ content: string }> };
+    const result = await handleActualApiRequest(
+      '/api/v1/namespaces/default/pods/empty-pod/log',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'empty-pod',
+      'Headlamp'
+    );
+
+    expect(result).toBe('No logs available for pods "empty-pod" in namespace "default".');
+    expect(aiManager.history[0]?.content).toContain(
+      'No logs available for pods "empty-pod" in namespace "default".'
+    );
   });
 });
