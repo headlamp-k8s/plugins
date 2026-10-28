@@ -69,6 +69,12 @@ describe('isRegularConversationMessage', () => {
     expect(
       isRegularConversationMessage({ role: 'user', content: 'ui-only', isDisplayOnly: true })
     ).toBe(false);
+    expect(
+      isRegularConversationMessage({ role: 'tool', content: 'model-only', isModelOnly: true })
+    ).toBe(false);
+    expect(
+      isRegularConversationMessage({ role: 'user', content: 'model-only', isModelOnly: true })
+    ).toBe(false);
   });
 
   it('returns false for a system message that is also display-only', () => {
