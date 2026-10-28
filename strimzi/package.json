@@ -51,7 +51,8 @@
     "tty-browserify": "^0.0.1"
   },
   "overrides": {
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "minimatch@9.0.3": "9.0.9"
   },
   "eslintConfig": {
     "extends": [
