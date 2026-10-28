@@ -11,22 +11,43 @@
  * Inspects a raw tool-response content string to determine whether it
  * represents an error.
  *
- * Two strategies are tried in order:
- * 1. JSON parse → check for `{ error: true }`.
- * 2. Text heuristic → check whether the lower-cased string contains the
+ * Three strategies are tried in order:
+ * 1. Explicit status → when explicit execution status is provided, honor it directly
+ *    (e.g., successful log outputs containing error text should not be treated as errors).
+ * 2. JSON parse → check for `{ error: true }`.
+ * 3. Text heuristic → check whether the lower-cased string contains the
  *    words "error" or "failed".
  *
  * Returns `isError: false` when the content is a successful result.
  *
  * @param content - Raw tool-response content to inspect.
+ * @param explicitStatus - Optional boolean or status object indicating whether the tool succeeded.
  * @returns Error classification and an optional extracted error message.
  */
-export function detectToolResponseError(content: string): {
+export function detectToolResponseError(
+  content: string,
+  explicitStatus?: boolean | { success?: boolean; isError?: boolean; error?: boolean | string }
+): {
   /** Whether JSON or text heuristics classify the response as an error. */
   isError: boolean;
   /** Extracted error message, or `null` for a successful response. */
   errorMsg: string | null;
 } {
+  if (typeof explicitStatus === 'boolean') {
+    if (explicitStatus) {
+      return { isError: false, errorMsg: null };
+    }
+    return { isError: true, errorMsg: content };
+  }
+  if (explicitStatus && typeof explicitStatus === 'object') {
+    if (explicitStatus.isError === false || explicitStatus.success === true) {
+      return { isError: false, errorMsg: null };
+    }
+    if (explicitStatus.isError === true || explicitStatus.success === false) {
+      return { isError: true, errorMsg: content };
+    }
+  }
+
   try {
     const parsed = JSON.parse(content);
     if (parsed.error === true) {

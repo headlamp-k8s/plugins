@@ -81,7 +81,7 @@ interface LangChainManagerTestHarness {
   handleToolResponseError(error: unknown): Prompt;
   generateResponseFromToolResults(
     message: string,
-    results: Record<string, unknown>
+    results: Record<string, unknown>,
   ): Promise<Prompt>;
   handleMultipleToolExecution(message: string, tools: RecommendedTool[]): Promise<Prompt>;
   createSystemPrompt(): string;
@@ -92,7 +92,7 @@ interface LangChainManagerTestHarness {
   validateToolCallAlignment(): void;
   handleToolEnabledRequest(
     input: { systemPrompt: string; chatHistory: BaseMessage[]; input: string },
-    model: TestModel
+    model: TestModel,
   ): Promise<Prompt>;
   handleLocalModelRequest(message: string, model: TestModel): Promise<Prompt>;
   handleChainBasedRequest(message: string, model: TestModel): Promise<Prompt>;
@@ -134,7 +134,7 @@ function createTestManager(): LangChainAssistantSession {
 }
 
 function makeToolConfirmation(
-  overrides: Partial<NonNullable<Prompt['toolConfirmation']>> = {}
+  overrides: Partial<NonNullable<Prompt['toolConfirmation']>> = {},
 ): NonNullable<Prompt['toolConfirmation']> {
   return {
     tools: [],
@@ -150,14 +150,14 @@ function makeToolConfirmation(
  * or approval dialog.
  */
 function createIntegrationManager(
-  toolManager?: ReturnType<typeof createMockToolManager>
+  toolManager?: ReturnType<typeof createMockToolManager>,
 ): LangChainAssistantSession {
   inlineToolApprovalManager.setApprovalHandler(createMockApprovalManager({ mode: 'approve-all' }));
   return new LangChainAssistantSession(
     'mock-testing-model',
     {},
     [],
-    toolManager ? { toolManager } : undefined
+    toolManager ? { toolManager } : undefined,
   );
 }
 
@@ -774,7 +774,7 @@ describe('BUG-COPILOT: handleDirectToolCallingRequest uses invoke() for proper t
     };
 
     const result = await privateManager(manager).handleDirectToolCallingRequest(
-      'are there any failing pods?'
+      'are there any failing pods?',
     );
 
     // invoke() on bound model returns proper tool_calls
@@ -858,7 +858,7 @@ describe('extraTools: external tools via enableDirectToolCalling', () => {
 
     // Verify tool response was added to history
     const toolResponse = privateManager(manager).history.find(
-      prompt => prompt.role === 'tool' && prompt.toolCallId === 'call_1'
+      prompt => prompt.role === 'tool' && prompt.toolCallId === 'call_1',
     );
     expect(toolResponse).toBeDefined();
     expect(toolResponse?.content).toContain('PodList');
@@ -1238,7 +1238,7 @@ describe('userSend — deny-all approval', () => {
 describe('MockApprovalManager + MCP tool flow', () => {
   it('approve-all: MCP tool is executed and response has content', async () => {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const executed: string[] = [];
     const toolManager = createMockToolManager({
@@ -1333,7 +1333,7 @@ describe('YAML target provenance through tool-response cleanup', () => {
         name: 'kubernetes_api_request',
         toolCallId: `request-${index}`,
         cluster,
-      }))
+      })),
     );
     privateManager(manager).model = {
       invoke: vi.fn().mockResolvedValue({ content: 'Suggested manifest.', tool_calls: [] }),
@@ -1381,7 +1381,7 @@ describe('mutation failures in follow-up model requests', () => {
         toolCallId: 'unmatched-confirmation-error',
         content: 'Authorization: Bearer model-context-secret',
         error: true,
-      }
+      },
     );
     expect(getMessageTargetCluster(manager.history)).toBeNull();
     const invoke = vi
@@ -1398,8 +1398,8 @@ describe('mutation failures in follow-up model requests', () => {
     if (!Array.isArray(messages)) throw new Error('Model was not invoked with chat messages');
     expect(
       messages.filter(
-        message => message instanceof AIMessage && message.content === redactedFailure
-      )
+        message => message instanceof AIMessage && message.content === redactedFailure,
+      ),
     ).toHaveLength(1);
     expect(messages.some(message => message instanceof ToolMessage)).toBe(false);
     expect(JSON.stringify(messages)).not.toContain('model-context-secret');
@@ -1425,7 +1425,7 @@ describe('kubectl correction via processToolResponses', () => {
           },
         ],
       },
-      { role: 'tool', content: '{"pods":[]}', toolCallId: 'tc1', name: 'kubernetes_api_request' }
+      { role: 'tool', content: '{"pods":[]}', toolCallId: 'tc1', name: 'kubernetes_api_request' },
     );
 
     // First model call returns a kubectl suggestion; second call is the correction
@@ -1464,7 +1464,7 @@ describe('kubectl correction via processToolResponses', () => {
           },
         ],
       },
-      { role: 'tool', content: '{"pods":[]}', toolCallId: 'tc1', name: 'kubernetes_api_request' }
+      { role: 'tool', content: '{"pods":[]}', toolCallId: 'tc1', name: 'kubernetes_api_request' },
     );
 
     privateManager(manager).model = {
@@ -1504,7 +1504,7 @@ describe('kubectl correction via processToolResponses', () => {
         content: '{"pods":["nginx"]}',
         toolCallId: 'tc1',
         name: 'kubernetes_api_request',
-      }
+      },
     );
 
     const spy = vi
@@ -1540,7 +1540,7 @@ describe('handleToolResponseError', () => {
           },
         ],
       },
-      { role: 'tool', content: '{"data":"x"}', toolCallId: 'tc1', name: 'kubernetes_api_request' }
+      { role: 'tool', content: '{"data":"x"}', toolCallId: 'tc1', name: 'kubernetes_api_request' },
     );
 
     // Model throws during processToolResponses
@@ -1571,7 +1571,7 @@ describe('handleToolResponseError', () => {
           },
         ],
       },
-      { role: 'tool', content: '{"data":"x"}', toolCallId: 'tc1', name: 'kubernetes_api_request' }
+      { role: 'tool', content: '{"data":"x"}', toolCallId: 'tc1', name: 'kubernetes_api_request' },
     );
 
     privateManager(manager).model = {
@@ -1595,7 +1595,7 @@ describe('processToolResponses — no tool responses in history', () => {
 
     privateManager(manager).history.push(
       { role: 'user', content: 'hello' },
-      { role: 'assistant', content: 'Hi there!' }
+      { role: 'assistant', content: 'Hi there!' },
     );
 
     const response = await manager.processToolResponses();
@@ -1696,7 +1696,7 @@ describe('BUG: handleToolResponseError null safety', () => {
     const manager = createIntegrationManager();
     // `throw 'something went wrong'` gives a string, not an Error object
     expect(() =>
-      privateManager(manager).handleToolResponseError('something went wrong')
+      privateManager(manager).handleToolResponseError('something went wrong'),
     ).not.toThrow();
   });
 
@@ -1728,7 +1728,7 @@ describe('BUG: handleToolResponseError null safety', () => {
           },
         ],
       },
-      { role: 'tool', content: '{}', toolCallId: 'tc1', name: 'kubernetes_api_request' }
+      { role: 'tool', content: '{}', toolCallId: 'tc1', name: 'kubernetes_api_request' },
     );
     privateManager(manager).model = {
       invoke: vi.fn().mockImplementation(() => {
@@ -1826,7 +1826,7 @@ describe('enhanceArgumentsWithAI', () => {
       'tool',
       schema,
       userCtx,
-      {}
+      {},
     );
     expect(result.namespace).toBe('kube-system');
     expect(result.limit).toBe(5);
@@ -1860,7 +1860,7 @@ describe('enhanceArgumentsWithAI', () => {
       'tool',
       schema,
       userCtx,
-      {} // namespace is required but absent
+      {}, // namespace is required but absent
     );
     // Fixed: namespace should be filled with an intelligent default
     expect(result.namespace).toBeDefined();
@@ -1877,7 +1877,7 @@ describe('enhanceArgumentsWithAI', () => {
       'tool',
       schema,
       { ...userCtx, userMessage: 'show pods namespace: staging' },
-      {}
+      {},
     );
     // The fallback should extract the namespace from the user message
     expect(result.namespace).toBeDefined();
@@ -1891,7 +1891,7 @@ describe('enhanceArgumentsWithAI', () => {
     };
     const noReqSchema = { inputSchema: { properties: { ns: { type: 'string' } } } };
     await expect(
-      privateManager(manager).enhanceArgumentsWithAI('tool', noReqSchema, userCtx, {})
+      privateManager(manager).enhanceArgumentsWithAI('tool', noReqSchema, userCtx, {}),
     ).resolves.not.toThrow();
   });
 });
@@ -2003,7 +2003,7 @@ describe('setSkillManager — skill prompt injection', () => {
       createMockSkillManager({
         skillPrompt: '\n## Skill: k8s-debug\nUse X.',
       }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
 
     // After userSend runs getSkillsPromptForQuery, currentSkillsPromptText is set.
@@ -2018,7 +2018,7 @@ describe('setSkillManager — skill prompt injection', () => {
     const manager = createIntegrationManager();
     manager.setSkillManager(
       createMockSkillManager({ skillPrompt: '' }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
 
     await manager.userSend('hello');
@@ -2032,7 +2032,7 @@ describe('setSkillManager — skill prompt injection', () => {
     const queries: string[] = [];
     manager.setSkillManager(
       createMockSkillManager({ onRoute: q => queries.push(q) }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
     privateManager(manager).currentSkillsPromptText = 'stale skill prompt';
     privateManager(manager).responseCache.set('stale', {
@@ -2073,7 +2073,7 @@ describe('getSkillsPromptForQuery — error handling', () => {
     const manager = createIntegrationManager();
     manager.setSkillManager(
       createMockSkillManager({ throwOnLoad: true }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
     // Skill error is swallowed — userSend completes normally
     const response = await manager.userSend('debug cluster');
@@ -2087,7 +2087,7 @@ describe('getSkillsPromptForQuery — error handling', () => {
     const manager = createIntegrationManager();
     manager.setSkillManager(
       createMockSkillManager({ throwOnRoute: true }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
     const response = await manager.userSend('any query');
     expect(response.role).toBe('assistant');
@@ -2109,7 +2109,7 @@ describe('getSkillsPromptForQuery — error handling', () => {
     // First turn: skill loads successfully
     manager.setSkillManager(
       createMockSkillManager({ skillPrompt: '\n## Skill: debug' }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
     await manager.userSend('first message');
     expect(privateManager(manager).currentSkillsPromptText).toBe('\n## Skill: debug');
@@ -2117,7 +2117,7 @@ describe('getSkillsPromptForQuery — error handling', () => {
     // Second turn: skill manager now throws on load
     manager.setSkillManager(
       createMockSkillManager({ throwOnLoad: true }) as unknown as SkillManager,
-      DEFAULT_SKILLS_CONFIG
+      DEFAULT_SKILLS_CONFIG,
     );
     await manager.userSend('second message');
 
@@ -2376,14 +2376,14 @@ describe('processToolCalls — malformed serialized arguments', () => {
           function: { name: 'test-tool', arguments: '{not-json' },
         },
       ],
-      { role: 'assistant', content: '' }
+      { role: 'assistant', content: '' },
     );
 
     expect(executeTool).toHaveBeenCalledWith(
       'test-tool',
       {},
       'tc-malformed',
-      expect.objectContaining({ role: 'assistant' })
+      expect.objectContaining({ role: 'assistant' }),
     );
   });
 });
@@ -2426,7 +2426,7 @@ describe('processToolCalls — requiresConfirmation placeholder', () => {
     await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
 
     const placeholder = privateManager(manager).history.find(
-      prompt => prompt.toolCallId === 'tc-confirm' && prompt.isDisplayOnly === true
+      prompt => prompt.toolCallId === 'tc-confirm' && prompt.isDisplayOnly === true,
     );
     expect(placeholder).toBeDefined();
     expect(placeholder?.role).toBe('tool');
@@ -2464,7 +2464,7 @@ describe('processToolCalls — executeTool throws', () => {
     await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
 
     const errorEntry = privateManager(manager).history.find(
-      prompt => prompt.toolCallId === 'tc-err' && prompt.role === 'tool'
+      prompt => prompt.toolCallId === 'tc-err' && prompt.role === 'tool',
     );
     expect(errorEntry).toBeDefined();
     const parsed = JSON.parse(errorEntry?.content ?? '{}');
@@ -2506,12 +2506,56 @@ describe('processToolCalls — executeTool throws', () => {
 
     // The system error message should have been added to history via the template path
     const sysMsg = privateManager(manager).history.find(
-      prompt => prompt.toolCallId === 'system-error-alert'
+      prompt => prompt.toolCallId === 'system-error-alert',
     );
     expect(sysMsg).toBeDefined();
 
     warnSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  it('does not create system-error-alert when tool returns error-bearing logs with success: true', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content:
+          'Logs retrieved for pod "db":\nERROR: database connection failed\nFATAL: terminating',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        success: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-logs',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({
+            url: '/api/v1/namespaces/default/pods/db/log',
+            method: 'GET',
+          }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Fetching logs', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert',
+    );
+    expect(alert).toBeUndefined();
+
+    const toolEntry = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'tc-logs' && prompt.role === 'tool',
+    );
+    expect(toolEntry).toBeDefined();
+    expect(toolEntry?.content).toContain('ERROR: database connection failed');
   });
 });
 
@@ -2640,7 +2684,7 @@ describe('validateToolCallAlignment — mismatch detection', () => {
     // Should have logged an error about the mismatch
     expect(consoleSpy).toHaveBeenCalledWith(
       'Tool call/response mismatch detected',
-      expect.any(Object)
+      expect.any(Object),
     );
 
     consoleSpy.mockRestore();
@@ -2692,21 +2736,21 @@ describe('extractAzureBaseUrl', () => {
   it('extracts origin from a full Azure deployment URL', () => {
     const m = createTestManager();
     expect(
-      azureUrl(m, 'https://my-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions')
+      azureUrl(m, 'https://my-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions'),
     ).toBe('https://my-resource.openai.azure.com');
   });
 
   it('strips trailing slash from a base URL', () => {
     const m = createTestManager();
     expect(azureUrl(m, 'https://my-resource.openai.azure.com/')).toBe(
-      'https://my-resource.openai.azure.com'
+      'https://my-resource.openai.azure.com',
     );
   });
 
   it('returns the base URL unchanged when no path is present', () => {
     const m = createTestManager();
     expect(azureUrl(m, 'https://my-resource.openai.azure.com')).toBe(
-      'https://my-resource.openai.azure.com'
+      'https://my-resource.openai.azure.com',
     );
   });
 
@@ -2753,7 +2797,7 @@ describe('configureTools', () => {
 
     // Does NOT throw and does NOT register the passed tools
     await expect(
-      manager.configureTools(fakeUnused, makeKubernetesContext())
+      manager.configureTools(fakeUnused, makeKubernetesContext()),
     ).resolves.not.toThrow();
   });
 
@@ -2862,7 +2906,7 @@ describe('generateResponseFromToolResults', () => {
 
     const userMsg = capturedMessages.find(
       message =>
-        typeof message.content === 'string' && message.content.includes('list all failing pods')
+        typeof message.content === 'string' && message.content.includes('list all failing pods'),
     );
     expect(userMsg).toBeDefined();
   });
@@ -2897,7 +2941,7 @@ describe('orchestrateToolsForRequest', () => {
 
   it('returns null when getToolNames returns empty (no enabled tools)', async () => {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const toolManager = createMockToolManager({ enabledToolNames: [] });
     toolManager.getMCPTools = () => [{ name: 'mcp_tool' }];
@@ -2955,7 +2999,7 @@ describe('orchestrateToolsForRequest', () => {
     });
 
     const result = await privateManager(manager).orchestrateToolsForRequest(
-      'show pods and nodes in the cluster'
+      'show pods and nodes in the cluster',
     );
     expect(result).not.toBeNull();
     expect(result).toHaveLength(2);
@@ -2988,7 +3032,7 @@ describe('orchestrateToolsForRequest', () => {
   it('returns null and does not throw when ToolOrchestrator throws', async () => {
     const manager = createManagerWithMCPTools(['mcp_tool']);
     vi.spyOn(ToolPlanner, 'analyzeAndRecommendTools').mockRejectedValueOnce(
-      new Error('orchestrator unavailable')
+      new Error('orchestrator unavailable'),
     );
 
     const result = await privateManager(manager).orchestrateToolsForRequest('list pods in cluster');
@@ -3019,7 +3063,7 @@ describe('orchestrateToolsForRequest', () => {
 describe('handleMultipleToolExecution', () => {
   function makeManagerWithMCPTools() {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const toolManager = createMockToolManager({
       enabledToolNames: ['mcp_tool_a', 'mcp_tool_b'],
@@ -3072,7 +3116,7 @@ describe('handleMultipleToolExecution', () => {
 
     const result = await privateManager(manager).handleMultipleToolExecution(
       'show cluster',
-      recommended
+      recommended,
     );
     expect(result.role).toBe('assistant');
     expect(result.content).toBeTruthy();
@@ -3155,6 +3199,77 @@ describe('handleMultipleToolExecution', () => {
     expect(toolB?.description).toBe('MCP tool: mcp_tool_b');
   });
 
+  it('covers a handled GET failure through orchestration without losing diagnostics', async () => {
+    inlineToolApprovalManager.setApprovalHandler(
+      createMockApprovalManager({ mode: 'approve-all' }),
+    );
+    const toolManager = createMockToolManager({
+      enabledToolNames: ['kubernetes_api_request', 'mcp_tool_b'],
+      toolResults: {},
+    });
+    toolManager.executeTool = vi.fn().mockImplementation(async (name: string) => {
+      if (name === 'kubernetes_api_request') {
+        return {
+          content: '{"error":true,"message":"pods is forbidden: 403 Forbidden"}',
+          isError: true,
+          error: true,
+          message: 'pods is forbidden: 403 Forbidden',
+          success: false,
+          shouldAddToHistory: false,
+          shouldProcessFollowUp: true,
+        };
+      }
+      return { success: true, data: { status: 'ok' } };
+    });
+
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { toolManager });
+    privateManager(manager).toolManager.getMCPTools = () => [
+      { name: 'kubernetes_api_request' },
+      { name: 'mcp_tool_b' },
+    ];
+
+    let capturedPrompt = '';
+    privateManager(manager).model = {
+      invoke: vi.fn().mockImplementation((messages: BaseMessage[]) => {
+        capturedPrompt = messages.map(m => m.content).join('\n');
+        return Promise.resolve({ content: 'Handled error explanation.', tool_calls: [] });
+      }),
+      stream: async function* () {},
+    };
+
+    vi.spyOn(ToolPlanner, 'groupToolsByExecutionStrategy').mockReturnValueOnce({
+      parallel: [
+        {
+          name: 'kubernetes_api_request',
+          priority: 'high' as const,
+          reason: 'get pods',
+          description: '',
+          arguments: { url: '/api/v1/pods', method: 'GET' },
+        },
+      ],
+      sequential: [],
+    });
+
+    const recommended: RecommendedTool[] = [
+      {
+        name: 'kubernetes_api_request',
+        description: '',
+        priority: 'high',
+        reason: 'get pods',
+        arguments: { url: '/api/v1/pods', method: 'GET' },
+      },
+    ];
+
+    const result = await privateManager(manager).handleMultipleToolExecution(
+      'get pods',
+      recommended,
+    );
+
+    expect(result.role).toBe('assistant');
+    expect(capturedPrompt).toContain('pods is forbidden: 403 Forbidden');
+    expect(capturedPrompt).not.toContain('Unknown error');
+  });
+
   it('returns denial prompt when all MCP tools are denied and no built-in tools', async () => {
     inlineToolApprovalManager.setApprovalHandler(createMockApprovalManager({ mode: 'deny-all' }));
     const toolManager = createMockToolManager({ enabledToolNames: ['mcp_tool'] });
@@ -3181,7 +3296,7 @@ describe('handleMultipleToolExecution', () => {
 
     const result = await privateManager(manager).handleMultipleToolExecution(
       'do stuff',
-      recommended
+      recommended,
     );
     expect(result.role).toBe('assistant');
     // Should contain a denial-related message
@@ -3193,7 +3308,7 @@ describe('handleMultipleToolExecution', () => {
 
   it('falls back to error prompt when execution throws unexpectedly', async () => {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const toolManager = createMockToolManager({ enabledToolNames: ['mcp_tool'] });
     const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { toolManager });
@@ -3209,7 +3324,7 @@ describe('handleMultipleToolExecution', () => {
 
     // Override requestApproval to throw unconditionally
     vi.spyOn(inlineToolApprovalManager, 'requestApproval').mockRejectedValueOnce(
-      new Error('unexpected')
+      new Error('unexpected'),
     );
     vi.spyOn(ToolPlanner, 'groupToolsByExecutionStrategy').mockReturnValue({
       parallel: [],
@@ -3221,7 +3336,7 @@ describe('handleMultipleToolExecution', () => {
     ];
     const result = await privateManager(manager).handleMultipleToolExecution(
       'show pods',
-      recommended
+      recommended,
     );
     expect(result.role).toBe('assistant');
   });
@@ -3305,7 +3420,7 @@ describe('handleToolResponseResult — empty content paths', () => {
           { type: 'function', id: 'tc1', function: { name: 'my_tool', arguments: '{}' } },
         ],
       },
-      { role: 'tool', content: toolContent, toolCallId: 'tc1', name: 'my_tool' }
+      { role: 'tool', content: toolContent, toolCallId: 'tc1', name: 'my_tool' },
     );
   }
 
@@ -3382,7 +3497,7 @@ describe('processToolResponsesStream', () => {
         content: '',
         toolCalls: [{ type: 'function', id: 'tc1', function: { name: 'k8s', arguments: '{}' } }],
       },
-      { role: 'tool', content: '{"pods":["nginx"]}', toolCallId: 'tc1', name: 'k8s' }
+      { role: 'tool', content: '{"pods":["nginx"]}', toolCallId: 'tc1', name: 'k8s' },
     );
 
     // Fake streaming model
@@ -3417,7 +3532,7 @@ describe('processToolResponsesStream', () => {
         content: '',
         toolCalls: [{ type: 'function', id: 'tc1', function: { name: 'k8s', arguments: '{}' } }],
       },
-      { role: 'tool', content: '{}', toolCallId: 'tc1', name: 'k8s' }
+      { role: 'tool', content: '{}', toolCallId: 'tc1', name: 'k8s' },
     );
 
     privateManager(manager).model = {
@@ -3500,7 +3615,7 @@ describe('buildUserContext', () => {
     const manager = createIntegrationManager();
     privateManager(manager).history.push(
       { role: 'user', content: 'show me pods in production' },
-      { role: 'assistant', content: 'Here they are.' }
+      { role: 'assistant', content: 'Here they are.' },
     );
 
     const ctx = privateManager(manager).buildUserContext();
@@ -3524,7 +3639,7 @@ describe('buildUserContext', () => {
 describe('userSend — orchestration path when 2+ MCP tools recommended', () => {
   it('calls handleMultipleToolExecution when orchestrator recommends 2 tools', async () => {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const toolManager = createMockToolManager({
       enabledToolNames: ['mcp_a', 'mcp_b'],
@@ -3579,7 +3694,7 @@ describe('userSend — orchestration path when 2+ MCP tools recommended', () => 
 
   it('falls through to direct tool calling when orchestrator returns null', async () => {
     inlineToolApprovalManager.setApprovalHandler(
-      createMockApprovalManager({ mode: 'approve-all' })
+      createMockApprovalManager({ mode: 'approve-all' }),
     );
     const manager = createIntegrationManager();
     privateManager(manager).toolManager.getMCPTools = () => [{ name: 'mcp_tool' }];
