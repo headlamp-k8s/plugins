@@ -30,7 +30,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { configStore } from '../config';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
+
+const useKyvernoConfig = configStore.useConfig();
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
 import { MetricCard } from './common';
 import { PolicyEngineHealth } from './PolicyEngineHealth';
@@ -53,6 +56,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export function Dashboard() {
   const { t } = useTranslation();
+  const config = useKyvernoConfig();
   const [clusterPolicies] = KyvernoClusterPolicy.useList();
   const [policies] = KyvernoPolicy.useList();
   const { items: policyReports } = PolicyReport.useList();
@@ -214,7 +218,7 @@ export function Dashboard() {
         </Grid>
       </SectionBox>
 
-      <PolicyEngineHealth />
+      {config?.policyEngineHealthEnabled && <PolicyEngineHealth />}
 
       <Grid container spacing={2}>
         {statusData.length > 0 && (

@@ -55,14 +55,15 @@ function firstSuccessful(promises: Promise<string | null>[]): Promise<string | n
 
   return new Promise(resolve => {
     let remaining = promises.length;
+    const settle = (result: string | null) => {
+      if (result !== null) {
+        resolve(result);
+      } else if (--remaining === 0) {
+        resolve(null);
+      }
+    };
     for (const promise of promises) {
-      promise.then(result => {
-        if (result !== null) {
-          resolve(result);
-        } else if (--remaining === 0) {
-          resolve(null);
-        }
-      });
+      promise.then(settle).catch(() => settle(null));
     }
   });
 }
@@ -77,10 +78,15 @@ const PROBE_TIMEOUT_MS = 5_000;
 function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: T): Promise<T> {
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve(onTimeout), ms);
-    promise.then(value => {
-      clearTimeout(timer);
-      resolve(value);
-    });
+    promise
+      .then(value => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(onTimeout);
+      });
   });
 }
 
@@ -194,12 +200,20 @@ async function probeCluster(cluster: string): Promise<PrometheusStatus> {
   if (existing) return existing;
 
   const promise = (async () => {
-    const prefix = await discoverPrometheus(cluster);
-    const status: PrometheusStatus = { prefix, loading: false };
-    probeCache.set(cluster, { status, probedAt: Date.now() });
-    inFlight.delete(cluster);
-    notify(cluster, status);
-    return status;
+    try {
+      const prefix = await discoverPrometheus(cluster);
+      const status: PrometheusStatus = { prefix, loading: false };
+      probeCache.set(cluster, { status, probedAt: Date.now() });
+      notify(cluster, status);
+      return status;
+    } catch {
+      const status: PrometheusStatus = { prefix: null, loading: false };
+      probeCache.set(cluster, { status, probedAt: Date.now() });
+      notify(cluster, status);
+      return status;
+    } finally {
+      inFlight.delete(cluster);
+    }
   })();
 
   inFlight.set(cluster, promise);

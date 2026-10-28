@@ -16,6 +16,7 @@
 
 import {
   registerAppBarAction,
+  registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -36,6 +37,7 @@ import { KyvernoReportList } from './components/KyvernoReportList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
+import { Settings } from './components/Settings';
 import { ViolationsView } from './components/ViolationsView';
 import { registerKyvernoIcon } from './kyvernoIcon';
 import {
@@ -48,6 +50,7 @@ import {
 } from './resources/kyvernoReports';
 
 registerKyvernoIcon();
+registerPluginSettings('@headlamp-k8s/kyverno', Settings, true);
 
 interface KyvernoPageOptions {
   /** Sidebar entry id; also reused as the route name. */

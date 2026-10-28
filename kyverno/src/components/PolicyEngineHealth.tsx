@@ -16,9 +16,8 @@
 
 import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Grid, Link, useTheme } from '@mui/material';
+import { Box, Grid, useTheme } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 import {
   Area,
   AreaChart,
@@ -47,7 +46,7 @@ import {
   rangeSeries,
   withGapMarkers,
 } from '../resources/prometheusQueries';
-import { MetricCard, NotInstalledBanner } from './common';
+import { MetricCard } from './common';
 
 const REFRESH_INTERVAL_MS = 30_000;
 const LATENCY_WINDOW_SECONDS = 3600; // last 1 hour
@@ -105,14 +104,14 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     requestRateRes,
     denyCountRes,
     denyCoverageRes,
-    denyBaselineRes,
+    denyNewSeriesRes,
     hasBreakerMetricsRes,
     breakerTripsRes,
     breakerCoverageRes,
-    breakerBaselineRes,
+    breakerNewSeriesRes,
     requeueCountRes,
     requeueCoverageRes,
-    requeueBaselineRes,
+    requeueNewSeriesRes,
     latencyRes,
   ] = await Promise.all([
     // kyverno_info is emitted by every Kyverno controller unconditionally, even with zero
@@ -153,11 +152,15 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
       prefix,
       'min(count_over_time(kyverno_admission_requests_total{request_allowed="false"}[5m]))'
     ),
-    // Baseline check for the same query, see hasReliableIncrease's comment for why coverage alone
-    // isn't enough to trust increase() on a lazily registered series.
+    // Per-series new-series check for the same query, see hasReliableIncrease's comment for why
+    // an aggregate baseline check isn't enough: an old quiet series can satisfy "at least one
+    // series predates the window" while a co-existing new series' increase() still reads 0 from
+    // its first two identical-valued scrapes despite a real event. This counts series that are
+    // present in the window but absent from the offset vector; if > 0, at least one series is
+    // new and the counter can't be trusted.
     queryInstant(
       prefix,
-      'count(kyverno_admission_requests_total{request_allowed="false"} offset 5m)'
+      'count(count_over_time(kyverno_admission_requests_total{request_allowed="false"}[5m]) unless (kyverno_admission_requests_total{request_allowed="false"} offset 5m))'
     ),
     // See the comment on hasBreakerMetrics in HealthQueries.
     queryInstant(prefix, 'count(kyverno_breaker_total)'),
@@ -174,8 +177,11 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // entirely) is scraped, it says nothing about how many samples the drops counter's own series
     // have accumulated.
     queryInstant(prefix, 'min(count_over_time(kyverno_breaker_drops_total[1h]))'),
-    // Same baseline reasoning as denyBaselineRes above, scoped to kyverno_breaker_drops_total.
-    queryInstant(prefix, 'count(kyverno_breaker_drops_total offset 1h)'),
+    // Same per-series new-series reasoning as denyNewSeriesRes above, scoped to kyverno_breaker_drops_total.
+    queryInstant(
+      prefix,
+      'count(count_over_time(kyverno_breaker_drops_total[1h]) unless (kyverno_breaker_drops_total offset 1h))'
+    ),
     queryInstant(prefix, 'sum(increase(kyverno_controller_requeue_total[1h])) or vector(0)'),
     // Requeues has no equivalent of hasAdmissionMetrics/hasBreakerMetrics: kyverno_info only
     // proves *some* Kyverno controller is scraped, not specifically the one that would emit
@@ -186,8 +192,11 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // an empty result here has to stay unavailable rather than trusted as a real 0, see
     // hasFullCoverage's `allowAbsent` parameter below.
     queryInstant(prefix, 'min(count_over_time(kyverno_controller_requeue_total[1h]))'),
-    // Same baseline reasoning as denyBaselineRes above, scoped to kyverno_controller_requeue_total.
-    queryInstant(prefix, 'count(kyverno_controller_requeue_total offset 1h)'),
+    // Same per-series new-series reasoning as denyNewSeriesRes above, scoped to kyverno_controller_requeue_total.
+    queryInstant(
+      prefix,
+      'count(count_over_time(kyverno_controller_requeue_total[1h]) unless (kyverno_controller_requeue_total offset 1h))'
+    ),
     queryRange(
       prefix,
       'histogram_quantile(0.95, sum(rate(kyverno_admission_review_duration_seconds_bucket[5m])) by (le))',
@@ -212,22 +221,22 @@ async function fetchHealth(prefix: string): Promise<HealthQueries> {
     // confirmed the admission controller itself is scraped, so "no series for
     // request_allowed=false" genuinely means "nothing denied yet", not "unscraped".
     denyCount:
-      hasAdmissionMetrics && hasReliableIncrease(denyCoverageRes, denyBaselineRes, true)
+      hasAdmissionMetrics && hasReliableIncrease(denyCoverageRes, denyNewSeriesRes, true)
         ? instantValue(denyCountRes)
         : null,
     hasBreakerMetrics,
-    // Same reasoning as denyCount above, scoped to breakerCoverageRes/breakerBaselineRes: an
+    // Same reasoning as denyCount above, scoped to breakerCoverageRes/breakerNewSeriesRes: an
     // absent drops series is trusted as a real 0 once hasBreakerMetrics has confirmed a breaker is
     // scraped somewhere.
     breakerTrips:
-      hasBreakerMetrics && hasReliableIncrease(breakerCoverageRes, breakerBaselineRes, true)
+      hasBreakerMetrics && hasReliableIncrease(breakerCoverageRes, breakerNewSeriesRes, true)
         ? instantValue(breakerTripsRes)
         : null,
     // allowAbsent: false here, unlike denyCount/breakerTrips above: see the comment on
     // requeueCoverageRes for why an absent series can't be trusted as a real 0 for this one
     // specifically, there's no independent signal confirming the requeue-emitting controller is
     // actually scraped the way hasAdmissionMetrics/hasBreakerMetrics provide for the other two.
-    requeueCount: hasReliableIncrease(requeueCoverageRes, requeueBaselineRes, false)
+    requeueCount: hasReliableIncrease(requeueCoverageRes, requeueNewSeriesRes, false)
       ? instantValue(requeueCountRes)
       : null,
     // Not gated on hasAdmissionMetrics like requestRate/denyCount above: this is a *range* query
@@ -478,36 +487,8 @@ export function PolicyEngineHealth() {
     // key useKyvernoCRDs and usePrometheus already use for exactly this reason.
   }, [cluster, prometheus.prefix]);
 
-  if (prometheus.loading) {
-    return (
-      <SectionBox title={t('Policy Engine Health')}>
-        <NotInstalledBanner loading />
-      </SectionBox>
-    );
-  }
-
-  if (!prometheus.prefix) {
-    return (
-      <SectionBox title={t('Policy Engine Health')}>
-        <NotInstalledBanner
-          message={t('Prometheus was not detected on this cluster.')}
-          learnMore={
-            <Trans i18nKey="kyverno.learnAboutPrometheus">
-              Live policy engine metrics require a Prometheus server this cluster can reach. Learn
-              more about{' '}
-              <Link
-                href="https://kyverno.io/docs/guides/monitoring/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                monitoring Kyverno with Prometheus
-              </Link>
-              .
-            </Trans>
-          }
-        />
-      </SectionBox>
-    );
+  if (prometheus.loading || !prometheus.prefix) {
+    return null;
   }
 
   if (state === 'loading') {
