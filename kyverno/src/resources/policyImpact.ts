@@ -140,10 +140,9 @@ function ingest(
             byResource.delete(nameKey);
             const uidEntry = byResource.get(key);
             // The UID-keyed slot can already hold an entry from an earlier reference to this
-            // same resource under a different apiVersion (see the three-reference regression
-            // test below). Overwriting it unconditionally would silently discard whichever of
-            // the two actually has the worse status, the exact guarantee this map exists to
-            // preserve. Keep whichever of the two ranks worse.
+            // same resource under a different apiVersion. Overwriting it unconditionally would
+            // silently discard whichever of the two actually has the worse status, the exact
+            // guarantee this map exists to preserve. Keep whichever of the two ranks worse.
             if (!uidEntry || STATUS_RANK[orphan.status] > STATUS_RANK[uidEntry.status]) {
               byResource.set(key, orphan);
             }
@@ -210,9 +209,9 @@ export function collectPolicyImpact(
 ): PolicyImpactSummary {
   const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
   const byResource = new Map<string, ImpactedResource>();
-  // Shared across both report kinds so a resource reported with a UID in one
-  // and without one in the other (or vice versa) still reconciles into a
-  // single entry, see the comment in `ingest`.
+  // Shared across every report processed below, not reset per report: a UID-less reference to
+  // the same resource can land in a different PolicyReport than the one that first carried its
+  // UID (e.g. one rule's result versus another's), so the redirect has to survive across calls.
   const nameKeyToUid = new Map<string, string>();
 
   for (const report of policyReports || []) {
@@ -261,61 +260,65 @@ export function collectPolicyImpact(
 }
 
 // Matches a real Kubernetes API version segment (v1, v2, v1alpha1, v1beta2, ...) or a wildcard
-// standing in for one, used below to find the kind inside a qualified pattern regardless of how
-// many other segments (group, subresource) surround it. The "*" alternative is confirmed against
-// Kyverno's own versionRegex in pkg/utils/kube/kind.go: it matches a literal "*" explicitly, so a
-// pattern like "*/Pod" means "any version, kind Pod", not a version-less bare pattern whose first
-// segment happens to be "*". The alpha/beta suffix requires at least one digit ("\d+", not "\d*"),
-// matching Kyverno's own versionRegex exactly: without it, a group name that merely starts with
-// "alpha"/"beta" (e.g. the API group "v1alpha" in a group-qualified pattern like
-// "v1alpha/v1/Widget") gets misread as a version segment, and the 3-segment case below picks
-// segments[1] ("v1") as the kind instead of the real kind in segments[2] ("Widget").
+// standing in for one, confirmed against Kyverno's own versionRegex in pkg/utils/kube/kind.go.
+// Used below only where the real ParseKindSelector itself consults it: to disambiguate the
+// 2-segment and 3-segment forms, never as a general "find the version anywhere" scan. A version
+// segment that does not actually match this regex, like a wildcarded "v*", is still a perfectly
+// valid version in Kyverno's own parser, it just isn't the thing this regex is asked about for
+// those two forms, see the case-3 comment below. The alpha/beta suffix requires at least one
+// digit ("\d+", not "\d*"): without it, a group name that merely starts with "alpha"/"beta"
+// (e.g. "v1alpha" in a group-qualified pattern "v1alpha/v1/Widget") gets misread as a version
+// segment, and the 3-segment case below picks the wrong kind.
 const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d+)?|\*)$/;
 
-// Faithful port of Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go, confirmed against
-// the Go source), which this plugin only needs the kind out of. It first splits the pattern on
-// "/", then splits only the LAST resulting segment on "." too, a kind pattern can carry a
-// dot-qualified subresource ("Pod.status") as well as a slash-qualified one ("Pod/status"), both
-// mean the same thing to Kyverno. It then walks the segment count exactly as Kyverno does. A
-// 2-segment "x/y" pattern is ambiguous between "version/kind" and "kind/subresource": Kyverno
-// breaks the tie by checking whether y is a real version, or (when x is "*") whether y is already
-// all lowercase, which is what a subresource name looks like and a kind name never does, so
-// "*/status" means "wildcard kind, status subresource", not "version *, kind status".
+// Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
+// group+version-qualified ("apps/v1/Deployment"), and any of those forms can also carry a
+// subresource, joined to the kind with a dot rather than a slash ("Pod.status",
+// "apps/v1/Deployment.scale"). This is a direct, segment-count-based port of Kyverno's real
+// ParseKindSelector (pkg/utils/kube/kind.go), returning only the kind component (its third
+// return value). An earlier version of this function instead scanned for "whatever segment
+// looks like a version", which breaks whenever a wildcard group ("*/v1/Pod.status") or a
+// version Kyverno accepts positionally but this regex would not recognize on its own
+// ("apps/v*/Deployment") appears, since positional, not pattern-based, is what the real parser
+// actually does once the segment count disambiguates the form. Report results only ever carry
+// the bare kind, never a qualified pattern, so only the kind is extracted here.
 function normalizeKindPattern(pattern: string): string {
-  let segments = pattern.split('/');
-  const lastIndex = segments.length - 1;
-  segments = [...segments.slice(0, lastIndex), ...segments[lastIndex].split('.')];
+  const slashSegments = pattern.split('/');
+  const last = slashSegments[slashSegments.length - 1];
+  const dotIndex = last.indexOf('.');
+  const parts =
+    dotIndex === -1
+      ? slashSegments
+      : [...slashSegments.slice(0, -1), last.slice(0, dotIndex), last.slice(dotIndex + 1)];
 
-  switch (segments.length) {
+  switch (parts.length) {
     case 1:
-      // Bare kind.
-      return segments[0];
-    case 2: {
-      const [first, second] = segments;
-      if (first === '*' && second === '*') {
-        // "*/*": every resource and subresource.
-        return '*';
-      }
-      if (first === '*' && second === second.toLowerCase()) {
-        // "*/subresource": an all-lowercase second segment is a subresource
-        // name, never a kind, so the kind here is the wildcard itself.
-        return '*';
-      }
-      if (K8S_VERSION_SEGMENT.test(first)) {
-        // "version/kind" (including the wildcard-version form "*/Kind").
-        return second;
-      }
-      // "kind/subresource".
-      return first;
-    }
+      // Bare kind, nothing to disambiguate.
+      return parts[0];
+    case 2:
+      // "*/*": wildcard kind, wildcard subresource.
+      if (parts[0] === '*' && parts[1] === '*') return '*';
+      // "*/status": a lowercase second segment reads as a subresource name by convention, so
+      // this is wildcard kind + subresource, not version "*" paired with kind "status".
+      if (parts[0] === '*' && parts[1] === parts[1].toLowerCase()) return '*';
+      // "v1/Pod": version + kind.
+      if (K8S_VERSION_SEGMENT.test(parts[0])) return parts[1];
+      // "Pod.status" or "Pod/status": kind + subresource, the only remaining 2-segment form.
+      return parts[0];
     case 3:
-      // "version/kind/subresource" when the first segment is a real version,
-      // otherwise "group/version/kind".
-      return K8S_VERSION_SEGMENT.test(segments[0]) ? segments[1] : segments[2];
+      // "v1/Pod.status" (version/kind/subresource after the dot-split above) only when the
+      // first segment itself looks like a real version; otherwise this is group/version/kind
+      // with no subresource ("apps/v1/Deployment"), kind is the third segment regardless of
+      // whether the middle one matches K8S_VERSION_SEGMENT, "apps/v*/Deployment" is still a
+      // valid group/version/kind triple in Kyverno's own parser even though "v*" itself is not
+      // recognized by the version regex.
+      return K8S_VERSION_SEGMENT.test(parts[0]) ? parts[1] : parts[2];
     case 4:
-      // "group/version/kind/subresource".
-      return segments[2];
+      // "apps/v1/Deployment.scale" (group/version/kind/subresource after the dot-split) or
+      // "*/v1/Pod.status" (wildcard group/version/kind/subresource): kind is always third.
+      return parts[2];
     default:
+      // More segments than any real Kyverno kind selector form produces; no kind to extract.
       return '';
   }
 }
@@ -377,46 +380,45 @@ function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boole
   return kinds.some(pattern => kindPatternMatches(normalizeKindPattern(pattern), kind));
 }
 
-// Matches react-i18next's TFunction call shape closely enough for this module's purposes,
-// without taking a direct dependency on i18next's own types: every caller (useTranslation()'s
-// `t`, and the identity translator tests use) satisfies this.
-type Translator = (key: string, options?: Record<string, unknown>) => string;
-
-function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: Translator): string {
-  const parts = [t('kind "{{kind}}"', { kind })];
-  // Flattening every selector's namespaces into one list describes their union, but for a
-  // match.all block (every selector has to hold at once) the real constraint is their
-  // intersection: a selector allowing [dev, prod] alongside one allowing [prod] only ever
-  // admits prod, not "dev, prod, prod". Keeping each selector's own list separate preserves
-  // that "and" relationship instead of implying any one of the listed namespaces would do.
+function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
+  const parts = [`kind "${kind}"`];
+  // More than one selector here only ever means a match.all/exclude.all block (every entry
+  // already confirmed to hold at once by the caller), so each entry's own namespaces list is a
+  // separate AND-ed constraint, not an alternative. Flattening them into one bracketed list the
+  // way a single selector's namespaces are listed below would read as "any of these", losing
+  // exactly the "all must hold" guarantee match.all/exclude.all makes, e.g. namespaces
+  // ["team-*"] and ["*-prod"] from two different all[] entries both have to match, "team-dev"
+  // satisfies only the first and still would not qualify.
+  const namespaceGroups = selectors
+    .map(s => s.resources?.namespaces)
+    .filter((ns): ns is string[] => !!ns && ns.length > 0);
+  if (namespaceGroups.length === 1) {
+    parts.push(`namespaces [${namespaceGroups[0].join(', ')}]`);
+  } else if (namespaceGroups.length > 1) {
+    parts.push(
+      `namespaces matching all of ${namespaceGroups.map(ns => `[${ns.join(', ')}]`).join(' and ')}`
+    );
+  }
   for (const selector of selectors) {
-    const namespaces = selector.resources?.namespaces || [];
-    if (namespaces.length > 0) {
-      parts.push(t('namespaces [{{namespaces}}]', { namespaces: namespaces.join(', ') }));
-    }
     // Same per-selector intersection reasoning as namespaces above applies to name patterns: a
     // match.all entry restricting names to ['database-*'] alongside another constraining kind
     // only is still an AND, so omitting it here described the policy's scope as broader than it
-    // actually is, exactly the kind of resource a user would wrongly read as unaffected. Kyverno
-    // supports both the plural `names` (a pattern list) and the singular `name` (one exact name)
-    // on the same ResourceDescription, confirmed against the real CRD schema, so both are folded
-    // into the same constraint instead of only reading the plural form.
+    // actually is. Kyverno supports both the plural `names` (a pattern list) and the singular
+    // `name` (one exact name) on the same ResourceDescription, confirmed against the real CRD
+    // schema, so both are folded into the same constraint instead of only reading the plural form.
     const names = selector.resources?.names || [];
     const allNames = selector.resources?.name ? [selector.resources.name, ...names] : names;
     if (allNames.length > 0) {
-      parts.push(t('names [{{names}}]', { names: allNames.join(', ') }));
+      parts.push(`names [${allNames.join(', ')}]`);
     }
-    // Same per-selector intersection reasoning again: resources.annotations is a real match
-    // restriction on Kyverno's ResourceDescription, distinct from `selector` (a label selector on
-    // metadata.labels) below. Omitting it described a rule restricted to, say,
-    // annotations: { team: 'platform' } as matching every Pod rather than just the ones carrying
-    // that annotation.
+    // resources.annotations is a real match restriction on Kyverno's ResourceDescription,
+    // distinct from `selector` (a label selector on metadata.labels) below. Omitting it
+    // described a rule restricted to, say, annotations: { team: 'platform' } as matching every
+    // Pod rather than just the ones carrying that annotation.
     const annotations = Object.entries(selector.resources?.annotations || {});
     if (annotations.length > 0) {
       parts.push(
-        t('annotations [{{annotations}}]', {
-          annotations: annotations.map(([key, value]) => `${key}=${value}`).join(', '),
-        })
+        `annotations [${annotations.map(([key, value]) => `${key}=${value}`).join(', ')}]`
       );
     }
     // resources.operations is an admission-only constraint on which request verbs (CREATE, UPDATE,
@@ -424,7 +426,7 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: T
     // as if it applied to every operation, overstating scope for read-heavy workloads.
     const operations = selector.resources?.operations || [];
     if (operations.length > 0) {
-      parts.push(t('operations [{{operations}}]', { operations: operations.join(', ') }));
+      parts.push(`operations [${operations.join(', ')}]`);
     }
     // subjects, roles, and clusterRoles are admission-request constraints that restrict which
     // user, group, or service account (subjects), or which bound role (roles/clusterRoles), has
@@ -437,37 +439,34 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: T
       const subjectLabels = subjects.map(s =>
         s.kind ? `${s.name ?? ''} (${s.kind})`.trim() : s.name ?? ''
       );
-      parts.push(t('subjects [{{subjects}}]', { subjects: subjectLabels.join(', ') }));
+      parts.push(`subjects [${subjectLabels.join(', ')}]`);
     }
     const rawRoles = selector.roles;
     const roles = Array.isArray(rawRoles) ? (rawRoles as string[]) : [];
     if (roles.length > 0) {
-      parts.push(t('roles [{{roles}}]', { roles: roles.join(', ') }));
+      parts.push(`roles [${roles.join(', ')}]`);
     }
     const rawClusterRoles = selector.clusterRoles;
     const clusterRoles = Array.isArray(rawClusterRoles) ? (rawClusterRoles as string[]) : [];
     if (clusterRoles.length > 0) {
-      parts.push(t('cluster roles [{{clusterRoles}}]', { clusterRoles: clusterRoles.join(', ') }));
+      parts.push(`cluster roles [${clusterRoles.join(', ')}]`);
     }
   }
   if (selectors.some(s => s.resources?.selector)) {
-    parts.push(t('a label selector'));
+    parts.push('a label selector');
   }
   if (selectors.some(s => s.resources?.namespaceSelector)) {
-    parts.push(t('a namespace label selector'));
+    parts.push('a namespace label selector');
   }
-  return parts.join(` ${t('and')} `);
+  return parts.join(' and ');
 }
 
 /**
  * Explains, in plain language, which rule and selector caused a policy to
  * consider a given resource kind. Read directly from the policy spec so the
- * explanation stays accurate even for policies with several rules. `t` is
- * threaded through (rather than called internally via useTranslation()) so this
- * stays a plain function callable from a test or from anywhere else that already
- * has a translator in scope, instead of a hook of its own.
+ * explanation stays accurate even for policies with several rules.
  */
-export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Translator): string[] {
+export function describeMatchReasons(rules: PolicyRule[], kind: string): string[] {
   // An empty or missing rules array is also how a policy type this function
   // was not written for (a CEL ValidatingPolicy has no rules[] at all, only
   // validations[]) reaches here, that is not the same as "rules exist but
@@ -475,10 +474,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Trans
   // implying provenance this function has no basis to claim.
   if (!rules || rules.length === 0) {
     return [
-      t(
-        'This policy\'s rules could not be read in a format this explanation understands; provenance for kind "{{kind}}" is unknown.',
-        { kind }
-      ),
+      `This policy's rules could not be read in a format this explanation understands; provenance for kind "${kind}" is unknown.`,
     ];
   }
 
@@ -497,12 +493,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Trans
       : rule.match?.any || [];
     for (const selector of anySelectors) {
       if (!selectorMentionsKind(selector, kind)) continue;
-      ruleReasons.push(
-        t('Rule "{{rule}}" matches {{constraints}}.', {
-          rule: rule.name,
-          constraints: describeConstraints([selector], kind, t),
-        })
-      );
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints([selector], kind)}.`);
     }
 
     // match.all is AND, every entry has to hold at once, so the kind check
@@ -513,12 +504,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Trans
     // something no single resource could ever satisfy.
     const allSelectors = rule.match?.all || [];
     if (allSelectors.length > 0 && allSelectors.every(s => selectorMentionsKind(s, kind))) {
-      ruleReasons.push(
-        t('Rule "{{rule}}" matches {{constraints}}.', {
-          rule: rule.name,
-          constraints: describeConstraints(allSelectors, kind, t),
-        })
-      );
+      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints(allSelectors, kind)}.`);
     }
 
     // exclude overrides a positive match at runtime for a resource it also
@@ -542,10 +528,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Trans
         excludeDirect.some(s => selectorMentionsKind(s, kind));
       if (excludeMentionsKind) {
         ruleReasons.push(
-          t(
-            'Rule "{{rule}}" also has an exclude block covering kind "{{kind}}"; a specific resource matching it would not actually be affected by this rule.',
-            { rule: rule.name, kind }
-          )
+          `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
         );
       }
     }
@@ -555,10 +538,7 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string, t: Trans
 
   if (reasons.length > 0) return reasons;
   return [
-    t(
-      'No rule in this policy explicitly lists kind "{{kind}}" in its match block; it was likely reached through a generated rule or a background scan.',
-      { kind }
-    ),
+    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule or a background scan.`,
   ];
 }
 

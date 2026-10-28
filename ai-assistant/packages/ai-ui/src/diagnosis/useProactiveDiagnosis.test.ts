@@ -50,6 +50,7 @@ async function loadUseProactiveDiagnosis(options?: {
   const manager = Object.assign(new EventEmitter(), {
     getAllDiagnoses: vi.fn<() => DiagnosisResult[]>(() => options?.diagnoses ?? []),
     isRunning: vi.fn<() => boolean>(() => options?.running ?? false),
+    isPaused: vi.fn(() => false),
     getScrollToEventUid: vi.fn<() => string | null>(() => options?.scrollToEventUid ?? null),
     clearScrollToEventUid: vi.fn(),
   });

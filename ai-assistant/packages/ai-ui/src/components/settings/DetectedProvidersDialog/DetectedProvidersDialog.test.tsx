@@ -170,7 +170,7 @@ it('uses the fallback icon and forwards close handling to a custom dialog slot',
     />
   );
 
-  expect(container.querySelector('[data-icon="mdi:robot"]')).toBeTruthy();
+  expect(container.querySelector('[data-icon="mdi:server"]')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Slot close' }));
   expect(onClose).toHaveBeenCalledOnce();
 });

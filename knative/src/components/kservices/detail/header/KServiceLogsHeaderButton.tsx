@@ -276,7 +276,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
   const pendingDownloadRef = React.useRef<string[]>([]);
   const flushScheduledRef = React.useRef(false);
 
-  const allPods = (kservicePods ?? []) as Pod[];
+  const allPods = kservicePods ?? [];
   const selectedPods =
     selectedPodName === 'all' ? allPods : allPods.filter(p => p.getName() === selectedPodName);
   const availablePodNames = allPods.map(p => p.getName());
@@ -396,11 +396,17 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 
     const element = document.createElement('a');
     const file = new Blob([downloadLogs.join('')], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    element.href = url;
     element.download = `${downloadName}_${time}.txt`;
-    // Required for FireFox
-    document.body.appendChild(element);
-    element.click();
+    try {
+      // Required for FireFox
+      document.body.appendChild(element);
+      element.click();
+    } finally {
+      element.remove();
+      URL.revokeObjectURL(url);
+    }
   }
 
   React.useEffect(() => {
@@ -408,8 +414,7 @@ function KServiceLogsActivityContent({ kservice }: { kservice: KService }) {
 
     if (podsError) {
       if (!notifiedRef.current.podsError) {
-        const message =
-          (podsError as { message?: string })?.message ?? 'Failed to fetch pods: Unknown error';
+        const message = podsError.message ?? 'Failed to fetch pods: Unknown error';
         enqueueSnackbar(message, { variant: 'error', autoHideDuration: 5000 });
         notifiedRef.current.podsError = true;
       }

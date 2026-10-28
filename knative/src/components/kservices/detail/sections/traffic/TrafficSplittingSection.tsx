@@ -18,10 +18,12 @@ import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/Comm
 import { Autocomplete, Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import type { KRevisionResource, KService, Traffic } from '../../../../../resources/knative';
+import { errorDetail, withDetail } from '../../../../../utils/error';
 import { getAge } from '../../../../../utils/time';
 import { getSafeUrl } from '../../../../../utils/url';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { ReadyStatusLabel } from '../../../../common/ReadyStatusLabel';
+import type { ReadinessCondition } from '../../../../common/ResourceListCells';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
@@ -52,7 +54,7 @@ export interface TrafficTableRow {
   badgeLabel?: string;
   showUnavailableBadge: boolean;
   hasStatus: boolean;
-  readyCond?: { status?: string; reason?: string; message?: string };
+  readyCond?: ReadinessCondition;
   creationTimestamp?: string;
 }
 
@@ -204,7 +206,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
   const combinedValidationError = trafficValidationError || pendingTagError;
   const isTrafficValid = !combinedValidationError;
 
-  function resetSection() {
+  const resetSection = React.useCallback(() => {
     initializeFromKService();
     setPendingTagInputs({});
 
@@ -218,7 +220,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
     if (latestTagInputRef.current) {
       latestTagInputRef.current.value = '';
     }
-  }
+  }, [initializeFromKService]);
 
   async function onSaveTraffic() {
     if (!kservice || !revisions) return;
@@ -363,9 +365,7 @@ export default function TrafficSplittingSection({ cluster, kservice, revisions }
 
       notifySuccess('Traffic updated');
     } catch (err: unknown) {
-      const error = err as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update traffic: ${detail}` : 'Failed to update traffic');
+      notifyError(withDetail('Failed to update traffic', errorDetail(err)));
     } finally {
       setSavingTraffic(false);
     }

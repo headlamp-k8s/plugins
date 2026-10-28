@@ -63,6 +63,38 @@ describe('MCPToolStateStore', () => {
     expect(toolState.isToolEnabled('cluster-x', 'tool-a')).toBe(true);
   });
 
+  it('stores __proto__, constructor and prototype names as ordinary keys', async () => {
+    const toolState = makeStore(toolStatePath);
+    await toolState.initialize();
+    const names = ['__proto__', 'constructor', 'prototype'];
+
+    for (const name of names) {
+      expect(toolState.isToolEnabled(name, name)).toBe(true);
+      expect(toolState.getToolStats(name, name)).toBeNull();
+      toolState.setToolEnabled(name, name, false);
+      toolState.recordToolUsage(name, 'used');
+      toolState.initializeToolsConfig(name, [{ name: 'described', description: 'd' }]);
+    }
+
+    expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('used');
+    expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('described');
+    expect(({} as Record<string, unknown>).enabled).toBeUndefined();
+    for (const name of names) {
+      expect(toolState.isToolEnabled(name, name)).toBe(false);
+      expect(toolState.getDisabledTools(name)).toEqual([name]);
+      expect(toolState.getToolStats(name, 'used')?.usageCount).toBe(1);
+    }
+
+    toolState.initConfigFromClientTools([
+      { name: 'constructor__used' },
+      { name: 'prototype____proto__' },
+    ]);
+    expect(Object.keys(toolState.getConfig()).sort()).toEqual(['constructor', 'prototype']);
+    expect(toolState.getToolStats('constructor', 'used')?.usageCount).toBe(1);
+    expect(toolState.getToolStats('prototype', '__proto__')?.enabled).toBe(true);
+    expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('used');
+  });
+
   it('contains synchronous errors from a debounced storage write', async () => {
     const storage: Storage = {
       read: async () => null,

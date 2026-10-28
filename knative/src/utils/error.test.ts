@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { getErrorMessage, isNotFoundError } from './error';
+import { errorDetail, getErrorMessage, isNotFoundError, wasRefused, withDetail } from './error';
 
 describe('getErrorMessage', () => {
   it('returns the message from Error and API-like objects', () => {
@@ -33,5 +33,42 @@ describe('isNotFoundError', () => {
     expect(isNotFoundError({ status: 404 })).toBe(true);
     expect(isNotFoundError({ status: 403 })).toBe(false);
     expect(isNotFoundError(new Error('Network error'))).toBe(false);
+  });
+});
+
+describe('errorDetail', () => {
+  it('returns the trimmed message', () => {
+    expect(errorDetail(new Error('  boom  '))).toBe('boom');
+  });
+
+  it('returns undefined when there is no usable message', () => {
+    expect(errorDetail(undefined)).toBeUndefined();
+    expect(errorDetail({})).toBeUndefined();
+    expect(errorDetail(new Error('   '))).toBeUndefined();
+  });
+});
+
+describe('withDetail', () => {
+  it('appends the detail to the message', () => {
+    expect(withDetail('Restart failed', 'boom')).toBe('Restart failed: boom');
+  });
+
+  it('returns the message alone when there is no detail', () => {
+    expect(withDetail('Restart failed', undefined)).toBe('Restart failed');
+  });
+});
+
+describe('wasRefused', () => {
+  it('is true for 4xx statuses other than 408', () => {
+    expect(wasRefused({ status: 400 })).toBe(true);
+    expect(wasRefused({ status: 403 })).toBe(true);
+    expect(wasRefused({ status: 409 })).toBe(true);
+  });
+
+  it('is false when the request may have been applied', () => {
+    expect(wasRefused({ status: 408 })).toBe(false);
+    expect(wasRefused({ status: 500 })).toBe(false);
+    expect(wasRefused(new Error('Network error'))).toBe(false);
+    expect(wasRefused(undefined)).toBe(false);
   });
 });

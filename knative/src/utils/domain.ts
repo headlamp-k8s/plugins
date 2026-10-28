@@ -15,6 +15,7 @@
  */
 
 import { ClusterDomainClaim, KnativeDomainMapping } from '../resources/knative';
+import { errorDetail, withDetail } from './error';
 
 export function getClusterDomainClaim(
   dm: KnativeDomainMapping,
@@ -25,7 +26,6 @@ export function getClusterDomainClaim(
   state: 'unknown' | 'missing' | 'present';
   claim: ClusterDomainClaim | null;
 } {
-  const clusters = [cluster];
   if (!clusterDomainClaims) {
     return { state: 'unknown', claim: null };
   }
@@ -34,22 +34,15 @@ export function getClusterDomainClaim(
     return { state: 'unknown', claim: null };
   }
 
-  // DomainMappingSection is single-cluster today, but keep this safe if it ever becomes multi-cluster.
   const effectiveCluster = dm.cluster || cluster;
-  const requireClusterMatch = clusters.length > 1;
 
   const claim =
     clusterDomainClaims.find(
       cdc =>
-        (!requireClusterMatch || cdc.cluster === effectiveCluster) &&
+        cdc.cluster === effectiveCluster &&
         cdc.metadata?.name === host &&
         cdc.targetNamespace === namespace
     ) ?? null;
-
-  if (claim && !claim.cluster && effectiveCluster) {
-    claim.cluster = effectiveCluster;
-  }
-
   return claim ? { state: 'present', claim } : { state: 'missing', claim: null };
 }
 
@@ -135,8 +128,14 @@ export async function createDomainMapping(
 }
 
 /**
- * Creates a ClusterDomainClaim.
- * Throws an error if validation or API calls fail.
+ * Creates the ClusterDomainClaim for a DomainMapping's host, then annotates the DomainMapping so
+ * Knative reconciles it again.
+ *
+ * @param dm - The DomainMapping whose host is claimed.
+ * @param namespace - The namespace the claim lets use the host.
+ * @returns A promise that resolves once both steps succeed. It rejects when the DomainMapping has
+ * no host, and otherwise with an error that names the step that failed: creating the
+ * ClusterDomainClaim or annotating the DomainMapping.
  */
 export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespace: string) {
   const host = dm.host?.trim();
@@ -146,32 +145,20 @@ export async function createClusterDomainClaim(dm: KnativeDomainMapping, namespa
 
   try {
     await ensureClusterDomainClaim({ host, cluster: dm.cluster, namespace });
-
-    // Add dummy annotation to trigger DomainMapping reconciliation
-    try {
-      await dm.patch({
-        metadata: {
-          annotations: {
-            'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
-          },
-        },
-      });
-    } catch (e2: unknown) {
-      const error2 = e2 as { message?: string } | undefined;
-      const detail2 = error2?.message?.trim();
-      throw new Error(
-        detail2
-          ? `Failed to annotate DomainMapping: ${detail2}`
-          : 'Failed to annotate DomainMapping'
-      );
-    }
   } catch (e: unknown) {
-    const error = e as { message?: string } | undefined;
-    const detail = error?.message?.trim();
-    throw new Error(
-      detail
-        ? `Failed to create ClusterDomainClaim: ${detail}`
-        : 'Failed to create ClusterDomainClaim'
-    );
+    throw new Error(withDetail('Failed to create ClusterDomainClaim', errorDetail(e)));
+  }
+
+  // Add dummy annotation to trigger DomainMapping reconciliation
+  try {
+    await dm.patch({
+      metadata: {
+        annotations: {
+          'knative.headlamp.dev/reconciledAt': new Date().toISOString(),
+        },
+      },
+    });
+  } catch (e: unknown) {
+    throw new Error(withDetail('Failed to annotate DomainMapping', errorDetail(e)));
   }
 }

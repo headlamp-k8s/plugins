@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import {
   AZ_CLI_AUTH_SENTINEL,
   collectAzureOpenAIProviders,
@@ -96,7 +96,7 @@ describe('detectGitHubToken', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateGitHubToken', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -130,7 +130,7 @@ describe('validateGitHubToken', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectCopilotChatModels', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -206,7 +206,7 @@ describe('pickBestCopilotChatModel', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectCopilotProvider', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -285,7 +285,7 @@ describe('detectCopilotProvider', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectOllamaProvider', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -960,7 +960,7 @@ describe('dismissalKey', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectProviders', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -1146,7 +1146,7 @@ describe('runDetectCommand — error paths (via detectGitHubToken)', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectOllamaProvider — non-ok HTTP and abort', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -1527,7 +1527,7 @@ describe('refreshAzureOpenAIKey — extra paths', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectProviders — Azure and Copilot result building', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn<any, any>>;
+  let fetchSpy: MockInstance<typeof fetch>;
 
   beforeEach(() => {
     fetchSpy = vi.spyOn(globalThis, 'fetch');

@@ -109,6 +109,25 @@ describe('createLangChainModel — validation errors', () => {
     ).toThrow(/Incomplete Azure OpenAI configuration/);
   });
 
+  it('azure: strips trailing slashes and the /openai/ path from the endpoint', () => {
+    const model = createChatModel('azure', {
+      apiKey: 'k',
+      endpoint: 'https://x.openai.azure.com/openai/deployments/gpt-4/',
+      deploymentName: 'gpt-4',
+    }) as unknown as { azureOpenAIEndpoint?: string };
+    expect(model.azureOpenAIEndpoint).toBe('https://x.openai.azure.com');
+  });
+
+  it('azure: normalizes adversarial endpoints in linear time', () => {
+    const start = performance.now();
+    createChatModel('azure', {
+      apiKey: 'k',
+      endpoint: `https://x.azure.com${'/openai/'.repeat(50_000)}\n`,
+      deploymentName: 'gpt-4',
+    });
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   it('vllm: throws when baseUrl is missing', () => {
     expect(() => createChatModel('vllm', { model: 'llama3' })).toThrow(
       /Base URL is required for vLLM/

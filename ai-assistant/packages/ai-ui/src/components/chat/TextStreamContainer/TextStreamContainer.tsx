@@ -12,14 +12,16 @@
  */
 
 import type { AgentThinkingStep } from '@headlamp-k8s/ai-common/agents/types';
+import { getMessageTargetCluster } from '@headlamp-k8s/ai-common/conversation/history';
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
 import type { ArgumentMap } from '@headlamp-k8s/ai-common/mcp/tools/types';
 import { Icon } from '@iconify/react';
 import { Alert, Box, CircularProgress, Fab, Typography } from '@mui/material';
-import { useTheme } from '@mui/material';
+import { useMediaQuery, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConversationScrollContext } from '../../../contexts/ConversationScrollContext';
 import AgentThinkingSteps from '../../agent/AgentThinkingSteps/AgentThinkingSteps';
 import AgentThinkingBlock from '../../assistant/AgentThinkingBlock/AgentThinkingBlock';
 import InlineToolConfirmation from '../../common/InlineToolConfirmation/InlineToolConfirmation';
@@ -42,6 +44,8 @@ export interface EditorDialogSlotProps {
   resourceType?: string;
   /** Whether the requested operation deletes rather than applies a resource. */
   isDelete?: boolean;
+  /** Captured request target; null prevents falling back to an unrelated route. */
+  targetCluster?: string | null;
   /** Reports a successful editor operation to the host. */
   onSuccess?: (response: unknown) => void;
   /** Reports a failed editor operation and optional resource details. */
@@ -62,6 +66,8 @@ export interface ContentRendererSlotProps {
 
 /** Props for the TextStreamContainer component. */
 export interface TextStreamContainerProps {
+  /** Host content sharing the conversation's scroll area, such as diagnosis results. */
+  beforeMessages?: React.ReactNode;
   /** Conversation messages displayed in chronological order. */
   history: ConversationMessage[];
   /** Whether an assistant request is currently processing. */
@@ -73,7 +79,13 @@ export interface TextStreamContainerProps {
   /** Receives failed YAML editor operation details. */
   onOperationFailure?: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Delegates YAML actions instead of opening the default editor. */
-  onYamlAction?: (yaml: string, title: string, resourceType: string, isDelete: boolean) => void;
+  onYamlAction?: (
+    yaml: string,
+    title: string,
+    resourceType: string,
+    isDelete: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Retries a failed tool call from rendered assistant content. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Optional CSS width forwarded to message content renderers. */
@@ -120,15 +132,34 @@ function DefaultEditorDialogAdapter({
   );
 }
 
-function scrollElementTo(element: HTMLElement, top: number): void {
+function scrollElementTo(element: HTMLElement, top: number, behavior: ScrollBehavior): void {
   if (typeof element.scrollTo === 'function') {
-    element.scrollTo({ top, behavior: 'smooth' });
+    element.scrollTo({ top, behavior });
   } else {
     element.scrollTop = top;
   }
 }
 
+function ContextualContentRenderer({
+  targetCluster,
+  onYamlDetected,
+  ContentRendererSlot,
+  ...props
+}: Omit<ContentRendererSlotProps, 'onYamlDetected'> & {
+  targetCluster: string | null | undefined;
+  onYamlDetected: (yaml: string, resourceType: string, cluster?: string | null) => void;
+  ContentRendererSlot: React.ComponentType<ContentRendererSlotProps>;
+}) {
+  const actionRef = useRef({ targetCluster, onYamlDetected });
+  actionRef.current = { targetCluster, onYamlDetected };
+  const handleYamlDetected = useCallback((yaml: string, resourceType: string) => {
+    actionRef.current.onYamlDetected(yaml, resourceType, actionRef.current.targetCluster);
+  }, []);
+  return <ContentRendererSlot {...props} onYamlDetected={handleYamlDetected} />;
+}
+
 const TextStreamContainer = React.memo(function TextStreamContainer({
+  beforeMessages,
   history,
   isLoading,
   apiError,
@@ -147,11 +178,15 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   const [editorTitle, setEditorTitle] = useState('');
   const [resourceType, setResourceType] = useState('');
   const [isDelete, setIsDelete] = useState(false);
+  const [editorCluster, setEditorCluster] = useState<string | null | undefined>();
   const theme = useTheme();
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const scrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
   // Refs for controlling auto-scrolling
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
+  const userScrollVersionRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   // State to track if user has scrolled up
@@ -191,14 +226,21 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     return distanceFromBottom <= threshold;
   }, []);
 
+  const suspendFollowing = useCallback(() => {
+    userScrollVersionRef.current++;
+    wasNearBottomRef.current = false;
+    setShowScrollButton(true);
+  }, []);
+
   const scrollToBottom = useCallback(() => {
+    userScrollVersionRef.current++;
     wasNearBottomRef.current = true;
     markProgrammaticScroll();
     if (containerRef.current) {
-      scrollElementTo(containerRef.current, containerRef.current.scrollHeight);
+      scrollElementTo(containerRef.current, containerRef.current.scrollHeight, scrollBehavior);
       setShowScrollButton(false);
     }
-  }, [markProgrammaticScroll]);
+  }, [markProgrammaticScroll, scrollBehavior]);
 
   const scrollToShowNewMessage = useCallback(() => {
     if (containerRef.current && history.length > 0) {
@@ -238,11 +280,11 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
               // If user message is larger than viewport, show the bottom of it
               const targetScrollPosition = messageTop + messageHeight - containerHeight;
               markProgrammaticScroll();
-              scrollElementTo(container, Math.max(0, targetScrollPosition));
+              scrollElementTo(container, Math.max(0, targetScrollPosition), scrollBehavior);
             } else {
               // Show the user message at the top of the viewport
               markProgrammaticScroll();
-              scrollElementTo(container, Math.max(0, messageTop));
+              scrollElementTo(container, Math.max(0, messageTop), scrollBehavior);
             }
           }
         } else {
@@ -255,7 +297,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
             // Scroll to show half of the last message
             markProgrammaticScroll();
-            scrollElementTo(container, messageTop);
+            scrollElementTo(container, messageTop, scrollBehavior);
           }
         }
       } else {
@@ -263,7 +305,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         container.scrollTop = container.scrollHeight;
       }
     }
-  }, [history, markProgrammaticScroll]);
+  }, [history, markProgrammaticScroll, scrollBehavior]);
 
   // Handle container scroll event
   const handleScroll = useCallback(() => {
@@ -273,6 +315,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         return;
       }
       const nearBottom = isNearBottom();
+      userScrollVersionRef.current++;
       wasNearBottomRef.current = nearBottom;
       setShowScrollButton(!nearBottom);
     }
@@ -281,6 +324,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   // Scroll to latest message when new messages appear, but only if already near bottom
   useEffect(() => {
     const timeouts: ReturnType<typeof setTimeout>[] = [];
+    const scrollVersion = userScrollVersionRef.current;
     let latestUserIndex = -1;
     for (let index = history.length - 1; index >= 0; index--) {
       if (history[index].role === 'user') {
@@ -300,14 +344,14 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       // Keep the newly submitted user message visible at the top of the log.
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (wasNearBottomRef.current) {
       // For non-user messages when near bottom, scroll to show at least 60% of new message
       timeouts.push(
         setTimeout(() => {
-          scrollToShowNewMessage();
+          if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
         }, 100)
       );
     } else if (history.length > 0) {
@@ -323,7 +367,10 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     previousIsLoadingRef.current = isLoading;
     if (loadingStarted && wasNearBottomRef.current) {
       // Small delay to ensure content has rendered
-      const timeout = setTimeout(scrollToShowNewMessage, 100);
+      const scrollVersion = userScrollVersionRef.current;
+      const timeout = setTimeout(() => {
+        if (scrollVersion === userScrollVersionRef.current) scrollToShowNewMessage();
+      }, 100);
       return () => clearTimeout(timeout);
     }
   }, [isLoading, scrollToShowNewMessage]);
@@ -332,11 +379,12 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
   );
 
   const handleYamlDetected = useCallback(
-    (yaml: string, detectedResourceType: string) => {
+    (yaml: string, detectedResourceType: string, targetCluster?: string | null) => {
       setEditorContent(yaml);
       setEditorTitle(t('Apply {{resourceType}}', { resourceType: detectedResourceType }));
       setResourceType(detectedResourceType);
       setIsDelete(false);
+      setEditorCluster(targetCluster);
       setShowEditor(true);
     },
     [t]
@@ -344,11 +392,17 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 
   // Memoize the onYamlDetected callback to prevent ContentRenderer from re-rendering
   const memoizedOnYamlDetected = useCallback(
-    (yaml: string, resourceType: string) => {
+    (yaml: string, resourceType: string, targetCluster?: string | null) => {
       if (onYamlAction) {
-        onYamlAction(yaml, t('Apply {{resourceType}}', { resourceType }), resourceType, false);
+        onYamlAction(
+          yaml,
+          t('Apply {{resourceType}}', { resourceType }),
+          resourceType,
+          false,
+          targetCluster
+        );
       } else {
-        handleYamlDetected(yaml, resourceType);
+        handleYamlDetected(yaml, resourceType, targetCluster);
       }
     },
     [onYamlAction, handleYamlDetected, t]
@@ -358,6 +412,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     (prompt: ConversationMessage, index: number) => {
       if (
         prompt.role === 'system' ||
+        (prompt.role === 'tool' && prompt.alreadyDisplayed) ||
         (prompt.role === 'tool' && typeof prompt.content !== 'string') ||
         // Hide tool responses that have a toolCallId — these are intermediate API data
         // that the LLM will analyze and present as a descriptive response instead.
@@ -521,7 +576,9 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
                       />
                     ) : showContent && prompt.content ? (
                       /* Use ContentRenderer for all assistant content */
-                      <ContentRendererSlot
+                      <ContextualContentRenderer
+                        ContentRendererSlot={ContentRendererSlot}
+                        targetCluster={getMessageTargetCluster(history, index)}
                         content={displayContent || ''}
                         onYamlDetected={memoizedOnYamlDetected}
                         onRetryTool={onRetryTool}
@@ -537,7 +594,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       );
     },
     [
-      history.length,
+      history,
       theme.palette,
       memoizedOnYamlDetected,
       ContentRendererSlot,
@@ -560,7 +617,25 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
       <Box
         ref={containerRef}
         onScroll={handleScroll}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget || event.altKey || event.metaKey) return;
+          if (event.key !== 'Home' && event.key !== 'End') return;
+          event.preventDefault();
+          userScrollVersionRef.current++;
+          const nearBottom =
+            event.key === 'End' ||
+            event.currentTarget.scrollHeight <= event.currentTarget.clientHeight;
+          wasNearBottomRef.current = nearBottom;
+          setShowScrollButton(!nearBottom);
+          markProgrammaticScroll();
+          scrollElementTo(
+            event.currentTarget,
+            event.key === 'Home' ? 0 : event.currentTarget.scrollHeight,
+            scrollBehavior
+          );
+        }}
         role="log"
+        tabIndex={0}
         aria-live="polite"
         aria-label={t('Conversation messages')}
         sx={{
@@ -573,8 +648,20 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
           flexDirection: 'column',
           maxWidth: '100%',
           minWidth: 0,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: -2,
+          },
         }}
       >
+        {beforeMessages && (
+          <Box aria-live="off" sx={{ flexShrink: 0 }}>
+            <ConversationScrollContext.Provider value={suspendFollowing}>
+              {beforeMessages}
+            </ConversationScrollContext.Provider>
+          </Box>
+        )}
         {apiError && history.length === 0 && (
           <Alert severity="error" sx={{ m: 2 }}>
             {apiError}
@@ -647,6 +734,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
         title={editorTitle}
         resourceType={resourceType}
         isDelete={isDelete}
+        targetCluster={editorCluster}
         onSuccess={response => {
           if (onOperationSuccess) {
             onOperationSuccess(response);

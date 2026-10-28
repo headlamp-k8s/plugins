@@ -4,6 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_NAMESPACE="knative-map-test"
+EVENTING_TEST_NAMESPACE="knative-eventing-test"
 
 if ! command -v kubectl >/dev/null 2>&1; then
   echo "kubectl is required but was not found in PATH." >&2
@@ -25,3 +26,4 @@ if kubectl get crd podmonitors.monitoring.coreos.com >/dev/null 2>&1; then
 fi
 
 kubectl delete --ignore-not-found=true namespace "${TEST_NAMESPACE}"
+kubectl delete --ignore-not-found=true namespace "${EVENTING_TEST_NAMESPACE}"

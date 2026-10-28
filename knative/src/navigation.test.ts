@@ -42,6 +42,7 @@ describe('Knative navigation', () => {
         ],
       },
       { label: 'Configuration', items: ['Networking'] },
+      { label: 'Eventing', items: ['Brokers', 'Triggers', 'Channels', 'Subscriptions'] },
     ]);
   });
 

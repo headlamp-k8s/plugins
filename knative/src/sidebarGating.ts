@@ -24,8 +24,7 @@ const KNATIVE_ROOT_ENTRY = 'knative';
  * The Knative component each navigation section needs.
  *
  * A section is only useful when the component that serves its resources is
- * installed, so this is what its entries are gated on. Adding an Eventing
- * section to navigation.ts means adding one line here.
+ * installed, so this is what its entries are gated on.
  *
  * A Map rather than an object so that a lookup can only ever return something
  * that was put here, whatever an entry happens to be called.
@@ -34,6 +33,7 @@ export const SECTION_COMPONENT = new Map<string, KnativeComponent>([
   ['knative-serving', 'serving'],
   ['knative-serving-internals', 'serving'],
   ['knative-configuration', 'serving'],
+  ['knative-eventing', 'eventing'],
 ]);
 
 function componentForSection(sectionName: string): KnativeComponent {
@@ -64,20 +64,32 @@ const ENTRY_COMPONENT = new Map<string, KnativeComponent>(
 /** The components at least one entry needs, without duplicates. */
 const NEEDED_COMPONENTS = Array.from(new Set(ENTRY_COMPONENT.values()));
 
+const COMPONENT_LANDING_PATH = new Map<KnativeComponent, string>();
+knativeNavigationSections.forEach(section => {
+  const component = componentForSection(section.name);
+  if (!COMPONENT_LANDING_PATH.has(component)) {
+    COMPONENT_LANDING_PATH.set(component, section.items[0].path);
+  }
+});
+
 /** How long an install check is reused before it is made again. */
 const CHECK_TTL_MS = 30 * 1000;
 
 /** The shape of a sidebar entry this module needs to make a decision. */
 interface SidebarEntryLike {
+  /** The entry's name. */
   name: string;
+  /** The name of the entry it sits under, or null at the top level. */
   parent?: string | null;
+  /** The page the entry opens. */
+  url?: string;
 }
 
 /**
  * Builds the key a check result is cached under.
  *
- * @param cluster The cluster the check was made against.
- * @param component The component that was looked for.
+ * @param cluster - The cluster the check was made against.
+ * @param component - The component that was looked for.
  * @returns The cache key.
  */
 function cacheKey(cluster: string, component: KnativeComponent) {
@@ -104,7 +116,7 @@ export interface SidebarGateOptions {
  * whose children have all been filtered out, and a parent with no children
  * links nowhere, so the top level entry must not outlive its sections.
  *
- * @param entry The sidebar entry being filtered.
+ * @param entry - The sidebar entry being filtered.
  * @returns The components to check, or null to leave the entry alone.
  */
 export function componentsForEntry(entry: SidebarEntryLike): KnativeComponent[] | null {
@@ -133,14 +145,15 @@ export function componentsForEntry(entry: SidebarEntryLike): KnativeComponent[] 
 
 /**
  * Builds a sidebar entry filter that hides Knative entries whose component is
- * not installed.
+ * not installed, and points the top-level Knative entry at the first view of the
+ * first component that is not known to be missing.
  *
  * Results are cached per cluster and component for a short time, and only one
  * check per key is in flight at once. An entry stays visible until a check has
  * come back negative, so nothing flickers out and back while the first lookup
  * is running.
  *
- * @param options Cluster lookup and the injectable pieces used by tests.
+ * @param options - Cluster lookup and the injectable pieces used by tests.
  * @returns A filter for registerSidebarEntryFilter.
  */
 export function createSidebarGate(options: SidebarGateOptions) {
@@ -173,7 +186,13 @@ export function createSidebarGate(options: SidebarGateOptions) {
   }
 
   return function gate<T extends SidebarEntryLike>(entry: T): T | null {
-    const components = componentsForEntry(entry);
+    let components: KnativeComponent[] | null;
+    try {
+      components = componentsForEntry(entry);
+    } catch (err) {
+      console.error(err);
+      return entry;
+    }
     if (components === null) {
       return entry;
     }
@@ -184,7 +203,18 @@ export function createSidebarGate(options: SidebarGateOptions) {
     const allKnownMissing = components.every(
       component => installed[cacheKey(cluster, component)] === false
     );
+    if (allKnownMissing) {
+      return null;
+    }
 
-    return allKnownMissing ? null : entry;
+    if (entry.name !== KNATIVE_ROOT_ENTRY || !entry.url) {
+      return entry;
+    }
+
+    const landingComponent = components.find(
+      component => installed[cacheKey(cluster, component)] !== false
+    );
+    const url = landingComponent && COMPONENT_LANDING_PATH.get(landingComponent);
+    return url && url !== entry.url ? { ...entry, url } : entry;
   };
 }

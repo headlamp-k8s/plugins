@@ -125,6 +125,36 @@ export const knativeNavigationSections = [
       },
     ],
   },
+  {
+    name: 'knative-eventing',
+    label: 'Eventing',
+    items: [
+      {
+        name: 'knative-brokers',
+        label: 'Brokers',
+        path: '/knative/brokers',
+        routeName: 'knativeBrokers',
+      },
+      {
+        name: 'knative-triggers',
+        label: 'Triggers',
+        path: '/knative/triggers',
+        routeName: 'knativeTriggers',
+      },
+      {
+        name: 'knative-channels',
+        label: 'Channels',
+        path: '/knative/channels',
+        routeName: 'knativeChannels',
+      },
+      {
+        name: 'knative-subscriptions',
+        label: 'Subscriptions',
+        path: '/knative/subscriptions',
+        routeName: 'knativeSubscriptions',
+      },
+    ],
+  },
 ] as const satisfies readonly KnativeNavigationSectionShape[];
 
 /** One literal section from the registered Knative navigation. */

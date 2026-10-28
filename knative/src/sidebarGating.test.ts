@@ -23,6 +23,8 @@ const root = { name: 'knative', parent: null };
 const section = { name: 'knative-serving', parent: 'knative' };
 const kservices = { name: 'knative-services', parent: 'knative-serving' };
 const foreign = { name: 'workloads', parent: null };
+const eventingSection = { name: 'knative-eventing', parent: 'knative' };
+const brokers = { name: 'knative-brokers', parent: 'knative-eventing' };
 
 /** Lets the queued install checks settle before the next assertion. */
 async function settle() {
@@ -129,8 +131,9 @@ describe('createSidebarGate', () => {
   /**
    * Builds a gate over a cluster with a fixed set of installed components.
    *
-   * @param installedComponents The components the cluster is running.
-   * @param cluster The cluster name reported to the gate.
+   * @param installedComponents - The components the cluster is running.
+   * @param cluster - The cluster name reported to the gate.
+   * @returns The gate and its mocked install check.
    */
   function gateFor(installedComponents: KnativeComponent[], cluster = 'a') {
     const isInstalled = vi.fn(async (component: KnativeComponent) =>
@@ -184,9 +187,74 @@ describe('createSidebarGate', () => {
     const checked = isInstalled.mock.calls.map(([component]) => component);
     expect(checked).toContain('serving');
 
-    // Gating per component must not cost extra lookups. Nothing needs Eventing
-    // yet, so nothing should be asking about it.
     expect(new Set(checked)).toEqual(new Set(SECTION_COMPONENT.values()));
+  });
+
+  it('shows only the Eventing section when only Eventing is installed', async () => {
+    const { gate } = gateFor(['eventing']);
+    gate(root);
+    await settle();
+
+    expect(gate(section)).toBeNull();
+    expect(gate(kservices)).toBeNull();
+    expect(gate(eventingSection)).toBe(eventingSection);
+    expect(gate(brokers)).toBe(brokers);
+  });
+
+  it('hides the Eventing section when only Serving is installed', async () => {
+    const { gate } = gateFor(['serving']);
+    gate(root);
+    await settle();
+
+    expect(gate(kservices)).toBe(kservices);
+    expect(gate(eventingSection)).toBeNull();
+    expect(gate(brokers)).toBeNull();
+  });
+
+  it('points the top level entry at a view whose component is installed', async () => {
+    const rootWithUrl = { ...root, url: '/knative/services' };
+
+    const eventingOnly = gateFor(['eventing']);
+    eventingOnly.gate(rootWithUrl);
+    await settle();
+    expect(eventingOnly.gate(rootWithUrl)).toEqual({ ...rootWithUrl, url: '/knative/brokers' });
+
+    const both = gateFor(['serving', 'eventing']);
+    both.gate(rootWithUrl);
+    await settle();
+    expect(both.gate(rootWithUrl)).toBe(rootWithUrl);
+  });
+
+  it('keeps the top level entry on Services when only Serving is installed', async () => {
+    const rootWithUrl = { ...root, url: '/knative/services' };
+    const { gate } = gateFor(['serving']);
+
+    gate(rootWithUrl);
+    await settle();
+
+    expect(gate(rootWithUrl)).toBe(rootWithUrl);
+  });
+
+  it('lands on Brokers while the Eventing check is still running', async () => {
+    const rootWithUrl = { ...root, url: '/knative/services' };
+    const isInstalled = vi.fn((component: KnativeComponent) =>
+      component === 'serving' ? Promise.resolve(false) : new Promise<boolean>(() => {})
+    );
+    const gate = createSidebarGate({ getCluster: () => 'a', isInstalled });
+
+    gate(rootWithUrl);
+    await settle();
+
+    expect(gate(rootWithUrl)).toEqual({ ...rootWithUrl, url: '/knative/brokers' });
+  });
+
+  it('leaves a top level entry without a url alone', async () => {
+    const { gate } = gateFor(['eventing']);
+
+    gate(root);
+    await settle();
+
+    expect(gate(root)).toBe(root);
   });
 
   it('reuses a result until the cache expires', async () => {
@@ -256,6 +324,21 @@ describe('createSidebarGate', () => {
       expect(isInstalled).toHaveBeenCalledTimes(2);
     } finally {
       SECTION_COMPONENT.delete(eventingSection);
+    }
+  });
+
+  it('keeps an entry without a component mapping instead of throwing', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const isInstalled = vi.fn(async () => false);
+    const gate = createSidebarGate({ getCluster: () => 'a', isInstalled });
+    const unmapped = { name: 'not-mapped-yet', parent: 'knative' };
+
+    try {
+      expect(gate(unmapped)).toBe(unmapped);
+      expect(isInstalled).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleError.mockRestore();
     }
   });
 

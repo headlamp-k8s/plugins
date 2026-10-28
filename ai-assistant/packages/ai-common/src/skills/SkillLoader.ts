@@ -18,6 +18,7 @@ import {
   DEFAULT_MAX_SKILL_SIZE_BYTES,
   parseCopilotInstructionsFile,
   ParsedSkill,
+  parseMarkdownFile,
   parseSkillFile,
 } from './parseSkill';
 
@@ -428,7 +429,7 @@ export class SkillLoader {
    * 1. `SKILL.md` files (agentskills.io format) — highest priority.
    * 2. Subdirectories containing `SKILL.md` files.
    * 3. `.instructions.md` files (GitHub Copilot format).
-   * 4. Plain `.md` files with front-matter.
+   * 4. Plain `.md` files with skill metadata or documentation titles in front-matter.
    *
    * @param dirPath - Absolute path to the directory to scan.
    * @param subPath - Optional subdirectory within dirPath.
@@ -476,10 +477,10 @@ export class SkillLoader {
           const skill = parseCopilotInstructionsFile(content, entry, fullPath);
           skills.push(skill);
         } else if (entry.endsWith('.md') && entry !== 'README.md' && entry !== 'CONTRIBUTING.md') {
-          // Try to parse as a skill file with front-matter
+          // Generic Markdown may contain skill metadata or a documentation title.
           const content = await this.fs.readFile(fullPath);
           try {
-            const skill = parseSkillFile(content, fullPath, this.maxSkillSizeBytes);
+            const skill = parseMarkdownFile(content, fullPath, this.maxSkillSizeBytes);
             skills.push(skill);
           } catch {
             // Not a valid skill file (missing front-matter) — skip silently
@@ -675,7 +676,7 @@ export class SkillLoader {
           fileName !== 'CONTRIBUTING.md'
         ) {
           try {
-            const skill = parseSkillFile(
+            const skill = parseMarkdownFile(
               content,
               `${sourcePrefix}/${filePath}`,
               this.maxSkillSizeBytes
@@ -701,13 +702,15 @@ export class SkillLoader {
    */
   private async loadSingleFile(filePath: string): Promise<ParsedSkill[]> {
     const content = await this.fs.readFile(filePath);
-    const fileName = filePath.split('/').pop() || filePath;
+    const fileName = filePath.split(/[/\\]/).pop() || filePath;
 
     try {
       if (fileName.endsWith('.instructions.md')) {
         return [parseCopilotInstructionsFile(content, fileName, filePath)];
       }
-      return [parseSkillFile(content, filePath, this.maxSkillSizeBytes)];
+      const parse =
+        fileName.endsWith('.md') && fileName !== 'SKILL.md' ? parseMarkdownFile : parseSkillFile;
+      return [parse(content, filePath, this.maxSkillSizeBytes)];
     } catch (error) {
       console.warn(`Error loading skill from ${filePath}:`, error);
       return [];

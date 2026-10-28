@@ -26,8 +26,8 @@ export interface RawK8sEvent {
   [key: string]: any;
 }
 
-/** Timestamp of the last failure per cluster, used to back off from unreachable clusters. */
-const lastFailureByCluster = new Map<string, number>();
+/** Retain the failure during backoff so an unreadable cluster never looks empty. */
+const lastFailureByCluster = new Map<string, { failedAt: number; error: Error }>();
 
 /** How long an unreachable cluster is skipped before it is retried. */
 const FAILURE_BACKOFF_MS = 5 * 60 * 1000;
@@ -67,31 +67,44 @@ export async function fetchWarningEventsForCluster(cluster: string): Promise<Raw
  * Performs the uncached event request for one cluster.
  *
  * @param cluster - Cluster to query.
- * @returns Warning events, or an empty list when the cluster cannot be reached.
+ * @returns Warning events. Read failures are propagated, including during backoff.
  */
 async function requestWarningEvents(cluster: string): Promise<RawK8sEvent[]> {
   const lastFailure = lastFailureByCluster.get(cluster);
-  if (lastFailure !== undefined && Date.now() - lastFailure < FAILURE_BACKOFF_MS) {
-    return [];
+  if (lastFailure && Date.now() - lastFailure.failedAt < FAILURE_BACKOFF_MS) {
+    throw lastFailure.error;
   }
 
   try {
-    const response: any = await clusterRequest(
+    const response: { items?: RawK8sEvent[] } = await clusterRequest(
       '/api/v1/events?fieldSelector=type!=Normal&limit=50',
       { cluster }
     );
 
+    if (!Array.isArray(response?.items)) {
+      throw new Error('Invalid Kubernetes event list response');
+    }
     lastFailureByCluster.delete(cluster);
-    const items: RawK8sEvent[] = response?.items ?? [];
+    const items = response.items;
     eventsByCluster.set(cluster, { events: items, fetchedAt: Date.now() });
     return items;
   } catch (err) {
     // Only report the first failure so an unreachable cluster cannot flood the console.
     if (lastFailure === undefined) {
-      console.warn(`[EventFetcher] Cluster ${cluster} is unreachable, skipping its events:`, err);
+      console.warn(`[EventFetcher] Unable to read events for cluster "${cluster}":`, err);
     }
-    lastFailureByCluster.set(cluster, Date.now());
-    return [];
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'object' &&
+          err !== null &&
+          'message' in err &&
+          typeof err.message === 'string'
+        ? err.message
+        : String(err);
+    const error = new Error(`Failed to read warning events for cluster "${cluster}": ${message}`);
+    lastFailureByCluster.set(cluster, { failedAt: Date.now(), error });
+    throw error;
   }
 }
 

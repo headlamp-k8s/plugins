@@ -31,6 +31,7 @@ import {
   getSkillSourceIdentity,
   type SkillsConfig,
 } from '@headlamp-k8s/ai-common/skills/config';
+import { KUBERNETES_DOCS_SOURCE } from '@headlamp-k8s/ai-common/skills/documentationSources';
 import type { SkillSource as SkillSourceEntry } from '@headlamp-k8s/ai-common/skills/SkillLoader';
 import { Icon } from '@iconify/react';
 import {
@@ -136,11 +137,9 @@ export const WELL_KNOWN_SKILL_REPOS: readonly WellKnownRepoEntry[] = [
     ref: 'aab6d7889eadd5e90ff685c486a8ca1ee24c0f5f', // main (no releases)
   },
   {
-    url: 'https://github.com/kubernetes/website',
+    ...KUBERNETES_DOCS_SOURCE,
     label: 'Kubernetes Docs',
     description: 'Official Kubernetes documentation (subset)',
-    path: 'content/en/docs',
-    ref: '02ab95c97025ac048aa7979313b6800925dbbbd3', // snapshot-initial-v1.36
   },
 ] as const;
 

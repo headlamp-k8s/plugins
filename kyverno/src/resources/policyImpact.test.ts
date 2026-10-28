@@ -19,15 +19,6 @@ import { PolicyRule } from './kyvernoPolicy';
 import { collectPolicyImpact, describeMatchReasons, suggestFix } from './policyImpact';
 import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from './policyReport';
 
-// describeMatchReasons takes a translator rather than calling useTranslation() itself (see its
-// own comment in policyImpact.ts), so these tests stand in a real one with i18next's own
-// `{{var}}` interpolation syntax, substituting straight back to English, the same as the actual
-// `en` locale catalogue does for every key.
-function identityT(key: string, options?: Record<string, unknown>): string {
-  if (!options) return key;
-  return key.replace(/\{\{(\w+)\}\}/g, (_, name) => String(options[name] ?? ''));
-}
-
 // policyReport.ts extends KubeObject from @kinvolk/headlamp-plugin/lib/k8s/cluster,
 // which only resolves at real build time through a rollup-only external/globals
 // mapping in the shared vite config (build.rollupOptions.external / output.globals).
@@ -405,10 +396,6 @@ describe('collectPolicyImpact', () => {
   });
 
   test('prefers the UID over the name-based key so same-named resources from different API groups do not collapse, found via Copilot review', () => {
-    // Also covers the "conflicting known UIDs" case from the UID-reconciliation fix below:
-    // both entries here carry their own distinct, non-empty UID, so they must stay separate,
-    // reconciliation only merges a UID-less reference into an already-known UID, never two
-    // references that both already know a (different) UID.
     const crossGroupReport = new PolicyReport({
       apiVersion: 'wgpolicyk8s.io/v1alpha2',
       kind: 'PolicyReport',
@@ -446,10 +433,9 @@ describe('collectPolicyImpact', () => {
   });
 
   test('reconciles a UID-less reference into an already-known UID-backed one, found via Copilot review', () => {
-    // Same resource (apiVersion/kind/namespace/name agree), seen once with a
-    // UID and once without, UID-backed first. The UID-less reference used to
-    // get its own name-key entry instead of merging, double-counting the
-    // resource and losing the worse of the two statuses.
+    // Before this fix, the map key was "uid || nameKey" with no cross-reference between the
+    // two: the same resource reported once with a UID and once without produced two separate
+    // entries, a pass and a fail, instead of one failing resource.
     const uidFirstReport = new PolicyReport({
       apiVersion: 'wgpolicyk8s.io/v1alpha2',
       kind: 'PolicyReport',
@@ -463,7 +449,7 @@ describe('collectPolicyImpact', () => {
       results: [
         {
           policy: 'p',
-          result: 'pass',
+          result: 'fail',
           source: POLICY_REPORT_SOURCE.legacy,
           resources: [
             { kind: 'Pod', name: 'reconciled', namespace: 'team-checkout', uid: 'uid-1' },
@@ -471,7 +457,7 @@ describe('collectPolicyImpact', () => {
         },
         {
           policy: 'p',
-          result: 'fail',
+          result: 'pass',
           source: POLICY_REPORT_SOURCE.legacy,
           resources: [{ kind: 'Pod', name: 'reconciled', namespace: 'team-checkout' }],
         },
@@ -522,12 +508,68 @@ describe('collectPolicyImpact', () => {
     expect(impact.resources[0]).toMatchObject({ name: 'reconciled', uid: 'uid-1', status: 'fail' });
   });
 
+  test('keeps two genuinely distinct, conflicting known UIDs separate when a later UID-less reference arrives, found via Copilot review', () => {
+    // Two different real objects sharing kind/namespace/name (the "same name, different
+    // object" collision apiVersion/UID keying exists to avoid) each get their own UID-keyed
+    // entry; the first UID seen for a name-key is the one a later UID-less reference resolves
+    // to, never a conflicting second UID already recorded for that same name-key. Here that
+    // means the UID-less `fail` reference has to land on the first object (upgrading its
+    // `warn`), leaving the second, genuinely distinct object's `pass` untouched.
+    const conflictingUidReport = new PolicyReport({
+      apiVersion: 'wgpolicyk8s.io/v1alpha2',
+      kind: 'PolicyReport',
+      metadata: {
+        name: 'conflicting-uid',
+        namespace: 'team-checkout',
+        uid: 'r-conflicting-uid',
+        creationTimestamp: '2026-08-04T07:33:45Z',
+        resourceVersion: '1',
+      },
+      results: [
+        {
+          policy: 'p',
+          result: 'warn',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout', uid: 'uid-first' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'pass',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [
+            { kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout', uid: 'uid-second' },
+          ],
+        },
+        {
+          policy: 'p',
+          result: 'fail',
+          source: POLICY_REPORT_SOURCE.legacy,
+          resources: [{ kind: 'Pod', name: 'ambiguous', namespace: 'team-checkout' }],
+        },
+      ],
+    } as any);
+
+    const impact = collectPolicyImpact(
+      'p',
+      POLICY_REPORT_SOURCE.legacy,
+      [conflictingUidReport],
+      []
+    );
+
+    expect(impact.resources).toHaveLength(2);
+    const byUid = new Map(impact.resources.map(r => [r.uid, r.status]));
+    expect(byUid.get('uid-first')).toBe('fail');
+    expect(byUid.get('uid-second')).toBe('pass');
+  });
+
   test('preserves the worst status across three references that differ in apiVersion and UID presence, in either input order, found via Copilot review', () => {
     // An HPA reported three ways: autoscaling/v1 with a UID and `fail`, then autoscaling/v2
     // without a UID and `pass`, then autoscaling/v2 with the same UID and `pass`. The third
     // reference's apiVersion differs from the first, so it reaches the orphan-merge path with
     // a UID-keyed slot that already holds the first reference's `fail` entry. Moving the orphan
-    // into that slot unconditionally used to overwrite the `fail` with `pass`, losing it; the
+    // into that slot unconditionally would overwrite the `fail` with `pass`, losing it; the
     // merge has to keep whichever of the two actually ranks worse, in either input order, since
     // real report data has no guaranteed arrival order.
     const references = [
@@ -826,7 +868,7 @@ describe('describeMatchReasons', () => {
   ];
 
   test('explains a direct kind match with its namespace scope', () => {
-    const reasons = describeMatchReasons(rules, 'Pod', identityT);
+    const reasons = describeMatchReasons(rules, 'Pod');
 
     expect(reasons).toEqual([
       'Rule "check-pods" matches kind "Pod" and namespaces [team-checkout].',
@@ -834,7 +876,7 @@ describe('describeMatchReasons', () => {
   });
 
   test('admits when no rule explicitly matches the kind, autogen or background scan territory', () => {
-    const reasons = describeMatchReasons(rules, 'Deployment', identityT);
+    const reasons = describeMatchReasons(rules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
   });
@@ -844,7 +886,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-everything', match: { any: [{ resources: { kinds: ['*'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardRules, 'Deployment', identityT);
+    const reasons = describeMatchReasons(wildcardRules, 'Deployment');
 
     expect(reasons[0]).toContain('Rule "check-everything" matches kind "Deployment"');
   });
@@ -859,7 +901,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(namespaceSelectorRules, 'Pod');
 
     expect(reasons[0]).toContain('a namespace label selector');
   });
@@ -868,7 +910,7 @@ describe('describeMatchReasons', () => {
     // An empty rules array is also how a policy type this function was not
     // written for (a CEL ValidatingPolicy has no rules[] at all) can reach
     // here, that is not the same as "rules exist but none matched".
-    const reasons = describeMatchReasons([], 'Pod', identityT);
+    const reasons = describeMatchReasons([], 'Pod');
 
     expect(reasons[0]).toContain('provenance for kind "Pod" is unknown');
     expect(reasons[0]).not.toContain('background scan');
@@ -887,7 +929,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    expect(describeMatchReasons(impossibleAllRules, 'Pod', identityT)).toEqual([
+    expect(describeMatchReasons(impossibleAllRules, 'Pod')).toEqual([
       expect.stringContaining('No rule in this policy explicitly lists kind "Pod"'),
     ]);
   });
@@ -905,34 +947,34 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(satisfiableAllRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "namespaced-pods" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
     expect(reasons[0]).toContain('a label selector');
   });
 
-  test("describes each match.all selector's namespaces separately instead of their flattened union, found via Copilot review", () => {
-    // match.all requires every selector to hold at once, so a selector allowing [dev, prod]
-    // alongside one allowing [prod] only ever admits prod, the intersection, not "dev, prod,
-    // prod". Flattening every selector's namespaces into one list used to describe the union
-    // instead, misstating the actual constraint.
-    const intersectingNamespaceRules: PolicyRule[] = [
+  test('describes two namespace-constrained match.all entries as an AND, not one flat list, found via Copilot review', () => {
+    // Flattening both entries' namespaces into one bracketed list used to read as
+    // "namespaces [team-*, *-prod]", which looks like either pattern qualifies. In reality
+    // match.all requires every entry to hold at once, so a resource's namespace has to satisfy
+    // both "team-*" and "*-prod" together, "team-dev" alone would not be enough.
+    const combinedNamespaceRules: PolicyRule[] = [
       {
-        name: 'namespaced-pods',
+        name: 'team-prod-pods',
         match: {
           all: [
-            { resources: { kinds: ['Pod'], namespaces: ['dev', 'prod'] } },
-            { resources: { kinds: ['Pod'], namespaces: ['prod'] } },
+            { resources: { kinds: ['Pod'], namespaces: ['team-*'] } },
+            { resources: { kinds: ['Pod'], namespaces: ['*-prod'] } },
           ],
         },
       },
     ];
 
-    const reasons = describeMatchReasons(intersectingNamespaceRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(combinedNamespaceRules, 'Pod');
 
-    expect(reasons[0]).toContain('namespaces [dev, prod]');
-    expect(reasons[0]).toContain('namespaces [prod]');
+    expect(reasons[0]).toContain('namespaces matching all of [team-*] and [*-prod]');
+    expect(reasons[0]).not.toContain('namespaces [team-*, *-prod]');
   });
 
   test('includes resource-name constraints in the explanation, found via Copilot review', () => {
@@ -948,7 +990,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(namedResourceRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(namedResourceRules, 'Pod');
 
     expect(reasons[0]).toContain('namespaces [prod]');
     expect(reasons[0]).toContain('names [database-*]');
@@ -968,7 +1010,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(singularNameRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(singularNameRules, 'Pod');
 
     expect(reasons[0]).toContain('names [database-primary]');
   });
@@ -983,7 +1025,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(bothNameFormsRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(bothNameFormsRules, 'Pod');
 
     expect(reasons[0]).toContain('names [database-primary, database-*]');
   });
@@ -1001,7 +1043,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(annotatedResourceRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(annotatedResourceRules, 'Pod');
 
     expect(reasons[0]).toContain('annotations [team=platform]');
   });
@@ -1018,7 +1060,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(operationsRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(operationsRules, 'Pod');
 
     expect(reasons[0]).toContain('operations [CREATE]');
   });
@@ -1036,7 +1078,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(subjectsRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(subjectsRules, 'Pod');
 
     expect(reasons[0]).toContain('subjects [alice (User)]');
   });
@@ -1054,7 +1096,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(kindOnlySubjectRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(kindOnlySubjectRules, 'Pod');
 
     expect(reasons[0]).not.toContain('undefined');
     expect(reasons[0]).toContain('(ServiceAccount)');
@@ -1076,7 +1118,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(roleRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(roleRules, 'Pod');
 
     expect(reasons[0]).toContain('roles [pod-editor]');
     expect(reasons[0]).toContain('cluster roles [cluster-admin]');
@@ -1095,7 +1137,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(directMatchRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(directMatchRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "legacy-style-pods" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
@@ -1110,7 +1152,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(excludedRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(excludedRules, 'Pod');
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
@@ -1125,7 +1167,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(directExcludeRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(directExcludeRules, 'Pod');
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
@@ -1141,7 +1183,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(qualifiedRules, 'Deployment', identityT);
+    const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
 
     expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
   });
@@ -1150,13 +1192,13 @@ describe('describeMatchReasons', () => {
     // Kyverno's own versionRegex (pkg/utils/kube/kind.go) requires at least one digit after
     // "alpha"/"beta", so a 3-segment pattern whose first segment is the API group "v1alpha" (no
     // trailing digit, not a real version) is "group/version/kind", not "version/kind/subresource".
-    // Allowing zero digits used to misread "v1alpha" as a version and return segments[1] ("v1")
+    // Allowing zero digits would misread "v1alpha" as a version and return segments[1] ("v1")
     // as the kind instead of the real kind in segments[2] ("Widget").
     const groupQualifiedRules: PolicyRule[] = [
       { name: 'check-widgets', match: { any: [{ resources: { kinds: ['v1alpha/v1/Widget'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(groupQualifiedRules, 'Widget', identityT);
+    const reasons = describeMatchReasons(groupQualifiedRules, 'Widget');
 
     expect(reasons[0]).toContain('Rule "check-widgets" matches kind "Widget"');
   });
@@ -1166,7 +1208,7 @@ describe('describeMatchReasons', () => {
       { name: 'check-pods', match: { any: [{ resources: { kinds: ['v1/Pod'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(versionQualifiedRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
   });
@@ -1176,9 +1218,53 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod/status'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(subresourceRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(subresourceRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a dot-separated subresource kind pattern as a match, found via Copilot review', () => {
+    // Confirmed against Kyverno's own ParseKindSelector (pkg/utils/kube/kind.go): a subresource
+    // is joined to the kind with "." ("Pod.status"), not "/". The normalizer used to return the
+    // literal "Pod.status" unchanged, so this bare-kind form never matched.
+    const dotSubresourceRules: PolicyRule[] = [
+      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod.status'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a group+version-qualified dot-separated subresource kind pattern as a match, found via Copilot review', () => {
+    // Same ParseKindSelector contract as above, with a group and version in front too. The
+    // normalizer used to return "Deployment.scale" unchanged here, never matching "Deployment".
+    const qualifiedDotSubresourceRules: PolicyRule[] = [
+      {
+        name: 'check-deployment-scale',
+        match: { any: [{ resources: { kinds: ['apps/v1/Deployment.scale'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(qualifiedDotSubresourceRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployment-scale" matches kind "Deployment"');
+  });
+
+  test('recognizes a wildcard-kind subresource pattern ("*/status") as matching any kind, found via Copilot review', () => {
+    // Confirmed against ParseKindSelector's own special case: a lone "*/status" is wildcard kind
+    // + subresource, not version "*" paired with kind "status". The normalizer used to return
+    // "status" as the kind here, so this never matched a real kind like "Pod" or "Deployment".
+    const wildcardSubresourceRules: PolicyRule[] = [
+      { name: 'check-any-status', match: { any: [{ resources: { kinds: ['*/status'] } }] } },
+    ];
+
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod')[0]).toContain(
+      'Rule "check-any-status" matches kind "Pod"'
+    );
+    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment')[0]).toContain(
+      'Rule "check-any-status" matches kind "Deployment"'
+    );
   });
 
   test('does not let a qualified pattern for a different kind falsely match, found via Copilot review', () => {
@@ -1189,7 +1275,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(qualifiedRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(qualifiedRules, 'Pod');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Pod"');
   });
@@ -1205,7 +1291,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(noKindsRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(noKindsRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "require-team-label-namespace" matches kind "Pod"');
     expect(reasons[0]).toContain('namespaces [team-checkout]');
@@ -1219,61 +1305,9 @@ describe('describeMatchReasons', () => {
       { name: 'check-pods', match: { any: [{ resources: { kinds: ['*/Pod'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardVersionRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(wildcardVersionRules, 'Pod');
 
     expect(reasons[0]).toContain('Rule "check-pods" matches kind "Pod"');
-  });
-
-  test('recognizes a dot-qualified subresource kind pattern ("Pod.status") as a match, found via Copilot review', () => {
-    // Confirmed against Kyverno's own ParseKindSelector (pkg/utils/kube/kind.go): it splits the
-    // last "/"-segment on "." too, so a dot-qualified subresource means the same thing as a
-    // slash-qualified one, "Pod.status" and "Pod/status" both parse to kind "Pod".
-    const dotSubresourceRules: PolicyRule[] = [
-      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['Pod.status'] } }] } },
-    ];
-
-    const reasons = describeMatchReasons(dotSubresourceRules, 'Pod', identityT);
-
-    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
-  });
-
-  test('recognizes a version-qualified dot-subresource pattern ("v1/Pod.status") as a match, found via Copilot review', () => {
-    const versionDotSubresourceRules: PolicyRule[] = [
-      { name: 'check-pod-status', match: { any: [{ resources: { kinds: ['v1/Pod.status'] } }] } },
-    ];
-
-    const reasons = describeMatchReasons(versionDotSubresourceRules, 'Pod', identityT);
-
-    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
-  });
-
-  test('recognizes a group+version-qualified dot-subresource pattern ("apps/v1/Deployment.scale") as a match, found via Copilot review', () => {
-    const groupVersionDotSubresourceRules: PolicyRule[] = [
-      {
-        name: 'check-deployment-scale',
-        match: { any: [{ resources: { kinds: ['apps/v1/Deployment.scale'] } }] },
-      },
-    ];
-
-    const reasons = describeMatchReasons(groupVersionDotSubresourceRules, 'Deployment', identityT);
-
-    expect(reasons[0]).toContain('Rule "check-deployment-scale" matches kind "Deployment"');
-  });
-
-  test('treats a wildcard-kind subresource pattern ("*/status") as matching any kind, found via Copilot review', () => {
-    // Confirmed against ParseKindSelector: when the first segment is "*" and the second is
-    // already all lowercase, the second segment is a subresource name, not a kind, so this
-    // parses as (kind: *, subresource: status), not (version: *, kind: status).
-    const wildcardSubresourceRules: PolicyRule[] = [
-      { name: 'check-any-status', match: { any: [{ resources: { kinds: ['*/status'] } }] } },
-    ];
-
-    expect(describeMatchReasons(wildcardSubresourceRules, 'Pod', identityT)[0]).toContain(
-      'Rule "check-any-status" matches kind "Pod"'
-    );
-    expect(describeMatchReasons(wildcardSubresourceRules, 'Deployment', identityT)[0]).toContain(
-      'Rule "check-any-status" matches kind "Deployment"'
-    );
   });
 
   test('recognizes a wildcard kind pattern ("Pod*") as a match, found via Copilot review', () => {
@@ -1283,10 +1317,10 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
     ];
 
-    expect(describeMatchReasons(wildcardKindRules, 'PodTemplate', identityT)[0]).toContain(
+    expect(describeMatchReasons(wildcardKindRules, 'PodTemplate')[0]).toContain(
       'Rule "check-pod-like" matches kind "PodTemplate"'
     );
-    expect(describeMatchReasons(wildcardKindRules, 'Pod', identityT)[0]).toContain(
+    expect(describeMatchReasons(wildcardKindRules, 'Pod')[0]).toContain(
       'Rule "check-pod-like" matches kind "Pod"'
     );
   });
@@ -1296,36 +1330,35 @@ describe('describeMatchReasons', () => {
       { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Pod*'] } }] } },
     ];
 
-    const reasons = describeMatchReasons(wildcardKindRules, 'Deployment', identityT);
+    const reasons = describeMatchReasons(wildcardKindRules, 'Deployment');
 
     expect(reasons[0]).toContain('No rule in this policy explicitly lists kind "Deployment"');
   });
 
   test('recognizes a "?" single-character wildcard in a match selector kind pattern, found via Copilot review', () => {
-    // Confirmed against ext/wildcard's real Match implementation: "?" matches exactly one
-    // character, same operator class as "*", not a literal question mark.
+    // Confirmed against ext/wildcard/match.go: "?" matches exactly one rune, the same as any
+    // other shell-glob dialect. This was being escaped as a literal "?" instead.
     const questionMarkRules: PolicyRule[] = [
-      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
+      { name: 'check-p-d', match: { any: [{ resources: { kinds: ['P?d'] } }] } },
     ];
 
-    expect(describeMatchReasons(questionMarkRules, 'Pod', identityT)[0]).toContain(
-      'Rule "check-pod-like" matches kind "Pod"'
-    );
-    expect(describeMatchReasons(questionMarkRules, 'Pot', identityT)[0]).toContain(
-      'Rule "check-pod-like" matches kind "Pot"'
+    expect(describeMatchReasons(questionMarkRules, 'Pod')[0]).toContain(
+      'Rule "check-p-d" matches kind "Pod"'
     );
   });
 
   test('does not let a "?" wildcard match a kind of the wrong length, found via Copilot review', () => {
+    // "?" stands for exactly one character, not zero or more, so "P?d" must not match "Pd"
+    // (too short) or "Podd" (too long).
     const questionMarkRules: PolicyRule[] = [
-      { name: 'check-pod-like', match: { any: [{ resources: { kinds: ['Po?'] } }] } },
+      { name: 'check-p-d', match: { any: [{ resources: { kinds: ['P?d'] } }] } },
     ];
 
-    expect(describeMatchReasons(questionMarkRules, 'PodTemplate', identityT)[0]).toContain(
-      'No rule in this policy explicitly lists kind "PodTemplate"'
+    expect(describeMatchReasons(questionMarkRules, 'Pd')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Pd"'
     );
-    expect(describeMatchReasons(questionMarkRules, 'Po', identityT)[0]).toContain(
-      'No rule in this policy explicitly lists kind "Po"'
+    expect(describeMatchReasons(questionMarkRules, 'Podd')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Podd"'
     );
   });
 
@@ -1334,13 +1367,14 @@ describe('describeMatchReasons', () => {
       {
         name: 'require-labels',
         match: { any: [{ resources: { kinds: ['Pod'] } }] },
-        exclude: { any: [{ resources: { kinds: ['Po?'] } }] },
+        exclude: { any: [{ resources: { kinds: ['P?d'] } }] },
       },
     ];
 
-    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(questionMarkExcludeRules, 'Pod');
 
-    expect(reasons[1]).toContain('also has an exclude block covering kind "Pod"');
+    expect(reasons).toHaveLength(2);
+    expect(reasons[1]).toContain('exclude block covering kind "Pod"');
   });
 
   test('does not freeze on a pathological run of wildcards against a non-matching kind, found via Copilot review', () => {
@@ -1356,12 +1390,69 @@ describe('describeMatchReasons', () => {
     ];
 
     const start = Date.now();
-    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler', identityT);
+    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler');
     const elapsedMs = Date.now() - start;
 
     expect(elapsedMs).toBeLessThan(1000);
     expect(reasons[0]).toContain(
       'No rule in this policy explicitly lists kind "HorizontalPodAutoscaler"'
+    );
+  });
+
+  test('recognizes a kind pattern with a wildcard version segment Kyverno accepts positionally ("apps/v*/Deployment"), found via Copilot review', () => {
+    // Confirmed against Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go): once there
+    // are 3 segments and the first does not itself look like a version, Kyverno treats them as
+    // group/version/kind unconditionally, it never re-validates the middle segment against its
+    // own version regex. "v*" is a perfectly valid version in that position even though it does
+    // not itself match K8S_VERSION_SEGMENT. The old "scan for a version-like segment" approach
+    // found no match at all here and fell back to returning the group ("apps") as if it were
+    // the kind.
+    const wildcardVersionGroupRules: PolicyRule[] = [
+      {
+        name: 'check-deployments',
+        match: { any: [{ resources: { kinds: ['apps/v*/Deployment'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(wildcardVersionGroupRules, 'Deployment');
+
+    expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('recognizes a wildcard-group, version-qualified, dot-subresource kind pattern ("*/v1/Pod.status"), found via Copilot review', () => {
+    // 4 segments after the dot-split (group "*", version "v1", kind "Pod", subresource
+    // "status"), kind is always the third. The old implementation found the literal "*" at
+    // index 0, assumed a 2-segment version/kind form, and returned the segment right after it
+    // ("v1") as if that were the kind.
+    const wildcardGroupSubresourceRules: PolicyRule[] = [
+      {
+        name: 'check-pod-status',
+        match: { any: [{ resources: { kinds: ['*/v1/Pod.status'] } }] },
+      },
+    ];
+
+    const reasons = describeMatchReasons(wildcardGroupSubresourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('Rule "check-pod-status" matches kind "Pod"');
+  });
+
+  test('recognizes a fully wildcarded group and version with a dot-subresource kind pattern ("*/*/Deployment.scale"), found via Copilot review', () => {
+    // Same 4-segment shape as above (group "*", version "*", kind "Deployment", subresource
+    // "scale"). The old implementation found the first "*" at index 0 and returned the segment
+    // right after it, the literal "*", as if that were the kind, which would then match every
+    // resource kind rather than only Deployment.
+    const wildcardGroupAndVersionRules: PolicyRule[] = [
+      {
+        name: 'check-deployment-scale',
+        match: { any: [{ resources: { kinds: ['*/*/Deployment.scale'] } }] },
+      },
+    ];
+
+    expect(describeMatchReasons(wildcardGroupAndVersionRules, 'Deployment')[0]).toContain(
+      'Rule "check-deployment-scale" matches kind "Deployment"'
+    );
+    expect(describeMatchReasons(wildcardGroupAndVersionRules, 'Pod')[0]).toContain(
+      'No rule in this policy explicitly lists kind "Pod"'
     );
   });
 
@@ -1380,7 +1471,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(impossibleExcludeAllRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(impossibleExcludeAllRules, 'Pod');
 
     expect(reasons).toHaveLength(1);
     expect(reasons[0]).not.toContain('exclude block');
@@ -1400,7 +1491,7 @@ describe('describeMatchReasons', () => {
       },
     ];
 
-    const reasons = describeMatchReasons(satisfiableExcludeAllRules, 'Pod', identityT);
+    const reasons = describeMatchReasons(satisfiableExcludeAllRules, 'Pod');
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');

@@ -18,6 +18,8 @@
  * Utility functions for managing AI provider configurations.
  */
 
+import { trimTrailingSlashes } from '../text/trimSlashes';
+
 /**
  * Provider-specific settings persisted by the assistant.
  *
@@ -99,7 +101,7 @@ function normalizeProviderSettings(value: Record<string, unknown>): ProviderSett
 
 /** Normalises an Azure endpoint for persisted account identity comparisons. */
 function normaliseAzureEndpoint(endpoint: string | undefined): string | undefined {
-  return endpoint?.trim().replace(/\/+$/, '').toLowerCase() || undefined;
+  return endpoint ? trimTrailingSlashes(endpoint.trim()).toLowerCase() || undefined : undefined;
 }
 
 /** Returns whether two named Azure configurations identify the same account. */

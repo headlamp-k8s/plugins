@@ -8,7 +8,7 @@ The assistant is context-aware, meaning it uses information about your cluster t
 
 ## End-to-end tests
 
-`npm run e2e` runs the complete cross-platform harness in `e2e/run-ai-assistant-e2e.ts`. It builds the plugin and Headlamp image, creates a KWOK cluster and the test fixtures, and runs the Playwright scenarios.
+`npm run e2e` runs the complete cross-platform harness in `e2e/run-ai-assistant-e2e.ts`. It builds the plugin and Headlamp image, creates two isolated KWOK clusters and the test fixtures, and runs the Playwright scenarios.
 
 `npm run e2e:playwright` runs only the Playwright scenarios against an already running Headlamp instance. It does not build Headlamp or create the KWOK cluster. See [e2e/README.md](e2e/README.md) for setup and configuration.
 
@@ -19,6 +19,24 @@ The assistant is context-aware, meaning it uses information about your cluster t
 - **Multi-Provider Support**: Choose from a wide range of AI providers.
 - **Configurable Tools**: Fine-tune the AI's capabilities by enabling or disabling specific tools, like direct Kubernetes API access.
 - **Resource Generation**: Ask the AI to generate Kubernetes YAML manifests for deployments, services, and more.
+- **Review and Apply**: Open suggested YAML in the editor and apply it to the chosen
+  cluster, including from global pages such as settings. The editor shows the target
+  cluster before you apply and names it on the Apply button. A response's Kubernetes
+  requests supply its target, so older manifests retain their own cluster context.
+  Failed mutations retain their requested target too, so mixed-cluster recovery
+  suggestions still require an explicit choice.
+  Their redacted error summaries remain available to follow-up chat even after
+  unmatched tool messages are removed.
+  If several clusters were involved, or no request context is available with several
+  configured clusters, choose one explicitly in the editor. Applying never fans out
+  to multiple clusters. Navigation or later chat responses cannot change an open
+  editor's target; only an explicit selection can. Standalone editors capture their
+  route cluster on opening too; reopening refreshes it. Missing or unavailable targets
+  disable Apply.
+  Standalone editors validate availability against Headlamp's current configuration;
+  a removed cluster disables Apply without selecting a replacement.
+  Background diagnosis YAML always requires an explicit target: an event's source
+  cluster does not prove which cluster the diagnosis agent actually queried.
 - **In-depth Analysis**: Get help diagnosing issues, understanding resource configurations, and interpreting logs.
 
 ## Supported Providers
@@ -35,6 +53,22 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 - **Local Models** (via Ollama)
 
 You will need to provide your own API keys and endpoint information for the provider you choose to use. Please note that using AI providers may incur costs, so check the pricing details of your chosen provider.
+
+## Skills and Documentation
+
+In the AI Assistant settings, enable **Kubernetes Docs** under **Suggested Skill
+Repositories** to load the pinned English **Concepts** section of the official
+Kubernetes documentation. This subset stays below the 10 MiB download/extraction
+limit; the full documentation tree exceeds it. Previously saved, unmodified
+Kubernetes Docs suggestions are upgraded to the Concepts path while preserving
+their enabled state. Custom refs, paths, and content hashes are left unchanged.
+If a Concepts source is already configured, it takes precedence over the old
+suggestion, retaining its ref, content hash, and enabled state.
+
+Generic Markdown pages with a nonempty `title` in YAML front matter and a
+nonempty body can be loaded as documentation skills. Their title supplies the
+display name and description. `SKILL.md` files still require `name` and
+`description`, and the existing per-skill and total prompt size limits still apply.
 
 ## Adding Holmes Agent to Your Cluster
 
@@ -101,6 +135,36 @@ command: ['python3', '-u', '/app/experimental/ag-ui/server-agui.py']
 ```bash
 kubectl apply -f rendered.yaml
 ```
+
+## Background AI diagnoses
+
+Enable proactive diagnosis in the plugin settings to analyze recent warning events.
+Diagnoses and the conversation share one scroll area; result cards start compact
+and expand to show the analysis, investigation activity, and reviewable YAML.
+
+- The overview shows cluster scope, event-check time, and separate ready/failed counts.
+- Failed event reads remain errors during retry backoff, rather than appearing
+  as successful checks with no warning events.
+- Pause defers queued analyses after the current item finishes; it does not abort
+  a provider stream. Resume continues the remaining queue. A new explicit
+  single-event analysis can still run while background work is paused.
+- You can draft while analysis runs. Sending pauses background work and queues the
+  message behind the current item. Cancelling restores the queued message if the
+  draft is empty; an existing draft is preserved. Resume background analysis explicitly when ready.
+  Changing provider, model, or cluster cancels a queued send so the message can be reviewed.
+- Closing the panel detaches its diagnosis provider without aborting an active
+  analysis. New requests wait for the current provider setup when the panel reopens.
+- Retry failed analyses, analyze an individual result again, or dismiss it.
+  Dismissing hides that event from automatic checks; it does not fix the resource.
+- Opening a diagnosis from Events expands and focuses its header, including cached
+  results when the panel reopens. This pauses automatic chat following so it does
+  not scroll past the result. Keyboard-focused headers have a visible outline.
+- Check again explicitly refreshes analyses in the current scope and can incur AI
+  provider usage. Open resource to inspect current health after a change:
+  "Analysis ready" and a successful API write do not mean an incident is resolved.
+
+Generic AI entry points and attribution use the same offline sparkle mark.
+Provider logos and operation/status icons retain their distinct meanings.
 
 ## MCP (Model Context Protocol) Server Support
 

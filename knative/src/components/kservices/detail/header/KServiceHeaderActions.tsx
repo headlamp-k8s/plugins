@@ -23,10 +23,17 @@ type KServiceHeaderActionsProps = {
   kservice: KService;
 };
 
+/**
+ * Shows the Redeploy Latest Revision and Restart buttons in a Knative Service's detail header, each
+ * only to users who are allowed to use it.
+ *
+ * @param props - The Knative Service to act on.
+ * @returns The action buttons.
+ */
 export function KServiceHeaderActions({ kservice }: KServiceHeaderActionsProps) {
   const { acting, handleRedeploy, handleRestart } = useKServiceActions(kservice);
   const disabled = acting !== null;
-  const { canPatchKService, canDeletePods } = useKServicePermissions();
+  const { canPatchKService, canRestart } = useKServicePermissions();
 
   return (
     <>
@@ -38,7 +45,7 @@ export function KServiceHeaderActions({ kservice }: KServiceHeaderActionsProps) 
           iconButtonProps={{ disabled }}
         />
       )}
-      {canDeletePods === true && (
+      {canRestart === true && (
         <ActionButton
           description="Restart"
           icon="mdi:restart"

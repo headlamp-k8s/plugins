@@ -15,7 +15,7 @@
  */
 
 import type { Storage } from '../persistence/Storage';
-import type { MCPToolsConfig } from '../types';
+import type { MCPServerToolState, MCPToolsConfig, MCPToolState } from '../types';
 import { parseMCPToolName } from './toolName';
 
 /**
@@ -101,9 +101,45 @@ function toJsonSchema(schema: unknown): Record<string, unknown> | null {
   return looksLikeJsonSchema ? s : null;
 }
 
+// Server and tool names come from settings and MCP servers, so state is kept in
+// prototype-free maps and read through own-property checks. Names such as
+// `__proto__` or `constructor` are then ordinary keys and can't reach
+// Object.prototype.
+
+/**
+ * Reads an own property, ignoring inherited ones.
+ *
+ * @param record - Map to read, if any.
+ * @param key - Server or tool name.
+ * @returns The own value for `key`, or `undefined`.
+ */
+function getOwn<T>(record: Record<string, T> | undefined, key: string): T | undefined {
+  return record !== undefined && Object.prototype.hasOwnProperty.call(record, key)
+    ? record[key]
+    : undefined;
+}
+
+/**
+ * Copies a configuration into prototype-free server and tool maps.
+ *
+ * @param config - Configuration to copy; tool state objects are reused.
+ * @returns Configuration whose maps have no prototype.
+ */
+function toPrototypeFreeConfig(config: MCPToolsConfig | null | undefined): MCPToolsConfig {
+  const safeConfig: MCPToolsConfig = Object.create(null);
+  for (const [serverName, tools] of Object.entries(config ?? {})) {
+    const safeTools: MCPServerToolState = Object.create(null);
+    for (const [toolName, toolState] of Object.entries(tools ?? {})) {
+      safeTools[toolName] = toolState;
+    }
+    safeConfig[serverName] = safeTools;
+  }
+  return safeConfig;
+}
+
 export class ToolStateStore {
   private storage: Storage;
-  private config: MCPToolsConfig = {};
+  private config: MCPToolsConfig = Object.create(null);
   /** Timer used to debounce rapid successive writes. */
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Serializes writes so an older snapshot cannot finish after a newer one. */
@@ -142,13 +178,13 @@ export class ToolStateStore {
     try {
       const raw = await this.storage.read();
       if (raw !== null) {
-        this.config = JSON.parse(raw);
+        this.config = toPrototypeFreeConfig(JSON.parse(raw));
       } else {
-        this.config = {};
+        this.config = Object.create(null);
       }
     } catch (error) {
       console.error('Error loading MCP tools configuration:', error);
-      this.config = {};
+      this.config = Object.create(null);
     }
   }
 
@@ -200,6 +236,36 @@ export class ToolStateStore {
   }
 
   /**
+   * Gets the tool map for a server, creating an empty one when missing.
+   *
+   * @param serverName - MCP server name.
+   * @returns The server's tool map.
+   */
+  private getOrCreateServerTools(serverName: string): MCPServerToolState {
+    const existing = getOwn(this.config, serverName);
+    if (existing) return existing;
+    const created: MCPServerToolState = Object.create(null);
+    this.config[serverName] = created;
+    return created;
+  }
+
+  /**
+   * Gets a tool's state, creating default-enabled state when missing.
+   *
+   * @param serverName - MCP server containing the tool.
+   * @param toolName - Tool name within the server.
+   * @returns The tool's state.
+   */
+  private getOrCreateToolState(serverName: string, toolName: string): MCPToolState {
+    const serverTools = this.getOrCreateServerTools(serverName);
+    const existing = getOwn(serverTools, toolName);
+    if (existing) return existing;
+    const created: MCPToolState = { enabled: true, usageCount: 0 };
+    serverTools[toolName] = created;
+    return created;
+  }
+
+  /**
    * Gets the enabled state of a specific tool.
    *
    * @param serverName - MCP server containing the tool.
@@ -207,19 +273,9 @@ export class ToolStateStore {
    * @returns `false` only for an explicitly disabled tool; unknown state defaults to `true`.
    */
   isToolEnabled(serverName: string, toolName: string): boolean {
-    const serverConfig = this.config[serverName];
-    if (!serverConfig) {
-      // Default to enabled for new tools
-      return true;
-    }
-
-    const toolState = serverConfig[toolName];
-    if (!toolState) {
-      // Default to enabled for new tools
-      return true;
-    }
-
-    return toolState.enabled !== false; // default-enabled: treat missing/undefined as true
+    const toolState = getOwn(getOwn(this.config, serverName), toolName);
+    // Unknown tools default to enabled; a missing `enabled` field also means enabled.
+    return toolState?.enabled !== false;
   }
 
   /**
@@ -231,18 +287,7 @@ export class ToolStateStore {
    * @returns No value.
    */
   setToolEnabled(serverName: string, toolName: string, enabled: boolean): void {
-    if (!this.config[serverName]) {
-      this.config[serverName] = {};
-    }
-
-    if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
-        enabled: true,
-        usageCount: 0,
-      };
-    }
-
-    this.config[serverName][toolName].enabled = enabled;
+    this.getOrCreateToolState(serverName, toolName).enabled = enabled;
     this.saveConfig();
   }
 
@@ -253,7 +298,7 @@ export class ToolStateStore {
    * @returns Tool names whose enabled state is exactly `false`.
    */
   getDisabledTools(serverName: string): string[] {
-    const serverConfig = this.config[serverName];
+    const serverConfig = getOwn(this.config, serverName);
     if (!serverConfig) {
       return [];
     }
@@ -270,7 +315,7 @@ export class ToolStateStore {
    * @returns Tool names whose enabled state is not `false`.
    */
   getEnabledTools(serverName: string): string[] {
-    const serverConfig = this.config[serverName];
+    const serverConfig = getOwn(this.config, serverName);
     if (!serverConfig) {
       return [];
     }
@@ -288,18 +333,7 @@ export class ToolStateStore {
    * @returns No value.
    */
   recordToolUsage(serverName: string, toolName: string): void {
-    if (!this.config[serverName]) {
-      this.config[serverName] = {};
-    }
-
-    if (!this.config[serverName][toolName]) {
-      this.config[serverName][toolName] = {
-        enabled: true,
-        usageCount: 0,
-      };
-    }
-
-    const toolState = this.config[serverName][toolName];
+    const toolState = this.getOrCreateToolState(serverName, toolName);
     toolState.lastUsed = new Date().toISOString();
     toolState.usageCount = (toolState.usageCount || 0) + 1;
     this.saveConfig();
@@ -321,7 +355,7 @@ export class ToolStateStore {
    * @returns No value.
    */
   setConfig(newConfig: MCPToolsConfig): void {
-    this.config = JSON.parse(JSON.stringify(newConfig));
+    this.config = toPrototypeFreeConfig(JSON.parse(JSON.stringify(newConfig)));
     this.saveConfig();
   }
 
@@ -331,7 +365,7 @@ export class ToolStateStore {
    * @returns No value.
    */
   resetConfig(): void {
-    this.config = {};
+    this.config = Object.create(null);
     this.saveConfig();
   }
 
@@ -356,17 +390,14 @@ export class ToolStateStore {
       description?: string;
     }>
   ): void {
-    if (!this.config[serverName]) {
-      this.config[serverName] = {};
-    }
-
-    const serverConfig = this.config[serverName];
+    const serverConfig = this.getOrCreateServerTools(serverName);
     let hasChanges = false;
 
     for (const toolInfo of toolsInfo) {
       const toolName = toolInfo.name;
+      const toolState = getOwn(serverConfig, toolName);
 
-      if (!serverConfig[toolName]) {
+      if (!toolState) {
         serverConfig[toolName] = {
           enabled: true,
           usageCount: 0,
@@ -382,18 +413,18 @@ export class ToolStateStore {
         // Run through toJsonSchema() first to strip non-serialisable values
         // (e.g. Zod schemas) before JSON.stringify comparison.
         const safeNewSchema = toJsonSchema(toolInfo.inputSchema) ?? null;
-        const currentSchema = JSON.stringify(serverConfig[toolName].inputSchema ?? null);
+        const currentSchema = JSON.stringify(toolState.inputSchema ?? null);
         const newSchema = JSON.stringify(safeNewSchema);
         if (currentSchema !== newSchema) {
-          serverConfig[toolName].inputSchema = safeNewSchema;
+          toolState.inputSchema = safeNewSchema;
           toolChanged = true;
         }
 
         // Update description if it's different or missing
-        const currentDescription = serverConfig[toolName].description || '';
+        const currentDescription = toolState.description || '';
         const newDescription = toolInfo.description || '';
         if (currentDescription !== newDescription) {
-          serverConfig[toolName].description = newDescription;
+          toolState.description = newDescription;
           toolChanged = true;
         }
 
@@ -416,12 +447,8 @@ export class ToolStateStore {
    * @returns Shallow state copy, or `null` when the server or tool is unknown.
    */
   getToolStats(serverName: string, toolName: string): MCPToolsConfig[string][string] | null {
-    const serverConfig = this.config[serverName];
-    if (!serverConfig || !serverConfig[toolName]) {
-      return null;
-    }
-
-    return { ...serverConfig[toolName] };
+    const toolState = getOwn(getOwn(this.config, serverName), toolName);
+    return toolState ? { ...toolState } : null;
   }
 
   /**
@@ -448,18 +475,20 @@ export class ToolStateStore {
     >
   ): void {
     // Create a new config object
-    const newConfig: MCPToolsConfig = {};
+    const newConfig: MCPToolsConfig = Object.create(null);
 
     for (const [serverName, toolsInfo] of Object.entries(toolsByServer)) {
-      newConfig[serverName] = {};
+      const serverTools: MCPServerToolState = Object.create(null);
+      newConfig[serverName] = serverTools;
+      const oldServerTools = getOwn(this.config, serverName);
 
       for (const toolInfo of toolsInfo) {
         const toolName = toolInfo.name;
 
         // Check if this tool existed in the old config to preserve enabled state and usage count
-        const oldToolState = this.config[serverName]?.[toolName];
+        const oldToolState = getOwn(oldServerTools, toolName);
 
-        newConfig[serverName][toolName] = {
+        serverTools[toolName] = {
           enabled: oldToolState?.enabled ?? true, // Preserve enabled state or default to true
           usageCount: oldToolState?.usageCount ?? 0, // Preserve usage count or default to 0
           inputSchema: toJsonSchema(toolInfo.inputSchema) ?? null,
@@ -474,15 +503,16 @@ export class ToolStateStore {
   }
 
   /**
-   * Replaces the entire configuration by reference and schedules persistence.
+   * Replaces the entire configuration and schedules persistence.
    *
-   * Unlike `setConfig`, this method does not clone its input.
+   * Unlike `setConfig`, tool state objects are adopted by reference; only the
+   * server and tool maps are copied.
    *
-   * @param newConfig - Configuration object to adopt directly.
+   * @param newConfig - Configuration to adopt.
    * @returns No value.
    */
   replaceConfig(newConfig: MCPToolsConfig): void {
-    this.config = newConfig;
+    this.config = toPrototypeFreeConfig(newConfig);
     this.saveConfig();
   }
 
@@ -523,7 +553,7 @@ export class ToolStateStore {
         /** User-facing tool description. */
         description?: string;
       }>
-    > = {};
+    > = Object.create(null);
 
     for (const tool of clientTools) {
       // Extract server name from tool name (format: "serverName__toolName")
@@ -536,15 +566,17 @@ export class ToolStateStore {
       // looks like JSON Schema.
       const toolSchema = toJsonSchema(tool.inputSchema) ?? toJsonSchema(tool.schema) ?? null;
 
-      if (!toolsByServer[serverName]) {
-        toolsByServer[serverName] = [];
-      }
-
-      toolsByServer[serverName].push({
+      const serverTools = getOwn(toolsByServer, serverName);
+      const toolEntry = {
         name: toolName,
         inputSchema: toolSchema,
         description: tool.description || '',
-      });
+      };
+      if (serverTools) {
+        serverTools.push(toolEntry);
+      } else {
+        toolsByServer[serverName] = [toolEntry];
+      }
     }
 
     // Replace the entire configuration with current tools

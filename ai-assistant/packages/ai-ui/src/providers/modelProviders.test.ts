@@ -140,6 +140,66 @@ describe('modelProviders helpers', () => {
         suggestions: [],
       });
     });
+
+    it.each(['', ' ', '\t'])(
+      'does not consume the next line after an empty suggestions marker with %j padding',
+      padding => {
+        expect(
+          parseSuggestionsFromResponse(`Summary\nSUGGESTIONS:${padding}\nNext steps.`)
+        ).toEqual({
+          cleanContent: 'Summary\nNext steps.',
+          suggestions: [],
+        });
+      }
+    );
+
+    it('removes an empty suggestions marker at the end of the response', () => {
+      expect(parseSuggestionsFromResponse('Summary\nSUGGESTIONS:')).toEqual({
+        cleanContent: 'Summary',
+        suggestions: [],
+      });
+    });
+
+    it('matches the marker case-insensitively without shifting Unicode indices', () => {
+      expect(parseSuggestionsFromResponse('Stra\u00dfe\nsuggestions: First | Second')).toEqual({
+        cleanContent: 'Stra\u00dfe',
+        suggestions: ['First', 'Second'],
+      });
+    });
+
+    it.each(['\n', '\r\n', '\r', '\u2028', '\u2029'])(
+      'bounds suggestions to one line with %j line endings',
+      lineEnding => {
+        expect(
+          parseSuggestionsFromResponse(`Summary${lineEnding}SUGGESTIONS: ${lineEnding}Next steps.`)
+        ).toEqual({
+          cleanContent: `Summary${lineEnding}Next steps.`,
+          suggestions: [],
+        });
+        expect(
+          parseSuggestionsFromResponse(
+            `Summary${lineEnding}SUGGESTIONS: First${lineEnding}Next steps.`
+          )
+        ).toEqual({
+          cleanContent: `Summary${lineEnding}Next steps.`,
+          suggestions: ['First'],
+        });
+      }
+    );
+
+    it('handles a long marker line in linear time', () => {
+      const padding = ' '.repeat(100_000);
+      const start = performance.now();
+      expect(parseSuggestionsFromResponse(`Summary\nSUGGESTIONS:${padding}First`)).toEqual({
+        cleanContent: 'Summary',
+        suggestions: ['First'],
+      });
+      expect(parseSuggestionsFromResponse(`Summary\nSUGGESTIONS:${padding}\nNext steps.`)).toEqual({
+        cleanContent: 'Summary\nNext steps.',
+        suggestions: [],
+      });
+      expect(performance.now() - start).toBeLessThan(500);
+    });
   });
 
   describe('getModelDisplayName', () => {

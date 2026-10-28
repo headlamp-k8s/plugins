@@ -6,6 +6,9 @@ import {
   SimpleTable,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { formatDuration, localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Box, Step, StepLabel, Stepper, Tooltip, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   AdmissionCheckState,
@@ -17,12 +20,15 @@ import {
   WorkloadSchedulingStatsEviction,
 } from '../../resources/workload';
 import {
+  findWorkloadCondition,
   getWorkloadBlocker,
+  getWorkloadTimeline,
   renderPodSetRequests,
   renderResourceList,
   renderStringMap,
   renderText,
   renderTopologyAssignment,
+  WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
@@ -424,8 +430,117 @@ function getSchedulingStatsSection(workload: Workload) {
   };
 }
 
+/** Caption under a lifecycle step: when it was reached and how long after the step before. */
+function renderTimelineCaption(step: WorkloadTimelineStep) {
+  const duration = step.durationMs !== undefined ? formatDuration(step.durationMs) : undefined;
+
+  switch (step.state) {
+    case 'done':
+    case 'failed':
+      return [
+        step.time && localeDate(step.time),
+        step.durationMs === 0 && `Same time as ${step.durationFrom}`,
+        !!step.durationMs && `${duration} after ${step.durationFrom}`,
+        step.state === 'failed' && step.reason,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    case 'current':
+      return [
+        duration ? `Waiting ${duration} since ${step.durationFrom}` : 'Waiting',
+        step.reason && `Reason: ${step.reason}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    case 'deactivated':
+      return 'Paused: Workload is deactivated';
+    case 'skipped':
+      return 'Not reached';
+    case 'untracked':
+      return 'Not reported by Kueue';
+    default:
+      return '';
+  }
+}
+
+/** Current time in milliseconds, advanced every second while `ticking` is set. */
+function useNow(ticking: boolean) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!ticking) {
+      return;
+    }
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [ticking]);
+
+  return now;
+}
+
+/** Draw the Workload's lifecycle from its conditions. */
+function WorkloadLifecycle({ workload }: { workload: Workload }) {
+  // A pending Workload can go a long time without watch updates, so the wait keeps counting.
+  const ticking = findWorkloadCondition(workload.conditions, 'Finished')?.status !== 'True';
+  const now = useNow(ticking);
+  const { steps, eviction } = getWorkloadTimeline(
+    workload.metadata.creationTimestamp,
+    workload.conditions,
+    workload.spec.active,
+    now
+  );
+  const activeStep = steps.findIndex(step => step.state === 'current');
+
+  return (
+    <SectionBox title="Lifecycle">
+      <Stepper activeStep={activeStep === -1 ? steps.length : activeStep} alternativeLabel>
+        {steps.map(step => (
+          <Step
+            key={step.label}
+            completed={step.state === 'done' || step.state === 'failed'}
+            disabled={['skipped', 'untracked', 'pending'].includes(step.state)}
+          >
+            <Tooltip title={step.message || ''}>
+              <StepLabel
+                error={step.state === 'failed'}
+                optional={
+                  <Typography variant="caption" sx={{ whiteSpace: 'pre-line' }}>
+                    {renderTimelineCaption(step)}
+                  </Typography>
+                }
+              >
+                {step.label}
+              </StepLabel>
+            </Tooltip>
+          </Step>
+        ))}
+      </Stepper>
+      {eviction && (
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'baseline' }}>
+          <StatusLabel status="warning">Evicted</StatusLabel>
+          <Typography variant="body2">
+            {[
+              eviction.lastTransitionTime && localeDate(eviction.lastTransitionTime),
+              eviction.reason,
+              eviction.message,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Typography>
+        </Box>
+      )}
+    </SectionBox>
+  );
+}
+
+/** Build the section that draws the Workload's lifecycle. */
+function getTimelineSection(workload: Workload) {
+  return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
+}
+
 /** Build the section explaining what is stopping the Workload from being admitted. */
-function getBlockerSection(workload: Workload) {
+export function getBlockerSection(workload: Workload) {
   const blocker = getWorkloadBlocker(
     workload.conditions,
     workload.status.admissionChecks,
@@ -586,6 +701,7 @@ export default function WorkloadDetail() {
         extraSections={workload =>
           workload
             ? [
+                getTimelineSection(workload),
                 getBlockerSection(workload),
                 getConditionsSection(workload),
                 getPodSetsSection(workload),

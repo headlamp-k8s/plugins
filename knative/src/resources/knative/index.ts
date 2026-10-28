@@ -26,4 +26,8 @@ export * from './image';
 export * from './ingress';
 export * from './serverlessService';
 export * from './certificate';
+export * from './broker';
+export * from './trigger';
+export * from './channel';
+export * from './subscription';
 export * from './customResource';

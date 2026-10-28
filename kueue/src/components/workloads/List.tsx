@@ -51,6 +51,11 @@ export default function WorkloadList() {
             label: 'Status',
             getValue: (workload: Workload) => workload.statusDisplay,
           },
+          {
+            id: 'blockedOn',
+            label: 'Blocked On',
+            getValue: (workload: Workload) => workload.blockerStageDisplay,
+          },
           'age',
         ]}
       />

@@ -9,12 +9,13 @@ Run all commands in this document from the `knative/` directory unless the comma
 
 ## Prerequisites
 
-| Requirement          | Required condition                                                   | How to check                                        |
-| -------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
-| Kubernetes context   | `kubectl` points to a disposable development cluster                 | `kubectl config current-context`                    |
-| Knative Serving      | The `services.serving.knative.dev` CRD exists                        | `kubectl get crd services.serving.knative.dev`      |
-| Headlamp             | Headlamp can access the same cluster and this plugin is loaded       | Open `/c/<cluster>/knative/services`                |
-| Metrics testing only | Prometheus Operator and the Headlamp Prometheus plugin are installed | `kubectl get crd podmonitors.monitoring.coreos.com` |
+| Requirement          | Required condition                                                            | How to check                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Kubernetes context   | `kubectl` points to a disposable development cluster                          | `kubectl config current-context`                                                                                    |
+| Knative Serving      | For `setup.sh`: the `services.serving.knative.dev` CRD exists                 | `kubectl get crd services.serving.knative.dev`                                                                      |
+| Knative Eventing     | For `setup-eventing.sh`: the Broker, Trigger and in-memory channel CRDs exist | `kubectl get crd brokers.eventing.knative.dev triggers.eventing.knative.dev inmemorychannels.messaging.knative.dev` |
+| Headlamp             | Headlamp can access the same cluster and this plugin is loaded                | Open `/c/<cluster>/knative/services`, or `/c/<cluster>/knative/brokers` for Eventing                                |
+| Metrics testing only | Prometheus Operator and the Headlamp Prometheus plugin are installed          | `kubectl get crd podmonitors.monitoring.coreos.com`                                                                 |
 
 ## Create the fixtures
 
@@ -131,12 +132,38 @@ The individual scripts cover response-code classes, controlled latency, CPU and 
 and sustained mixed traffic. Run them directly from `test-files/traffic/` when only one chart needs
 data; `generate-sustained-traffic.sh` also accepts a duration in seconds.
 
+## Eventing fixtures
+
+The Eventing fixtures need Knative Eventing with the in-memory channel and the multi-tenant
+channel-based Broker, but not Knative Serving. Create them with:
+
+```bash
+./test-files/setup-eventing.sh
+```
+
+The script checks that the Eventing CRDs are installed, applies `00-namespace-and-sink.yaml`,
+`01-broker-and-triggers.yaml` and `02-channel-and-subscriptions.yaml` from `test-files/eventing/`,
+and waits for the Broker, the three working Triggers, the Channel and its working Subscription to
+become Ready. Set `WAIT_TIMEOUT` to wait longer, as with `setup.sh`.
+
+| Resource                         | State it produces                                                                                            | What to verify in Headlamp                                                                                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Broker `default`                 | A Ready `MTChannelBasedBroker`                                                                               | The Brokers view shows its class, address, and Ready state; its page links the `config-br-default-channel` ConfigMap                                                    |
+| Trigger `catch-all`              | A Ready Trigger delivering to the `event-display` Service                                                    | The Triggers view links the Broker and the `Service/event-display` subscriber; its page shows `All events` and the subscriber URI                                       |
+| Trigger `uri-subscriber`         | A Ready Trigger delivering to an absolute URI                                                                | The subscriber is shown as the URI, without a link                                                                                                                      |
+| Trigger `order-created`          | A Ready Trigger with `exact` and `prefix` filters                                                            | Its page shows the configured `exact` and `prefix` filters as read-only, syntax-highlighted YAML                                                                        |
+| Trigger `dangling-subscriber`    | A Trigger whose subscriber Service does not exist                                                            | Ready is `False` and the reason explains that the subscriber URI could not be resolved                                                                                  |
+| Channel `orders`                 | A Ready Channel backed by an `InMemoryChannel`                                                               | The Channels view shows `InMemoryChannel`, its address, and one subscriber; its page lists `orders-to-display` as Ready                                                 |
+| Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply; its page shows the resolved subscriber and reply URIs |
+| Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                  | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                                                                             |
+| Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                  | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                                                                               |
+
 ## Remove the fixtures
 
 ```bash
 ./test-files/cleanup.sh
 ```
 
-Cleanup removes the optional PodMonitor, the `knative-map-test` namespace, and the cluster-scoped
-`healthy.knative-map-test.local` ClusterDomainClaim. It does not change Knative's cluster-level
-networking or certificate configuration.
+Cleanup removes the optional PodMonitor, the `knative-map-test` and `knative-eventing-test`
+namespaces, and the cluster-scoped `healthy.knative-map-test.local` ClusterDomainClaim. It does not
+change Knative's cluster-level networking or certificate configuration.

@@ -64,13 +64,17 @@ export function renderClusterQueueLink(clusterQueueName?: string) {
 }
 
 /** Render a LocalQueue reference as a detail-page link when present. */
-export function renderLocalQueueLink(queueName?: string, namespace?: string) {
+export function renderLocalQueueLink(queueName?: string, namespace?: string, cluster?: string) {
   if (!queueName || !namespace) {
     return '-';
   }
 
   return (
-    <Link routeName={kueueRouteNames.localQueueDetail} params={{ namespace, name: queueName }}>
+    <Link
+      routeName={kueueRouteNames.localQueueDetail}
+      params={{ namespace, name: queueName }}
+      activeCluster={cluster}
+    >
       {queueName}
     </Link>
   );

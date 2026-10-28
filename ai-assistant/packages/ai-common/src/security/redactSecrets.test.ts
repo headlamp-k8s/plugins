@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { redactSecrets } from './redactSecrets';
+import { redactSecrets, redactSecretsInValue } from './redactSecrets';
 
 describe('redactSecrets', () => {
   it('returns the input unchanged when there are no secrets', () => {
@@ -53,6 +53,63 @@ MIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4
     expect(out).toContain('[REDACTED]');
   });
 
+  it('redacts each of several PEM blocks and keeps surrounding text', () => {
+    const out = redactSecrets(
+      'a -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE----- b ' +
+        '-----BEGIN EC PRIVATE KEY-----\nBBB\n-----END EC PRIVATE KEY----- c'
+    );
+    expect(out).toBe('a [REDACTED] b [REDACTED] c');
+  });
+
+  it('leaves unterminated PEM headers unchanged', () => {
+    const input = '-----BEGIN CERTIFICATE-----\nAAA';
+    expect(redactSecrets(input)).toBe(input);
+  });
+
+  it('scans adversarial PEM and fenced JSON input in linear time', () => {
+    const inputs = [
+      '-----BEGIN A-----'.repeat(50_000),
+      `kind: Secret\n${'```json'.repeat(50_000)}`,
+      `kind: Secret\n\`\`\`json${' '.repeat(100_000)}x`,
+    ];
+    for (const input of inputs) {
+      const start = performance.now();
+      redactSecrets(input);
+      expect(performance.now() - start).toBeLessThan(500);
+    }
+  });
+
+  it('redacts JWTs next to look-alike text', () => {
+    expect(redactSecrets('eyJ.eyJa.b eyJa.eyJb.c eyJa.eyJb. eyJaeyJb.eyJc.d')).toBe(
+      'eyJ.eyJa.b [REDACTED] eyJa.eyJb. [REDACTED]'
+    );
+  });
+
+  it('scans adversarial JWT-like input in linear time', () => {
+    const input = 'eyJ'.repeat(50_000);
+    const start = performance.now();
+    expect(redactSecrets(input)).toBe(input);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it('preserves incomplete JWT-like values', () => {
+    const input = 'prefix eyJheader.eyJpayload suffix';
+    expect(redactSecrets(input)).toBe(input);
+  });
+
+  it('redacts every valid JWT embedded in surrounding text', () => {
+    const first = 'eyJheader.eyJpayload.signature_one';
+    const second = 'eyJother.eyJclaims.signature-two';
+    expect(redactSecrets(`first=${first}; second=${second}`)).toBe(
+      'first=[REDACTED]; second=[REDACTED]'
+    );
+  });
+
+  it('preserves many unterminated PEM headers', () => {
+    const input = Array.from({ length: 2_000 }, () => '-----BEGIN CERTIFICATE-----').join('\n');
+    expect(redactSecrets(input)).toBe(input);
+  });
+
   it('redacts PEM certificates', () => {
     const cert = `-----BEGIN CERTIFICATE-----
 MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
@@ -86,6 +143,30 @@ MIICpDCCAYwCCQDU+pQ4pHgSpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
   it('redacts password and passwd key-value pairs', () => {
     expect(redactSecrets('password: hunter2')).not.toContain('hunter2');
     expect(redactSecrets('passwd=s3cr3t')).not.toContain('s3cr3t');
+  });
+
+  it('redacts credentials after whitespace before their separator', () => {
+    expect(redactSecrets('password : hunter2')).toBe('password : [REDACTED]');
+    expect(redactSecrets('token\t=abc')).toBe('token\t=[REDACTED]');
+  });
+
+  it('redacts credentials that are not at the start of a line', () => {
+    expect(redactSecrets('url=https://x.io/?token=abc123')).toBe(
+      'url=https://x.io/?token=[REDACTED]'
+    );
+    expect(redactSecrets('export api_key: demo-value')).toBe('export api_key: [REDACTED]');
+    expect(redactSecrets('my password: hunter2')).toBe('my password: [REDACTED]');
+    expect(redactSecrets('The password: hunter2 was leaked')).toBe('The password: [REDACTED]');
+  });
+
+  it('leaves non-credential fields and already-redacted values alone', () => {
+    for (const input of [
+      'url=https://example.com/path',
+      'password: [REDACTED]',
+      'DB_PASSWORD=hunter2',
+    ]) {
+      expect(redactSecrets(input)).toBe(input);
+    }
   });
 
   it('redacts unquoted credential values containing spaces through end-of-line', () => {
@@ -253,6 +334,21 @@ namespace: default`;
     expect(out).toContain('[REDACTED]');
   });
 
+  it('redacts every fenced JSON Secret after malformed and non-secret blocks', () => {
+    const input = [
+      '```json\n{invalid}\n```',
+      '```json\n{"kind":"ConfigMap","data":{"visible":"yes"}}\n```',
+      '```json\n{"kind":"Secret","data":{"first":"c2VjcmV0MQ=="}}\n```',
+      '```json\n{"kind":"Secret","stringData":{"second":"secret2"}}\n```',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).toContain('{invalid}');
+    expect(out).toContain('"visible":"yes"');
+    expect(out).not.toContain('c2VjcmV0MQ==');
+    expect(out).not.toContain('secret2');
+    expect(out.match(/\[REDACTED\]/g)).toHaveLength(2);
+  });
+
   it('redacts all data values of a JSON Kubernetes Secret and List responses', () => {
     const secret = JSON.stringify({
       apiVersion: 'v1',
@@ -274,6 +370,57 @@ namespace: default`;
     expect(redactSecrets(list)).not.toContain('YWJj');
   });
 
+  it('redacts a real apiserver SecretList response (items omit their own kind)', () => {
+    // This is the shape returned by `GET /api/v1/namespaces/{ns}/secrets`,
+    // as opposed to `kubectl -o json`'s generic `kind: List` wrapper above.
+    const secretList = JSON.stringify({
+      kind: 'SecretList',
+      apiVersion: 'v1',
+      metadata: { resourceVersion: '12345' },
+      items: [
+        {
+          metadata: { name: 'db-credentials', namespace: 'default' },
+          data: {
+            DATABASE_PASSWORD: 'aHVudGVyMg==',
+            session: 'czNjcjN0LXNlc3Npb24ta2V5',
+          },
+          type: 'Opaque',
+        },
+      ],
+    });
+    const out = redactSecrets(secretList);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('czNjcjN0LXNlc3Npb24ta2V5');
+    expect(out).toContain('[REDACTED]');
+    expect(out).toContain('"name": "db-credentials"');
+  });
+
+  it('redacts a real apiserver SecretList response in YAML (`-o yaml` shape)', () => {
+    // Same SecretList shape as above but as the YAML `kubectl get secrets -o
+    // yaml` would render it: a single document, top-level `kind: SecretList`,
+    // with secrets nested under `items` (no `---` document separators).
+    const secretList = [
+      'apiVersion: v1',
+      'kind: SecretList',
+      'metadata:',
+      '  resourceVersion: "12345"',
+      'items:',
+      '- metadata:',
+      '    name: db-credentials',
+      '    namespace: default',
+      '  data:',
+      '    DATABASE_PASSWORD: aHVudGVyMg==',
+      '    session: czNjcjN0LXNlc3Npb24ta2V5',
+      '  type: Opaque',
+    ].join('\n');
+    const out = redactSecrets(secretList);
+    expect(out).not.toContain('aHVudGVyMg==');
+    expect(out).not.toContain('czNjcjN0LXNlc3Npb24ta2V5');
+    expect(out).toContain('DATABASE_PASSWORD: [REDACTED]');
+    expect(out).toContain('session: [REDACTED]');
+    expect(out).toContain('name: db-credentials');
+  });
+
   it('does not over-redact ConfigMap data', () => {
     const cm = ['kind: ConfigMap', 'data:', '  app.conf: hello-world'].join('\n');
     expect(redactSecrets(cm)).toContain('app.conf: hello-world');
@@ -287,5 +434,34 @@ namespace: default`;
     expect(
       redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
     ).toContain('AccountKey=[REDACTED]');
+  });
+});
+
+describe('redactSecretsInValue', () => {
+  it('redacts data fields of a parsed Secret object', () => {
+    const value = {
+      kind: 'Secret',
+      metadata: { name: 'db-credentials' },
+      data: { DATABASE_PASSWORD: 'aHVudGVyMg==' },
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.data.DATABASE_PASSWORD).toBe('[REDACTED]');
+    expect(out.metadata.name).toBe('db-credentials');
+  });
+
+  it('redacts data fields of items in a parsed SecretList object', () => {
+    const value = {
+      kind: 'SecretList',
+      items: [
+        {
+          metadata: { name: 'db-credentials', namespace: 'default' },
+          data: { DATABASE_PASSWORD: 'aHVudGVyMg==', session: 'czNjcjN0LXNlc3Npb24ta2V5' },
+        },
+      ],
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.items[0].data.DATABASE_PASSWORD).toBe('[REDACTED]');
+    expect(out.items[0].data.session).toBe('[REDACTED]');
+    expect(out.items[0].metadata.name).toBe('db-credentials');
   });
 });

@@ -27,14 +27,24 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { BrokerDetail } from './components/brokers/Detail';
+import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { SubscriptionDetail } from './components/subscriptions/Detail';
+import { TriggerDetail } from './components/triggers/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import {
+  KnativeBroker,
+  KnativeChannel,
+  KnativeSubscription,
+  KnativeTrigger,
+} from './resources/knative';
 import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
@@ -67,7 +77,7 @@ registerSidebarEntry({
   name: 'knative',
   label: 'Knative',
   icon: 'custom:knative',
-  url: '/knative/services',
+  url: knativeNavigationItems[0].path,
 });
 
 knativeNavigationSections.forEach(section => {
@@ -103,6 +113,34 @@ registerRoute({
   component: withQueryClient(RevisionDetail),
 });
 
+registerRoute({
+  path: '/knative/brokers/:namespace/:name',
+  sidebar: 'knative-brokers',
+  name: KnativeBroker.detailsRoute,
+  component: withQueryClient(BrokerDetail),
+});
+
+registerRoute({
+  path: '/knative/triggers/:namespace/:name',
+  sidebar: 'knative-triggers',
+  name: KnativeTrigger.detailsRoute,
+  component: withQueryClient(TriggerDetail),
+});
+
+registerRoute({
+  path: '/knative/channels/:namespace/:name',
+  sidebar: 'knative-channels',
+  name: KnativeChannel.detailsRoute,
+  component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: '/knative/subscriptions/:namespace/:name',
+  sidebar: 'knative-subscriptions',
+  name: KnativeSubscription.detailsRoute,
+  component: withQueryClient(SubscriptionDetail),
+});
+
 knativeNavigationItems.forEach(item => {
   const component = getKnativeListRouteComponent(item.routeName);
   registerRoute({
@@ -127,6 +165,10 @@ const knativeKindIconKinds = [
   'networking.internal.knative.dev/Ingress',
   'networking.internal.knative.dev/ServerlessService',
   'networking.internal.knative.dev/Certificate',
+  'eventing.knative.dev/Broker',
+  'eventing.knative.dev/Trigger',
+  'messaging.knative.dev/Channel',
+  'messaging.knative.dev/Subscription',
 ];
 
 knativeKindIconKinds.forEach(kind => {

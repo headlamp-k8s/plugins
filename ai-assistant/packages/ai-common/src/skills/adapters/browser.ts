@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { trimSlashes } from '../../text/trimSlashes';
 import type { ParsedSkill } from '../parseSkill';
 import type { SkillFileSystem, SkillHttpClient, SkillZipExtractor } from '../SkillLoader';
 import { MAX_ZIP_EXTRACTED_BYTES, MAX_ZIP_FILE_COUNT } from '../SkillLoader';
@@ -244,7 +245,7 @@ export function createJSZipExtractor(): SkillZipExtractor {
       // GitHub zips have a top-level directory like "owner-repo-sha/"
       const entries = Object.keys(zip.files).sort();
       const topLevelPrefix = entries.length > 0 ? entries[0].split('/')[0] + '/' : '';
-      const normalizedPathFilter = pathFilter?.replace(/^\/+|\/+$/g, '');
+      const normalizedPathFilter = pathFilter === undefined ? undefined : trimSlashes(pathFilter);
 
       for (const entryPath of entries) {
         const entry = zip.files[entryPath];

@@ -19,9 +19,13 @@ import type { Condition } from './common';
 import { KnativeCustomResource } from './customResource';
 import { findReadyCondition } from './resourceData';
 
+/** The status fields every Knative resource reports. */
 export type ConditionedStatus = {
+  /** The latest observations of the resource's current state. */
   conditions?: Condition[];
+  /** The `generation` of the resource that the controller last processed. */
   observedGeneration?: number;
+  /** Extra status information the controller shares with the user. */
   annotations?: Record<string, string>;
 };
 

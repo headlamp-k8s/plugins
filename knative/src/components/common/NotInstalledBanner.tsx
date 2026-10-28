@@ -15,12 +15,41 @@
  */
 
 import { Box, CircularProgress, Link as MuiLink, Typography } from '@mui/material';
+import type { KnativeComponent } from '../../isKnativeInstalled';
 
+const COMPONENT_BANNER: Record<KnativeComponent, { productName: string; installUrl: string }> = {
+  serving: {
+    productName: 'Knative Serving',
+    installUrl: 'https://knative.dev/docs/install/',
+  },
+  eventing: {
+    productName: 'Knative Eventing',
+    installUrl:
+      'https://knative.dev/docs/install/yaml-install/eventing/install-eventing-with-yaml/',
+  },
+};
+
+/** Props of {@link NotInstalledBanner}. */
 interface NotInstalledBannerProps {
+  /** Shows a spinner instead of the message while the install check runs. */
   isLoading?: boolean;
+  /** The Knative component that is missing; defaults to `serving`. */
+  component?: KnativeComponent;
 }
 
-export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProps) {
+/**
+ * Tells the user that a Knative component is not installed on the cluster, with a link to its
+ * install guide.
+ *
+ * @param props - Whether the install check is still running, and which component is missing.
+ * @returns A spinner while the check runs, otherwise the message.
+ */
+export function NotInstalledBanner({
+  isLoading = false,
+  component = 'serving',
+}: NotInstalledBannerProps) {
+  const { productName, installUrl } = COMPONENT_BANNER[component];
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -44,18 +73,14 @@ export function NotInstalledBanner({ isLoading = false }: NotInstalledBannerProp
         }}
       >
         <Typography variant="h5">
-          Knative was not detected on your cluster. If you haven't already, please install it.
+          {productName} was not detected on your cluster. If you haven't already, please install it.
         </Typography>
         <Typography>
           Learn how to{' '}
-          <MuiLink
-            href="https://knative.dev/docs/install/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <MuiLink href={installUrl} target="_blank" rel="noopener noreferrer">
             install
           </MuiLink>{' '}
-          Knative
+          {productName}
         </Typography>
       </Box>
     </Box>

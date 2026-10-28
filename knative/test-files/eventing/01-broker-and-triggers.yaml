@@ -1,0 +1,61 @@
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  name: default
+  namespace: knative-eventing-test
+  annotations:
+    eventing.knative.dev/broker.class: MTChannelBasedBroker
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: catch-all
+  namespace: knative-eventing-test
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: uri-subscriber
+  namespace: knative-eventing-test
+spec:
+  broker: default
+  subscriber:
+    uri: https://example.com/events
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: order-created
+  namespace: knative-eventing-test
+spec:
+  broker: default
+  filters:
+    - exact:
+        type: dev.knative.demo.order.created
+    - prefix:
+        source: /shop
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: dangling-subscriber
+  namespace: knative-eventing-test
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: does-not-exist

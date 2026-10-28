@@ -54,7 +54,7 @@ const actions = [
   { id: 'plugin-specific-action' },
 ];
 
-describe('read-only Serving detail actions', () => {
+describe('read-only Knative detail actions', () => {
   it.each([
     ['serving.knative.dev/v1', 'Configuration'],
     ['serving.knative.dev/v1', 'Route'],
@@ -64,6 +64,8 @@ describe('read-only Serving detail actions', () => {
     ['networking.internal.knative.dev/v1alpha1', 'Ingress'],
     ['networking.internal.knative.dev/v1alpha1', 'ServerlessService'],
     ['networking.internal.knative.dev/v1alpha1', 'Certificate'],
+    ['messaging.knative.dev/v1', 'Channel'],
+    ['messaging.knative.dev/v1', 'Subscription'],
   ])('removes mutating defaults from %s %s', (apiVersion, kind) => {
     const servingResource = resource(apiVersion, kind);
 

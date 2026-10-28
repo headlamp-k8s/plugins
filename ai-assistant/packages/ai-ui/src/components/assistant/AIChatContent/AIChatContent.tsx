@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 
 /** Props forwarded to the host-provided chat stream renderer. */
 export interface AIChatTextStreamProps {
+  /** Host content rendered before messages in the same scroll area. */
+  beforeMessages?: React.ReactNode;
   /** Conversation messages to render. */
   history: ConversationMessage[];
   /** Whether an assistant response is being generated. */
@@ -18,7 +20,13 @@ export interface AIChatTextStreamProps {
   /** Receives a failed Kubernetes operation and optional resource metadata. */
   onOperationFailure: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Applies or deletes a YAML resource through the host. */
-  onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onYamlAction: (
+    yaml: string,
+    title: string,
+    type: string,
+    isDeleteOp: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Retries a named tool with its validated argument map. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Live agent activity displayed while a response is generated. */
@@ -27,6 +35,8 @@ export interface AIChatTextStreamProps {
 
 /** Props for the AIChatContent component that renders the chat message history. */
 export interface AIChatContentProps {
+  /** Host content rendered before messages in the same scroll area. */
+  beforeMessages?: React.ReactNode;
   /** Array of chat messages (prompts and responses) to display. */
   history: ConversationMessage[];
   /** Whether an AI response is currently being generated. */
@@ -38,7 +48,13 @@ export interface AIChatContentProps {
   /** Callback invoked when a Kubernetes API operation fails. */
   onOperationFailure: (error: unknown, operationType: string, resourceInfo?: unknown) => void;
   /** Callback invoked when the user triggers a YAML apply/delete action. */
-  onYamlAction: (yaml: string, title: string, type: string, isDeleteOp: boolean) => void;
+  onYamlAction: (
+    yaml: string,
+    title: string,
+    type: string,
+    isDeleteOp: boolean,
+    targetCluster?: string | null
+  ) => void;
   /** Callback to retry a failed tool invocation with the given name and arguments. */
   onRetryTool?: (toolName: string, args: ArgumentMap) => void;
   /** Live thinking steps streamed from the agent during processing. */
@@ -56,6 +72,7 @@ export interface AIChatContentProps {
  * @returns Scrollable chat content and optional error alert.
  */
 export default function AIChatContent({
+  beforeMessages,
   history,
   isLoading,
   apiError,
@@ -96,6 +113,7 @@ export default function AIChatContent({
 
       <Box sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden' }}>
         <TextStreamSlot
+          beforeMessages={beforeMessages}
           history={history}
           isLoading={isLoading}
           apiError={apiError}

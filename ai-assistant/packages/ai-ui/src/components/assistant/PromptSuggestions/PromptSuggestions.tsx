@@ -1,5 +1,4 @@
-import { Icon } from '@iconify/react';
-import { Box, Chip, IconButton, Typography } from '@mui/material';
+import { Box, Chip, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -20,7 +19,7 @@ export interface PromptSuggestionsProps {
   loading: boolean;
   /** Called when a suggestion is inserted into the prompt input. */
   onPromptSelect: (suggestion: PromptSuggestion) => void;
-  /** Called when a suggestion is sent immediately. */
+  /** @deprecated Suggestions now insert a draft for review rather than sending immediately. */
   onPromptSend: (suggestion: PromptSuggestion) => void;
   /** Clears any displayed error before resending a prompt. */
   onErrorClear: () => void;
@@ -37,7 +36,6 @@ export function PromptSuggestions({
   apiError,
   loading,
   onPromptSelect,
-  onPromptSend,
   onErrorClear,
 }: PromptSuggestionsProps): React.ReactElement | null {
   const { t } = useTranslation();
@@ -67,7 +65,10 @@ export function PromptSuggestions({
               size="small"
               variant="outlined"
               color="primary"
-              onClick={() => onPromptSelect(suggestion)}
+              onClick={() => {
+                if (hasContentFilterError) onErrorClear();
+                onPromptSelect(suggestion);
+              }}
               sx={{
                 height: 'auto',
                 '& .MuiChip-label': {
@@ -81,16 +82,6 @@ export function PromptSuggestions({
                 },
               }}
             />
-            <IconButton
-              size="small"
-              aria-label={t('Send suggestion: {{prompt}}', { prompt: suggestion.label })}
-              onClick={() => {
-                if (hasContentFilterError) onErrorClear();
-                onPromptSend(suggestion);
-              }}
-            >
-              <Icon icon="mdi:send" width="20px" aria-hidden="true" />
-            </IconButton>
           </Box>
         ))}
       </Box>
