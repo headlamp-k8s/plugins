@@ -377,6 +377,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
     (prompt: ConversationMessage, index: number) => {
       if (
         prompt.role === 'system' ||
+        prompt.isModelOnly ||
         (prompt.role === 'tool' && typeof prompt.content !== 'string') ||
         // Hide tool responses that have a toolCallId — these are intermediate API data
         // that the LLM will analyze and present as a descriptive response instead.
