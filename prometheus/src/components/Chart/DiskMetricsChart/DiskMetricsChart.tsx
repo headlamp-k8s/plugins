@@ -83,12 +83,7 @@ export function DiskMetricsChart(props: DiskMetricsChartProps) {
   const subPath = getPrometheusSubPath(cluster);
   return (
     <SectionBox>
-      <Box
-        display="flex"
-        justifyContent="space-around"
-        alignItems="center"
-        style={{ marginBottom: '0.5rem', margin: '0 auto', width: '0%' }}
-      >
+      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={2}>
         {state === prometheusState.INSTALLED && (
           <>
             <Box>{t('Disk')}</Box>
