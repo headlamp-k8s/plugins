@@ -1006,6 +1006,82 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('annotations [team=platform]');
   });
 
+  test('includes admission operations constraint in the explanation, found via Copilot review', () => {
+    // resources.operations restricts which request verbs the rule fires for. Omitting it made a
+    // CREATE-only rule appear to apply to every operation.
+    const operationsRules: PolicyRule[] = [
+      {
+        name: 'block-pod-create',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], operations: ['CREATE'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(operationsRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('operations [CREATE]');
+  });
+
+  test('includes subjects constraint in the explanation, found via Copilot review', () => {
+    // A match.all combining a Pod kind selector with subjects: [{kind: User, name: alice}] only
+    // fires when alice makes the request, not for any Pod operation. Omitting subjects made the
+    // rule appear unrestricted by user and overstated its scope.
+    const subjectsRules: PolicyRule[] = [
+      {
+        name: 'alice-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'User', name: 'alice' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(subjectsRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('subjects [alice (User)]');
+  });
+
+  test('does not emit "undefined" for a subject that has a kind but no name, found via Copilot review', () => {
+    // MatchSelectorEntry types name as optional (name?: string), so a subject entry with only a
+    // kind (e.g., matching any ServiceAccount) is valid input. A naive `${s.name} (${s.kind})`
+    // template literal coerces the undefined name to the four-character string "undefined".
+    const kindOnlySubjectRules: PolicyRule[] = [
+      {
+        name: 'any-sa-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'ServiceAccount' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(kindOnlySubjectRules, 'Pod', identityT);
+
+    expect(reasons[0]).not.toContain('undefined');
+    expect(reasons[0]).toContain('(ServiceAccount)');
+  });
+
+  test('includes roles and clusterRoles constraints in the explanation, found via Copilot review', () => {
+    const roleRules: PolicyRule[] = [
+      {
+        name: 'role-bound-pods',
+        match: {
+          any: [
+            {
+              resources: { kinds: ['Pod'] },
+              roles: ['pod-editor'],
+              clusterRoles: ['cluster-admin'],
+            },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(roleRules, 'Pod', identityT);
+
+    expect(reasons[0]).toContain('roles [pod-editor]');
+    expect(reasons[0]).toContain('cluster roles [cluster-admin]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor

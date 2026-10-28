@@ -419,6 +419,36 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string, t: T
         })
       );
     }
+    // resources.operations is an admission-only constraint on which request verbs (CREATE, UPDATE,
+    // DELETE, CONNECT) the rule fires for. Omitting it described a rule restricted to CREATE-only
+    // as if it applied to every operation, overstating scope for read-heavy workloads.
+    const operations = selector.resources?.operations || [];
+    if (operations.length > 0) {
+      parts.push(t('operations [{{operations}}]', { operations: operations.join(', ') }));
+    }
+    // subjects, roles, and clusterRoles are admission-request constraints that restrict which
+    // user, group, or service account (subjects), or which bound role (roles/clusterRoles), has
+    // to be making the request for the rule to fire. A match.all entry combining a Pod kind
+    // selector with subjects: [{kind: User, name: alice}] only applies when alice makes the
+    // request, not to any Pod operation. Omitting these made such a rule appear unrestricted by
+    // user and overstated its scope.
+    const subjects = selector.subjects || [];
+    if (subjects.length > 0) {
+      const subjectLabels = subjects.map(s =>
+        s.kind ? `${s.name ?? ''} (${s.kind})`.trim() : s.name ?? ''
+      );
+      parts.push(t('subjects [{{subjects}}]', { subjects: subjectLabels.join(', ') }));
+    }
+    const rawRoles = selector.roles;
+    const roles = Array.isArray(rawRoles) ? (rawRoles as string[]) : [];
+    if (roles.length > 0) {
+      parts.push(t('roles [{{roles}}]', { roles: roles.join(', ') }));
+    }
+    const rawClusterRoles = selector.clusterRoles;
+    const clusterRoles = Array.isArray(rawClusterRoles) ? (rawClusterRoles as string[]) : [];
+    if (clusterRoles.length > 0) {
+      parts.push(t('cluster roles [{{clusterRoles}}]', { clusterRoles: clusterRoles.join(', ') }));
+    }
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push(t('a label selector'));
