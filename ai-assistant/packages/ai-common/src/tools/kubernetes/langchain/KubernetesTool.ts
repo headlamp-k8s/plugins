@@ -56,7 +56,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       method: z
         .string()
         .describe(
-          'HTTP method: GET, POST, PUT, PATCH, DELETE. Use PUT for updating specific fields of existing resources.'
+          'HTTP method: GET, POST, PUT, PATCH, DELETE. Use PUT for updating specific fields of existing resources.',
         ),
       body: z
         .string()
@@ -66,13 +66,13 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
 - For PUT: Provide ONLY the fields to change as a JSON patch (e.g., {"spec": {"replicas": 3}})
 - Use null to remove fields (e.g., {"spec": {"livenessProbe": null}})
 - For POST: Provide the complete resource definition
-- The system will automatically merge PUT patches with existing resources`
+- The system will automatically merge PUT patches with existing resources`,
         ),
       cluster: z
         .string()
         .optional()
         .describe(
-          'Name of the cluster to send the request to. Omit to use the currently selected cluster. When no cluster is selected, pass one of the available clusters listed in the context.'
+          'Name of the cluster to send the request to. Omit to use the currently selected cluster. When no cluster is selected, pass one of the available clusters listed in the context.',
         ),
     }),
   };
@@ -170,7 +170,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           this.context.aiManager, // Use aiManager from context
           '', // No resource info needed for GET requests
           targetCluster,
-          undefined // No failure callback for GET requests (they're read-only)
+          undefined, // No failure callback for GET requests (they're read-only)
         );
 
         // Tag the history entry pushed by handleActualApiRequest with the toolCallId
@@ -187,16 +187,48 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           }
         }
 
+        let isError = false;
+        let errorMessage: string | undefined;
+        try {
+          const parsed = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
+          if (
+            parsed &&
+            (parsed.error === true ||
+              parsed.isError === true ||
+              (typeof parsed.error === 'string' && parsed.error.trim().length > 0))
+          ) {
+            isError = true;
+            if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+              errorMessage = parsed.message;
+            } else if (typeof parsed.content === 'string' && parsed.content.trim().length > 0) {
+              errorMessage = parsed.content;
+            } else if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+              errorMessage = parsed.error;
+            } else {
+              errorMessage =
+                typeof apiResponse === 'string' ? apiResponse : JSON.stringify(apiResponse);
+            }
+          }
+        } catch {
+          // Plain-text responses (such as successful pod logs) are not JSON errors
+          isError = false;
+        }
+
         // The handleActualApiRequest already adds to history (now tagged with toolCallId)
         return {
           content: typeof apiResponse === 'string' ? apiResponse : JSON.stringify(apiResponse),
           shouldAddToHistory: false, // Already added by handleActualApiRequest
           shouldProcessFollowUp: true,
+          isError,
+          ...(isError ? { error: true } : {}),
+          success: !isError,
+          ...(isError && errorMessage ? { message: errorMessage } : {}),
           metadata: {
             method: METHOD,
             url,
             body: requestBody,
-            success: true,
+            success: !isError,
+            ...(isError && errorMessage ? { error: errorMessage } : {}),
           },
         };
       } catch (error) {
@@ -213,6 +245,9 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
 
         return {
           content: errorContent,
+          message: `Error executing GET request: ${msg}`,
+          isError: true,
+          error: true,
           shouldAddToHistory: true,
           shouldProcessFollowUp: true, // Let the LLM explain the error to the user
           metadata: {
@@ -289,7 +324,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       this.context.aiManager, // Use aiManager from context
       resourceInfo,
       cluster,
-      undefined // No failure callback needed here as it's handled by the main flow
+      undefined, // No failure callback needed here as it's handled by the main flow
     );
 
     // Tag the history entry pushed by handleActualApiRequest with the originating

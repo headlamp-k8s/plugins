@@ -79,9 +79,17 @@ describe('formatToolResultsForLLM', () => {
     expect(out).toContain('"foo"');
   });
 
-  it('uses "Unknown error" when error has no message', () => {
+  it('uses "Unknown error" when error has no message and no content', () => {
     const out = formatToolResultsForLLM({ my_tool: { error: true } });
     expect(out).toContain('Unknown error');
+  });
+
+  it('uses content when error has no message but content is provided', () => {
+    const out = formatToolResultsForLLM({
+      my_tool: { isError: true, content: '403 Forbidden payload' },
+    });
+    expect(out).toContain('403 Forbidden payload');
+    expect(out).not.toContain('Unknown error');
   });
 
   it('data: undefined does not trigger the data branch (falls through to result branch)', () => {

@@ -140,7 +140,7 @@ describe('KubernetesTool.handler — cluster targeting', () => {
       _onClose,
       _aiManager,
       _resourceInfo,
-      cluster
+      cluster,
     ) => {
       targetCluster = cluster;
       return '{}';
@@ -266,7 +266,7 @@ describe('KubernetesTool.handleApiConfirmation — toolCallId tagging', () => {
     const resultP = tool.handler(
       { url: '/api/v1/pods/foo', method: 'DELETE', body: '' },
       'call-1',
-      undefined
+      undefined,
     );
     return resultP.then(result => {
       const parsed = JSON.parse(result.content);
@@ -326,7 +326,7 @@ describe('KubernetesTool.handler — GET error path', () => {
     const result = await tool.handler(
       { url: '/api/v1/pods', method: 'get', body: '' },
       undefined,
-      undefined
+      undefined,
     );
     const parsed = JSON.parse(result.content);
 
@@ -348,9 +348,52 @@ describe('KubernetesTool.handler — GET error path', () => {
     const result = await tool.handler(
       { url: '/api/v1/pods', method: 'GET', body: '' },
       undefined,
-      undefined
+      undefined,
     );
     expect(result.metadata?.error).toContain('bad request');
+    expect(result.message).toContain('bad request');
+    expect(result.isError).toBe(true);
+  });
+
+  it('handled GET failure sets isError, error, and message from failure payload', async () => {
+    const tool = new KubernetesTool();
+    const ctx = makeCtx(['prod']);
+    ctx.callbacks.handleActualApiRequest = async () => ({
+      error: true,
+      message: 'pods "forbidden-pod" is forbidden: User cannot get resource',
+    });
+    tool.setContext(ctx);
+
+    const result = await tool.handler(
+      { url: '/api/v1/namespaces/default/pods/forbidden-pod', method: 'GET', body: '' },
+      'tc-forbidden',
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('pods "forbidden-pod" is forbidden: User cannot get resource');
+    expect(result.metadata?.error).toBe(
+      'pods "forbidden-pod" is forbidden: User cannot get resource',
+    );
+  });
+
+  it('handled GET failure with stringified error payload populates message', async () => {
+    const tool = new KubernetesTool();
+    const ctx = makeCtx(['prod']);
+    ctx.callbacks.handleActualApiRequest = async () =>
+      JSON.stringify({ error: true, content: 'Error in API call: 404 Not Found' });
+    tool.setContext(ctx);
+
+    const result = await tool.handler(
+      { url: '/api/v1/namespaces/default/pods/missing-pod', method: 'GET', body: '' },
+      'tc-notfound',
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Error in API call: 404 Not Found');
   });
 });
 
@@ -411,7 +454,7 @@ describe('KubernetesTool.handler — non-GET confirmation path', () => {
     tool.setContext(makeCtx(['prod']));
 
     await expect(
-      tool.handler({ url: 42, method: 'POST' }, 'tc-invalid', undefined)
+      tool.handler({ url: 42, method: 'POST' }, 'tc-invalid', undefined),
     ).rejects.toThrow('requires string url and method');
   });
 
@@ -423,8 +466,8 @@ describe('KubernetesTool.handler — non-GET confirmation path', () => {
       tool.handler(
         { url: '/api/v1/pods', method: 'POST', body: { spec: {} } },
         'tc-invalid-body',
-        undefined
-      )
+        undefined,
+      ),
     ).rejects.toThrow('body must be a string');
   });
 
@@ -444,7 +487,7 @@ describe('KubernetesTool.handler — non-GET confirmation path', () => {
     const result = await tool.handler(
       { url: '/api/v1/pods', method: 'POST', body: '{"spec":{}}' },
       'tc-post',
-      undefined
+      undefined,
     );
 
     expect(captured.request?.url).toBe('/api/v1/pods');
@@ -466,7 +509,7 @@ describe('KubernetesTool.handler — non-GET confirmation path', () => {
     const result = await tool.handler(
       { url: '/api/v1/pods/my-pod', method: 'delete', body: '' },
       'tc-del',
-      undefined
+      undefined,
     );
 
     const parsed = JSON.parse(result.content);
@@ -485,7 +528,7 @@ describe('KubernetesTool.handler — non-GET confirmation path', () => {
     const result = await tool.handler(
       { url: '/api/v1/deployments/d1', method: 'PATCH', body: patchBody },
       'tc-patch',
-      undefined
+      undefined,
     );
 
     const parsed = JSON.parse(result.content);

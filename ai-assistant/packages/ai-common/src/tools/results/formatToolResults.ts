@@ -44,13 +44,13 @@ export function aggregateToolResults(results: Record<string, ToolResult>): strin
       aggregation += `**Data**:\n\`\`\`json\n${JSON.stringify(
         redactSecretsInValue(result.data),
         null,
-        2
+        2,
       )}\n\`\`\`\n\n`;
     } else {
       aggregation += `**Result**:\n\`\`\`json\n${JSON.stringify(
         redactSecretsInValue(result),
         null,
-        2
+        2,
       )}\n\`\`\`\n\n`;
     }
   }
@@ -79,7 +79,10 @@ export function formatToolResultsForLLM(results: Record<string, ToolResult>): st
 
     if (result.error || result.isError) {
       formatted += '**Status**: ❌ Error\n';
-      formatted += `**Error Message**: ${result.message ?? 'Unknown error'}\n\n`;
+      const errorMessage =
+        result.message ??
+        (typeof result.content === 'string' && result.content ? result.content : 'Unknown error');
+      formatted += `**Error Message**: ${errorMessage}\n\n`;
     } else {
       formatted += '**Status**: ✅ Success\n';
 
