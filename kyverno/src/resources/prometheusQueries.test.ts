@@ -104,17 +104,27 @@ describe('hasReliableIncrease', () => {
     // value, but a lazily registered series' first two scrapes can both hold its just-created
     // value (e.g. the first denial creates the "request_allowed=false" series at 1, which is
     // still 1 on the next scrape), and increase() over that returns 0, masking a real event.
-    // baselineRes (count(metric offset window)) is empty here: no sample existed before the
-    // window, confirming this series is new rather than merely quiet.
-    expect(hasReliableIncrease(instantResult(2), instantResult(undefined), true)).toBe(false);
+    // newSeriesRes = 1: the series appears in count_over_time but has no offset counterpart,
+    // confirming it is new rather than merely quiet.
+    expect(hasReliableIncrease(instantResult(2), instantResult(1), true)).toBe(false);
   });
 
   test('trusts a series with coverage and a baseline predating the window', () => {
-    expect(hasReliableIncrease(instantResult(2), instantResult(1), true)).toBe(true);
+    // newSeriesRes is empty (null): every covered series has an offset counterpart, so none are
+    // new, and increase() is reliable.
+    expect(hasReliableIncrease(instantResult(2), instantResult(undefined), true)).toBe(true);
   });
 
-  test('rejects a series with fewer than two samples in the window regardless of baseline', () => {
-    expect(hasReliableIncrease(instantResult(1), instantResult(1), true)).toBe(false);
+  test('rejects when an old series and a new series coexist — mixed old/new regression', () => {
+    // Scenario from Copilot review: old quiet denial series (has offset baseline) + new denial
+    // series (no offset, two identical-valued scrapes at 1). The old aggregate check
+    // count(metric offset window) > 0 would have passed because the old series is there, letting
+    // increase() read a confident wrong 0. newSeriesRes = 1 (the new series) correctly rejects.
+    expect(hasReliableIncrease(instantResult(2), instantResult(1), true)).toBe(false);
+  });
+
+  test('rejects a series with fewer than two samples in the window regardless of new-series count', () => {
+    expect(hasReliableIncrease(instantResult(1), instantResult(undefined), true)).toBe(false);
   });
 
   test('allowAbsent decides whether a totally absent series is trusted as a real zero', () => {

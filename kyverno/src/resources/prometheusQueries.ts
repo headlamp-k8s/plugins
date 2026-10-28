@@ -119,7 +119,8 @@ export function withGapMarkers(data: ChartDataPoint[], stepSeconds: number): Cha
 
 // Decides whether a sibling "sum(increase(...)) or vector(0)" value query's result is trustworthy,
 // from two checks against the same metric: `coverageRes`, a `min(count_over_time(metric[window]))`
-// query, and `baselineRes`, a `count(metric offset window)` query.
+// query, and `newSeriesRes`, a `count(count_over_time(metric[window]) unless (metric offset window))`
+// query.
 //
 // Coverage alone (>= 2 samples somewhere inside the window) isn't enough: a counter Kyverno only
 // lazily registers on its first real event (confirmed in this plugin's own PR description) can
@@ -127,27 +128,32 @@ export function withGapMarkers(data: ChartDataPoint[], stepSeconds: number): Cha
 // mid-window, both holding its just-created value, e.g. a brand new "request_allowed=false" series
 // scraped twice in a row at value 1. increase() over two identical-valued samples returns 0,
 // there's no earlier sample to measure the jump from implicit-absent to that first value against,
-// so a real denial still inside the window reads as a confident, wrong 0. baselineRes, queried
-// with Prometheus's `offset` modifier, confirms a sample already existed *before* the window
-// started, a genuine baseline the window's own increase() can be measured against, not just that
-// the window happens to contain two points.
+// so a real denial still inside the window reads as a confident, wrong 0.
+//
+// newSeriesRes detects this case per series, not in aggregate: `count_over_time(metric[window])
+// unless (metric offset window)` keeps only series that have in-window samples but NO counterpart
+// in the offset vector, i.e. series that didn't exist before the window. If that count is > 0,
+// at least one contributing series is new and its increase() can't be trusted — even if a
+// different, older series happens to have a pre-window baseline (the old aggregate
+// `count(metric offset window) > 0` check would have passed in that mixed case, allowing a
+// green zero despite real events on the new series).
 //
 // `instantValue` reads null from an empty result on either query, which happens when no series
 // currently matches the underlying metric at all. For coverageRes specifically that's a different
 // situation from a matching series existing with too few samples (a real number below 2), and the
 // two can't be treated the same way: whether an absent series still counts as "fine" depends on
 // whether the caller has some other, independent way to confirm the metric's own controller is
-// actually being scraped (see each call site's own allowAbsent comment). An absent baselineRes, by
-// contrast, always means "unavailable": it only argues a series predates the window, it never
-// argues the opposite, so coverage existing inside the window while no baseline predates it is
-// exactly the newly-appearing-counter case this function exists to catch.
+// actually being scraped (see each call site's own allowAbsent comment). An absent newSeriesRes
+// (null/0) means all covered series have pre-window baselines, which is the trusted case.
 export function hasReliableIncrease(
   coverageRes: PrometheusResponse,
-  baselineRes: PrometheusResponse,
+  newSeriesRes: PrometheusResponse,
   allowAbsent: boolean
 ): boolean {
   const coverage = instantValue(coverageRes);
   if (coverage === null) return allowAbsent;
   if (coverage < 2) return false;
-  return (instantValue(baselineRes) ?? 0) > 0;
+  // Any series that appears in the window but not in the offset vector is new: its increase()
+  // reads 0 from two identically-valued initial scrapes rather than measuring the real increment.
+  return (instantValue(newSeriesRes) ?? 0) === 0;
 }

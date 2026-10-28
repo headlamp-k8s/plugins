@@ -58,6 +58,10 @@ different namespaces into one. `03-…-team-a.yaml` and `04-…-team-b.yaml` are
 exact pair, same name, different namespace, so it can't be mistaken for a 404/absent-CRD edge
 case.
 
+For this check, skip or remove fixtures `05-` and `06-`, and use a cluster with no other cleanup
+policies lacking a `Ready` condition. Such policies make the entire "Policies Not Ready" tile
+unavailable (`—`), so the numeric count below cannot be observed while they exist.
+
 Readiness itself is transient for legacy Policy/ClusterPolicy: Kyverno marks a policy `Not Ready`
 only in the brief window before its webhook configuration finishes syncing, then flips it back to
 `Ready` on its own, normally within a few seconds (confirmed against Kyverno's own
