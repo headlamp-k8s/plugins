@@ -27,6 +27,12 @@
  */
 
 import {
+  INSPEKTOR_GADGET_SKILLS_PATH,
+  INSPEKTOR_GADGET_SKILLS_REF,
+  INSPEKTOR_GADGET_SKILLS_REPO_URL,
+  INSPEKTOR_GADGET_SKILLS_SHA256,
+} from '@headlamp-k8s/ai-common/skills/builtinSources';
+import {
   getSkillsConfig,
   getSkillSourceIdentity,
   type SkillsConfig,
@@ -95,6 +101,15 @@ export const WELL_KNOWN_SKILL_DIRS = [
 /** Well-known GitHub repositories that contain skill files. */
 export const WELL_KNOWN_SKILL_REPOS: readonly WellKnownRepoEntry[] = [
   {
+    url: INSPEKTOR_GADGET_SKILLS_REPO_URL,
+    label: 'Inspektor Gadget',
+    description: 'Kernel-level Kubernetes and Linux troubleshooting with eBPF',
+    path: INSPEKTOR_GADGET_SKILLS_PATH,
+    ref: INSPEKTOR_GADGET_SKILLS_REF,
+    sha256: INSPEKTOR_GADGET_SKILLS_SHA256,
+    includeReferences: true,
+  },
+  {
     url: 'https://github.com/kubeshark/kubeshark',
     label: 'Kubeshark',
     description: 'Network traffic analysis for Kubernetes',
@@ -155,6 +170,10 @@ export interface WellKnownRepoEntry {
   path?: string;
   /** Git ref (branch/tag/SHA) to use. */
   ref?: string;
+  /** Expected SHA-256 hash of the source's Markdown content. */
+  sha256?: string;
+  /** Include the source's verified companion reference documents. */
+  includeReferences?: boolean;
 }
 
 export type { SkillsConfig } from '@headlamp-k8s/ai-common/skills/config';
@@ -250,6 +269,8 @@ function setRepoEnabled(
       url: repo.url,
       ref: repo.ref || 'main',
       path: repo.path,
+      ...(repo.sha256 ? { sha256: repo.sha256 } : {}),
+      ...(repo.includeReferences ? { includeReferences: true } : {}),
       enabled,
     },
   ];
@@ -537,13 +558,16 @@ export function SkillSettings({
   );
 
   // Identify which git sources are well-known repos
-  const wellKnownRepoIdentities = new Set(
-    WELL_KNOWN_SKILL_REPOS.map(repo =>
-      getSkillSourceIdentity({ type: 'git', url: repo.url, path: repo.path })
-    )
-  );
   const customGitSources = gitSources.filter(
-    source => !wellKnownRepoIdentities.has(getSkillSourceIdentity(source))
+    source =>
+      !WELL_KNOWN_SKILL_REPOS.some(
+        repo =>
+          getSkillSourceIdentity(source) ===
+            getSkillSourceIdentity({ type: 'git', url: repo.url, path: repo.path }) &&
+          (source.ref || 'main') === (repo.ref || 'main') &&
+          source.sha256 === repo.sha256 &&
+          !!source.includeReferences === !!repo.includeReferences
+      )
   );
   const displayedWellKnownStatuses = wellKnownStatuses.map(status => {
     const fullPath = projectRoot ? `${projectRoot}/${status.path}` : status.path;

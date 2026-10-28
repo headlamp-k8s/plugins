@@ -15,7 +15,7 @@
  */
 
 import { isSkillEnabled, SkillsConfig } from './config';
-import { formatSkillsForPrompt, ParsedSkill } from './parseSkill';
+import { formatSkillsForPrompt, getSkillContentSizeBytes, ParsedSkill } from './parseSkill';
 import { EmbeddingSkillRouter } from './routing/EmbeddingSkillRouter';
 import {
   DEFAULT_ROUTER_CONFIG,
@@ -113,6 +113,7 @@ export class SkillManager {
           ref: source.ref ?? '',
           path: source.path ?? '',
           sha256: source.sha256 ?? '',
+          ...(source.includeReferences ? { includeReferences: true } : {}),
         }))
         .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
     });
@@ -129,6 +130,7 @@ export class SkillManager {
       ref: source.ref ?? '',
       path: source.path ?? '',
       sha256: source.sha256 ?? '',
+      ...(source.includeReferences ? { includeReferences: true, referencesVersion: 2 } : {}),
       maxSkillSizeBytes,
     });
   }
@@ -375,7 +377,7 @@ export class SkillManager {
   } {
     const all = this.getAllCachedSkills();
     const enabled = this.getEnabledSkills(config);
-    const totalSizeBytes = enabled.reduce((sum, s) => sum + s.contentSizeBytes, 0);
+    const totalSizeBytes = enabled.reduce((sum, skill) => sum + getSkillContentSizeBytes(skill), 0);
 
     return {
       totalSkills: all.length,

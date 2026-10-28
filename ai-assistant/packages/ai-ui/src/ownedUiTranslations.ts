@@ -157,6 +157,8 @@ export function translateSkillRepositoryDescription(
   fallback: string
 ): string {
   switch (url) {
+    case 'https://github.com/inspektor-gadget/inspektor-gadget':
+      return t('Kernel-level Kubernetes and Linux troubleshooting with eBPF');
     case 'https://github.com/kubeshark/kubeshark':
       return t('Network traffic analysis for Kubernetes');
     case 'https://github.com/helmfile/helmfile':

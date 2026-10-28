@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
+import { getSkillContent, getSkillContentSizeBytes } from './parseSkill';
 import {
   computeContentHash,
   isPathWithinBase,
@@ -416,6 +417,193 @@ Content`,
   });
 
   describe('loadFromGitRepoWithIntegrity', () => {
+    it('bundles referenced sibling playbooks from the verified source without duplicates', async () => {
+      const domains = ['networking', 'security', 'process-lifecycle', 'storage-fs', 'performance'];
+      const paths = domains.map(domain => `../kubernetes/references/domain-${domain}.md`);
+      const files = new Map([
+        [
+          'linux/SKILL.md',
+          `---\nname: linux\ndescription: Linux troubleshooting\n---\n${paths
+            .map(path => `Read \`${path}\`.`)
+            .join(
+              '\n'
+            )}\nAlso [networking](../kubernetes/references/./domain-networking.md#examples).
+Read \`./references/install.md\`.`,
+        ],
+        ['linux/references/install.md', 'Install the Linux tool safely.'],
+        ['kubernetes/references/unrelated.md', 'Not referenced by Linux.'],
+        ...domains.map(
+          domain =>
+            [`kubernetes/references/domain-${domain}.md`, `Shared ${domain} guidance.`] as [
+              string,
+              string
+            ]
+        ),
+      ]);
+      const fetchFiles = vi.fn(async () => files);
+      const loader = new SkillLoader(createMockFs({}), { fetchFiles });
+      const source = {
+        type: 'git' as const,
+        url: 'https://github.com/owner/repo',
+        ref: 'v1.0.0',
+        enabled: true,
+        includeReferences: true,
+        sha256: await computeContentHash(files),
+      };
+      const [skill] = await loader.loadFromSource(source);
+      expect(skill.references?.map(reference => reference.path)).toEqual([
+        'references/install.md',
+        ...paths,
+      ]);
+      for (const domain of domains) {
+        expect(getSkillContent(skill)).toContain(`Shared ${domain} guidance.`);
+      }
+      expect(getSkillContent(skill)).not.toContain('Not referenced by Linux.');
+      expect(getSkillContentSizeBytes(skill)).toBe(
+        new TextEncoder().encode(getSkillContent(skill)).byteLength
+      );
+      expect(fetchFiles).toHaveBeenCalledTimes(1);
+      files.set('kubernetes/references/domain-networking.md', 'Changed after verification.');
+      await expect(loader.loadFromSource(source)).rejects.toThrow('integrity check failed');
+    });
+
+    it('rejects referenced sibling playbooks above the per-file UTF-8 byte limit', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const loader = new SkillLoader(
+          createMockFs({}),
+          {
+            fetchFiles: async () =>
+              new Map([
+                [
+                  'linux/SKILL.md',
+                  '---\nname: linux\ndescription: Linux\n---\n`../kubernetes/references/domain.md`',
+                ],
+                ['kubernetes/references/domain.md', 'é'.repeat(26)],
+              ]),
+          },
+          undefined,
+          50
+        );
+        expect(
+          await loader.loadFromSource({
+            type: 'git',
+            url: 'https://github.com/owner/repo',
+            ref: 'v1.0.0',
+            enabled: true,
+            includeReferences: true,
+          })
+        ).toEqual([]);
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining('linux/SKILL.md'),
+          expect.objectContaining({ message: expect.stringContaining('50 byte limit') })
+        );
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it.each(['../../references/private.md', '../missing/references/domain.md'])(
+      'does not fetch unresolved or out-of-source sibling references: %s',
+      async reference => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          const fetchFiles = vi.fn(
+            async () =>
+              new Map([
+                [
+                  'linux/SKILL.md',
+                  `---\nname: linux\ndescription: Linux\n---\nRead \`${reference}\`.`,
+                ],
+                ['references/private.md', 'Must not resolve an escaping reference here.'],
+              ])
+          );
+          const loader = new SkillLoader(createMockFs({}), { fetchFiles });
+          expect(
+            await loader.loadFromSource({
+              type: 'git',
+              url: 'https://github.com/owner/repo',
+              ref: 'v1.0.0',
+              enabled: true,
+              includeReferences: true,
+            })
+          ).toEqual([]);
+          expect(fetchFiles).toHaveBeenCalledTimes(1);
+          expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining('linux/SKILL.md'),
+            expect.objectContaining({ message: expect.stringContaining('downloaded source') })
+          );
+        } finally {
+          warn.mockRestore();
+        }
+      }
+    );
+
+    it('bundles only verified companion documents when explicitly requested', async () => {
+      const files = new Map([
+        [
+          'gadget/SKILL.md',
+          '---\nname: gadget\ndescription: Trace workloads\n---\nRead references/install.md.',
+        ],
+        ['gadget/references/install.md', '# Installation\nAsk before deploying.'],
+        ['gadget/references/domain/network.md', '# Networking\nTrace DNS failures.'],
+        ['gadget/references-extra/install.md', 'Not a companion.'],
+        ['other/references/install.md', 'Not this skill.'],
+      ]);
+      const loader = new SkillLoader(createMockFs({}), { fetchFiles: async () => files });
+      const source = {
+        type: 'git' as const,
+        url: 'https://github.com/owner/repo',
+        ref: 'v1.0.0',
+        enabled: true,
+        sha256: await computeContentHash(files),
+      };
+      expect((await loader.loadFromSource(source))[0].references).toBeUndefined();
+      const [skill] = await loader.loadFromSource({ ...source, includeReferences: true });
+      expect(skill.references?.map(reference => reference.path)).toEqual([
+        'references/install.md',
+        'references/domain/network.md',
+      ]);
+      expect(skill.references?.[0].content).toContain('Ask before deploying.');
+      files.set('gadget/references/install.md', 'Changed after pinning.');
+      await expect(loader.loadFromSource({ ...source, includeReferences: true })).rejects.toThrow(
+        'integrity check failed'
+      );
+    });
+
+    it('rejects companion documents above the per-file UTF-8 byte limit', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const loader = new SkillLoader(
+          createMockFs({}),
+          {
+            fetchFiles: async () =>
+              new Map([
+                ['SKILL.md', '---\nname: gadget\ndescription: Guide\n---\nBody'],
+                ['references/install.md', 'é'.repeat(6)],
+              ]),
+          },
+          undefined,
+          10
+        );
+        expect(
+          await loader.loadFromSource({
+            type: 'git',
+            url: 'https://github.com/owner/repo',
+            ref: 'v1.0.0',
+            enabled: true,
+            includeReferences: true,
+          })
+        ).toEqual([]);
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining('SKILL.md'),
+          expect.objectContaining({ message: expect.stringContaining('10 byte limit') })
+        );
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
     const emptyFiles = { fetchFiles: async () => new Map<string, string>() };
 
     it('should warn on mutable branch ref', async () => {

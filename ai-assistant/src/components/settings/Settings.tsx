@@ -21,6 +21,10 @@ import {
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
 import { getSkillsConfig, getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
+import {
+  getSkillContent,
+  getSkillContentSizeBytes,
+} from '@headlamp-k8s/ai-common/skills/parseSkill';
 import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
 import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
 import type { DeveloperOptionsConfig } from '@headlamp-k8s/ai-ui/components/settings/DeveloperSettings';
@@ -133,8 +137,8 @@ export default function Settings() {
         name: s.metadata.name,
         description: s.metadata.description,
         source: s.source,
-        content: s.content,
-        contentSizeBytes: s.contentSizeBytes,
+        content: getSkillContent(s),
+        contentSizeBytes: getSkillContentSizeBytes(s),
         version: s.metadata.version,
         author: s.metadata.author,
         tags: s.metadata.tags,
