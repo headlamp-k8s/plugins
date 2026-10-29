@@ -28,6 +28,19 @@ vi.mock('@iconify/react', () => ({
 
 afterEach(cleanup);
 
+it('retains the reference inclusion option when editing a Git source', () => {
+  const source = {
+    type: 'git' as const,
+    url: 'https://github.com/example/references',
+    enabled: true,
+    includeReferences: true,
+  };
+  const onSave = vi.fn();
+  render(<SkillSourceEditorDialog {...newSkillSourceArgs} source={source} onSave={onSave} />);
+  save();
+  expect(onSave).toHaveBeenCalledWith(source);
+});
+
 function setSource(value: string): void {
   fireEvent.change(screen.getByRole('textbox', { name: /Directory Path|Repository URL/ }), {
     target: { value },

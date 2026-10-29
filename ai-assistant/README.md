@@ -70,6 +70,31 @@ nonempty body can be loaded as documentation skills. Their title supplies the
 display name and description. `SKILL.md` files still require `name` and
 `description`, and the existing per-skill and total prompt size limits still apply.
 
+### Inspektor Gadget
+
+**Inspektor Gadget** is available under **Suggested Skill Repositories**. Its
+Kubernetes and Linux troubleshooting skills are opt-in on every host, including
+AKS Desktop. Enable the source manually to load them; existing AKS skill defaults
+are unchanged.
+
+The source is pinned to commit `47d8e5176a46fd906bc3585bbf9f4786cc440576` and
+verified against a SHA-256 content hash. Disabling, removing, or customizing it
+is respected on subsequent starts. Enabling the skills does not install or run
+Inspektor Gadget: Kubernetes tracing requires the `kubectl gadget` plugin and
+an in-cluster Gadget deployment, while standalone Linux tracing requires `ig`
+and the appropriate host privileges.
+
+The Gadget source includes its verified `references/*.md` companions and resolves
+explicit relative Markdown references from the same verified download. The Linux
+skill includes the five shared Kubernetes domain playbooks even when the
+Kubernetes skill is disabled or not selected by routing. References are shown with
+the owning skill and included when that skill is selected for the assistant's
+prompt, so installation instructions and domain playbooks remain available.
+Each source document retains the per-file byte limit, and the complete
+skill plus references counts against the total prompt budget.
+Other Git sources can opt into this behavior with `includeReferences: true`;
+sources without that option keep their existing loading behavior.
+
 ## Adding Holmes Agent to Your Cluster
 
 The AI Assistant can connect to a [HolmesGPT](https://holmesgpt.dev) agent running in your cluster for enhanced Kubernetes diagnostics and troubleshooting. Follow the steps below to deploy Holmes.

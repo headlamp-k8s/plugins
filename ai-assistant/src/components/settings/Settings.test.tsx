@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { ParsedSkill } from '@headlamp-k8s/ai-common/skills/parseSkill';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,7 @@ const skillManagerMock = vi.hoisted(() => ({
   constructorArgs: [] as unknown[][],
   loadedConfigs: [] as unknown[],
   invalidations: 0,
+  skills: [] as ParsedSkill[],
 }));
 
 vi.mock('@headlamp-k8s/ai-common/skills/config', async () => {
@@ -50,7 +52,7 @@ vi.mock('@headlamp-k8s/ai-common/skills/SkillManager', () => ({
     setSkillCache() {}
     async loadAllSkillsWithErrors(config: unknown) {
       skillManagerMock.loadedConfigs.push(config);
-      return { skills: [], errors: [] };
+      return { skills: skillManagerMock.skills, errors: [] };
     }
   },
 }));
@@ -86,6 +88,31 @@ import { render } from '@testing-library/react';
 import Settings from './Settings';
 
 describe('Settings', () => {
+  it('displays verified companion guidance and includes its byte count', async () => {
+    capturedProps.length = 0;
+    skillManagerMock.skills.push({
+      metadata: { name: 'gadget', description: 'Guide' },
+      content: 'Entry point',
+      contentSizeBytes: 11,
+      source: 'https://github.com/example/repo@v1.0.0/SKILL.md',
+      references: [
+        { path: 'references/install.md', content: 'Ask before installing.', contentSizeBytes: 22 },
+      ],
+    });
+    try {
+      render(React.createElement(Settings));
+      const loadSkills = capturedProps[0].loadSkills as () => Promise<
+        { content: string; contentSizeBytes: number }[]
+      >;
+      const [skill] = await loadSkills();
+      expect(skill.content).toContain('## Reference: references/install.md');
+      expect(skill.content).toContain('Ask before installing.');
+      expect(skill.contentSizeBytes).toBe(new TextEncoder().encode(skill.content).byteLength);
+    } finally {
+      skillManagerMock.skills.length = 0;
+    }
+  });
+
   it('logs when GitHub and Azure CLI auto-detection is available', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.stubGlobal('pluginRunCommand', vi.fn());

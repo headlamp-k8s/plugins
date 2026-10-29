@@ -46,6 +46,33 @@ export function createAksSkillsSource(): SkillSource {
   };
 }
 
+/** Repository publishing the upstream Inspektor Gadget troubleshooting skills. */
+export const INSPEKTOR_GADGET_SKILLS_REPO_URL =
+  'https://github.com/inspektor-gadget/inspektor-gadget';
+
+/** Directory containing the Kubernetes and Linux troubleshooting skills. */
+export const INSPEKTOR_GADGET_SKILLS_PATH = 'skills';
+
+/** Pinned snapshot linked by Azure/aks-desktop#999. */
+export const INSPEKTOR_GADGET_SKILLS_REF = '47d8e5176a46fd906bc3585bbf9f4786cc440576';
+
+/** Hash of all Markdown under the pinned skills directory, using computeContentHash(). */
+export const INSPEKTOR_GADGET_SKILLS_SHA256 =
+  '3d5b6ab22467a1540958613ab1ffaf5b685057514033a0a07e211b27a81d16a3';
+
+/** @returns The verified Inspektor Gadget source for explicitly enabling its skills. */
+export function createInspektorGadgetSkillsSource(): SkillSource {
+  return {
+    type: 'git',
+    url: INSPEKTOR_GADGET_SKILLS_REPO_URL,
+    path: INSPEKTOR_GADGET_SKILLS_PATH,
+    ref: INSPEKTOR_GADGET_SKILLS_REF,
+    sha256: INSPEKTOR_GADGET_SKILLS_SHA256,
+    includeReferences: true,
+    enabled: true,
+  };
+}
+
 /** Definition last written for one built-in skill source. */
 export interface BuiltinSkillSourceDefinition {
   /** Pinned Git ref fetched for the source. */
