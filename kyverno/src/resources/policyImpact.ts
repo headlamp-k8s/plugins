@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-import { MatchSelectorEntry, PolicyRule } from './kyvernoPolicy';
+import { CELValidation, ValidatingPolicySpec } from './celPolicies';
+import {
+  ForEachMutation,
+  ForEachValidation,
+  MatchSelectorEntry,
+  PolicyRule,
+} from './kyvernoPolicy';
 import {
   ClusterPolicyReport,
   PolicyReport,
@@ -28,6 +34,11 @@ import {
 // plugin (the Violations view, the Policy Impact panel, or a Map node).
 export interface DrillDownTarget {
   policy: string;
+  // The Kyverno engine that produced this result (see POLICY_REPORT_SOURCE in
+  // policyReport.ts). Used by ViolationDrillDown to dispatch to the right
+  // match-reason and fix-suggestion functions, and to know which API to
+  // fetch the policy object from when the caller hasn't pre-fetched it.
+  source?: PolicyReportSource;
   rule?: string;
   kind?: string;
   apiVersion?: string;
@@ -562,6 +573,11 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   if (rule.validate?.anyPattern) {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
+  if (rule.validate?.foreach && (rule.validate.foreach as ForEachValidation[]).length > 0) {
+    const first = (rule.validate.foreach as ForEachValidation[])[0];
+    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
+    return `This rule uses validate.foreach over${listExpr}. Each element must satisfy the nested pattern or deny condition inside the foreach block. Review the foreach block in ${ruleLabel} on policy "${target.policy}" and update each element of the specified list in the resource so it passes.`;
+  }
   if (rule.validate?.deny) {
     // deny.conditions (any/all, confirmed against the real CRD schema) is what
     // actually decides whether a given matched resource gets denied, a deny rule
@@ -579,8 +595,97 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   if (rule.validate?.cel) {
     return `This rule is enforced with a CEL expression. Review validate.cel.expressions on ${ruleLabel} and adjust the resource so the expression evaluates to true.`;
   }
+  if (rule.mutate?.foreach && (rule.mutate.foreach as ForEachMutation[]).length > 0) {
+    const first = (rule.mutate.foreach as ForEachMutation[])[0];
+    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
+    return `This is a foreach mutation rule that patches each element of${listExpr}. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
+  }
   if (rule.mutate) {
     return `This is a mutation rule; Kyverno should patch the resource automatically. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
   }
   return `Review the message above together with ${ruleLabel} on policy "${target.policy}" to see what condition failed.`;
+}
+
+/**
+ * Explains, in plain language, which matchConstraints rule caused a CEL
+ * ValidatingPolicy to consider a given resource kind. Reads
+ * `matchConstraints.resourceRules[]` directly from the policy spec.
+ *
+ * CEL policies use resource names (plural lowercase) rather than kind names,
+ * so a perfect kind-to-resource mapping is not always possible. The function
+ * attempts a case-insensitive `kind + "s"` heuristic and also accepts `*`
+ * wildcards, but shows the raw resource names the policy declares rather than
+ * claiming a match it cannot fully verify. Callers needing exact kind matching
+ * should rely on the live report (already accurate) rather than this function.
+ */
+export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string): string[] {
+  const mc = spec.matchConstraints;
+  if (!mc) {
+    return [
+      `This ValidatingPolicy has no matchConstraints; it may evaluate all admission requests.`,
+    ];
+  }
+
+  const rules = mc.resourceRules || [];
+  if (rules.length === 0) {
+    return [
+      `This ValidatingPolicy's matchConstraints specifies no resourceRules; it may evaluate all admission requests.`,
+    ];
+  }
+
+  // resourceRules use plural lowercase resource names (e.g. "pods"), not kinds.
+  // A wildcard ("*") matches everything. A case-insensitive "kind + s" heuristic
+  // covers the common core group case; misses irregular plurals but is still
+  // more helpful than reporting nothing.
+  const kindLower = kind.toLowerCase();
+  const matchingRules = rules.filter(
+    r =>
+      !r.resources ||
+      r.resources.length === 0 ||
+      r.resources.includes('*') ||
+      r.resources.some(
+        res =>
+          res === '*' || res.toLowerCase() === kindLower || res.toLowerCase() === `${kindLower}s`
+      )
+  );
+
+  if (matchingRules.length === 0) {
+    return [
+      `No resourceRule in this policy's matchConstraints explicitly targets kind "${kind}". The policy may apply through a wildcard or a different resource name form.`,
+    ];
+  }
+
+  return matchingRules.map(r => {
+    const parts: string[] = [];
+    if (r.resources && r.resources.length > 0) {
+      parts.push(`resources [${r.resources.join(', ')}]`);
+    }
+    if (r.apiGroups && r.apiGroups.length > 0) {
+      parts.push(`API groups [${r.apiGroups.join(', ')}]`);
+    }
+    if (r.apiVersions && r.apiVersions.length > 0) {
+      parts.push(`versions [${r.apiVersions.join(', ')}]`);
+    }
+    if (r.operations && r.operations.length > 0) {
+      parts.push(`operations [${r.operations.join(', ')}]`);
+    }
+    const desc = parts.length > 0 ? parts.join(' and ') : 'all resources';
+    return `matchConstraints.resourceRules targets ${desc}.`;
+  });
+}
+
+/**
+ * Heuristic remediation guidance for a single CEL ValidatingPolicy validation
+ * entry. Shows the policy-authored message (or messageExpression label) and
+ * the raw CEL expression so the user knows exactly which condition failed.
+ */
+export function suggestCELFix(validation: CELValidation, target: DrillDownTarget): string {
+  const policyLabel = `policy "${target.policy}"`;
+  if (validation.message) {
+    return `This validation requires: "${validation.message}". Review the CEL expression on ${policyLabel} and update the resource so the expression evaluates to true.`;
+  }
+  if (validation.messageExpression) {
+    return `This validation's failure message is computed dynamically by the expression on ${policyLabel}. Review the CEL expression and update the resource so it evaluates to true.`;
+  }
+  return `This validation uses a CEL expression on ${policyLabel}. Review the expression and update the resource so it evaluates to true.`;
 }
