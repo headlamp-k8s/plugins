@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import CloseIcon from '@mui/icons-material/Close';
 import {
   Box,
   CircularProgress,
@@ -66,7 +66,7 @@ export function ViolationDrillDown({ target, onClose, rules }: ViolationDrillDow
           sx={{ position: 'absolute', right: 8, top: 8 }}
           size="small"
         >
-          <CloseIcon fontSize="small" />
+          <Icon icon="mdi:close" width="18" />
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
