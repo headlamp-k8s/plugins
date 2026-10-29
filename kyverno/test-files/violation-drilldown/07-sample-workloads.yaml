@@ -1,0 +1,65 @@
+# Sample workloads crafted to trigger exactly one failure per policy above.
+# Apply this AFTER the policies so admission reports appear immediately.
+#
+# pod-no-labels         -- fails 02 (no 'app' label), 03 (no 'owner' or 'team' label)
+# pod-missing-requests  -- fails 05 (foreach: no resource requests on the container)
+# pod-cel-no-annotation -- fails 06 (CEL ValidatingPolicy: no cost-center annotation)
+# configmap-prod        -- fails 04 (deny: data.env == prod)
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-no-labels
+  namespace: drilldown-test
+spec:
+  containers:
+    - name: main
+      image: alpine:latest
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-missing-requests
+  namespace: drilldown-test
+  labels:
+    app: test
+    owner: platform
+    cost-center: eng-infra
+spec:
+  containers:
+    - name: main
+      image: alpine:latest
+      command: ["sleep", "3600"]
+      # No resources.requests -- triggers the foreach rule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-cel-no-annotation
+  namespace: drilldown-test
+  labels:
+    app: test
+    owner: platform
+    # No cost-center annotation -- triggers the CEL ValidatingPolicy
+spec:
+  containers:
+    - name: main
+      image: alpine:latest
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-prod
+  namespace: drilldown-test
+data:
+  env: "prod"

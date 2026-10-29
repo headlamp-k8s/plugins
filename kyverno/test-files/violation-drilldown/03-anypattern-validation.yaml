@@ -1,0 +1,29 @@
+# Exercises suggestFix(rule.validate.anyPattern) path.
+# A Pod must have EITHER an 'owner' label OR a 'team' label; having neither fails.
+# Expected drill-down fix text: "Compare the resource against each entry in
+# validate.anyPattern and adjust it to match one of them."
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: dd-require-owner-or-team
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-owner-or-team
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - drilldown-test
+      validate:
+        message: "validation error: a Pod must have either an 'owner' or a 'team' label."
+        anyPattern:
+          - metadata:
+              labels:
+                owner: "?*"
+          - metadata:
+              labels:
+                team: "?*"
