@@ -58,6 +58,12 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 
 For examples of plugins created for learning and documentation purposes, please refer to the [examples folder](https://github.com/headlamp-k8s/headlamp/tree/main/plugins#plugins) in Headlamp's repository.
 
+## Releases
+
+See [Preparing signed plugin releases](docs/releases.md) for the Actions-based
+build, signature and provenance attachments, Artifact Hub metadata handoff,
+and download verification.
+
 ## License
 
 The plugins in this repository are released under the terms of the [MIT license](./LICENSE).
