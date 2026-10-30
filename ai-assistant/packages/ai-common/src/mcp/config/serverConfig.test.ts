@@ -17,9 +17,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MCPSettings } from '../types';
 import {
+  convertExternalMcpConfig,
+  detectMcpConfigFormat,
   expandEnvAndResolvePaths,
+  getKnownMcpConfigFilePaths,
   hasClusterDependentServers,
   makeMcpServers,
+  normalizeMcpSettings,
   settingsChanges,
   summarizeMcpToolStateChanges,
   validateToolArgs,
@@ -556,5 +560,1001 @@ describe('summarizeMcpToolStateChanges', () => {
     const res = summarizeMcpToolStateChanges(current, nw);
     expect(res.totalChanges).toBe(1);
     expect(res.summaryText).toContain('✓ ENABLE');
+  });
+});
+
+describe('detectMcpConfigFormat', () => {
+  it('detects headlamp format', () => {
+    expect(detectMcpConfigFormat({ enabled: true, servers: [] })).toBe('headlamp');
+    expect(detectMcpConfigFormat({ enabled: false, servers: [{ name: 's', command: 'c' }] })).toBe(
+      'headlamp'
+    );
+  });
+
+  it('detects claude desktop format', () => {
+    expect(
+      detectMcpConfigFormat({
+        mcpServers: {
+          sqlite: { command: 'uvx', args: ['mcp-server-sqlite'] },
+        },
+      })
+    ).toBe('claude');
+  });
+
+  it('detects vscode settings format', () => {
+    expect(
+      detectMcpConfigFormat({
+        mcp: {
+          servers: {
+            fetch: { command: 'docker', args: ['run', '-i'] },
+          },
+        },
+      })
+    ).toBe('vscode');
+  });
+
+  it('detects servers-map format', () => {
+    expect(
+      detectMcpConfigFormat({
+        servers: {
+          fetch: { command: 'docker' },
+        },
+      })
+    ).toBe('servers-map');
+    expect(
+      detectMcpConfigFormat({
+        myserver: { command: 'node', args: ['srv.js'] },
+      })
+    ).toBe('servers-map');
+    // Distinguish server definitions from wrapper objects when server is named mcpServers or servers
+    expect(
+      detectMcpConfigFormat({
+        mcpServers: { command: 'node', args: ['srv.js'] },
+        worker: { command: 'python' },
+      })
+    ).toBe('servers-map');
+    expect(
+      detectMcpConfigFormat({
+        servers: { command: 'node', args: ['srv.js'] },
+        worker: { command: 'python' },
+      })
+    ).toBe('servers-map');
+  });
+
+  it('detects servers-array format', () => {
+    expect(detectMcpConfigFormat([{ name: 's1', command: 'cmd' }])).toBe('servers-array');
+  });
+
+  it('detects unknown format for invalid inputs', () => {
+    expect(detectMcpConfigFormat(null)).toBe('unknown');
+    expect(detectMcpConfigFormat(123)).toBe('unknown');
+    expect(detectMcpConfigFormat('string')).toBe('unknown');
+    expect(detectMcpConfigFormat({})).toBe('unknown');
+  });
+});
+
+describe('normalizeMcpSettings', () => {
+  it('normalizes valid headlamp format and trims whitespace', () => {
+    const raw = {
+      enabled: true,
+      servers: [
+        {
+          name: '  my-server  ',
+          command: '  docker  ',
+          args: ['run', '-i'],
+          env: { KEY: 'VALUE' },
+          enabled: true,
+          autoApprove: true,
+          extraProp: 'ignored',
+        },
+      ],
+      extraGlobal: 'ignored',
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('headlamp');
+    expect(result.config).toEqual({
+      enabled: true,
+      servers: [
+        {
+          name: 'my-server',
+          command: 'docker',
+          args: ['run', '-i'],
+          env: { KEY: 'VALUE' },
+          enabled: true,
+          autoApprove: true,
+        },
+      ],
+    });
+  });
+
+  it('converts claude desktop format to MCPSettings', () => {
+    const raw = {
+      mcpServers: {
+        sqlite: {
+          command: 'uvx',
+          args: ['mcp-server-sqlite', '--db-path', '~/test.db'],
+          env: { DEBUG: 'true' },
+        },
+        k8s: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-kubernetes'],
+          disabled: true,
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('claude');
+    expect(result.config.enabled).toBe(true);
+    expect(result.config.servers).toHaveLength(2);
+    expect(result.config.servers[0]).toEqual({
+      name: 'sqlite',
+      command: 'uvx',
+      args: ['mcp-server-sqlite', '--db-path', '~/test.db'],
+      env: { DEBUG: 'true' },
+      enabled: true,
+    });
+    expect(result.config.servers[1]).toEqual({
+      name: 'k8s',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-kubernetes'],
+      enabled: false,
+    });
+  });
+
+  it('converts vscode format with mcp.servers to MCPSettings', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          fetch: {
+            command: 'docker',
+            args: ['run', '-i', '--rm', 'mcp/fetch'],
+          },
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('vscode');
+    expect(result.config).toEqual({
+      enabled: true,
+      servers: [
+        {
+          name: 'fetch',
+          command: 'docker',
+          args: ['run', '-i', '--rm', 'mcp/fetch'],
+          enabled: true,
+        },
+      ],
+    });
+  });
+
+  it('converts a raw array of servers to MCPSettings', () => {
+    const raw = [
+      {
+        name: 'direct-server',
+        command: 'python',
+        args: ['-m', 'server'],
+      },
+    ];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('servers-array');
+    expect(result.config).toEqual({
+      enabled: true,
+      servers: [
+        {
+          name: 'direct-server',
+          command: 'python',
+          args: ['-m', 'server'],
+          enabled: true,
+        },
+      ],
+    });
+  });
+
+  it('converts a raw dictionary of servers to MCPSettings', () => {
+    const raw = {
+      servers: {
+        local: {
+          command: 'node',
+          args: ['index.js'],
+          enabled: true,
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('servers-map');
+    expect(result.config.servers[0].name).toBe('local');
+    expect(result.config.servers[0].command).toBe('node');
+  });
+
+  it('correctly normalizes server maps containing servers named mcpServers or servers', () => {
+    const rawWithMcpServers = {
+      mcpServers: {
+        command: 'node',
+        args: ['index.js'],
+      },
+      worker: {
+        command: 'python',
+      },
+    };
+    const resultMcp = normalizeMcpSettings(rawWithMcpServers);
+    expect(resultMcp.valid).toBe(true);
+    if (!resultMcp.valid) return;
+    expect(resultMcp.format).toBe('servers-map');
+    expect(resultMcp.config.servers).toHaveLength(2);
+    expect(resultMcp.config.servers.map(s => s.name).sort()).toEqual(['mcpServers', 'worker']);
+
+    const rawWithServers = {
+      servers: {
+        command: 'node',
+        args: ['index.js'],
+      },
+      worker: {
+        command: 'python',
+      },
+    };
+    const resultServers = normalizeMcpSettings(rawWithServers);
+    expect(resultServers.valid).toBe(true);
+    if (!resultServers.valid) return;
+    expect(resultServers.format).toBe('servers-map');
+    expect(resultServers.config.servers).toHaveLength(2);
+    expect(resultServers.config.servers.map(s => s.name).sort()).toEqual(['servers', 'worker']);
+  });
+
+  it('rejects duplicate server names case-insensitively in server array', () => {
+    const raw = {
+      enabled: true,
+      servers: [
+        { name: 'sqlite', command: 'cmd1', enabled: true },
+        { name: 'SQLITE', command: 'cmd2', enabled: true },
+      ],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server names must be unique');
+  });
+
+  it('rejects missing per-server enabled field in native headlamp format', () => {
+    const raw = {
+      enabled: true,
+      servers: [{ name: 'srv', command: 'docker' }],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1: enabled must be a boolean');
+  });
+
+  it('defaults missing enabled field to true in raw-array imports', () => {
+    const raw = [{ name: 'srv', command: 'node' }];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].enabled).toBe(true);
+  });
+
+  it('rejects duplicate server names case-insensitively in server record', () => {
+    const raw = {
+      mcpServers: {
+        sqlite: { command: 'cmd1' },
+        SQLITE: { command: 'cmd2' },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server names must be unique');
+  });
+
+  it('rejects non-object server entries', () => {
+    const raw = {
+      enabled: true,
+      servers: [null],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1 must be an object');
+  });
+
+  it('rejects server with missing or empty name', () => {
+    const raw = {
+      enabled: true,
+      servers: [{ name: '  ', command: 'docker' }],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1: name must be a non-empty string');
+  });
+
+  it('rejects server with missing or empty command', () => {
+    const raw = {
+      enabled: true,
+      servers: [{ name: 'srv', command: '' }],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1: command must be a non-empty string');
+  });
+
+  it('rejects server with invalid args', () => {
+    const raw = {
+      enabled: true,
+      servers: [{ name: 'srv', command: 'docker', args: [123] }],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1: args must be an array of strings');
+  });
+
+  it('rejects server with invalid env', () => {
+    const raw = {
+      enabled: true,
+      servers: [{ name: 'srv', command: 'docker', env: { KEY: 123 } }],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('Server 1: env must contain only string key-value pairs');
+  });
+
+  it('rejects when servers field is not an array in headlamp format', () => {
+    const raw = { enabled: true, servers: {} };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe('servers field must be an array');
+  });
+
+  it('rejects null or non-object primitives', () => {
+    expect(normalizeMcpSettings(null)).toEqual({
+      valid: false,
+      error: 'enabled field must be a boolean',
+      errorKey: 'enabled field must be a boolean',
+    });
+    expect(normalizeMcpSettings('invalid')).toEqual({
+      valid: false,
+      error: 'enabled field must be a boolean',
+      errorKey: 'enabled field must be a boolean',
+    });
+  });
+
+  it('honors disabled: true in raw-array imports and maps to enabled: false', () => {
+    const raw = [{ name: 's', command: 'node', args: [], disabled: true }];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].enabled).toBe(false);
+  });
+
+  it('honors disabled: false in raw-array imports and maps to enabled: true', () => {
+    const raw = [{ name: 's', command: 'node', args: [], disabled: false }];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].enabled).toBe(true);
+  });
+
+  it('gives precedence to disabled: true over enabled: true in raw-array imports', () => {
+    const raw = [{ name: 's', command: 'node', args: [], disabled: true, enabled: true }];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].enabled).toBe(false);
+  });
+
+  it('resolves supported VS Code input references from accompanying inputs definitions', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          github: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-github', '--token=${input:gh-token}'],
+            env: {
+              GITHUB_TOKEN: '${input:gh-token}',
+            },
+          },
+        },
+        inputs: [
+          {
+            id: 'gh-token',
+            type: 'promptString',
+            default: 'ghp_secretToken123',
+          },
+        ],
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].env?.GITHUB_TOKEN).toBe('ghp_secretToken123');
+    expect(result.config.servers[0].args).toContain('--token=ghp_secretToken123');
+  });
+
+  it('rejects unresolved VS Code input reference in env with actionable error', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          github: {
+            command: 'npx',
+            env: {
+              API_KEY: '${input:api-key}',
+            },
+          },
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "github": env "API_KEY" contains unresolved VS Code input reference "${input:api-key}". Please replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved VS Code input reference in args with actionable error', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          weather: {
+            command: 'node',
+            args: ['--api-key=${input:weather-token}'],
+          },
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "weather": args contain unresolved VS Code input reference "${input:weather-token}". Please replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved VS Code input reference in raw-array imports', () => {
+    const raw = [
+      {
+        name: 'custom-mcp',
+        command: 'node',
+        env: {
+          SECRET: '${input:my-secret}',
+        },
+      },
+    ];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server 1: env "SECRET" contains unresolved VS Code input reference "${input:my-secret}". Please replace it with the actual value.'
+    );
+  });
+
+  it('resolves command input references from accompanying inputs definitions', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          custom: {
+            command: '${input:binPath}',
+            args: ['run'],
+          },
+        },
+      },
+      inputs: [
+        {
+          id: 'binPath',
+          type: 'promptString',
+          default: '/usr/local/bin/my-server',
+        },
+      ],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].command).toBe('/usr/local/bin/my-server');
+  });
+
+  it('rejects unresolved command input reference in server record with actionable error', () => {
+    const raw = {
+      mcpServers: {
+        custom: {
+          command: '${input:executable}',
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "custom": command contains unresolved VS Code input reference "${input:executable}". Please replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved command input reference in raw-array imports with actionable error', () => {
+    const raw = [
+      {
+        name: 'custom',
+        command: '${input:bin}',
+      },
+    ];
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server 1: command contains unresolved VS Code input reference "${input:bin}". Please replace it with the actual value.'
+    );
+  });
+
+  it('preserves shell expressions in native Headlamp configurations without variable substitution', () => {
+    const raw = {
+      enabled: true,
+      servers: [
+        {
+          name: 'shell-server',
+          command: 'sh',
+          args: ['-c', 'exec node "${HOME}/mcp.js"'],
+          env: { PATH: '${PATH}:/usr/local/bin' },
+          enabled: true,
+        },
+      ],
+    };
+    const result = normalizeMcpSettings(raw);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.format).toBe('headlamp');
+    expect(result.config.servers[0].command).toBe('sh');
+    expect(result.config.servers[0].args).toEqual(['-c', 'exec node "${HOME}/mcp.js"']);
+    expect(result.config.servers[0].env).toEqual({ PATH: '${PATH}:/usr/local/bin' });
+  });
+
+  it('resolves substitutions once and treats replacement values as opaque data', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          custom: {
+            command: 'node',
+            args: ['--token=${env:API_KEY}', '--input=${input:custom-input}'],
+            env: {
+              KEY: '${env:API_KEY}',
+            },
+          },
+        },
+        inputs: [
+          {
+            id: 'custom-input',
+            default: 'literal_${env:NOT_EXPANDED}',
+          },
+        ],
+      },
+    };
+    const env = {
+      API_KEY: 'secret_${literal}_value',
+    };
+    const result = normalizeMcpSettings(raw, env);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].args).toEqual([
+      '--token=secret_${literal}_value',
+      '--input=literal_${env:NOT_EXPANDED}',
+    ]);
+    expect(result.config.servers[0].env?.KEY).toBe('secret_${literal}_value');
+  });
+
+  it('handles repeated unterminated ${ prefixes in linear time without backtracking', () => {
+    const adversarial = '${'.repeat(50_000);
+    const raw = {
+      mcp: {
+        servers: {
+          custom: {
+            command: 'node',
+            args: [adversarial],
+          },
+        },
+      },
+    };
+    const start = performance.now();
+    const result = normalizeMcpSettings(raw, {});
+    const elapsed = performance.now() - start;
+    expect(elapsed).toBeLessThan(200);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].args[0]).toBe(adversarial);
+  });
+
+  it('rejects unsupported cwd and envFile options in VS Code and raw imports', () => {
+    const cwdRaw = {
+      mcp: {
+        servers: {
+          'node-srv': {
+            command: 'node',
+            args: ['server.js'],
+            cwd: '/opt/mcp',
+          },
+        },
+      },
+    };
+    const cwdResult = normalizeMcpSettings(cwdRaw);
+    expect(cwdResult.valid).toBe(false);
+    if (cwdResult.valid) return;
+    expect(cwdResult.error).toBe(
+      'Server "node-srv": cwd and envFile are not supported. Resolve working-directory dependencies and environment-file values manually before importing.'
+    );
+
+    const envFileRaw = {
+      mcp: {
+        servers: {
+          'env-srv': {
+            command: 'node',
+            envFile: '.env',
+          },
+        },
+      },
+    };
+    const envFileResult = normalizeMcpSettings(envFileRaw);
+    expect(envFileResult.valid).toBe(false);
+    if (envFileResult.valid) return;
+    expect(envFileResult.error).toBe(
+      'Server "env-srv": cwd and envFile are not supported. Resolve working-directory dependencies and environment-file values manually before importing.'
+    );
+
+    const rawArray = [
+      {
+        name: 'custom-srv',
+        command: 'python',
+        cwd: '/app',
+      },
+    ];
+    const arrayResult = normalizeMcpSettings(rawArray);
+    expect(arrayResult.valid).toBe(false);
+    if (arrayResult.valid) return;
+    expect(arrayResult.error).toBe(
+      'Server 1: cwd and envFile are not supported. Resolve working-directory dependencies and environment-file values manually before importing.'
+    );
+  });
+
+  it('resolves supported ${env:<name>} references in command, args, and env', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          github: {
+            command: '${env:NODE_BIN}',
+            args: ['server.js', '--token=${env:GITHUB_TOKEN}'],
+            env: {
+              GITHUB_TOKEN: '${env:GITHUB_TOKEN}',
+              API_KEY: 'prefix_${env:API_KEY}',
+            },
+          },
+        },
+      },
+    };
+    const env = {
+      NODE_BIN: '/usr/local/bin/node',
+      GITHUB_TOKEN: 'ghp_secretToken123',
+      API_KEY: 'key_abc',
+    };
+    const result = normalizeMcpSettings(raw, env);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    expect(result.config.servers[0].command).toBe('/usr/local/bin/node');
+    expect(result.config.servers[0].args).toEqual(['server.js', '--token=ghp_secretToken123']);
+    expect(result.config.servers[0].env).toEqual({
+      GITHUB_TOKEN: 'ghp_secretToken123',
+      API_KEY: 'prefix_key_abc',
+    });
+  });
+
+  it('rejects unresolved ${env:<name>} reference in env with actionable error', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          github: {
+            command: 'npx',
+            env: {
+              GITHUB_TOKEN: '${env:GITHUB_TOKEN}',
+            },
+          },
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw, {});
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "github": env "GITHUB_TOKEN" contains unresolved environment variable reference "${env:GITHUB_TOKEN}". Please set it in your environment or replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved ${env:<name>} reference in args with actionable error', () => {
+    const raw = {
+      mcpServers: {
+        fetch: {
+          command: 'docker',
+          args: ['--api-key=${env:REMOTE_KEY}'],
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw, {});
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "fetch": args contain unresolved environment variable reference "${env:REMOTE_KEY}". Please set it in your environment or replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved ${env:<name>} reference in command with actionable error', () => {
+    const raw = {
+      mcpServers: {
+        custom: {
+          command: '${env:MY_SERVER_BIN}',
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw, {});
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "custom": command contains unresolved environment variable reference "${env:MY_SERVER_BIN}". Please set it in your environment or replace it with the actual value.'
+    );
+  });
+
+  it('rejects unresolved ${env:<name>} reference in raw-array imports with actionable error', () => {
+    const raw = [
+      {
+        name: 'custom-mcp',
+        command: 'node',
+        env: {
+          SECRET: '${env:APP_SECRET}',
+        },
+      },
+    ];
+    const result = normalizeMcpSettings(raw, {});
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server 1: env "SECRET" contains unresolved environment variable reference "${env:APP_SECRET}". Please set it in your environment or replace it with the actual value.'
+    );
+  });
+
+  it('rejects unsupported variable references like ${workspaceFolder} with actionable error', () => {
+    const raw = {
+      mcp: {
+        servers: {
+          sqlite: {
+            command: 'node',
+            args: ['${workspaceFolder}/server.js'],
+          },
+        },
+      },
+    };
+    const result = normalizeMcpSettings(raw, {});
+    expect(result.valid).toBe(false);
+    if (result.valid) return;
+    expect(result.error).toBe(
+      'Server "sqlite": args contain unsupported variable reference "${workspaceFolder}". Please replace it with the actual value.'
+    );
+  });
+
+  it('rejects unsupported variable references in command and env', () => {
+    const commandRaw = {
+      mcpServers: {
+        srv: { command: '${workspaceFolder}/bin/mcp' },
+      },
+    };
+    const commandResult = normalizeMcpSettings(commandRaw, {});
+    expect(commandResult.valid).toBe(false);
+    if (commandResult.valid) return;
+    expect(commandResult.error).toBe(
+      'Server "srv": command contains unsupported variable reference "${workspaceFolder}". Please replace it with the actual value.'
+    );
+
+    const envRaw = {
+      mcpServers: {
+        srv: { command: 'node', env: { CONF: '${config:editor.fontSize}' } },
+      },
+    };
+    const envResult = normalizeMcpSettings(envRaw, {});
+    expect(envResult.valid).toBe(false);
+    if (envResult.valid) return;
+    expect(envResult.error).toBe(
+      'Server "srv": env "CONF" contains unsupported variable reference "${config:editor.fontSize}". Please replace it with the actual value.'
+    );
+  });
+
+  it('populates translation catalog keys and parameters on validation errors', () => {
+    // 1. Top-level enabled
+    const invalidTop = normalizeMcpSettings({ enabled: 'yes', servers: [] });
+    expect(invalidTop).toMatchObject({
+      valid: false,
+      error: 'enabled field must be a boolean',
+      errorKey: 'enabled field must be a boolean',
+    });
+
+    // 2. Top-level servers
+    const invalidServers = normalizeMcpSettings({ enabled: true, servers: 'not-array' });
+    expect(invalidServers).toMatchObject({
+      valid: false,
+      error: 'servers field must be an array',
+      errorKey: 'servers field must be an array',
+    });
+
+    // 3. Server object
+    const nonObjServer = normalizeMcpSettings({ enabled: true, servers: [null] });
+    expect(nonObjServer).toMatchObject({
+      valid: false,
+      error: 'Server 1 must be an object',
+      errorKey: 'Server {{number}} must be an object',
+      errorParams: { number: 1 },
+    });
+
+    // 4. Server name
+    const invalidName = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: '', command: 'cmd', enabled: true }],
+    });
+    expect(invalidName).toMatchObject({
+      valid: false,
+      error: 'Server 1: name must be a non-empty string',
+      errorKey: 'Server {{number}}: name must be a non-empty string',
+      errorParams: { number: 1 },
+    });
+
+    // 5. Server command
+    const invalidCmd = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: 'srv', command: '', enabled: true }],
+    });
+    expect(invalidCmd).toMatchObject({
+      valid: false,
+      error: 'Server 1: command must be a non-empty string',
+      errorKey: 'Server {{number}}: command must be a non-empty string',
+      errorParams: { number: 1 },
+    });
+
+    // 6. Duplicate server names
+    const duplicateNames = normalizeMcpSettings({
+      enabled: true,
+      servers: [
+        { name: 'srv', command: 'cmd', enabled: true },
+        { name: 'SRV', command: 'cmd', enabled: true },
+      ],
+    });
+    expect(duplicateNames).toMatchObject({
+      valid: false,
+      error: 'Server names must be unique',
+      errorKey: 'Server names must be unique',
+    });
+
+    // 7. Server args
+    const invalidArgs = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: 'srv', command: 'cmd', args: [123], enabled: true }],
+    });
+    expect(invalidArgs).toMatchObject({
+      valid: false,
+      error: 'Server 1: args must be an array of strings',
+      errorKey: 'Server {{number}}: args must be an array of strings',
+      errorParams: { number: 1 },
+    });
+
+    // 8. Server env
+    const invalidEnv = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: 'srv', command: 'cmd', env: { KEY: 123 }, enabled: true }],
+    });
+    expect(invalidEnv).toMatchObject({
+      valid: false,
+      error: 'Server 1: env must contain only string key-value pairs',
+      errorKey: 'Server {{number}}: env must contain only string key-value pairs',
+      errorParams: { number: 1 },
+    });
+
+    // 9. Server enabled
+    const invalidEnabled = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: 'srv', command: 'cmd', enabled: 'yes' }],
+    });
+    expect(invalidEnabled).toMatchObject({
+      valid: false,
+      error: 'Server 1: enabled must be a boolean',
+      errorKey: 'Server {{number}}: enabled must be a boolean',
+      errorParams: { number: 1 },
+    });
+
+    // 10. Server autoApprove
+    const invalidAutoApprove = normalizeMcpSettings({
+      enabled: true,
+      servers: [{ name: 'srv', command: 'cmd', enabled: true, autoApprove: 'yes' }],
+    });
+    expect(invalidAutoApprove).toMatchObject({
+      valid: false,
+      error: 'Server 1: autoApprove must be a boolean',
+      errorKey: 'Server {{number}}: autoApprove must be a boolean',
+      errorParams: { number: 1 },
+    });
+  });
+});
+
+describe('convertExternalMcpConfig', () => {
+  it('returns MCPSettings for valid external config', () => {
+    const claude = {
+      mcpServers: {
+        git: { command: 'uvx', args: ['mcp-server-git'] },
+      },
+    };
+    const converted = convertExternalMcpConfig(claude);
+    expect(converted).not.toBeNull();
+    expect(converted?.enabled).toBe(true);
+    expect(converted?.servers[0].name).toBe('git');
+    expect(converted?.servers[0].command).toBe('uvx');
+  });
+
+  it('returns null for invalid config', () => {
+    expect(convertExternalMcpConfig(null)).toBeNull();
+    expect(convertExternalMcpConfig({ mcpServers: { git: { command: '' } } })).toBeNull();
+  });
+});
+
+describe('getKnownMcpConfigFilePaths', () => {
+  it('returns Windows paths when platform is win32', () => {
+    const env = { APPDATA: 'C:\\Users\\test\\AppData\\Roaming', USERPROFILE: 'C:\\Users\\test' };
+    const paths = getKnownMcpConfigFilePaths('win32', env);
+    expect(paths.some(p => p.source === 'claude' && p.path.includes('AppData\\Roaming\\Claude'))).toBe(
+      true
+    );
+    expect(paths.some(p => p.source === 'cursor' && p.path.includes('.cursor\\mcp.json'))).toBe(true);
+    expect(paths.some(p => p.source === 'vscode' && p.path.includes('AppData\\Roaming\\Code\\User\\mcp.json'))).toBe(
+      true
+    );
+  });
+
+  it('returns macOS paths when platform is darwin', () => {
+    const env = { HOME: '/Users/test' };
+    const paths = getKnownMcpConfigFilePaths('darwin', env);
+    expect(
+      paths.some(
+        p => p.source === 'claude' && p.path.includes('/Library/Application Support/Claude')
+      )
+    ).toBe(true);
+    expect(paths.some(p => p.source === 'cursor' && p.path.includes('/.cursor/mcp.json'))).toBe(true);
+    expect(
+      paths.some(
+        p => p.source === 'vscode' && p.path.includes('/Library/Application Support/Code/User/mcp.json')
+      )
+    ).toBe(true);
+  });
+
+  it('returns Linux paths when platform is linux', () => {
+    const env = { HOME: '/home/test' };
+    const paths = getKnownMcpConfigFilePaths('linux', env);
+    expect(
+      paths.some(p => p.source === 'claude' && p.path.includes('/home/test/.config/Claude'))
+    ).toBe(true);
+    expect(paths.some(p => p.source === 'cursor' && p.path.includes('/.cursor/mcp.json'))).toBe(true);
+    expect(
+      paths.some(p => p.source === 'vscode' && p.path.includes('/home/test/.config/Code/User/mcp.json'))
+    ).toBe(true);
+  });
+
+  it('honors XDG_CONFIG_HOME on Linux for Claude and VS Code', () => {
+    const env = { HOME: '/home/test', XDG_CONFIG_HOME: '/custom/config' };
+    const paths = getKnownMcpConfigFilePaths('linux', env);
+    expect(
+      paths.some(p => p.source === 'claude' && p.path.includes('/custom/config/Claude'))
+    ).toBe(true);
+    expect(
+      paths.some(p => p.source === 'vscode' && p.path.includes('/custom/config/Code/User/mcp.json'))
+    ).toBe(true);
   });
 });
