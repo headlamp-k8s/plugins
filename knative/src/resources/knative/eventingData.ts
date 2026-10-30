@@ -34,6 +34,15 @@ export const KNATIVE_SOURCE_KINDS: KnativeResourceClass[] = [
   isNamespaced: true,
 }));
 
+export const KNATIVE_CHANNEL_IMPLEMENTATION_KINDS: KnativeResourceClass[] = [
+  {
+    kind: 'InMemoryChannel',
+    apiName: 'inmemorychannels',
+    apiVersion: 'messaging.knative.dev/v1',
+    isNamespaced: true,
+  },
+];
+
 /**
  * Picks the API version to request a CRD's resources with.
  *
@@ -51,13 +60,14 @@ export function getPreferredApiVersion(
 }
 
 /**
- * Reads what a Source class needs from a Source CRD.
+ * Reads what a class for a CRD's kind needs from the CRD, such as a Source or channel
+ * implementation CRD.
  *
- * @param crd - A Source CRD.
+ * @param crd - The CRD.
  * @returns The kind, its plural name, scope and the API version to request, or undefined when the
  * CRD serves no version.
  */
-export function getSourceKindInfo(crd: KubeCRD): KnativeResourceClass | undefined {
+export function getCrdKindInfo(crd: KubeCRD): KnativeResourceClass | undefined {
   const apiVersion = getPreferredApiVersion(crd.spec);
   return (
     apiVersion && {
@@ -141,5 +151,16 @@ export function formatTriggerFilter(spec?: KnativeTrigger['spec']): string | und
     ? { filter: spec?.filter }
     : undefined;
 
-  return filter ? stringify(filter, { indent: 2, lineWidth: 0 }) : undefined;
+  return filter ? toYaml(filter) : undefined;
+}
+
+/**
+ * Writes a value as YAML the way the plugin shows configuration: two-space indents and no line
+ * wrapping.
+ *
+ * @param value - The value to write.
+ * @returns The YAML.
+ */
+export function toYaml(value: unknown): string {
+  return stringify(value, { indent: 2, lineWidth: 0 });
 }
