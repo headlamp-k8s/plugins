@@ -44,7 +44,7 @@ function getResourceGroupsSection(cohort: Cohort) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor, cohort.cluster),
             },
             {
               label: 'Resource',
@@ -86,7 +86,7 @@ function getReferencedFlavorsSection(cohort: Cohort) {
           columns={[
             {
               label: 'Name',
-              getter: (row: { name: string }) => renderResourceFlavorLink(row.name),
+              getter: (row: { name: string }) => renderResourceFlavorLink(row.name, cohort.cluster),
             },
           ]}
         />
@@ -130,7 +130,8 @@ function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error:
           columns={[
             {
               label: 'Name',
-              getter: (childCohort: Cohort) => renderCohortLink(childCohort.metadata.name),
+              getter: (childCohort: Cohort) =>
+                renderCohortLink(childCohort.metadata.name, childCohort.cluster),
             },
             {
               label: 'Resource Groups',
@@ -195,7 +196,7 @@ function getMemberClusterQueuesSection(
             {
               label: 'Name',
               getter: (clusterQueue: ClusterQueue) =>
-                renderClusterQueueLink(clusterQueue.metadata.name),
+                renderClusterQueueLink(clusterQueue.metadata.name, clusterQueue.cluster),
             },
             {
               label: 'Queueing Strategy',
@@ -229,23 +230,30 @@ function getMemberClusterQueuesSection(
 }
 
 /** Detail view for a cluster-scoped Kueue Cohort resource. */
-export default function CohortDetail() {
-  const { name } = useParams<{ name: string }>();
-  const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
-  const [cohorts, cohortsError] = Cohort.useList();
+export default function CohortDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
+  const [clusterQueues, clusterQueuesError] = ClusterQueue.useList({ cluster });
+  const [cohorts, cohortsError] = Cohort.useList({ cluster });
 
   return (
-    <KueueAdminResourceAccess resourceClass={Cohort} resourceLabel="Cohorts" verb="get">
+    <KueueAdminResourceAccess
+      resourceClass={Cohort}
+      resourceLabel="Cohorts"
+      verb="get"
+      cluster={cluster}
+    >
       <DetailsGrid
         resourceType={Cohort}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={cohort =>
           cohort
             ? [
                 {
                   name: 'Parent Cohort',
-                  value: renderParentCohortLink(cohort.spec.parentName),
+                  value: renderParentCohortLink(cohort.spec.parentName, cohort.cluster),
                 },
                 {
                   name: 'Fair Sharing Weight',

@@ -1,5 +1,9 @@
+import { Icon } from '@iconify/react';
 import {
   registerDetailsViewSection,
+  registerKindIcon,
+  registerKubeObjectGlance,
+  registerMapSource,
   registerResourceTableColumnsProcessor,
   registerRoute,
   registerSidebarEntry,
@@ -18,13 +22,16 @@ import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
+import { KueueGlance } from './map/KueueGlance';
+import { kueueIconName, kueueMapSource } from './map/kueueMapSource';
+import { kueueApiGroup } from './utils/kueueApi';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
 registerSidebarEntry({
   parent: null,
   name: 'kueue',
   label: 'Kueue',
-  icon: 'mdi:queue-first-in-last-out',
+  icon: kueueIconName,
   url: kueueRoutePaths.clusterQueuesList,
 });
 
@@ -171,3 +178,13 @@ registerResourceTableColumnsProcessor({
   id: 'kueue-jobs-columns',
   processor: processJobsTableColumns,
 });
+
+registerMapSource(kueueMapSource);
+registerKubeObjectGlance({ id: 'kueue-glance', component: KueueGlance });
+['Workload', 'LocalQueue', 'ClusterQueue', 'Cohort', 'ResourceFlavor'].forEach(kind =>
+  registerKindIcon(
+    kind,
+    { icon: <Icon icon={kueueIconName} width="70%" height="70%" /> },
+    kueueApiGroup
+  )
+);
