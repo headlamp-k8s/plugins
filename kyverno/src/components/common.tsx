@@ -15,7 +15,9 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Chip, CircularProgress, Link, Tooltip, Typography } from '@mui/material';
+import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { Box, Chip, Link, Tooltip, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { PolicyReportSummary, PolicyResultStatus } from '../resources/policyReport';
 
@@ -111,35 +113,50 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
 }
 
 export function NotInstalledBanner({ loading, message }: { loading?: boolean; message?: string }) {
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const { t } = useTranslation();
+  // Screen readers reliably announce changes to an existing live region, but not
+  // content that is present in the render that creates it. Cached CRD results make
+  // CRDGuard render the not-installed state on first mount, so the region always
+  // mounts empty and the message is inserted right after.
+  const [announce, setAnnounce] = useState(false);
+  useEffect(() => setAnnounce(true), []);
 
   return (
-    <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
-      <Box textAlign="center">
-        <Typography variant="h5" gutterBottom>
-          {message}
-        </Typography>
-        <Typography>
-          {/* Keep the sentence in one i18n unit so translators can place the link
-              anywhere in the translated string. <1> matches the Link child. */}
-          <Trans i18nKey="kyverno.learnAboutInstalling">
-            Learn more about{' '}
-            <Link
-              href="https://kyverno.io/docs/installation/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              installing Kyverno
-            </Link>
-          </Trans>
-        </Typography>
-      </Box>
+    <Box
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      p={2}
+      minHeight="200px"
+    >
+      {loading ? (
+        <Loader title={t('Detecting Kyverno resources')} />
+      ) : (
+        announce && (
+          <Box textAlign="center">
+            <Typography variant="h5" gutterBottom>
+              {message}
+            </Typography>
+            <Typography>
+              {/* Keep the sentence in one i18n unit so translators can place the link
+                  anywhere in the translated string. <1> matches the Link child. */}
+              <Trans i18nKey="kyverno.learnAboutInstalling">
+                Learn more about{' '}
+                <Link
+                  href="https://kyverno.io/docs/installation/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  installing Kyverno
+                </Link>
+              </Trans>
+            </Typography>
+          </Box>
+        )
+      )}
     </Box>
   );
 }
