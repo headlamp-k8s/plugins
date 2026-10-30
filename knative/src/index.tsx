@@ -28,9 +28,14 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrokerDetail } from './components/brokers/Detail';
+import {
+  CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  ChannelImplementationDetail,
+} from './components/channelimplementations/Detail';
 import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { SOURCE_DETAILS_PATH, SourceDetail } from './components/sources/Detail';
 import { SubscriptionDetail } from './components/subscriptions/Detail';
 import { TriggerDetail } from './components/triggers/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
@@ -42,6 +47,8 @@ import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 import {
   KnativeBroker,
   KnativeChannel,
+  KnativeChannelImplementation,
+  KnativeSource,
   KnativeSubscription,
   KnativeTrigger,
 } from './resources/knative';
@@ -132,6 +139,20 @@ registerRoute({
   sidebar: 'knative-channels',
   name: KnativeChannel.detailsRoute,
   component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  sidebar: 'knative-channel-implementations',
+  name: KnativeChannelImplementation.detailsRoute,
+  component: withQueryClient(ChannelImplementationDetail),
+});
+
+registerRoute({
+  path: SOURCE_DETAILS_PATH,
+  sidebar: 'knative-sources',
+  name: KnativeSource.detailsRoute,
+  component: withQueryClient(SourceDetail),
 });
 
 registerRoute({

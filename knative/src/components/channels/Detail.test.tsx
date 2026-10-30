@@ -110,7 +110,8 @@ vi.mock('../common/EventingResourceDetail', () => ({
   },
 }));
 
-import { ChannelDetail, ChannelSubscribers } from './Detail';
+import { ChannelSubscribers } from './ChannelSubscribers';
+import { ChannelDetail } from './Detail';
 
 /**
  * Builds a Channel in namespace `orders` of `cluster-a` with the given subscriber states.
@@ -226,7 +227,7 @@ describe('ChannelSubscribers', () => {
   it('says when the Channel reports no subscribers, without listing Subscriptions', () => {
     const { container } = render(<ChannelSubscribers channel={channel([])} />);
 
-    expect(container.textContent).toBe('This Channel reports no subscribers.');
+    expect(container.textContent).toBe('This channel reports no subscribers.');
     expect(subscriptions.lists).toBe(0);
   });
 });

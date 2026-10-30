@@ -17,6 +17,7 @@
 import type React from 'react';
 import { BrokersList } from './components/brokers/List';
 import { CertificatesList } from './components/certificates/List';
+import { ChannelImplementationsList } from './components/channelimplementations/List';
 import { ChannelsList } from './components/channels/List';
 import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
 import { ConfigurationsList } from './components/configurations/List';
@@ -53,6 +54,7 @@ export const knativeListRouteComponents = {
   knativeBrokers: BrokersList,
   knativeTriggers: TriggersList,
   knativeChannels: ChannelsList,
+  knativeChannelImplementations: ChannelImplementationsList,
   knativeSubscriptions: SubscriptionsList,
   knativeSources: SourcesList,
 } satisfies Record<KnativeListRouteName, React.ComponentType>;

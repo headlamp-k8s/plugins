@@ -24,7 +24,7 @@ import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeSubscription } from '../../resources/knative';
 import { destinationColumn } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { OwnerLink } from '../common/OwnerLink';
+import { ownerColumn } from '../common/OwnerLink';
 import { getReadinessColumns } from '../common/ResourceListCells';
 
 /**
@@ -49,18 +49,7 @@ export function SubscriptionsList() {
       })),
       destinationColumn('subscriber', 'Subscriber', item => item.spec?.subscriber),
       destinationColumn('reply', 'Reply', item => item.spec?.reply),
-      {
-        id: 'owner',
-        label: 'Owner',
-        getValue: item => item.owner?.name || '',
-        render: item => (
-          <OwnerLink
-            owner={item.owner}
-            namespace={item.metadata.namespace}
-            cluster={item.cluster}
-          />
-        ),
-      },
+      ownerColumn<KnativeSubscription>(),
       ...getReadinessColumns<KnativeSubscription>(),
       'age',
     ],
