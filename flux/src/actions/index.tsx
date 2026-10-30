@@ -210,17 +210,23 @@ function ResumeAction(props) {
   );
 }
 
-function syncRequest(resource: KubeObject, enqueueSnackbar, date) {
+export function syncRequest(resource: KubeObject, enqueueSnackbar, date, force = false) {
   const name = resource.jsonData.metadata.name;
+
+  const annotations: Record<string, string> = {
+    ...resource.jsonData?.metadata?.annotations,
+    'reconcile.fluxcd.io/requestedAt': date,
+  };
+
+  if (force) {
+    annotations['reconcile.fluxcd.io/forceAt'] = date;
+  }
 
   const patch = (resource.constructor as any).apiEndpoint.patch;
   return patch(
     {
       metadata: {
-        annotations: {
-          ...resource.jsonData.metadata.annotations,
-          'reconcile.fluxcd.io/requestedAt': date,
-        },
+        annotations,
       },
     },
     resource.jsonData.metadata.namespace,
@@ -383,6 +389,64 @@ function SyncWithoutSourceAction(props) {
   );
 }
 
+function ForceSyncAction(props: { resource: KubeObject }) {
+  const { t } = useTranslation();
+  const { resource } = props;
+  const { enqueueSnackbar } = useSnackbar();
+  const [open, setOpen] = React.useState<boolean>(false);
+
+  return (
+    <>
+      <ActionButton
+        description={t('Force Sync')}
+        icon="mdi:sync-alert"
+        onClick={() => {
+          setOpen(true);
+        }}
+      />
+      <ConfirmDialog
+        // @ts-ignore
+        open={open}
+        handleClose={() => setOpen(false)}
+        onConfirm={() => {
+          setOpen(false);
+          const date = new Date().toISOString();
+          enqueueSnackbar(t('Starting force sync for {{name}}', { name: resource.metadata.name }), {
+            variant: 'info',
+          });
+          syncRequest(resource, enqueueSnackbar, date, true)
+            .then(() => {
+              enqueueSnackbar(
+                t('Successfully requested force sync for {{name}}', {
+                  name: resource.metadata.name,
+                }),
+                {
+                  variant: 'success',
+                }
+              );
+            })
+            .catch(error => {
+              enqueueSnackbar(
+                t('Failed to force sync {{name}}: {{error}}', {
+                  name: resource.metadata.name,
+                  error: formatError(error),
+                }),
+                {
+                  variant: 'error',
+                }
+              );
+            });
+        }}
+        title={t('Force Sync')}
+        description={t(
+          'Are you sure you want to force reconciliation for {{name}}? This will trigger resource replacement.',
+          { name: resource.metadata.name }
+        )}
+      />
+    </>
+  );
+}
+
 export {
   SuspendAction,
   ResumeAction,
@@ -390,4 +454,5 @@ export {
   SyncWithSourceAction,
   SyncWithoutSourceAction,
   ForceReconciliationAction,
+  ForceSyncAction,
 };
