@@ -218,7 +218,7 @@ export function Dashboard() {
         </Grid>
       </SectionBox>
 
-      {config?.policyEngineHealthEnabled && <PolicyEngineHealth />}
+      {config?.policyEngineHealthEnabled === true && <PolicyEngineHealth />}
 
       <Grid container spacing={2}>
         {statusData.length > 0 && (
