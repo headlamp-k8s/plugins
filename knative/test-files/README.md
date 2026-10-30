@@ -142,21 +142,49 @@ channel-based Broker, but not Knative Serving. Create them with:
 ```
 
 The script checks that the Eventing CRDs are installed, applies `00-namespace-and-sink.yaml`,
-`01-broker-and-triggers.yaml` and `02-channel-and-subscriptions.yaml` from `test-files/eventing/`,
-and waits for the Broker, the three working Triggers, the Channel and its working Subscription to
-become Ready. Set `WAIT_TIMEOUT` to wait longer, as with `setup.sh`.
+`01-broker-and-triggers.yaml`, `02-channel-and-subscriptions.yaml` and `03-sources.yaml` from
+`test-files/eventing/`, and waits for the Broker, the three working Triggers, the Channel, its
+working Subscription and the three working Sources to become Ready. Set `WAIT_TIMEOUT` to wait
+longer, as with `setup.sh`.
 
-| Resource                         | State it produces                                                                                            | What to verify in Headlamp                                                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Broker `default`                 | A Ready `MTChannelBasedBroker`                                                                               | The Brokers view shows its class, address, and Ready state; its page links the `config-br-default-channel` ConfigMap                                                    |
-| Trigger `catch-all`              | A Ready Trigger delivering to the `event-display` Service                                                    | The Triggers view links the Broker and the `Service/event-display` subscriber; its page shows `All events` and the subscriber URI                                       |
-| Trigger `uri-subscriber`         | A Ready Trigger delivering to an absolute URI                                                                | The subscriber is shown as the URI, without a link                                                                                                                      |
-| Trigger `order-created`          | A Ready Trigger with `exact` and `prefix` filters                                                            | Its page shows the configured `exact` and `prefix` filters as read-only, syntax-highlighted YAML                                                                        |
-| Trigger `dangling-subscriber`    | A Trigger whose subscriber Service does not exist                                                            | Ready is `False` and the reason explains that the subscriber URI could not be resolved                                                                                  |
-| Channel `orders`                 | A Ready Channel backed by an `InMemoryChannel`                                                               | The Channels view shows `InMemoryChannel`, its address, and one subscriber; its page lists `orders-to-display` as Ready                                                 |
-| Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply; its page shows the resolved subscriber and reply URIs |
-| Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                  | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                                                                             |
-| Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                  | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                                                                               |
+| Resource                         | State it produces                                                                                                                               | What to verify in Headlamp                                                                                                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Broker `default`                 | A Ready `MTChannelBasedBroker`                                                                                                                  | The Brokers view shows its class, address, and Ready state; its page links the `config-br-default-channel` ConfigMap                                                    |
+| Trigger `catch-all`              | A Ready Trigger delivering to the `event-display` Service                                                                                       | The Triggers view links the Broker and the `Service/event-display` subscriber; its page shows `All events` and the subscriber URI                                       |
+| Trigger `uri-subscriber`         | A Ready Trigger delivering to an absolute URI                                                                                                   | The subscriber is shown as the URI, without a link                                                                                                                      |
+| Trigger `order-created`          | A Ready Trigger with `exact` and `prefix` filters                                                                                               | Its page shows the configured `exact` and `prefix` filters as read-only, syntax-highlighted YAML                                                                        |
+| Trigger `dangling-subscriber`    | A Trigger whose subscriber Service does not exist                                                                                               | Ready is `False` and the reason explains that the subscriber URI could not be resolved                                                                                  |
+| Channel `orders`                 | A Ready Channel backed by an `InMemoryChannel`                                                                                                  | The Channels view shows `InMemoryChannel`, its address, and one subscriber; its page lists `orders-to-display` as Ready                                                 |
+| Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker                                    | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply; its page shows the resolved subscriber and reply URIs |
+| Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                                                     | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                                                                             |
+| Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                                                     | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                                                                               |
+| PingSource `heartbeat`           | A Ready PingSource that sends an event to the `default` Broker every minute                                                                     | The Sources view shows the `PingSource` kind and links the `Broker/default` sink                                                                                        |
+| ApiServerSource `k8s-events`     | A Ready ApiServerSource that sends the namespace's Kubernetes events to the `event-display` Service, through the `event-watcher` ServiceAccount | The Sources view shows the `ApiServerSource` kind and links the `Service/event-display` sink                                                                            |
+| SinkBinding `bind-heartbeat`     | A Ready SinkBinding whose sink is an absolute URI                                                                                               | The sink is shown as the URI, without a link                                                                                                                            |
+| PingSource `missing-sink`        | A PingSource whose sink Service does not exist                                                                                                  | Ready is `False` with the reason `NotFound`                                                                                                                             |
+
+### Channel implementations
+
+The KafkaChannel and NatsJetStreamChannel fixtures need the Eventing fixtures first. The script
+installs a single-node NATS JetStream server and a single-node Kafka broker for development only,
+the NatsJetStreamChannel and KafkaChannel releases that match Knative Eventing 1.23, and then
+`04-channel-implementations.yaml`:
+
+```bash
+./test-files/setup-channel-implementations.sh
+```
+
+Set `NATS_CHANNEL_RELEASE` or `KAFKA_CHANNEL_RELEASE` to use other release tags.
+
+| Resource                                            | State it produces                                                                            | What to verify in Headlamp                                                                                                         |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| KafkaChannel `orders-kafka`                         | A Ready KafkaChannel with three partitions, retries and the `event-display` dead letter sink | The Channel Implementations view shows `KafkaChannel`; its page shows the retries, the dead letter sink and the partitions as YAML |
+| NatsJetStreamChannel `orders-nats`                  | A Ready NatsJetStreamChannel with stream and consumer settings and four retries              | Its page shows the retries, and the `stream` and `consumerConfigTemplate` settings as YAML                                         |
+| Channel `payments-kafka`                            | A Ready Channel backed by a KafkaChannel                                                     | Its page links the backing `KafkaChannel/payments-kafka`, whose Owner is the Channel and whose page has no Edit or Delete          |
+| Subscriptions `kafka-to-display`, `nats-to-display` | Ready Subscriptions from the KafkaChannel and the NatsJetStreamChannel to `event-display`    | The Subscriptions view links each channel to its channel implementation page, which lists the Subscription as Ready                |
+
+Cleanup removes these fixtures with the `knative-eventing-test` namespace; NATS, Kafka and their
+channel controllers stay installed.
 
 ## Remove the fixtures
 

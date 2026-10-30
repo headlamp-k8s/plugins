@@ -19,11 +19,79 @@ import {
   formatDestination,
   formatTriggerFilter,
   getBrokerClass,
+  getCrdKindInfo,
+  getPreferredApiVersion,
   getTriggerBroker,
 } from './eventingData';
 import type { KnativeTrigger } from './trigger';
 
 describe('Knative Eventing resource data', () => {
+  it('picks the stored version when it is served, otherwise the first served one', () => {
+    /**
+     * Builds a CRD version.
+     *
+     * @param name - The version's name.
+     * @param served - Whether the version is served.
+     * @param storage - Whether the CRD stores this version.
+     * @returns The version.
+     */
+    const version = (name: string, served: boolean, storage: boolean) => ({
+      name,
+      served,
+      storage,
+      additionalPrinterColumns: [],
+    });
+    const group = 'sources.knative.dev';
+
+    expect(
+      getPreferredApiVersion({
+        group,
+        versions: [version('v1beta2', true, false), version('v1', true, true)],
+      })
+    ).toBe('sources.knative.dev/v1');
+    expect(
+      getPreferredApiVersion({
+        group,
+        versions: [version('v1alpha1', false, true), version('v1beta1', true, false)],
+      })
+    ).toBe('sources.knative.dev/v1beta1');
+    expect(
+      getPreferredApiVersion({ group, versions: [version('v1', false, true)] })
+    ).toBeUndefined();
+  });
+
+  it('reads what a Source class needs from a Source CRD', () => {
+    const crd = {
+      apiVersion: 'apiextensions.k8s.io/v1',
+      kind: 'CustomResourceDefinition',
+      metadata: { name: 'pingsources.sources.knative.dev', uid: 'crd', creationTimestamp: '' },
+      spec: {
+        group: 'sources.knative.dev',
+        version: 'v1',
+        names: { plural: 'pingsources', singular: 'pingsource', kind: 'PingSource', listKind: '' },
+        scope: 'Namespaced',
+        versions: [{ name: 'v1', served: true, storage: true, additionalPrinterColumns: [] }],
+      },
+    };
+
+    expect(getCrdKindInfo(crd)).toEqual({
+      kind: 'PingSource',
+      apiName: 'pingsources',
+      apiVersion: 'sources.knative.dev/v1',
+      isNamespaced: true,
+    });
+    expect(
+      getCrdKindInfo({
+        ...crd,
+        spec: {
+          ...crd.spec,
+          scope: 'Cluster',
+          versions: [{ ...crd.spec.versions[0], served: false }],
+        },
+      })
+    ).toBeUndefined();
+  });
+
   it('reads the broker class annotation', () => {
     expect(
       getBrokerClass({

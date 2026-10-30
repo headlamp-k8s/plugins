@@ -17,6 +17,7 @@
 import type React from 'react';
 import { BrokersList } from './components/brokers/List';
 import { CertificatesList } from './components/certificates/List';
+import { ChannelImplementationsList } from './components/channelimplementations/List';
 import { ChannelsList } from './components/channels/List';
 import { ClusterDomainClaimsList } from './components/clusterdomainclaims/List';
 import { ConfigurationsList } from './components/configurations/List';
@@ -30,6 +31,7 @@ import { PodAutoscalersList } from './components/podautoscalers/List';
 import { RevisionsList } from './components/revisions/List';
 import { RoutesList } from './components/routes/List';
 import { ServerlessServicesList } from './components/serverlessservices/List';
+import { SourcesList } from './components/sources/List';
 import { SubscriptionsList } from './components/subscriptions/List';
 import { TriggersList } from './components/triggers/List';
 import type { KnativeListRouteName } from './navigation';
@@ -52,7 +54,9 @@ export const knativeListRouteComponents = {
   knativeBrokers: BrokersList,
   knativeTriggers: TriggersList,
   knativeChannels: ChannelsList,
+  knativeChannelImplementations: ChannelImplementationsList,
   knativeSubscriptions: SubscriptionsList,
+  knativeSources: SourcesList,
 } satisfies Record<KnativeListRouteName, React.ComponentType>;
 
 function isKnativeListRouteName(routeName: string): routeName is KnativeListRouteName {

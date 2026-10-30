@@ -4,7 +4,8 @@ A Headlamp plugin for operating Knative Serving workloads and inspecting the res
 Serving creates for them. Application owners can manage Services and traffic, while platform
 operators can follow a request from its Route and Ingress through to autoscaling and image
 resolution resources. Event-driven application owners can manage the Knative Eventing Brokers,
-Triggers, Channels and Subscriptions that route events.
+Triggers, Channels, channel implementations and Subscriptions that route events, and the Sources
+that send them.
 
 ## Requirements
 
@@ -22,8 +23,8 @@ The sidebar uses non-clickable section headings to group the views into four sec
 **Serving** for the resources application and domain owners manage, **Serving Internals** for
 internal resources, including the read-only resources Serving derives and manages itself,
 **Configuration** for cluster-level Knative settings, and **Eventing** for the Brokers, Triggers,
-Channels and Subscriptions that route events. Serving and Eventing are detected separately, so a
-cluster that runs only one of them shows only its sections.
+Channels and Subscriptions that route events and the Sources that send them. Serving and Eventing
+are detected separately, so a cluster that runs only one of them shows only its sections.
 
 ### Serving
 
@@ -60,11 +61,26 @@ cluster that runs only one of them shows only its sections.
 | Event-driven application owner | Brokers | `/knative/brokers` | Which address do producers send events to, and is the `default` Broker ready? | Manage |
 | Event-driven application owner | Triggers | `/knative/triggers` | Which subscriber receives events from the `default` Broker, and why is a Trigger not ready? | Manage |
 | Event-driven application owner | Channels | `/knative/channels` | Which kind of channel backs `orders`, and how many Subscriptions does it have? | Manage; view only when Knative created it |
+| Event-driven application owner | Channel Implementations | `/knative/channel-implementations` | Which KafkaChannels and NatsJetStreamChannels are there, how are they set up, and where do their failed events go? | Manage; view only when Knative created it |
 | Event-driven application owner | Subscriptions | `/knative/subscriptions` | Where do events from the `orders` Channel go, and which Subscriptions did a Broker create for its Triggers? | Manage; view only when Knative created it |
+| Event-driven application owner | Sources | `/knative/sources` | Which Sources send events to the `default` Broker, and why is a Source not ready? | Manage; view only when Knative created it |
+
+The Sources view lists the Sources of every kind in one table: Knative's own, such as
+ApiServerSource, PingSource and SinkBinding, and those of other projects, found through the
+`duck.knative.dev/source=true` label on their CustomResourceDefinitions. Users who may not list
+CustomResourceDefinitions see Knative's own kinds, ApiServerSource, ContainerSource, PingSource and
+SinkBinding, with a note saying so. Selecting a Source opens Headlamp's Custom Resource view.
 
 Selecting a Broker or Trigger opens its detail page. A Broker's page shows its class, address, and
 settings ConfigMap; a Trigger's page shows its Broker, filter, subscriber, and the URI the
 subscriber resolved to. Both show conditions and events.
+
+The Channel Implementations view lists the channels of every kind in one table: Knative's
+InMemoryChannel and the implementations installed in the cluster, such as KafkaChannel and
+NatsJetStreamChannel, found through the `messaging.knative.dev/subscribable=true` label on their
+CustomResourceDefinitions. A channel's page shows its kind, address, delivery settings, the
+settings of its own kind as read-only YAML, and its Subscriptions. A Subscription's Channel and a
+Channel's backing Channel link to this page.
 
 Selecting a Channel or Subscription opens its detail page. A Channel's page shows its backing
 Channel, address, and Subscriptions with the state of each; a Subscription's page shows its

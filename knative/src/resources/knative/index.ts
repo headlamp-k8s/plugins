@@ -30,4 +30,6 @@ export * from './broker';
 export * from './trigger';
 export * from './channel';
 export * from './subscription';
+export * from './source';
 export * from './customResource';
+export * from './channelImplementation';

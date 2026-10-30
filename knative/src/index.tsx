@@ -28,6 +28,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrokerDetail } from './components/brokers/Detail';
+import { ChannelImplementationDetail } from './components/channelimplementations/Detail';
 import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
@@ -42,6 +43,7 @@ import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 import {
   KnativeBroker,
   KnativeChannel,
+  KnativeChannelImplementation,
   KnativeSubscription,
   KnativeTrigger,
 } from './resources/knative';
@@ -132,6 +134,13 @@ registerRoute({
   sidebar: 'knative-channels',
   name: KnativeChannel.detailsRoute,
   component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: '/knative/channel-implementations/:namespace/:name',
+  sidebar: 'knative-channel-implementations',
+  name: KnativeChannelImplementation.detailsRoute,
+  component: withQueryClient(ChannelImplementationDetail),
 });
 
 registerRoute({

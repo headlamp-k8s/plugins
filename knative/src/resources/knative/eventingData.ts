@@ -14,11 +14,70 @@
  * limitations under the License.
  */
 
+import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { stringify } from 'yaml';
 import type { Destination, KReference } from './common';
+import type { KnativeResourceClass } from './customResourceLinks';
 import type { KnativeTrigger } from './trigger';
 
 const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
+
+export const KNATIVE_SOURCE_KINDS: KnativeResourceClass[] = [
+  ['ApiServerSource', 'apiserversources'],
+  ['ContainerSource', 'containersources'],
+  ['PingSource', 'pingsources'],
+  ['SinkBinding', 'sinkbindings'],
+].map(([kind, apiName]) => ({
+  kind,
+  apiName,
+  apiVersion: 'sources.knative.dev/v1',
+  isNamespaced: true,
+}));
+
+export const KNATIVE_CHANNEL_IMPLEMENTATION_KINDS: KnativeResourceClass[] = [
+  {
+    kind: 'InMemoryChannel',
+    apiName: 'inmemorychannels',
+    apiVersion: 'messaging.knative.dev/v1',
+    isNamespaced: true,
+  },
+];
+
+/**
+ * Picks the API version to request a CRD's resources with.
+ *
+ * @param spec - The CRD's group and versions.
+ * @returns `<group>/<version>` of the version the CRD stores when it is served, otherwise of its
+ * first served version, or undefined when it serves none.
+ */
+export function getPreferredApiVersion(
+  spec: Pick<KubeCRD['spec'], 'group' | 'versions'>
+): string | undefined {
+  const version =
+    spec.versions.find(item => item.served && item.storage) ??
+    spec.versions.find(item => item.served);
+  return version && `${spec.group}/${version.name}`;
+}
+
+/**
+ * Reads what a class for a CRD's kind needs from the CRD, such as a Source or channel
+ * implementation CRD.
+ *
+ * @param crd - The CRD.
+ * @returns The kind, its plural name, scope and the API version to request, or undefined when the
+ * CRD serves no version.
+ */
+export function getCrdKindInfo(crd: KubeCRD): KnativeResourceClass | undefined {
+  const apiVersion = getPreferredApiVersion(crd.spec);
+  return (
+    apiVersion && {
+      kind: crd.spec.names.kind,
+      apiName: crd.spec.names.plural,
+      apiVersion,
+      isNamespaced: crd.spec.scope === 'Namespaced',
+    }
+  );
+}
 
 /**
  * Reads a Broker's class from its annotations.
@@ -92,5 +151,16 @@ export function formatTriggerFilter(spec?: KnativeTrigger['spec']): string | und
     ? { filter: spec?.filter }
     : undefined;
 
-  return filter ? stringify(filter, { indent: 2, lineWidth: 0 }) : undefined;
+  return filter ? toYaml(filter) : undefined;
+}
+
+/**
+ * Writes a value as YAML the way the plugin shows configuration: two-space indents and no line
+ * wrapping.
+ *
+ * @param value - The value to write.
+ * @returns The YAML.
+ */
+export function toYaml(value: unknown): string {
+  return stringify(value, { indent: 2, lineWidth: 0 });
 }

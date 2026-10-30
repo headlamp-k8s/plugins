@@ -1,0 +1,89 @@
+apiVersion: sources.knative.dev/v1
+kind: PingSource
+metadata:
+  name: heartbeat
+  namespace: knative-eventing-test
+spec:
+  schedule: '*/1 * * * *'
+  contentType: application/json
+  data: '{"message": "Hello from PingSource"}'
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-watcher
+  namespace: knative-eventing-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: event-watcher
+  namespace: knative-eventing-test
+rules:
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['get', 'list', 'watch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: event-watcher
+  namespace: knative-eventing-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: event-watcher
+subjects:
+  - kind: ServiceAccount
+    name: event-watcher
+    namespace: knative-eventing-test
+---
+apiVersion: sources.knative.dev/v1
+kind: ApiServerSource
+metadata:
+  name: k8s-events
+  namespace: knative-eventing-test
+spec:
+  mode: Resource
+  serviceAccountName: event-watcher
+  resources:
+    - apiVersion: v1
+      kind: Event
+  sink:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+---
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  name: bind-heartbeat
+  namespace: knative-eventing-test
+spec:
+  subject:
+    apiVersion: apps/v1
+    kind: Deployment
+    selector:
+      matchLabels:
+        app: heartbeat-sender
+  sink:
+    uri: https://example.com/events
+---
+apiVersion: sources.knative.dev/v1
+kind: PingSource
+metadata:
+  name: missing-sink
+  namespace: knative-eventing-test
+spec:
+  schedule: '0 * * * *'
+  sink:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: does-not-exist
