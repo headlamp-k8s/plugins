@@ -30,6 +30,7 @@ import { PodAutoscalersList } from './components/podautoscalers/List';
 import { RevisionsList } from './components/revisions/List';
 import { RoutesList } from './components/routes/List';
 import { ServerlessServicesList } from './components/serverlessservices/List';
+import { SourcesList } from './components/sources/List';
 import { SubscriptionsList } from './components/subscriptions/List';
 import { TriggersList } from './components/triggers/List';
 import type { KnativeListRouteName } from './navigation';
@@ -53,6 +54,7 @@ export const knativeListRouteComponents = {
   knativeTriggers: TriggersList,
   knativeChannels: ChannelsList,
   knativeSubscriptions: SubscriptionsList,
+  knativeSources: SourcesList,
 } satisfies Record<KnativeListRouteName, React.ComponentType>;
 
 function isKnativeListRouteName(routeName: string): routeName is KnativeListRouteName {
