@@ -137,3 +137,65 @@ it('renders without ResizeObserver support', () => {
   const mount = editorProps.mock.lastCall?.[0].onMount as (editor: typeof editorInstance) => void;
   expect(() => act(() => mount(editorInstance))).not.toThrow();
 });
+
+it('copies formatted YAML to clipboard with feedback', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+  });
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  expect(copyButton).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('name: nginx-deployment'));
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+});
+
+it('falls back to execCommand when clipboard writeText rejects', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(true);
+  document.execCommand = execSpy;
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+  delete (document as any).execCommand;
+});
+
+it('does not show copied feedback and cleans up textarea when execCommand returns false', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(false);
+  document.execCommand = execSpy;
+
+  render(<YamlDisplay {...deploymentYamlArgs} />);
+
+  const copyButton = screen.getByRole('button', { name: 'Copy YAML' });
+  await act(async () => {
+    fireEvent.click(copyButton);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.queryByRole('button', { name: 'Copied!' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Copy YAML' })).toBeTruthy();
+  expect(document.querySelector('textarea')).toBeNull();
+  delete (document as any).execCommand;
+});
