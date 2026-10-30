@@ -18,6 +18,7 @@ import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/clust
 import type { AuthStatus, Destination } from './common';
 import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
 import type { KnativeResourceClass } from './customResourceLinks';
+import { getKindClass } from './kindClass';
 
 export const SOURCE_CRD_LABEL_SELECTOR = 'duck.knative.dev/source=true';
 
@@ -78,27 +79,22 @@ export class KnativeSource extends ConditionedKnativeCustomResource<KnativeSourc
 const sourceClasses = new Map<string, typeof KnativeSource>();
 
 /**
- * Gives the class for the Sources of one kind. The same kind, plural name, scope and API version
- * always give the same class, so a list of that kind keeps its watch while its CRD changes in
- * other ways.
+ * Gives the class for the Sources of one kind, the same class each time for the same kind.
  *
  * @param info - The kind, its plural name, scope and the API version to request. A single API
  * version lets Headlamp request it directly, without first trying several.
  * @returns The class.
  */
 export function getKnativeSourceClass(info: KnativeResourceClass): typeof KnativeSource {
-  const key = JSON.stringify([info.kind, info.apiName, info.apiVersion, info.isNamespaced]);
-  const existing = sourceClasses.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const sourceClass = class extends KnativeSource {
-    static kind = info.kind;
-    static apiName = info.apiName;
-    static apiVersion = info.apiVersion;
-    static isNamespaced = info.isNamespaced;
-  };
-  sourceClasses.set(key, sourceClass);
-  return sourceClass;
+  return getKindClass(
+    sourceClasses,
+    info,
+    () =>
+      class extends KnativeSource {
+        static kind = info.kind;
+        static apiName = info.apiName;
+        static apiVersion = info.apiVersion;
+        static isNamespaced = info.isNamespaced;
+      }
+  );
 }

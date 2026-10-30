@@ -40,6 +40,53 @@ export interface ChannelSubscriberStatus {
   uid?: string;
 }
 
+/** A Subscription that Knative writes into a channel's spec, with the endpoints it resolved. */
+export interface ChannelSubscriberSpec {
+  /** Details used for OIDC authentication. */
+  auth?: AuthStatus;
+  /** Delivery settings of the Subscription. */
+  delivery?: DeliverySpec;
+  /** Generation of the Subscription with the UID `uid`. */
+  generation?: number;
+  /** Name of the Subscription. */
+  name?: string;
+  /** The OIDC audience of `replyUri`. */
+  replyAudience?: string;
+  /** CA certificates in PEM format of the reply endpoint. */
+  replyCACerts?: string;
+  /** The endpoint that replies are sent to. */
+  replyUri?: string;
+  /** The OIDC audience of `subscriberUri`. */
+  subscriberAudience?: string;
+  /** CA certificates in PEM format of the subscriber. */
+  subscriberCACerts?: string;
+  /** The endpoint that events are sent to. */
+  subscriberUri?: string;
+  /** UID of the Subscription this subscriber comes from. */
+  uid?: string;
+}
+
+/**
+ * What every kind of channel reports, the generic Channel and each channel implementation alike,
+ * as Knative's Channelable duck type defines it.
+ */
+export type ChannelableStatus = ConditionedStatus & {
+  /** The address where the channel accepts events. */
+  address?: Addressable;
+  /** Every address where the channel accepts events. */
+  addresses?: Addressable[];
+  /** The resolved URI of the dead letter sink, used when a Subscription sets none. */
+  deadLetterSinkUri?: string;
+  /** CA certificates in PEM format of the dead letter sink. */
+  deadLetterSinkCACerts?: string;
+  /** The OIDC audience of the dead letter sink. */
+  deadLetterSinkAudience?: string;
+  /** The EventPolicies applied to the channel. */
+  policies?: AppliedEventPolicyRef[];
+  /** The state of each Subscription to the channel. */
+  subscribers?: ChannelSubscriberStatus[];
+};
+
 /** A Knative Channel, as the v1 `channels.messaging.knative.dev` CRD defines it. */
 interface KnativeChannelResource extends KubeObjectInterface {
   /** How the Channel is set up. */
@@ -66,53 +113,16 @@ interface KnativeChannelResource extends KubeObjectInterface {
      * The Subscriptions to this Channel. Knative's webhook rejects this field on a Channel: Knative
      * writes the subscribers on the backing Channel and reports them in `status.subscribers`.
      */
-    subscribers?: {
-      /** Details used for OIDC authentication. */
-      auth?: AuthStatus;
-      /** Delivery settings of the Subscription. */
-      delivery?: DeliverySpec;
-      /** Generation of the Subscription with the UID `uid`. */
-      generation?: number;
-      /** Name of the Subscription. */
-      name?: string;
-      /** The OIDC audience of `replyUri`. */
-      replyAudience?: string;
-      /** CA certificates in PEM format of the reply endpoint. */
-      replyCACerts?: string;
-      /** The endpoint that replies are sent to. */
-      replyUri?: string;
-      /** The OIDC audience of `subscriberUri`. */
-      subscriberAudience?: string;
-      /** CA certificates in PEM format of the subscriber. */
-      subscriberCACerts?: string;
-      /** The endpoint that events are sent to. */
-      subscriberUri?: string;
-      /** UID of the Subscription this subscriber comes from. */
-      uid?: string;
-    }[];
+    subscribers?: ChannelSubscriberSpec[];
   };
   /** What the Channel controller last reported. */
-  status?: ConditionedStatus & {
-    /** The address where the Channel accepts events. */
-    address?: Addressable;
-    /** Every address where the Channel accepts events. */
-    addresses?: Addressable[];
+  status?: ChannelableStatus & {
     /** The backing Channel created for this Channel. */
     channel?: KReference;
     /**
      * The Channel that failed events go to, set when the backing Channel handles errors itself.
      */
     deadLetterChannel?: KReference;
-    /** The resolved URI of the dead letter sink, used when a Subscription sets none. */
-    deadLetterSinkUri?: string;
-    /** CA certificates in PEM format of the dead letter sink. */
-    deadLetterSinkCACerts?: string;
-    /** The OIDC audience of the dead letter sink. */
-    deadLetterSinkAudience?: string;
-    /** The EventPolicies applied to the Channel. */
-    policies?: AppliedEventPolicyRef[];
-    /** The state of each Subscription to this Channel. */
-    subscribers?: ChannelSubscriberStatus[];
   };
 }
 

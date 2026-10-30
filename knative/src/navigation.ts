@@ -148,6 +148,12 @@ export const knativeNavigationSections = [
         routeName: 'knativeChannels',
       },
       {
+        name: 'knative-channel-implementations',
+        label: 'Channel Implementations',
+        path: '/knative/channel-implementations',
+        routeName: 'knativeChannelImplementations',
+      },
+      {
         name: 'knative-subscriptions',
         label: 'Subscriptions',
         path: '/knative/subscriptions',
