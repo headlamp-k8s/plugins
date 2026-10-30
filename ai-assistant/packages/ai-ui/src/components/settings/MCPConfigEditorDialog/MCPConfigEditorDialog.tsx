@@ -1,3 +1,4 @@
+import { normalizeMcpSettings } from '@headlamp-k8s/ai-common/mcp/config/serverConfig';
 import type { MCPServer, MCPSettings } from '@headlamp-k8s/ai-common/mcp/types';
 import { Icon } from '@iconify/react';
 import Editor from '@monaco-editor/react';
@@ -37,98 +38,22 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 type ValidationResult = { valid: false; error: string } | { valid: true; config: MCPConfig };
 
-/** @returns Whether an untrusted JSON value is a non-null object mapping. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** @returns Whether an untrusted value is a mapping containing only string values. */
-function isStringRecord(value: unknown): value is Record<string, string> {
-  return isRecord(value) && Object.values(value).every(item => typeof item === 'string');
-}
-
 /**
  * Validates and normalizes untrusted MCP configuration JSON.
+ *
+ * Supports Headlamp native format, Claude Desktop (`mcpServers`),
+ * and VS Code / Cursor configurations.
  *
  * @param value - Parsed JSON value.
  * @param t - Translation function for validation messages.
  * @returns A normalized config or translated validation failure.
  */
 function validateConfig(value: unknown, t: Translate): ValidationResult {
-  if (!isRecord(value) || typeof value.enabled !== 'boolean') {
-    return { valid: false, error: t('enabled field must be a boolean') };
+  const result = normalizeMcpSettings(value);
+  if (!result.valid || result.error) {
+    return { valid: false, error: t(result.error ?? 'Invalid configuration') };
   }
-  if (!Array.isArray(value.servers)) {
-    return { valid: false, error: t('servers field must be an array') };
-  }
-
-  const servers: MCPServer[] = [];
-  const serverNames = new Set<string>();
-  for (let index = 0; index < value.servers.length; index += 1) {
-    const server = value.servers[index];
-    const number = index + 1;
-    if (!isRecord(server)) {
-      return { valid: false, error: t('Server {{number}} must be an object', { number }) };
-    }
-    if (typeof server.name !== 'string' || !server.name.trim()) {
-      return {
-        valid: false,
-        error: t('Server {{number}}: name must be a non-empty string', { number }),
-      };
-    }
-    if (typeof server.command !== 'string' || !server.command.trim()) {
-      return {
-        valid: false,
-        error: t('Server {{number}}: command must be a non-empty string', { number }),
-      };
-    }
-    const normalizedName = server.name.trim();
-    if (serverNames.has(normalizedName.toLowerCase())) {
-      return {
-        valid: false,
-        error: t('Server names must be unique'),
-      };
-    }
-    serverNames.add(normalizedName.toLowerCase());
-    if (!Array.isArray(server.args) || !server.args.every(arg => typeof arg === 'string')) {
-      return {
-        valid: false,
-        error: t('Server {{number}}: args must be an array of strings', { number }),
-      };
-    }
-    const env = server.env;
-    if (env !== undefined && !isStringRecord(env)) {
-      return {
-        valid: false,
-        error: t('Server {{number}}: env must contain only string key-value pairs', { number }),
-      };
-    }
-    if (typeof server.enabled !== 'boolean') {
-      return {
-        valid: false,
-        error: t('Server {{number}}: enabled must be a boolean', { number }),
-      };
-    }
-    const autoApprove = server.autoApprove;
-    if (autoApprove !== undefined && typeof autoApprove !== 'boolean') {
-      return {
-        valid: false,
-        error: t('Server {{number}}: autoApprove must be a boolean', { number }),
-      };
-    }
-
-    const normalizedServer: MCPServer = {
-      name: normalizedName,
-      command: server.command.trim(),
-      args: server.args,
-      enabled: server.enabled,
-    };
-    if (isStringRecord(env)) normalizedServer.env = env;
-    if (typeof autoApprove === 'boolean') normalizedServer.autoApprove = autoApprove;
-    servers.push(normalizedServer);
-  }
-
-  return { valid: true, config: { enabled: value.enabled, servers } };
+  return { valid: true, config: result.config };
 }
 
 /** @returns Monaco theme matching Headlamp, or light when storage is unavailable. */
