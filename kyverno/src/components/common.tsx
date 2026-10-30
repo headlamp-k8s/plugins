@@ -15,9 +15,58 @@
  */
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Chip, CircularProgress, Link, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Link,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { PolicyReportSummary, PolicyResultStatus } from '../resources/policyReport';
+
+export function MetricCard({
+  title,
+  value,
+  color,
+  tooltip,
+}: {
+  title: string;
+  value: string | number;
+  color?: string;
+  // Set only when value is showing "unavailable" for a reason more specific than "no data yet",
+  // e.g. a particular controller not being scraped, so the user isn't left guessing why this one
+  // tile can't be confirmed while its neighbors read fine.
+  tooltip?: string;
+}) {
+  const card = (
+    <Card variant="outlined" tabIndex={tooltip ? 0 : undefined}>
+      <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Typography variant="body2" color="text.secondary">
+          {title}
+        </Typography>
+        <Typography
+          variant="h4"
+          sx={{ color: color || 'text.primary', fontWeight: 'bold', wordBreak: 'break-word' }}
+        >
+          {value}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+
+  return tooltip ? (
+    <Tooltip title={tooltip} arrow>
+      {card}
+    </Tooltip>
+  ) : (
+    card
+  );
+}
 
 const statusColors: Record<PolicyResultStatus, 'success' | 'error' | 'warning' | 'default'> = {
   pass: 'success',
@@ -110,7 +159,16 @@ export function SummaryChips({ summary }: { summary: PolicyReportSummary }) {
   );
 }
 
-export function NotInstalledBanner({ loading, message }: { loading?: boolean; message?: string }) {
+export function NotInstalledBanner({
+  loading,
+  message,
+  learnMore,
+}: {
+  loading?: boolean;
+  message?: string;
+  /** Overrides the default "learn about installing Kyverno" link, for banners about something else. */
+  learnMore?: ReactNode;
+}) {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" p={2} minHeight="200px">
@@ -126,18 +184,20 @@ export function NotInstalledBanner({ loading, message }: { loading?: boolean; me
           {message}
         </Typography>
         <Typography>
-          {/* Keep the sentence in one i18n unit so translators can place the link
-              anywhere in the translated string. <1> matches the Link child. */}
-          <Trans i18nKey="kyverno.learnAboutInstalling">
-            Learn more about{' '}
-            <Link
-              href="https://kyverno.io/docs/installation/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              installing Kyverno
-            </Link>
-          </Trans>
+          {learnMore ?? (
+            // Keep the sentence in one i18n unit so translators can place the link
+            // anywhere in the translated string. <1> matches the Link child.
+            <Trans i18nKey="kyverno.learnAboutInstalling">
+              Learn more about{' '}
+              <Link
+                href="https://kyverno.io/docs/installation/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                installing Kyverno
+              </Link>
+            </Trans>
+          )}
         </Typography>
       </Box>
     </Box>
