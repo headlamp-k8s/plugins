@@ -5,10 +5,8 @@ import {
   MainInfoSection,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import YAML from 'yaml';
 import {
   ForceReconciliationAction,
   ResumeAction,
@@ -20,6 +18,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { Kustomization } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import Table from '../common/Table';
+import YamlViewer from '../common/YamlViewer';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { GetResourcesFromInventory } from './Inventory';
 
@@ -117,19 +116,12 @@ function KustomizationDetails(props) {
     return actions;
   }
 
-  const themeName = localStorage.getItem('headlampThemePreference');
-
   return (
     <>
       <MainInfoSection resource={cr} extraInfo={prepareExtraInfo(cr)} actions={prepareActions()} />
       {cr?.jsonData?.spec?.values && (
         <SectionBox title={t('Values')}>
-          <Editor
-            language="yaml"
-            value={YAML.stringify(cr?.jsonData?.spec?.values)}
-            height={200}
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-          />
+          <YamlViewer value={cr?.jsonData?.spec?.values} ariaLabel={t('Values (read-only)')} />
         </SectionBox>
       )}
       {cr && (

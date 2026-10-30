@@ -6,10 +6,8 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Editor from '@monaco-editor/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import YAML from 'yaml';
 import {
   ForceReconciliationAction,
   ResumeAction,
@@ -20,6 +18,7 @@ import {
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { HelmRelease } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
+import YamlViewer from '../common/YamlViewer';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
 import { HelmInventory } from './Inventory';
 
@@ -39,20 +38,13 @@ function HelmReleaseDetailsSection({ resource }: { resource: HelmRelease }) {
   const { t } = useTranslation();
   if (resource.kind !== 'HelmRelease') return null;
 
-  const themeName = localStorage.getItem('headlampThemePreference');
-
   const cr = resource;
 
   return (
     <>
       {cr && cr?.jsonData?.spec?.values && (
         <SectionBox title={t('Values')}>
-          <Editor
-            language="yaml"
-            value={YAML.stringify(cr?.jsonData?.spec?.values)}
-            height={200}
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-          />
+          <YamlViewer value={cr?.jsonData?.spec?.values} ariaLabel={t('Values (read-only)')} />
         </SectionBox>
       )}
 
@@ -207,8 +199,6 @@ function CustomResourceDetails(props) {
     return actions;
   }
 
-  const themeName = localStorage.getItem('headlampThemePreference');
-
   return (
     <>
       {cr && (
@@ -220,12 +210,7 @@ function CustomResourceDetails(props) {
       )}
       {cr && cr?.jsonData?.spec?.values && (
         <SectionBox title={t('Values')}>
-          <Editor
-            language="yaml"
-            value={YAML.stringify(cr?.jsonData?.spec?.values)}
-            height={200}
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-          />
+          <YamlViewer value={cr?.jsonData?.spec?.values} ariaLabel={t('Values (read-only)')} />
         </SectionBox>
       )}
 

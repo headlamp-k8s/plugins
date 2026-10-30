@@ -1,7 +1,8 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Link } from '@mui/material';
+import { Box } from '@mui/material';
 import React from 'react';
+import { ExternalLink } from '../common/Link';
 
 export default function Flux404(props: Readonly<{ message: string; docs?: string }>) {
   const { message, docs } = props;
@@ -21,13 +22,9 @@ export default function Flux404(props: Readonly<{ message: string; docs?: string
       <h1>{t(message)}</h1>
       <p>
         {t('Follow the')}{' '}
-        <Link
-          target="_blank"
-          rel="noopener noreferrer"
-          href={docs ?? 'https://fluxcd.io/docs/installation/'}
-        >
+        <ExternalLink href={docs ?? 'https://fluxcd.io/docs/installation/'}>
           {t('installation guide')}
-        </Link>{' '}
+        </ExternalLink>{' '}
         {t('to install flux on your cluster')}
       </p>
     </Box>
@@ -42,9 +39,9 @@ export function NotSupported(props: { typeName: string }) {
       <p>{t('Flux installation has no support for {{typeName}}.', { typeName: t(typeName) })}</p>
       <p>
         {t('Follow the')}{' '}
-        <Link target="_blank" rel="noopener noreferrer" href="https://fluxcd.io/docs/installation/">
+        <ExternalLink href="https://fluxcd.io/docs/installation/">
           {t('installation guide')}
-        </Link>{' '}
+        </ExternalLink>{' '}
         {t('to support {{typeName}} on your cluster', { typeName: t(typeName) })}
       </p>
     </SectionBox>

@@ -6,16 +6,15 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import Editor from '@monaco-editor/react';
 import React, { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import YAML from 'yaml';
 import { ResumeAction, SuspendAction, SyncAction } from '../actions/index';
 import Flux404 from '../checkflux';
 import Link from '../common/Link';
 import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { ImagePolicy, ImageRepository, ImageUpdateAutomation } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
+import YamlViewer from '../common/YamlViewer';
 import { ObjectEvents } from '../helpers/index';
 
 export function FluxImageAutomationDetailView() {
@@ -54,8 +53,6 @@ export function FluxImageAutomationDetailView() {
 function CustomResourceDetails(props) {
   const { name, namespace, resourceClass } = props;
   const { t } = useTranslation();
-
-  const themeName = localStorage.getItem('headlampThemePreference');
 
   const [resource] = resourceClass.useGet(name, namespace);
 
@@ -112,15 +109,11 @@ function CustomResourceDetails(props) {
       extraInfo.push({
         name: t('Policy'),
         value: resource?.jsonData.spec?.policy && (
-          <Editor
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            language="yaml"
-            value={YAML.stringify(resource?.jsonData.spec?.policy)}
+          <YamlViewer
+            value={resource?.jsonData.spec?.policy}
+            ariaLabel={t('Policy (read-only)')}
             height={150}
-            options={{
-              // no lines
-              lineNumbers: 'off',
-            }}
+            lineNumbers={false}
           />
         ),
       });
@@ -130,15 +123,10 @@ function CustomResourceDetails(props) {
       extraInfo.push({
         name: t('Git'),
         value: resource.jsonData.spec?.git && (
-          <Editor
-            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            language="yaml"
-            value={YAML.stringify(resource.jsonData.spec?.git)}
-            height={200}
-            options={{
-              // no lines
-              lineNumbers: 'off',
-            }}
+          <YamlViewer
+            value={resource.jsonData.spec?.git}
+            ariaLabel={t('Git (read-only)')}
+            lineNumbers={false}
           />
         ),
       });

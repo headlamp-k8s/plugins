@@ -1,5 +1,33 @@
-import { Box, Link as MuiLink } from '@mui/material';
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Box, Link as MuiLink, LinkProps as MuiLinkProps } from '@mui/material';
 import React from 'react';
+
+export const visuallyHidden = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: '1px',
+  margin: '-1px',
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: '1px',
+} as const;
+
+/** Link that opens in a new tab and tells assistive technology that it does so. */
+export function ExternalLink(props: Omit<MuiLinkProps, 'target' | 'rel'>) {
+  const { children, ...otherProps } = props;
+  const { t } = useTranslation();
+
+  return (
+    <MuiLink {...otherProps} target="_blank" rel="noopener noreferrer">
+      {children}
+      <Box component="span" sx={visuallyHidden}>
+        {` ${t('(opens in a new tab)')}`}
+      </Box>
+    </MuiLink>
+  );
+}
 
 export default function Link(props: { url: string; wrap?: boolean }) {
   const { url, wrap = false } = props;
@@ -33,11 +61,7 @@ export default function Link(props: { url: string; wrap?: boolean }) {
     return null;
   }
 
-  const LinkComponent = () => (
-    <MuiLink href={href} target="_blank" rel="noopener noreferrer">
-      {url}
-    </MuiLink>
-  );
+  const LinkComponent = () => <ExternalLink href={href}>{url}</ExternalLink>;
 
   if (wrap) {
     return (
