@@ -7,6 +7,7 @@ import { VolcanoNamespaceQueue } from '../../resources/namespacequeue';
 import { getQueueStatusColor } from '../../utils/status';
 import { namespaceQueueNotInstalledMessage, NotInstalledBanner } from '../common/CommonComponents';
 import { formatKeyValueMap } from '../jobs/detailRows';
+import NamespaceQueueParentLink from './ParentLink';
 
 /**
  * Renders the Volcano NamespaceQueues list page.
@@ -49,6 +50,9 @@ export default function NamespaceQueueList() {
             id: 'parent',
             label: 'Parent',
             getValue: (namespaceQueue: VolcanoNamespaceQueue) => namespaceQueue.spec.parent || '-',
+            render: (namespaceQueue: VolcanoNamespaceQueue) => (
+              <NamespaceQueueParentLink namespaceQueue={namespaceQueue} />
+            ),
           },
           {
             id: 'state',

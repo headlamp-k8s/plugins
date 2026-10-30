@@ -7,7 +7,9 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, CircularProgress, Grid, Typography } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { useVolcanoNamespaceQueueClusters } from '../../hooks/useVolcanoInstallChecks';
 import { VolcanoJob } from '../../resources/job';
+import { VolcanoNamespaceQueue } from '../../resources/namespacequeue';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
 import { getJobStatusColor, getPodGroupStatusColor } from '../../utils/status';
@@ -75,6 +77,13 @@ export default function Overview() {
   const [jobs, jobsError] = VolcanoJob.useList();
   const [queues, queuesError] = VolcanoQueue.useList();
   const [podGroups, podGroupsError] = VolcanoPodGroup.useList();
+  // Optional: only clusters that serve the NamespaceQueue CRD are queried, so a cluster without
+  // it neither fails the request nor hides the counts of another selected cluster. The card is
+  // hidden when no selected cluster serves the CRD or when the request itself fails.
+  const { servingClusters: namespaceQueueClusters } = useVolcanoNamespaceQueueClusters();
+  const [namespaceQueues, namespaceQueuesError] = VolcanoNamespaceQueue.useList({
+    clusters: namespaceQueueClusters ?? [],
+  });
 
   const isLoading =
     (jobs === null && !jobsError) ||
@@ -83,6 +92,10 @@ export default function Overview() {
 
   const jobCounts = useMemo(() => countBy((jobs || []).map(job => job.phase)), [jobs]);
   const queueCounts = useMemo(() => countBy((queues || []).map(queue => queue.state)), [queues]);
+  const namespaceQueueCounts = useMemo(
+    () => countBy((namespaceQueues || []).map(namespaceQueue => namespaceQueue.state)),
+    [namespaceQueues]
+  );
   const podGroupCounts = useMemo(
     () => countBy((podGroups || []).map(podGroup => podGroup.phase)),
     [podGroups]
@@ -159,6 +172,20 @@ export default function Overview() {
               }, closed ${queueCounts.Closed || 0}`}
             />
           </Grid>
+          {!!namespaceQueueClusters?.length && namespaceQueues && !namespaceQueuesError && (
+            <Grid item xs={12} sm={6} md={3}>
+              <SummaryCard
+                title="NamespaceQueues"
+                value={namespaceQueues.length}
+                icon="mdi:format-list-bulleted"
+                subtitle={`Open ${namespaceQueueCounts.Open || 0}, closing ${
+                  namespaceQueueCounts.Closing || 0
+                }, closed ${namespaceQueueCounts.Closed || 0}, unknown ${
+                  namespaceQueueCounts.Unknown || 0
+                }`}
+              />
+            </Grid>
+          )}
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
               title="PodGroups"
