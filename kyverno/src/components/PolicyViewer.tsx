@@ -33,8 +33,14 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { ClusterPolicyReport, PolicyReport, PolicyReportResult } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  POLICY_REPORT_SOURCE,
+  PolicyReport,
+  PolicyReportResult,
+} from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { PolicyImpactPanel } from './PolicyImpactPanel';
 
 interface PolicyViewerProps {
   name: string;
@@ -234,10 +240,85 @@ function RulesTable({ rules }: { rules: PolicyRule[] }) {
   );
 }
 
-function AssociatedReportsSection({ policyName }: { policyName: string }) {
-  const { t } = useTranslation();
+type ReportResourceRef = NonNullable<PolicyReportResult['resources']>[number];
+
+type AssociatedReportResult = PolicyReportResult & {
+  reportName: string;
+  reportNamespace?: string;
+  reportScope?: ReportResourceRef;
+};
+
+// A namespaced Policy can only ever match (and so only ever be reported on) in its own
+// namespace, never cluster-scoped resources, the same reasoning PolicyImpactPanel's split
+// documents. Split into two data-fetching wrappers, selected by the parent, instead of one
+// component calling both hooks unconditionally: React's Rules of Hooks mean a single component
+// can't conditionally skip ClusterPolicyReport.useList() for a namespaced Policy, but two
+// separately-mounted components can each call only the hook their own case actually needs. The
+// namespace-only RBAC fixture this plugin ships (test-files/policy-impact/error-scenarios/06-)
+// is denied the unscoped ClusterPolicyReport list outright, and was previously denied the
+// unscoped PolicyReport list too, so this section used to issue a forbidden request for a
+// namespaced Policy and then stay on its spinner forever once that identity's lists both landed
+// on `null` from the denial, never reaching the loading check below (see AssociatedReportsBody).
+function AssociatedReportsSection({
+  policyName,
+  policyNamespace,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+}) {
+  return policyNamespace ? (
+    <NamespacedAssociatedReports policyName={policyName} policyNamespace={policyNamespace} />
+  ) : (
+    <ClusterAssociatedReports policyName={policyName} />
+  );
+}
+
+function NamespacedAssociatedReports({
+  policyName,
+  policyNamespace,
+}: {
+  policyName: string;
+  policyNamespace: string;
+}) {
+  const { items: policyReports } = PolicyReport.useList({ namespace: policyNamespace });
+  return (
+    <AssociatedReportsBody
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      policyReports={policyReports}
+      // Never fetched for a namespaced Policy, not merely loading: ClusterPolicyReport only ever
+      // holds results for cluster-scoped resources, a namespaced Policy can't match any, so an
+      // empty list here is the real, complete answer, not a placeholder waiting on a request.
+      clusterPolicyReports={[]}
+    />
+  );
+}
+
+function ClusterAssociatedReports({ policyName }: { policyName: string }) {
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  return (
+    <AssociatedReportsBody
+      policyName={policyName}
+      policyNamespace={undefined}
+      policyReports={policyReports}
+      clusterPolicyReports={clusterPolicyReports}
+    />
+  );
+}
+
+function AssociatedReportsBody({
+  policyName,
+  policyNamespace,
+  policyReports,
+  clusterPolicyReports,
+}: {
+  policyName: string;
+  policyNamespace?: string;
+  policyReports: PolicyReport[] | null;
+  clusterPolicyReports: ClusterPolicyReport[] | null;
+}) {
+  const { t } = useTranslation();
 
   // Wait for BOTH streams before rendering — otherwise we'd briefly show a
   // partial result set as soon as the first list resolves.
@@ -251,16 +332,27 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
     );
   }
 
-  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
-    [];
+  // Kyverno encodes a namespaced policy's identity in report results as
+  // <namespace>/<name> (see bucketReportResults and policyImpact.ts),
+  // cluster policies stay unprefixed. Comparing against the bare name alone
+  // silently matched nothing for every namespaced Policy.
+  const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
+
+  const matchingResults: AssociatedReportResult[] = [];
 
   for (const report of policyReports) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      // Every Kyverno policy engine reports through the same PolicyReport
+      // CRD, so a legacy namespaced Policy and a same-named CEL policy can
+      // both produce a result with this qualifiedName. `source` is what
+      // actually disambiguates which engine produced it (see
+      // POLICY_REPORT_SOURCE in policyReport.ts).
+      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
           reportNamespace: report.jsonData.metadata.namespace,
+          reportScope: report.scope,
         });
       }
     }
@@ -268,10 +360,11 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
 
   for (const report of clusterPolicyReports) {
     for (const result of report.results) {
-      if (result.policy === policyName) {
+      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
           reportName: report.jsonData.metadata.name,
+          reportScope: report.scope,
         });
       }
     }
@@ -286,11 +379,7 @@ function AssociatedReportsSection({ policyName }: { policyName: string }) {
   );
 }
 
-function AssociatedReportsTable({
-  results,
-}: {
-  results: (PolicyReportResult & { reportName: string; reportNamespace?: string })[];
-}) {
+function AssociatedReportsTable({ results }: { results: AssociatedReportResult[] }) {
   const { i18n, ready, t } = useTranslation();
 
   // See ViolationsView/common.tsx for why headers are computed once and the
@@ -327,10 +416,23 @@ function AssociatedReportsTable({
       {
         header: resourceHeader,
         id: 'resource',
-        accessorFn: (r: PolicyReportResult) =>
-          r.resources
-            ?.map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
-            .join(', ') || '-',
+        // Background-scan reports put the resource identity on the report's
+        // `scope` rather than per-result `resources[]` (see the `ingest`
+        // comment in policyImpact.ts), so fall back to it when `resources`
+        // is empty instead of rendering '-' for an otherwise-known resource.
+        accessorFn: (r: AssociatedReportResult) => {
+          const refs =
+            r.resources && r.resources.length > 0
+              ? r.resources
+              : r.reportScope
+              ? [r.reportScope]
+              : [];
+          return (
+            refs
+              .map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
+              .join(', ') || '-'
+          );
+        },
       },
       {
         header: messageHeader,
@@ -408,7 +510,15 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
-      <AssociatedReportsSection policyName={policy.jsonData.metadata.name} />
+      <PolicyImpactPanel
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+        rules={policy.rules}
+      />
+      <AssociatedReportsSection
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+      />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );

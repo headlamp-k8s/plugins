@@ -22,9 +22,17 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 export interface MatchSelectorEntry {
   resources?: {
     kinds?: string[];
+    // Kyverno still supports this singular form alongside the plural `names` below (both are
+    // real fields on the Go ResourceDescription type, confirmed against
+    // api/kyverno/v1/match_resources_types.go), a single exact name instead of a pattern list.
+    name?: string;
     names?: string[];
     namespaces?: string[];
     operations?: string[];
+    // A resource-level annotation restriction, confirmed on the real ResourceDescription type
+    // alongside kinds/names/namespaces above, not to be confused with `selector` (a label
+    // selector) below.
+    annotations?: Record<string, string>;
     selector?: Record<string, unknown>;
     namespaceSelector?: Record<string, unknown>;
   };

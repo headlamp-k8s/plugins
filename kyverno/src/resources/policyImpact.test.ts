@@ -977,6 +977,181 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).not.toContain('namespaces [team-*, *-prod]');
   });
 
+  test('includes resource-name constraints in the explanation, found via Copilot review', () => {
+    // Omitting a selector's names [] understated the policy's actual scope: a selector
+    // restricted to kinds ['Pod'], namespaces ['prod'], names ['database-*'] used to be
+    // described as covering every Pod in prod, not just the ones matching that name pattern.
+    const namedResourceRules: PolicyRule[] = [
+      {
+        name: 'database-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], namespaces: ['prod'], names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(namedResourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('namespaces [prod]');
+    expect(reasons[0]).toContain('names [database-*]');
+  });
+
+  test('includes the singular resources.name selector in the explanation, found via Copilot review', () => {
+    // Kyverno supports this singular exact-name form (one name) alongside the plural `names`
+    // (a pattern list) on the same ResourceDescription. Reading only `names` described a rule with
+    // kinds: ['Pod'], name: 'database-primary' as matching every Pod, omitting its name
+    // restriction entirely.
+    const singularNameRules: PolicyRule[] = [
+      {
+        name: 'database-primary-pod',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary' } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(singularNameRules, 'Pod');
+
+    expect(reasons[0]).toContain('names [database-primary]');
+  });
+
+  test('combines the singular resources.name with the plural names when both are set, found via Copilot review', () => {
+    const bothNameFormsRules: PolicyRule[] = [
+      {
+        name: 'mixed-name-selector',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary', names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(bothNameFormsRules, 'Pod');
+
+    expect(reasons[0]).toContain('names [database-primary, database-*]');
+  });
+
+  test('includes resource annotation constraints in the explanation, found via Copilot review', () => {
+    // resources.annotations is a real match restriction on Kyverno's ResourceDescription, distinct
+    // from `selector` (a label selector). Omitting it described a selector restricted to
+    // kinds: ['Pod'], annotations: { team: 'platform' } as matching every Pod.
+    const annotatedResourceRules: PolicyRule[] = [
+      {
+        name: 'platform-team-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], annotations: { team: 'platform' } } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(annotatedResourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('annotations [team=platform]');
+  });
+
+  test('includes admission operations constraint in the explanation, found via Copilot review', () => {
+    // resources.operations restricts which request verbs the rule fires for. Omitting it made a
+    // CREATE-only rule appear to apply to every operation.
+    const operationsRules: PolicyRule[] = [
+      {
+        name: 'block-pod-create',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], operations: ['CREATE'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(operationsRules, 'Pod');
+
+    expect(reasons[0]).toContain('operations [CREATE]');
+  });
+
+  test('includes subjects constraint in the explanation, found via Copilot review', () => {
+    // A match.all combining a Pod kind selector with subjects: [{kind: User, name: alice}] only
+    // fires when alice makes the request, not for any Pod operation. Omitting subjects made the
+    // rule appear unrestricted by user and overstated its scope.
+    const subjectsRules: PolicyRule[] = [
+      {
+        name: 'alice-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'User', name: 'alice' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(subjectsRules, 'Pod');
+
+    expect(reasons[0]).toContain('subjects [alice (User)]');
+  });
+
+  test('distinguishes same-named ServiceAccounts across namespaces, found via Copilot review', () => {
+    // Two ServiceAccounts sharing the name "deployer" in different namespaces are distinct
+    // admission identities. Without the namespace prefix both render as "deployer (ServiceAccount)",
+    // making them indistinguishable and hiding the real scope of the match restriction.
+    const crossNamespaceSARules: PolicyRule[] = [
+      {
+        name: 'sa-pods',
+        match: {
+          any: [
+            {
+              resources: { kinds: ['Pod'] },
+              subjects: [
+                { kind: 'ServiceAccount', name: 'deployer', namespace: 'team-a' },
+                { kind: 'ServiceAccount', name: 'deployer', namespace: 'team-b' },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(crossNamespaceSARules, 'Pod');
+
+    expect(reasons[0]).toContain('team-a/deployer (ServiceAccount)');
+    expect(reasons[0]).toContain('team-b/deployer (ServiceAccount)');
+    expect(reasons[0]).not.toMatch(/^[^/]*deployer \(ServiceAccount\)/);
+  });
+
+  test('does not emit "undefined" for a subject that has a kind but no name, found via Copilot review', () => {
+    // MatchSelectorEntry types name as optional (name?: string), so a subject entry with only a
+    // kind (e.g., matching any ServiceAccount) is valid input. A naive `${s.name} (${s.kind})`
+    // template literal coerces the undefined name to the four-character string "undefined".
+    const kindOnlySubjectRules: PolicyRule[] = [
+      {
+        name: 'any-sa-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'ServiceAccount' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(kindOnlySubjectRules, 'Pod');
+
+    expect(reasons[0]).not.toContain('undefined');
+    expect(reasons[0]).toContain('(ServiceAccount)');
+  });
+
+  test('includes roles and clusterRoles constraints in the explanation, found via Copilot review', () => {
+    const roleRules: PolicyRule[] = [
+      {
+        name: 'role-bound-pods',
+        match: {
+          any: [
+            {
+              resources: { kinds: ['Pod'] },
+              roles: ['pod-editor'],
+              clusterRoles: ['cluster-admin'],
+            },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(roleRules, 'Pod');
+
+    expect(reasons[0]).toContain('roles [pod-editor]');
+    expect(reasons[0]).toContain('cluster roles [cluster-admin]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor
@@ -1039,6 +1214,21 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
 
     expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('does not mistake a group name starting with alpha/beta for a version segment, found via Copilot review', () => {
+    // Kyverno's own versionRegex (pkg/utils/kube/kind.go) requires at least one digit after
+    // "alpha"/"beta", so a 3-segment pattern whose first segment is the API group "v1alpha" (no
+    // trailing digit, not a real version) is "group/version/kind", not "version/kind/subresource".
+    // Allowing zero digits would misread "v1alpha" as a version and return segments[1] ("v1")
+    // as the kind instead of the real kind in segments[2] ("Widget").
+    const groupQualifiedRules: PolicyRule[] = [
+      { name: 'check-widgets', match: { any: [{ resources: { kinds: ['v1alpha/v1/Widget'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(groupQualifiedRules, 'Widget');
+
+    expect(reasons[0]).toContain('Rule "check-widgets" matches kind "Widget"');
   });
 
   test('recognizes a version-qualified kind pattern as a match, found via Copilot review', () => {
@@ -1213,6 +1403,28 @@ describe('describeMatchReasons', () => {
 
     expect(reasons).toHaveLength(2);
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
+  });
+
+  test('does not freeze on a pathological run of wildcards against a non-matching kind, found via Copilot review', () => {
+    // Converting every "*" to ".*" and handing the result to a regex engine lets a pattern like
+    // this one trigger combinatorial backtracking on a non-match: the engine tries every way of
+    // partitioning the input across the repeated ".*" groups before giving up. A linear matcher
+    // settles this in well under a second regardless of how many "*" characters the pattern has.
+    const pathologicalRules: PolicyRule[] = [
+      {
+        name: 'check-pod-like',
+        match: { any: [{ resources: { kinds: [`${'*'.repeat(5000)}Pod`] } }] },
+      },
+    ];
+
+    const start = Date.now();
+    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler');
+    const elapsedMs = Date.now() - start;
+
+    expect(elapsedMs).toBeLessThan(1000);
+    expect(reasons[0]).toContain(
+      'No rule in this policy explicitly lists kind "HorizontalPodAutoscaler"'
+    );
   });
 
   test('recognizes a kind pattern with a wildcard version segment Kyverno accepts positionally ("apps/v*/Deployment"), found via Copilot review', () => {
