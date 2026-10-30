@@ -175,5 +175,19 @@
   "By Kind": "By Kind",
   "No violations found.": "No violations found.",
   "a label selector": "a label selector",
-  "a namespace label selector": "a namespace label selector"
+  "a namespace label selector": "a namespace label selector",
+  "and": "and",
+  "kind \"{{kind}}\"": "kind \"{{kind}}\"",
+  "namespaces [{{namespaces}}]": "namespaces [{{namespaces}}]",
+  "namespaces matching all of {{groups}}": "namespaces matching all of {{groups}}",
+  "names [{{names}}]": "names [{{names}}]",
+  "annotations [{{annotations}}]": "annotations [{{annotations}}]",
+  "operations [{{operations}}]": "operations [{{operations}}]",
+  "subjects [{{subjects}}]": "subjects [{{subjects}}]",
+  "roles [{{roles}}]": "roles [{{roles}}]",
+  "cluster roles [{{clusterRoles}}]": "cluster roles [{{clusterRoles}}]",
+  "Rule \"{{rule}}\" matches {{constraints}}.": "Rule \"{{rule}}\" matches {{constraints}}.",
+  "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.": "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.",
+  "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.": "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.",
+  "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.": "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan."
 }

@@ -1083,6 +1083,34 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).toContain('subjects [alice (User)]');
   });
 
+  test('distinguishes same-named ServiceAccounts across namespaces, found via Copilot review', () => {
+    // Two ServiceAccounts sharing the name "deployer" in different namespaces are distinct
+    // admission identities. Without the namespace prefix both render as "deployer (ServiceAccount)",
+    // making them indistinguishable and hiding the real scope of the match restriction.
+    const crossNamespaceSARules: PolicyRule[] = [
+      {
+        name: 'sa-pods',
+        match: {
+          any: [
+            {
+              resources: { kinds: ['Pod'] },
+              subjects: [
+                { kind: 'ServiceAccount', name: 'deployer', namespace: 'team-a' },
+                { kind: 'ServiceAccount', name: 'deployer', namespace: 'team-b' },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(crossNamespaceSARules, 'Pod');
+
+    expect(reasons[0]).toContain('team-a/deployer (ServiceAccount)');
+    expect(reasons[0]).toContain('team-b/deployer (ServiceAccount)');
+    expect(reasons[0]).not.toMatch(/^[^/]*deployer \(ServiceAccount\)/);
+  });
+
   test('does not emit "undefined" for a subject that has a kind but no name, found via Copilot review', () => {
     // MatchSelectorEntry types name as optional (name?: string), so a subject entry with only a
     // kind (e.g., matching any ServiceAccount) is valid input. A naive `${s.name} (${s.kind})`

@@ -15,6 +15,20 @@
  */
 
 import { MatchSelectorEntry, PolicyRule } from './kyvernoPolicy';
+
+// Minimal translator shape: accepts a static key and optional interpolation
+// variables, returns the translated (or fallback English) string. Matches the
+// t() function shape from i18next / useTranslation() without importing from it.
+type Translator = (key: string, opts?: Record<string, unknown>) => string;
+
+// Default translator used when no real i18n instance is available (server-side
+// rendering, tests, or callers that haven't threaded t() through yet). Performs
+// the same {{variable}} interpolation that i18next does at runtime so the
+// output is always a complete English sentence rather than an unprocessed key.
+const identityTranslator: Translator = (key, opts) => {
+  if (!opts) return key;
+  return key.replace(/\{\{(\w+)\}\}/g, (_, k) => String(opts[k] ?? ''));
+};
 import {
   ClusterPolicyReport,
   PolicyReport,
@@ -380,8 +394,12 @@ function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boole
   return kinds.some(pattern => kindPatternMatches(normalizeKindPattern(pattern), kind));
 }
 
-function describeConstraints(selectors: MatchSelectorEntry[], kind: string): string {
-  const parts = [`kind "${kind}"`];
+function describeConstraints(
+  selectors: MatchSelectorEntry[],
+  kind: string,
+  t: Translator = identityTranslator
+): string {
+  const parts = [t('kind "{{kind}}"', { kind })];
   // More than one selector here only ever means a match.all/exclude.all block (every entry
   // already confirmed to hold at once by the caller), so each entry's own namespaces list is a
   // separate AND-ed constraint, not an alternative. Flattening them into one bracketed list the
@@ -393,10 +411,12 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     .map(s => s.resources?.namespaces)
     .filter((ns): ns is string[] => !!ns && ns.length > 0);
   if (namespaceGroups.length === 1) {
-    parts.push(`namespaces [${namespaceGroups[0].join(', ')}]`);
+    parts.push(t('namespaces [{{namespaces}}]', { namespaces: namespaceGroups[0].join(', ') }));
   } else if (namespaceGroups.length > 1) {
     parts.push(
-      `namespaces matching all of ${namespaceGroups.map(ns => `[${ns.join(', ')}]`).join(' and ')}`
+      t('namespaces matching all of {{groups}}', {
+        groups: namespaceGroups.map(ns => `[${ns.join(', ')}]`).join(` ${t('and')} `),
+      })
     );
   }
   for (const selector of selectors) {
@@ -409,7 +429,7 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     const names = selector.resources?.names || [];
     const allNames = selector.resources?.name ? [selector.resources.name, ...names] : names;
     if (allNames.length > 0) {
-      parts.push(`names [${allNames.join(', ')}]`);
+      parts.push(t('names [{{names}}]', { names: allNames.join(', ') }));
     }
     // resources.annotations is a real match restriction on Kyverno's ResourceDescription,
     // distinct from `selector` (a label selector on metadata.labels) below. Omitting it
@@ -418,7 +438,9 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     const annotations = Object.entries(selector.resources?.annotations || {});
     if (annotations.length > 0) {
       parts.push(
-        `annotations [${annotations.map(([key, value]) => `${key}=${value}`).join(', ')}]`
+        t('annotations [{{annotations}}]', {
+          annotations: annotations.map(([key, value]) => `${key}=${value}`).join(', '),
+        })
       );
     }
     // resources.operations is an admission-only constraint on which request verbs (CREATE, UPDATE,
@@ -426,7 +448,7 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     // as if it applied to every operation, overstating scope for read-heavy workloads.
     const operations = selector.resources?.operations || [];
     if (operations.length > 0) {
-      parts.push(`operations [${operations.join(', ')}]`);
+      parts.push(t('operations [{{operations}}]', { operations: operations.join(', ') }));
     }
     // subjects, roles, and clusterRoles are admission-request constraints that restrict which
     // user, group, or service account (subjects), or which bound role (roles/clusterRoles), has
@@ -436,37 +458,55 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     // user and overstated its scope.
     const subjects = selector.subjects || [];
     if (subjects.length > 0) {
-      const subjectLabels = subjects.map(s =>
-        s.kind ? `${s.name ?? ''} (${s.kind})`.trim() : s.name ?? ''
-      );
-      parts.push(`subjects [${subjectLabels.join(', ')}]`);
+      const subjectLabels = subjects.map(s => {
+        // ServiceAccount subjects carry a namespace that makes them unique across the cluster:
+        // two accounts named "deployer" in "team-a" and "team-b" are distinct identities.
+        // Without the namespace, both render as "deployer (ServiceAccount)", hiding the scope
+        // restriction the policy author wrote. For all other subject kinds the namespace is not
+        // part of the identity visible in admission requests (User and Group are cluster-scoped),
+        // so only ServiceAccount gets the "namespace/name" format here.
+        const name =
+          s.kind === 'ServiceAccount' && s.namespace
+            ? `${s.namespace}/${s.name ?? ''}`
+            : s.name ?? '';
+        return s.kind ? `${name} (${s.kind})`.trim() : name;
+      });
+      parts.push(t('subjects [{{subjects}}]', { subjects: subjectLabels.join(', ') }));
     }
     const rawRoles = selector.roles;
     const roles = Array.isArray(rawRoles) ? (rawRoles as string[]) : [];
     if (roles.length > 0) {
-      parts.push(`roles [${roles.join(', ')}]`);
+      parts.push(t('roles [{{roles}}]', { roles: roles.join(', ') }));
     }
     const rawClusterRoles = selector.clusterRoles;
     const clusterRoles = Array.isArray(rawClusterRoles) ? (rawClusterRoles as string[]) : [];
     if (clusterRoles.length > 0) {
-      parts.push(`cluster roles [${clusterRoles.join(', ')}]`);
+      parts.push(t('cluster roles [{{clusterRoles}}]', { clusterRoles: clusterRoles.join(', ') }));
     }
   }
   if (selectors.some(s => s.resources?.selector)) {
-    parts.push('a label selector');
+    parts.push(t('a label selector'));
   }
   if (selectors.some(s => s.resources?.namespaceSelector)) {
-    parts.push('a namespace label selector');
+    parts.push(t('a namespace label selector'));
   }
-  return parts.join(' and ');
+  return parts.join(` ${t('and')} `);
 }
 
 /**
  * Explains, in plain language, which rule and selector caused a policy to
  * consider a given resource kind. Read directly from the policy spec so the
  * explanation stays accurate even for policies with several rules.
+ *
+ * Pass the `t` function from `useTranslation()` so the match-explanation
+ * sentences can be localized. Omitting it falls back to a plain English
+ * identity translator so existing callers and tests are not broken.
  */
-export function describeMatchReasons(rules: PolicyRule[], kind: string): string[] {
+export function describeMatchReasons(
+  rules: PolicyRule[],
+  kind: string,
+  t: Translator = identityTranslator
+): string[] {
   // An empty or missing rules array is also how a policy type this function
   // was not written for (a CEL ValidatingPolicy has no rules[] at all, only
   // validations[]) reaches here, that is not the same as "rules exist but
@@ -474,7 +514,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
   // implying provenance this function has no basis to claim.
   if (!rules || rules.length === 0) {
     return [
-      `This policy's rules could not be read in a format this explanation understands; provenance for kind "${kind}" is unknown.`,
+      t(
+        'This policy\'s rules could not be read in a format this explanation understands; provenance for kind "{{kind}}" is unknown.',
+        { kind }
+      ),
     ];
   }
 
@@ -493,7 +536,12 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
       : rule.match?.any || [];
     for (const selector of anySelectors) {
       if (!selectorMentionsKind(selector, kind)) continue;
-      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints([selector], kind)}.`);
+      ruleReasons.push(
+        t('Rule "{{rule}}" matches {{constraints}}.', {
+          rule: rule.name,
+          constraints: describeConstraints([selector], kind, t),
+        })
+      );
     }
 
     // match.all is AND, every entry has to hold at once, so the kind check
@@ -504,7 +552,12 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
     // something no single resource could ever satisfy.
     const allSelectors = rule.match?.all || [];
     if (allSelectors.length > 0 && allSelectors.every(s => selectorMentionsKind(s, kind))) {
-      ruleReasons.push(`Rule "${rule.name}" matches ${describeConstraints(allSelectors, kind)}.`);
+      ruleReasons.push(
+        t('Rule "{{rule}}" matches {{constraints}}.', {
+          rule: rule.name,
+          constraints: describeConstraints(allSelectors, kind, t),
+        })
+      );
     }
 
     // exclude overrides a positive match at runtime for a resource it also
@@ -528,7 +581,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
         excludeDirect.some(s => selectorMentionsKind(s, kind));
       if (excludeMentionsKind) {
         ruleReasons.push(
-          `Rule "${rule.name}" also has an exclude block covering kind "${kind}"; a specific resource matching it would not actually be affected by this rule.`
+          t(
+            'Rule "{{rule}}" also has an exclude block covering kind "{{kind}}"; a specific resource matching it would not actually be affected by this rule.',
+            { rule: rule.name, kind }
+          )
         );
       }
     }
@@ -538,7 +594,10 @@ export function describeMatchReasons(rules: PolicyRule[], kind: string): string[
 
   if (reasons.length > 0) return reasons;
   return [
-    `No rule in this policy explicitly lists kind "${kind}" in its match block; it was likely reached through a generated rule or a background scan.`,
+    t(
+      'No rule in this policy explicitly lists kind "{{kind}}" in its match block; it was likely reached through a generated rule or a background scan.',
+      { kind }
+    ),
   ];
 }
 
