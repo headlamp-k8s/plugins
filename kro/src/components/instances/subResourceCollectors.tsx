@@ -1,7 +1,7 @@
 import { ResourceClasses } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import CustomResourceDefinition from '@kinvolk/headlamp-plugin/lib/k8s/crd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   instanceSubResourceSelector,
   KroInstance,
@@ -10,6 +10,10 @@ import {
 import { InstanceApiInfo, instanceApiInfoFromCrdSpec } from '../../resources/instanceApi';
 import { ResourceGraphDefinition } from '../../resources/resourceGraphDefinition';
 import { getComposedResources } from '../../resources/rgdGraph';
+import { SubResourceListError } from './useCollectedSubResources';
+
+export { useCollectedSubResources } from './useCollectedSubResources';
+export type { SubResourceListError } from './useCollectedSubResources';
 
 /** One apiVersion/kind from an RGD's templates to watch for sub-resources. */
 export interface KindToWatch {
@@ -19,14 +23,6 @@ export interface KindToWatch {
   apiVersion: string;
   /** The resource kind. */
   kind: string;
-}
-
-/** An error reported while listing one watched kind. */
-export interface SubResourceListError {
-  /** The kind whose list/watch failed. */
-  kind: string;
-  /** The server's error message (e.g. an RBAC denial). */
-  message: string;
 }
 
 /**
@@ -171,55 +167,6 @@ function KindCollectorList(props: {
 }
 
 /**
- * State holder for items collected per kind. Updates are deduplicated
- * with uid/resourceVersion signatures captured as strings at report
- * time — comparing live object references would miss watch events that
- * mutate objects in place — and each accepted update stores a fresh
- * array so downstream memos recompute. List errors (e.g. RBAC denials)
- * are collected per kind so sections can degrade with the server's
- * message instead of showing an empty state.
- *
- * @returns `items` (all collected resources), `errors` (one per failing
- *   kind), and the `onItems` callback to hand to
- *   {@link SubResourceCollectors}.
- */
-export function useCollectedSubResources() {
-  const [itemsByKind, setItemsByKind] = useState<Record<string, KubeObject<any>[]>>({});
-  const [errorsByKind, setErrorsByKind] = useState<Record<string, SubResourceListError>>({});
-  const signaturesByKind = useRef<Record<string, string>>({});
-
-  const onItems = useCallback(
-    (key: string, items: KubeObject<any>[], error: SubResourceListError | null) => {
-      const signature =
-        items.map(item => `${item.metadata.uid}:${item.metadata.resourceVersion}`).join('|') +
-        `|error:${error?.message ?? ''}`;
-      if (signaturesByKind.current[key] === signature) {
-        return;
-      }
-      signaturesByKind.current[key] = signature;
-      setItemsByKind(previous => ({ ...previous, [key]: [...items] }));
-      setErrorsByKind(previous => {
-        if (error) {
-          return { ...previous, [key]: error };
-        }
-        if (!(key in previous)) {
-          return previous;
-        }
-        const next = { ...previous };
-        delete next[key];
-        return next;
-      });
-    },
-    []
-  );
-
-  const items = useMemo(() => Object.values(itemsByKind).flat(), [itemsByKind]);
-  const errors = useMemo(() => Object.values(errorsByKind), [errorsByKind]);
-
-  return { items, errors, onItems };
-}
-
-/**
  * Invisible watchers for every kind in the RGD's templates, matching the
  * resources kro created for this instance.
  *
@@ -242,6 +189,20 @@ export function SubResourceCollectors(props: {
     [rgd, rgd.metadata.uid, rgd.metadata.resourceVersion]
   );
   const labelSelector = instanceSubResourceSelector(instance);
+
+  // A kind that leaves the templates unmounts its collector, which then
+  // never reports again; clear its entry so the last items it reported
+  // are not retained indefinitely.
+  const previousKeys = useRef<string[]>([]);
+  useEffect(() => {
+    const currentKeys = new Set(kindsToWatch.map(kindToWatch => kindToWatch.key));
+    for (const key of previousKeys.current) {
+      if (!currentKeys.has(key)) {
+        onItems(key, [], null);
+      }
+    }
+    previousKeys.current = [...currentKeys];
+  }, [kindsToWatch, onItems]);
 
   // The CRD list backs plural/scope resolution for any non-built-in
   // kinds appearing in templates.
