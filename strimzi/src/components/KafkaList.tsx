@@ -13,11 +13,11 @@ import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 
 export function KafkaList() {
   const { ready, installed } = useStrimziApiVersions();
-
-  if (ready && !installed) return <StrimziNotInstalledMessage />;
-
   const [selectedKafka, setSelectedKafka] = React.useState<KafkaInterface | null>(null);
   const [isTopologyModalOpen, setIsTopologyModalOpen] = React.useState(false);
+
+  // Keep this after the hooks, so the same hooks run before and after the API check finishes.
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   const columns: (ColumnType | ResourceTableColumn<Kafka>)[] = [
     'name',
