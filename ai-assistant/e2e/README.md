@@ -8,6 +8,12 @@ The scenarios cover:
 - changing and persisting preview, Kubernetes tool, and Holmes service settings;
 - adding and removing the built-in mock testing model;
 - chatting with the fixture-backed model;
+- keeping one registered Headlamp event callback across real pod navigation and
+  assistant rerenders, and keeping pod/deployment suggestion drafts bound to the
+  current resource after navigation and panel reopening. A test-only SDK app-bar
+  probe reads the real host callback registry because production React omits
+  development warnings; it does not replace event registration or delivery.
+  These scenarios send no model requests and make no Kubernetes writes.
 - troubleshooting a pod with the scripted agent;
 - exploring cluster workloads with the scripted agent.
 - background diagnosis scrolling and compact results at desktop and small-window
@@ -50,6 +56,7 @@ To run a focused scenario with the same build and cluster setup, pass Playwright
 
 ```sh
 npm run e2e -- proactive-diagnosis.spec.ts --grep "chat starts during an event read"
+npm run e2e -- event-registration.spec.ts
 ```
 
 The cross-platform TypeScript runner builds the plugin and Headlamp image, creates both KWOK clusters, runs Headlamp and Chromium, and deletes the clusters afterward. Set `KEEP_E2E_CLUSTER=true` to retain them for debugging. Each run writes local, untracked screenshots to `e2e/screenshots`. Pass Playwright arguments after `--` for a focused run, for example `npm run e2e -- editor-cluster.spec.ts`.
