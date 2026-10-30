@@ -22,8 +22,10 @@ import {
   VolcanoCommand,
   VolcanoQueueCommandAction,
 } from '../../resources/command';
+import { VolcanoNamespaceQueue } from '../../resources/namespacequeue';
 import { VolcanoPodGroup } from '../../resources/podgroup';
 import { VolcanoQueue } from '../../resources/queue';
+import { getChildNamespaceQueues } from '../../utils/namespaceQueueRelationships';
 import { getQueueStatusColor } from '../../utils/status';
 import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { getQueuePodGroupStats, type QueuePodGroupStats } from './stats';
@@ -455,6 +457,67 @@ function getChildQueuesSection(queue: VolcanoQueue, queues: VolcanoQueue[] | nul
 }
 
 /**
+ * Builds the child NamespaceQueues section for a Queue.
+ *
+ * @param queue Queue shown in the details page.
+ * @param namespaceQueues All known NamespaceQueues, or `null` when unavailable.
+ * @returns Section descriptor or `null` when no NamespaceQueue uses this Queue as parent.
+ */
+function getChildNamespaceQueuesSection(
+  queue: VolcanoQueue,
+  namespaceQueues: VolcanoNamespaceQueue[] | null
+) {
+  const childNamespaceQueues = getChildNamespaceQueues(queue.getName(), namespaceQueues);
+
+  if (!childNamespaceQueues.length) {
+    return null;
+  }
+
+  return {
+    id: 'child-namespace-queues',
+    section: (
+      <SectionBox title="Child NamespaceQueues">
+        <SimpleTable
+          data={childNamespaceQueues}
+          columns={[
+            {
+              label: 'Name',
+              getter: (child: VolcanoNamespaceQueue) => (
+                <Link
+                  routeName={volcanoRouteNames.namespaceQueueDetail}
+                  params={{ namespace: child.getNamespace(), name: child.getName() }}
+                >
+                  {child.getName()}
+                </Link>
+              ),
+              sort: (child: VolcanoNamespaceQueue) => child.getName(),
+            },
+            {
+              label: 'Namespace',
+              getter: (child: VolcanoNamespaceQueue) => child.getNamespace(),
+              sort: (child: VolcanoNamespaceQueue) => child.getNamespace(),
+            },
+            {
+              label: 'State',
+              getter: (child: VolcanoNamespaceQueue) => (
+                <StatusLabel status={getQueueStatusColor(child.state)}>{child.state}</StatusLabel>
+              ),
+              sort: (child: VolcanoNamespaceQueue) => child.state,
+            },
+            {
+              label: 'Priority',
+              getter: (child: VolcanoNamespaceQueue) => child.priority,
+              sort: (child: VolcanoNamespaceQueue) => child.priority,
+            },
+          ]}
+          showPagination={false}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
+/**
  * Renders the Volcano Queue details page.
  *
  * @returns Queue details view with extra sections and events.
@@ -463,6 +526,8 @@ export default function QueueDetail(props: { name?: string; cluster?: string }) 
   const params = useParams<{ name: string }>();
   const { name = params.name, cluster } = props;
   const [queues] = VolcanoQueue.useList({ cluster });
+  // Stays null when the NamespaceQueue CRD is not installed, which hides the section.
+  const [namespaceQueues] = VolcanoNamespaceQueue.useList({ cluster });
   const [podGroups] = VolcanoPodGroup.useList({ cluster });
   const queuePodGroupStats = useMemo(() => getQueuePodGroupStats(podGroups), [podGroups]);
 
@@ -505,6 +570,7 @@ export default function QueueDetail(props: { name?: string; cluster?: string }) 
           getDeservedGuaranteeSection(queue),
           getReservationSection(queue),
           getChildQueuesSection(queue, queues),
+          getChildNamespaceQueuesSection(queue, namespaceQueues),
         ].filter(Boolean)
       }
     />

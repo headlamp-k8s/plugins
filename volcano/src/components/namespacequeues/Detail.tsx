@@ -11,6 +11,7 @@ import { getResourceNames } from '../../utils/namespaceQueue';
 import { getQueueStatusColor } from '../../utils/status';
 import { VolcanoNamespaceQueueInstallCheck } from '../common/CommonComponents';
 import { formatKeyValueMap } from '../jobs/detailRows';
+import NamespaceQueueParentLink from './ParentLink';
 
 /**
  * Builds the PodGroup counters section for a NamespaceQueue.
@@ -204,7 +205,10 @@ export default function NamespaceQueueDetail(props: {
                 </StatusLabel>
               ),
             },
-            { name: 'Parent', value: namespaceQueue.spec.parent || '-' },
+            {
+              name: 'Parent',
+              value: <NamespaceQueueParentLink namespaceQueue={namespaceQueue} />,
+            },
             { name: 'Capability', value: formatKeyValueMap(namespaceQueue.spec.capability) },
             { name: 'Deserved', value: formatKeyValueMap(namespaceQueue.deservedResources) },
             { name: 'Guarantee', value: formatKeyValueMap(namespaceQueue.guaranteedResources) },
