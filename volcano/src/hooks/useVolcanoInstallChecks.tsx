@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   isVolcanoCoreInstalled as checkVolcanoCoreInstallation,
   isVolcanoFlowInstalled as checkVolcanoFlowInstallation,
+  isVolcanoNamespaceQueueInstalled as checkVolcanoNamespaceQueueInstallation,
 } from '../volcanoInstallChecks';
 
 export function useVolcanoCoreInstalled() {
@@ -35,5 +36,24 @@ export function useVolcanoFlowInstalled() {
   return {
     isVolcanoFlowInstalled,
     isVolcanoFlowCheckLoading: isVolcanoFlowInstalled === null,
+  };
+}
+
+export function useVolcanoNamespaceQueueInstalled() {
+  const [isVolcanoNamespaceQueueInstalled, setIsVolcanoNamespaceQueueInstalled] = useState<
+    boolean | null
+  >(null);
+
+  useEffect(() => {
+    async function checkVolcanoNamespaceQueueInstalled() {
+      const isInstalled = await checkVolcanoNamespaceQueueInstallation();
+      setIsVolcanoNamespaceQueueInstalled(!!isInstalled);
+    }
+    checkVolcanoNamespaceQueueInstalled();
+  }, []);
+
+  return {
+    isVolcanoNamespaceQueueInstalled,
+    isVolcanoNamespaceQueueCheckLoading: isVolcanoNamespaceQueueInstalled === null,
   };
 }
