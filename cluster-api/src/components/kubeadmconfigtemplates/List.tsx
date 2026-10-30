@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   Loader,
@@ -12,16 +13,17 @@ interface KCTListWithDataProps {
   KCTClass: typeof KubeadmConfigTemplate;
 }
 export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Kubeadm Config Templates"
+      title={t('Kubeadm Config Templates')}
       resourceClass={KCTClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: (item: KubeadmConfigTemplate) =>
             item.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] ?? '-',
           render: (item: KubeadmConfigTemplate) => {
@@ -37,7 +39,7 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
         },
         {
           id: 'clusterclass',
-          label: 'Cluster Class',
+          label: t('Cluster Class'),
           getValue: (item: KubeadmConfigTemplate) => {
             const cc = item.metadata?.ownerReferences?.find(ref => ref.kind === 'ClusterClass');
             return cc?.name ?? '—';
@@ -60,13 +62,13 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
 
         {
           id: 'format',
-          label: 'Format',
+          label: t('Format'),
           getValue: (item: KubeadmConfigTemplate) => item.configSpec?.format ?? '—',
         },
 
         {
           id: 'status',
-          label: 'Status',
+          label: t('Status'),
           getValue: (item: KubeadmConfigTemplate) => {
             const failure = getKCTFailure(item.jsonData);
             return failure?.failureReason ? 0 : 1;
@@ -78,7 +80,7 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
               return <StatusLabel status="error">{failure.failureReason}</StatusLabel>;
             }
 
-            return <StatusLabel status="success">OK</StatusLabel>;
+            return <StatusLabel status="success">{t('OK')}</StatusLabel>;
           },
         },
 
@@ -88,11 +90,12 @@ export function KCTListWithData({ KCTClass }: KCTListWithDataProps) {
   );
 }
 export function KubeadmConfigTemplatesList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(KubeadmConfigTemplate.crdName, 'v1beta1');
   const VersionedKCT = useMemo(
     () => (version ? KubeadmConfigTemplate.withApiVersion(version) : KubeadmConfigTemplate),
     [version]
   );
-  if (!version) return <Loader title="Detecting Cluster API version" />;
+  if (!version) return <Loader title={t('Detecting Cluster API version')} />;
   return <KCTListWithData KCTClass={VersionedKCT} />;
 }
