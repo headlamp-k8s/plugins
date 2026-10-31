@@ -104,12 +104,13 @@ export default function Chart(props: ChartProps) {
       setError(null);
     }
 
+    // One time range per fetch so every plot shares the same sample timestamps
+    // and the merge below lines up their points instead of leaving gaps.
+    const currentTimeRange = getTimeRangeAndStepSize(props.interval, props.resolution);
+
     for (const plot of plots) {
       var response;
       try {
-        // recalculate time range for each fetch to ensure we get current data
-        const currentTimeRange = getTimeRangeAndStepSize(props.interval, props.resolution);
-
         response = await fetchMetrics({
           prefix: props.prometheusPrefix,
           query: plot.query,
