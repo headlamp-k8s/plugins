@@ -1656,6 +1656,25 @@ describe('describeCELMatchReasons', () => {
     expect(reasons[0]).toContain('versions [v1]');
     expect(reasons[0]).toContain('operations [CREATE, UPDATE]');
   });
+
+  test('appends namespaceSelector, labelSelector, and matchConditions when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          namespaceSelector: { matchLabels: { env: 'prod' } },
+          labelSelector: { matchLabels: { app: 'web' } },
+          matchConditions: [
+            { name: 'only-on-create', expression: 'request.operation == "CREATE"' },
+          ],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('namespaceSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('labelSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('"only-on-create"'))).toBe(true);
+  });
 });
 
 describe('suggestCELFix', () => {

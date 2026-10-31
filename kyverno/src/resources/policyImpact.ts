@@ -656,7 +656,7 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
   // matched when the report proves otherwise.
   const rulesToDescribe = matchingRules.length > 0 ? matchingRules : rules;
 
-  return rulesToDescribe.map(r => {
+  const reasons = rulesToDescribe.map(r => {
     const parts: string[] = [];
     if (r.resources && r.resources.length > 0) {
       parts.push(`resources [${r.resources.join(', ')}]`);
@@ -673,6 +673,26 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
     const desc = parts.length > 0 ? parts.join(' and ') : 'all resources';
     return `matchConstraints.resourceRules targets ${desc}.`;
   });
+
+  // Append any additional constraints that further narrow the policy scope.
+  if (mc.namespaceSelector && Object.keys(mc.namespaceSelector).length > 0) {
+    reasons.push(
+      `matchConstraints.namespaceSelector further restricts which namespaces this policy applies to.`
+    );
+  }
+  if (mc.labelSelector && Object.keys(mc.labelSelector).length > 0) {
+    reasons.push(
+      `matchConstraints.labelSelector further restricts which resources this policy applies to by label.`
+    );
+  }
+  if (mc.matchConditions && mc.matchConditions.length > 0) {
+    const names = mc.matchConditions.map(c => `"${c.name}"`).join(', ');
+    reasons.push(
+      `matchConstraints.matchConditions [${names}] further restrict when this policy applies.`
+    );
+  }
+
+  return reasons;
 }
 
 /**

@@ -132,6 +132,7 @@
   "API Version": "API Version",
   "Status": "Status",
   "Rule": "Rule",
+  "Open violation details": "Open violation details",
   "Policy Impact Map": "Policy Impact Map",
   "Could not load report data for this policy: {{error}}": "Could not load report data for this policy: {{error}}",
   "No evaluated resources found for this policy yet. Once Kyverno scans a matching resource, it will appear here grouped by kind.": "No evaluated resources found for this policy yet. Once Kyverno scans a matching resource, it will appear here grouped by kind.",
@@ -165,6 +166,12 @@
   "Results ({{count}})_other": "Results ({{count}})",
   "Failed to load report: {{error}}": "Failed to load report: {{error}}",
   "No results found.": "No results found.",
+  "Violation Details": "Violation Details",
+  "Close": "Close",
+  "Why this resource was evaluated": "Why this resource was evaluated",
+  "Suggested fix": "Suggested fix",
+  "CEL expression": "CEL expression",
+  "No additional details available for this violation.": "No additional details available for this violation.",
   "Violations": "Violations",
   "Violations ({{count}})_one": "Violations ({{count}})",
   "Violations ({{count}})_other": "Violations ({{count}})",
@@ -173,7 +180,5 @@
   "By Policy": "By Policy",
   "By Namespace": "By Namespace",
   "By Kind": "By Kind",
-  "No violations found.": "No violations found.",
-  "a label selector": "a label selector",
-  "a namespace label selector": "a namespace label selector"
+  "No violations found.": "No violations found."
 }
