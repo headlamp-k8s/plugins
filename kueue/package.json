@@ -38,5 +38,10 @@
   "overrides": {
     "ws": "8.21.0",
     "vitest": "^3.2.6"
+  },
+  "headlamp": {
+    "i18n": [
+      "en"
+    ]
   }
 }
