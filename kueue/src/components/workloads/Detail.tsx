@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -114,7 +115,7 @@ interface EvictionRow {
 }
 
 /** Convert Workload podSets into table rows. */
-function getPodSetRows(podSets: PodSet[]): PodSetRow[] {
+function getPodSetRows(podSets: PodSet[], t: (key: string) => string): PodSetRow[] {
   return podSets.map(podSet => ({
     name: podSet.name || 'main',
     count: podSet.count ?? 1,
@@ -122,7 +123,7 @@ function getPodSetRows(podSets: PodSet[]): PodSetRow[] {
     requests: renderPodSetRequests(podSet),
     labels: renderStringMap(podSet.template?.metadata?.labels),
     annotations: renderStringMap(podSet.template?.metadata?.annotations),
-    topology: renderPodSetTopologyRequest(podSet),
+    topology: renderPodSetTopologyRequest(podSet, t),
   }));
 }
 
@@ -178,7 +179,7 @@ function getEvictionRows(evictions: WorkloadSchedulingStatsEviction[] = []): Evi
 }
 
 /** Render a pod set topology request without dumping raw nested objects. */
-function renderPodSetTopologyRequest(podSet: PodSet) {
+function renderPodSetTopologyRequest(podSet: PodSet, t: (key: string) => string) {
   const request = podSet.topologyRequest;
 
   if (!request) {
@@ -186,17 +187,19 @@ function renderPodSetTopologyRequest(podSet: PodSet) {
   }
 
   const values = [
-    request.required ? `Required: ${request.required}` : undefined,
-    request.preferred ? `Preferred: ${request.preferred}` : undefined,
-    request.unconstrained !== undefined ? `Unconstrained: ${request.unconstrained}` : undefined,
+    request.required ? `${t('Required')}: ${request.required}` : undefined,
+    request.preferred ? `${t('Preferred')}: ${request.preferred}` : undefined,
+    request.unconstrained !== undefined
+      ? `${t('Unconstrained')}: ${request.unconstrained}`
+      : undefined,
   ].filter(Boolean);
 
   return values.length > 0 ? values.join('; ') : '-';
 }
 
 /** Build the extra detail section for spec.podSets. */
-function getPodSetsSection(workload: Workload) {
-  const rows = getPodSetRows(workload.podSets);
+function getPodSetsSection(workload: Workload, t: (key: string) => string) {
+  const rows = getPodSetRows(workload.podSets, t);
 
   if (rows.length === 0) {
     return null;
@@ -205,36 +208,36 @@ function getPodSetsSection(workload: Workload) {
   return {
     id: 'pod-sets',
     section: (
-      <SectionBox title="Pod Sets">
+      <SectionBox title={t('Pod Sets')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (row: PodSetRow) => row.name,
             },
             {
-              label: 'Count',
+              label: t('Count'),
               getter: (row: PodSetRow) => row.count,
             },
             {
-              label: 'Min Count',
+              label: t('Min Count'),
               getter: (row: PodSetRow) => row.minCount,
             },
             {
-              label: 'Requests',
+              label: t('Requests'),
               getter: (row: PodSetRow) => row.requests,
             },
             {
-              label: 'Labels',
+              label: t('Labels'),
               getter: (row: PodSetRow) => row.labels,
             },
             {
-              label: 'Annotations',
+              label: t('Annotations'),
               getter: (row: PodSetRow) => row.annotations,
             },
             {
-              label: 'Topology',
+              label: t('Topology'),
               getter: (row: PodSetRow) => row.topology,
             },
           ]}
@@ -245,7 +248,7 @@ function getPodSetsSection(workload: Workload) {
 }
 
 /** Build the extra detail section for status.admission pod set assignments. */
-function getAdmissionSection(workload: Workload) {
+function getAdmissionSection(workload: Workload, t: (key: string) => string) {
   const rows = getAdmissionAssignmentRows(workload.admission?.podSetAssignments);
 
   if (rows.length === 0) {
@@ -255,32 +258,32 @@ function getAdmissionSection(workload: Workload) {
   return {
     id: 'admission',
     section: (
-      <SectionBox title="Admission">
+      <SectionBox title={t('Admission')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Pod Set',
+              label: t('Pod Set'),
               getter: (row: AdmissionAssignmentRow) => row.name,
             },
             {
-              label: 'Count',
+              label: t('Count'),
               getter: (row: AdmissionAssignmentRow) => row.count,
             },
             {
-              label: 'ResourceFlavors',
+              label: t('ResourceFlavors'),
               getter: (row: AdmissionAssignmentRow) => row.flavors,
             },
             {
-              label: 'Resource Usage',
+              label: t('Resource Usage'),
               getter: (row: AdmissionAssignmentRow) => row.resourceUsage,
             },
             {
-              label: 'Delayed Topology',
+              label: t('Delayed Topology'),
               getter: (row: AdmissionAssignmentRow) => row.delayedTopologyRequest,
             },
             {
-              label: 'Topology Assignment',
+              label: t('Topology Assignment'),
               getter: (row: AdmissionAssignmentRow) => row.topologyAssignment,
             },
           ]}
@@ -291,7 +294,7 @@ function getAdmissionSection(workload: Workload) {
 }
 
 /** Build the extra detail section for status.admissionChecks. */
-function getAdmissionChecksSection(workload: Workload) {
+function getAdmissionChecksSection(workload: Workload, t: (key: string) => string) {
   const rows = getAdmissionCheckRows(workload.status.admissionChecks);
 
   if (rows.length === 0) {
@@ -301,32 +304,32 @@ function getAdmissionChecksSection(workload: Workload) {
   return {
     id: 'admission-checks',
     section: (
-      <SectionBox title="Admission Checks">
+      <SectionBox title={t('Admission Checks')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
             },
             {
-              label: 'State',
+              label: t('State'),
               getter: (row: AdmissionCheckRow) => row.state,
             },
             {
-              label: 'Last Transition',
+              label: t('Last Transition'),
               getter: (row: AdmissionCheckRow) => row.lastTransitionTime,
             },
             {
-              label: 'Message',
+              label: t('Message'),
               getter: (row: AdmissionCheckRow) => row.message,
             },
             {
-              label: 'Requeue After Seconds',
+              label: t('Requeue After Seconds'),
               getter: (row: AdmissionCheckRow) => row.requeueAfterSeconds,
             },
             {
-              label: 'Retry Count',
+              label: t('Retry Count'),
               getter: (row: AdmissionCheckRow) => row.retryCount,
             },
           ]}
@@ -337,7 +340,7 @@ function getAdmissionChecksSection(workload: Workload) {
 }
 
 /** Build the extra detail section for status.reclaimablePods. */
-function getReclaimablePodsSection(workload: Workload) {
+function getReclaimablePodsSection(workload: Workload, t: (key: string) => string) {
   const rows = getReclaimablePodRows(workload.reclaimablePods);
 
   if (rows.length === 0) {
@@ -347,16 +350,16 @@ function getReclaimablePodsSection(workload: Workload) {
   return {
     id: 'reclaimable-pods',
     section: (
-      <SectionBox title="Reclaimable Pods">
+      <SectionBox title={t('Reclaimable Pods')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Pod Set',
+              label: t('Pod Set'),
               getter: (row: ReclaimablePodRow) => row.name,
             },
             {
-              label: 'Count',
+              label: t('Count'),
               getter: (row: ReclaimablePodRow) => row.count,
             },
           ]}
@@ -367,7 +370,7 @@ function getReclaimablePodsSection(workload: Workload) {
 }
 
 /** Build the extra detail section for status.resourceRequests. */
-function getResourceRequestsSection(workload: Workload) {
+function getResourceRequestsSection(workload: Workload, t: (key: string) => string) {
   const rows = getResourceRequestRows(workload.status.resourceRequests);
 
   if (rows.length === 0) {
@@ -377,16 +380,16 @@ function getResourceRequestsSection(workload: Workload) {
   return {
     id: 'resource-requests',
     section: (
-      <SectionBox title="Resource Requests">
+      <SectionBox title={t('Resource Requests')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Pod Set',
+              label: t('Pod Set'),
               getter: (row: ResourceRequestRow) => row.name,
             },
             {
-              label: 'Resources',
+              label: t('Resources'),
               getter: (row: ResourceRequestRow) => row.resources,
             },
           ]}
@@ -397,7 +400,7 @@ function getResourceRequestsSection(workload: Workload) {
 }
 
 /** Build the extra detail section for status.schedulingStats.evictions. */
-function getSchedulingStatsSection(workload: Workload) {
+function getSchedulingStatsSection(workload: Workload, t: (key: string) => string) {
   const rows = getEvictionRows(workload.status.schedulingStats?.evictions);
 
   if (rows.length === 0) {
@@ -407,20 +410,20 @@ function getSchedulingStatsSection(workload: Workload) {
   return {
     id: 'scheduling-stats',
     section: (
-      <SectionBox title="Scheduling Stats">
+      <SectionBox title={t('Scheduling Stats')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Reason',
+              label: t('Reason'),
               getter: (row: EvictionRow) => row.reason,
             },
             {
-              label: 'Underlying Cause',
+              label: t('Underlying Cause'),
               getter: (row: EvictionRow) => row.underlyingCause,
             },
             {
-              label: 'Count',
+              label: t('Count'),
               getter: (row: EvictionRow) => row.count,
             },
           ]}
@@ -606,14 +609,15 @@ function getConditionsSection(workload: Workload) {
 }
 
 export default function WorkloadDetail() {
+  const { t } = useTranslation();
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
   return (
     <KueueAdminResourceAccess
       resourceClass={Workload}
-      resourceLabel="Workloads"
+      resourceLabel={t('Workloads')}
       verb="get"
-      accessDescription="Kueue Workloads are namespaced user workload resources."
+      accessDescription={t('Kueue Workloads are namespaced user workload resources.')}
     >
       <DetailsGrid
         resourceType={Workload}
@@ -624,75 +628,75 @@ export default function WorkloadDetail() {
           workload
             ? [
                 {
-                  name: 'Queue',
+                  name: t('Queue'),
                   value: renderLocalQueueLink(workload.queueName, workload.metadata.namespace),
                 },
                 {
-                  name: 'Priority',
+                  name: t('Priority'),
                   value: workload.priorityDisplay,
                 },
                 {
-                  name: 'Priority Class',
+                  name: t('Priority Class'),
                   value: workload.priorityClassDisplay,
                 },
                 {
-                  name: 'Active',
+                  name: t('Active'),
                   value: workload.activeDisplay,
                 },
                 {
-                  name: 'Owner References',
+                  name: t('Owner References'),
                   value: workload.ownerReferencesDisplay,
                 },
                 {
-                  name: 'Pod Sets',
+                  name: t('Pod Sets'),
                   value: workload.podSetsDisplay,
                 },
                 {
-                  name: 'Admitted',
+                  name: t('Admitted'),
                   value: workload.admittedDisplay,
                 },
                 {
-                  name: 'Finished',
+                  name: t('Finished'),
                   value: workload.finishedDisplay,
                 },
                 {
-                  name: 'Status',
+                  name: t('Status'),
                   value: workload.statusDisplay,
                 },
                 {
-                  name: 'Admission',
+                  name: t('Admission'),
                   value: workload.admissionDisplay,
                 },
                 {
-                  name: 'Assigned ClusterQueue',
+                  name: t('Assigned ClusterQueue'),
                   value: renderClusterQueueLink(workload.admissionClusterQueue),
                 },
                 {
-                  name: 'Assigned ResourceFlavors',
+                  name: t('Assigned ResourceFlavors'),
                   value: workload.admissionFlavorsDisplay,
                 },
                 {
-                  name: 'Reclaimable Pods',
+                  name: t('Reclaimable Pods'),
                   value: workload.reclaimablePodsDisplay,
                 },
                 {
-                  name: 'Requeue State',
+                  name: t('Requeue State'),
                   value: workload.requeueStateDisplay,
                 },
                 {
-                  name: 'Maximum Execution Time Seconds',
+                  name: t('Maximum Execution Time Seconds'),
                   value: workload.maximumExecutionTimeSecondsDisplay,
                 },
                 {
-                  name: 'Accumulated Past Execution Time Seconds',
+                  name: t('Accumulated Past Execution Time Seconds'),
                   value: workload.accumulatedPastExecutionTimeSecondsDisplay,
                 },
                 {
-                  name: 'Assigned Cluster',
+                  name: t('Assigned Cluster'),
                   value: workload.clusterNameDisplay,
                 },
                 {
-                  name: 'Nominated Clusters',
+                  name: t('Nominated Clusters'),
                   value: workload.nominatedClusterNamesDisplay,
                 },
               ]
@@ -704,12 +708,12 @@ export default function WorkloadDetail() {
                 getTimelineSection(workload),
                 getBlockerSection(workload),
                 getConditionsSection(workload),
-                getPodSetsSection(workload),
-                getAdmissionSection(workload),
-                getAdmissionChecksSection(workload),
-                getReclaimablePodsSection(workload),
-                getResourceRequestsSection(workload),
-                getSchedulingStatsSection(workload),
+                getPodSetsSection(workload, t),
+                getAdmissionSection(workload, t),
+                getAdmissionChecksSection(workload, t),
+                getReclaimablePodsSection(workload, t),
+                getResourceRequestsSection(workload, t),
+                getSchedulingStatsSection(workload, t),
               ].filter(Boolean)
             : []
         }

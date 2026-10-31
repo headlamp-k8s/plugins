@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
   EmptyContent,
@@ -19,7 +20,7 @@ import {
 } from '../common/KueueResourceLinks';
 
 /** Build the detail section that shows spec.resourceGroups as a table. */
-function getResourceGroupsSection(cohort: Cohort) {
+function getResourceGroupsSection(cohort: Cohort, t: (key: string) => string) {
   const rows = getResourceGroupRows(cohort.resourceGroups);
 
   if (rows.length === 0) {
@@ -29,37 +30,37 @@ function getResourceGroupsSection(cohort: Cohort) {
   return {
     id: 'resource-groups',
     section: (
-      <SectionBox title="Resource Groups">
+      <SectionBox title={t('Resource Groups')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Group',
+              label: t('Group'),
               getter: (row: ResourceGroupRow) => row.group,
             },
             {
-              label: 'Covered Resources',
+              label: t('Covered Resources'),
               getter: (row: ResourceGroupRow) => row.coveredResources,
             },
             {
-              label: 'ResourceFlavor',
+              label: t('ResourceFlavor'),
               getter: (row: ResourceGroupRow) =>
                 row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
             },
             {
-              label: 'Resource',
+              label: t('Resource'),
               getter: (row: ResourceGroupRow) => row.resource,
             },
             {
-              label: 'Nominal Quota',
+              label: t('Nominal Quota'),
               getter: (row: ResourceGroupRow) => row.nominalQuota,
             },
             {
-              label: 'Borrowing Limit',
+              label: t('Borrowing Limit'),
               getter: (row: ResourceGroupRow) => row.borrowingLimit ?? '-',
             },
             {
-              label: 'Lending Limit',
+              label: t('Lending Limit'),
               getter: (row: ResourceGroupRow) => row.lendingLimit ?? '-',
             },
           ]}
@@ -70,7 +71,7 @@ function getResourceGroupsSection(cohort: Cohort) {
 }
 
 /** Build a linked ResourceFlavor section for all flavors referenced by the Cohort. */
-function getReferencedFlavorsSection(cohort: Cohort) {
+function getReferencedFlavorsSection(cohort: Cohort, t: (key: string) => string) {
   if (!cohort.referencedFlavorNames.length) {
     return null;
   }
@@ -80,12 +81,12 @@ function getReferencedFlavorsSection(cohort: Cohort) {
   return {
     id: 'referenced-resourceflavors',
     section: (
-      <SectionBox title="Referenced ResourceFlavors">
+      <SectionBox title={t('Referenced ResourceFlavors')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (row: { name: string }) => renderResourceFlavorLink(row.name),
             },
           ]}
@@ -96,13 +97,18 @@ function getReferencedFlavorsSection(cohort: Cohort) {
 }
 
 /** Build a linked table for child Cohorts. */
-function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error: unknown) {
+function getChildCohortsSection(
+  cohort: Cohort,
+  cohorts: Cohort[] | null,
+  error: unknown,
+  t: (key: string) => string
+) {
   if (error) {
     return {
       id: 'child-cohorts',
       section: (
-        <SectionBox title="Child Cohorts">
-          <EmptyContent color="text.secondary">Child Cohorts are unavailable.</EmptyContent>
+        <SectionBox title={t('Child Cohorts')}>
+          <EmptyContent color="text.secondary">{t('Child Cohorts are unavailable.')}</EmptyContent>
         </SectionBox>
       ),
     };
@@ -111,7 +117,7 @@ function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error:
   if (!cohorts) {
     return {
       id: 'child-cohorts',
-      section: <Loader title="Loading child Cohorts..." />,
+      section: <Loader title={t('Loading child Cohorts...')} />,
     };
   }
 
@@ -124,28 +130,28 @@ function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error:
   return {
     id: 'child-cohorts',
     section: (
-      <SectionBox title="Child Cohorts">
+      <SectionBox title={t('Child Cohorts')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (childCohort: Cohort) => renderCohortLink(childCohort.metadata.name),
             },
             {
-              label: 'Resource Groups',
+              label: t('Resource Groups'),
               getter: (childCohort: Cohort) => childCohort.resourceGroupsDisplay,
             },
             {
-              label: 'Fair Sharing Weight',
+              label: t('Fair Sharing Weight'),
               getter: (childCohort: Cohort) => childCohort.fairSharingWeight,
             },
             {
-              label: 'Weighted Share',
+              label: t('Weighted Share'),
               getter: (childCohort: Cohort) => childCohort.weightedShare,
             },
             {
-              label: 'Age',
+              label: t('Age'),
               getter: (childCohort: Cohort) => childCohort.getAge(),
             },
           ]}
@@ -159,14 +165,17 @@ function getChildCohortsSection(cohort: Cohort, cohorts: Cohort[] | null, error:
 function getMemberClusterQueuesSection(
   cohort: Cohort,
   clusterQueues: ClusterQueue[] | null,
-  error: unknown
+  error: unknown,
+  t: (key: string) => string
 ) {
   if (error) {
     return {
       id: 'member-clusterqueues',
       section: (
-        <SectionBox title="Member ClusterQueues">
-          <EmptyContent color="text.secondary">Member ClusterQueues are unavailable.</EmptyContent>
+        <SectionBox title={t('Member ClusterQueues')}>
+          <EmptyContent color="text.secondary">
+            {t('Member ClusterQueues are unavailable.')}
+          </EmptyContent>
         </SectionBox>
       ),
     };
@@ -175,7 +184,7 @@ function getMemberClusterQueuesSection(
   if (!clusterQueues) {
     return {
       id: 'member-clusterqueues',
-      section: <Loader title="Loading member ClusterQueues..." />,
+      section: <Loader title={t('Loading member ClusterQueues...')} />,
     };
   }
 
@@ -188,37 +197,37 @@ function getMemberClusterQueuesSection(
   return {
     id: 'member-clusterqueues',
     section: (
-      <SectionBox title="Member ClusterQueues">
+      <SectionBox title={t('Member ClusterQueues')}>
         <SimpleTable
           data={rows}
           columns={[
             {
-              label: 'Name',
+              label: t('Name'),
               getter: (clusterQueue: ClusterQueue) =>
                 renderClusterQueueLink(clusterQueue.metadata.name),
             },
             {
-              label: 'Queueing Strategy',
+              label: t('Queueing Strategy'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.queueingStrategy,
             },
             {
-              label: 'Resource Groups',
+              label: t('Resource Groups'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.resourceGroupsDisplay,
             },
             {
-              label: 'Pending Workloads',
+              label: t('Pending Workloads'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.pendingWorkloads,
             },
             {
-              label: 'Admitted Workloads',
+              label: t('Admitted Workloads'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.admittedWorkloads,
             },
             {
-              label: 'Status',
+              label: t('Status'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.statusDisplay,
             },
             {
-              label: 'Age',
+              label: t('Age'),
               getter: (clusterQueue: ClusterQueue) => clusterQueue.getAge(),
             },
           ]}
@@ -230,12 +239,13 @@ function getMemberClusterQueuesSection(
 
 /** Detail view for a cluster-scoped Kueue Cohort resource. */
 export default function CohortDetail() {
+  const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
   const [clusterQueues, clusterQueuesError] = ClusterQueue.useList();
   const [cohorts, cohortsError] = Cohort.useList();
 
   return (
-    <KueueAdminResourceAccess resourceClass={Cohort} resourceLabel="Cohorts" verb="get">
+    <KueueAdminResourceAccess resourceClass={Cohort} resourceLabel={t('Cohorts')} verb="get">
       <DetailsGrid
         resourceType={Cohort}
         name={name}
@@ -244,23 +254,23 @@ export default function CohortDetail() {
           cohort
             ? [
                 {
-                  name: 'Parent Cohort',
+                  name: t('Parent Cohort'),
                   value: renderParentCohortLink(cohort.spec.parentName),
                 },
                 {
-                  name: 'Fair Sharing Weight',
+                  name: t('Fair Sharing Weight'),
                   value: cohort.fairSharingWeight,
                 },
                 {
-                  name: 'Weighted Share',
+                  name: t('Weighted Share'),
                   value: cohort.weightedShare,
                 },
                 {
-                  name: 'Resource Groups',
+                  name: t('Resource Groups'),
                   value: cohort.resourceGroupsDisplay,
                 },
                 {
-                  name: 'Referenced ResourceFlavors',
+                  name: t('Referenced ResourceFlavors'),
                   value: cohort.referencedFlavorNamesDisplay,
                 },
               ]
@@ -269,10 +279,10 @@ export default function CohortDetail() {
         extraSections={cohort =>
           cohort
             ? [
-                getResourceGroupsSection(cohort),
-                getReferencedFlavorsSection(cohort),
-                getChildCohortsSection(cohort, cohorts, cohortsError),
-                getMemberClusterQueuesSection(cohort, clusterQueues, clusterQueuesError),
+                getResourceGroupsSection(cohort, t),
+                getReferencedFlavorsSection(cohort, t),
+                getChildCohortsSection(cohort, cohorts, cohortsError, t),
+                getMemberClusterQueuesSection(cohort, clusterQueues, clusterQueuesError, t),
               ].filter(Boolean)
             : []
         }
