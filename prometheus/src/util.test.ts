@@ -164,6 +164,19 @@ describe('supportsPrometheusMetrics', () => {
       { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
       false,
     ],
+    [
+      'supports Kueue ClusterQueues',
+      {
+        kind: 'ClusterQueue',
+        jsonData: { kind: 'ClusterQueue', apiVersion: 'kueue.x-k8s.io/v1beta2' },
+      },
+      true,
+    ],
+    [
+      'rejects non-Kueue ClusterQueues with the same kind',
+      { kind: 'ClusterQueue', jsonData: { kind: 'ClusterQueue', apiVersion: 'example.com/v1' } },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
