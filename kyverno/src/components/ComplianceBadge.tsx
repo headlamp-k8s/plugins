@@ -30,8 +30,8 @@ export function ComplianceBadge() {
   const cluster = K8s.useCluster();
   const crds = useKyvernoCRDs();
 
-  const hasKyvernoEngine = crds.legacy || crds.cel;
-  if (!cluster || crds.loading || !hasKyvernoEngine || !crds.reports) {
+  const hasKyvernoEngine = crds.legacy !== false || crds.cel !== false;
+  if (!cluster || crds.loading || !hasKyvernoEngine || crds.reports === false) {
     return null;
   }
 
