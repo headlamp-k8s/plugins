@@ -1,4 +1,10 @@
-import { getTimeRangeAndStepSize, isArgoCDApplication, supportsPrometheusMetrics } from './util';
+import { ConfigStore } from '@kinvolk/headlamp-plugin/lib';
+import {
+  getConfigStore,
+  getTimeRangeAndStepSize,
+  isArgoCDApplication,
+  supportsPrometheusMetrics,
+} from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -189,5 +195,16 @@ describe('isArgoCDApplication', () => {
     ['rejects an Application without an API version', { kind: 'Application' }, false],
   ])('%s', (_, resource, expected) => {
     expect(isArgoCDApplication(resource)).toBe(expected);
+  });
+});
+
+describe('getConfigStore', () => {
+  test('reads the config saved before the plugin was renamed', () => {
+    const saved = {
+      'my-cluster': { isMetricsEnabled: true, address: 'monitoring/prometheus:9090' },
+    };
+    new ConfigStore('prometheus').set(saved);
+
+    expect(getConfigStore().get()).toEqual(saved);
   });
 });
