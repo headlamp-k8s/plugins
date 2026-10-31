@@ -47,7 +47,7 @@ immediately for `07-sample-workloads.yaml` when applied after the policies.
 2. **Suggested fix section** -- the text corresponds to the rule type (pattern / anyPattern / foreach / deny / CEL).
 3. **For the CEL ValidatingPolicy** -- the CEL expression is shown verbatim in the monospace box.
 4. **For the foreach rule** -- the `list` JMESPath expression is named in the fix text.
-5. **BasicContent fallback** -- open the `04-deny-conditional.yaml` violation from the Violations view (where the policy object has to be fetched lazily) and confirm the dialog still shows the fix text, not just the message.
+5. **Lazy fetch and BasicContent fallback** -- open the `04-deny-conditional.yaml` violation from the Violations view and confirm the successful lazy fetch shows the deny fix text; to exercise `BasicContent`, use an unknown/error source or deny policy access and confirm it still shows the resource identity, status, severity, and full violation message.
 
 ## Clean up
 

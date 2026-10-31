@@ -27,7 +27,12 @@ import {
   Typography,
 } from '@mui/material';
 import { ReactNode } from 'react';
-import { CELValidation, ValidatingPolicy, ValidatingPolicySpec } from '../resources/celPolicies';
+import {
+  CELValidation,
+  NamespacedValidatingPolicy,
+  ValidatingPolicy,
+  ValidatingPolicySpec,
+} from '../resources/celPolicies';
 import { KyvernoClusterPolicy, KyvernoPolicy, PolicyRule } from '../resources/kyvernoPolicy';
 import {
   describeCELMatchReasons,
@@ -129,9 +134,36 @@ function NamespacedLegacyFetch({
   return <LegacyContent target={target} rules={policy.rules} />;
 }
 
-// Fetches a CEL ValidatingPolicy to extract its spec.
+// Fetches a CEL ValidatingPolicy or NamespacedValidatingPolicy to extract its spec.
+// Reports from NamespacedValidatingPolicy encode policy identity as "namespace/name"
+// in result.policy; cluster-scoped ValidatingPolicy uses a bare name.
 function CELFetchContent({ target }: { target: DrillDownTarget }) {
-  const [policy, error] = ValidatingPolicy.useGet(target.policy);
+  const parts = target.policy.split('/');
+  if (parts.length >= 2) {
+    const ns = parts.slice(0, -1).join('/');
+    const name = parts[parts.length - 1];
+    return <NamespacedCELFetch target={target} name={name} namespace={ns} />;
+  }
+  return <ClusterCELFetch target={target} name={target.policy} />;
+}
+
+function ClusterCELFetch({ target, name }: { target: DrillDownTarget; name: string }) {
+  const [policy, error] = ValidatingPolicy.useGet(name);
+  if (error) return <BasicContent target={target} />;
+  if (!policy) return <LoadingPlaceholder />;
+  return <CELContent target={target} spec={policy.spec} />;
+}
+
+function NamespacedCELFetch({
+  target,
+  name,
+  namespace,
+}: {
+  target: DrillDownTarget;
+  name: string;
+  namespace: string;
+}) {
+  const [policy, error] = NamespacedValidatingPolicy.useGet(name, namespace);
   if (error) return <BasicContent target={target} />;
   if (!policy) return <LoadingPlaceholder />;
   return <CELContent target={target} spec={policy.spec} />;
@@ -150,7 +182,7 @@ function LegacyContent({ target, rules }: { target: DrillDownTarget; rules: Poli
   const { t } = useTranslation();
   const kind = target.kind || 'Unknown';
   const reasons = describeMatchReasons(rules, kind);
-  const matchingRule = rules.find(r => r.name === target.rule) ?? rules[0];
+  const matchingRule = target.rule ? rules.find(r => r.name === target.rule) : undefined;
   const fix = matchingRule ? suggestFix(matchingRule, target) : undefined;
 
   return (
@@ -164,7 +196,7 @@ function LegacyContent({ target, rules }: { target: DrillDownTarget; rules: Poli
           </Typography>
         ))}
       </Section>
-      {fix && (
+      {target.status !== 'pass' && target.status !== 'skip' && fix && (
         <>
           <Divider sx={{ my: 2 }} />
           <Section title={t('Suggested fix')}>

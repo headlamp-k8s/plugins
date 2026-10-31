@@ -649,13 +649,14 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
       )
   );
 
-  if (matchingRules.length === 0) {
-    return [
-      `No resourceRule in this policy's matchConstraints explicitly targets kind "${kind}". The policy may apply through a wildcard or a different resource name form.`,
-    ];
-  }
+  // When the heuristic finds no matching rule, fall back to presenting all declared
+  // rules. The report itself is already authoritative proof that the resource was
+  // evaluated; an irregular plural (e.g. Ingress -> ingresses) simply defeats the
+  // kind+s heuristic. Showing the declared rules is more useful than asserting none
+  // matched when the report proves otherwise.
+  const rulesToDescribe = matchingRules.length > 0 ? matchingRules : rules;
 
-  return matchingRules.map(r => {
+  return rulesToDescribe.map(r => {
     const parts: string[] = [];
     if (r.resources && r.resources.length > 0) {
       parts.push(`resources [${r.resources.join(', ')}]`);

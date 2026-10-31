@@ -11,6 +11,8 @@ kind: Pod
 metadata:
   name: pod-no-labels
   namespace: drilldown-test
+  annotations:
+    cost-center: eng-infra
 spec:
   containers:
     - name: main
@@ -26,10 +28,11 @@ kind: Pod
 metadata:
   name: pod-missing-requests
   namespace: drilldown-test
+  annotations:
+    cost-center: eng-infra
   labels:
     app: test
     owner: platform
-    cost-center: eng-infra
 spec:
   containers:
     - name: main
