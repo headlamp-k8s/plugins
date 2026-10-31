@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-import { MatchSelectorEntry, PolicyRule } from './kyvernoPolicy';
+import { CELValidation, ValidatingPolicySpec } from './celPolicies';
+import {
+  ForEachMutation,
+  ForEachValidation,
+  MatchSelectorEntry,
+  PolicyRule,
+} from './kyvernoPolicy';
 import {
   ClusterPolicyReport,
   PolicyReport,
@@ -28,6 +34,11 @@ import {
 // plugin (the Violations view, the Policy Impact panel, or a Map node).
 export interface DrillDownTarget {
   policy: string;
+  // The Kyverno engine that produced this result (see POLICY_REPORT_SOURCE in
+  // policyReport.ts). Used by ViolationDrillDown to dispatch to the right
+  // match-reason and fix-suggestion functions, and to know which API to
+  // fetch the policy object from when the caller hasn't pre-fetched it.
+  source?: PolicyReportSource;
   rule?: string;
   kind?: string;
   apiVersion?: string;
@@ -265,8 +276,11 @@ export function collectPolicyImpact(
 // 2-segment and 3-segment forms, never as a general "find the version anywhere" scan. A version
 // segment that does not actually match this regex, like a wildcarded "v*", is still a perfectly
 // valid version in Kyverno's own parser, it just isn't the thing this regex is asked about for
-// those two forms, see the case-3 comment below.
-const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d*)?|\*)$/;
+// those two forms, see the case-3 comment below. The alpha/beta suffix requires at least one
+// digit ("\d+", not "\d*"): without it, a group name that merely starts with "alpha"/"beta"
+// (e.g. "v1alpha" in a group-qualified pattern "v1alpha/v1/Widget") gets misread as a version
+// segment, and the 3-segment case below picks the wrong kind.
+const K8S_VERSION_SEGMENT = /^(v\d+((alpha|beta)\d+)?|\*)$/;
 
 // Kyverno kind patterns can be a bare kind ("Pod"), version-qualified ("v1/Pod"),
 // group+version-qualified ("apps/v1/Deployment"), and any of those forms can also carry a
@@ -320,21 +334,50 @@ function normalizeKindPattern(pattern: string): string {
   }
 }
 
-// Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind, confirmed against the real
-// source) runs the parsed kind segment through its ext/wildcard package's genuine glob matching,
-// not a literal-character check: "*" matches zero or more runes, and "?" matches exactly one
-// rune (confirmed against ext/wildcard/match.go), so "Pod*" matches any kind starting with
-// "Pod" and "P?d" matches "Pod". Both are translated into their regex equivalents here; every
-// other character, including any that are themselves regex-special, is escaped literally.
+// Kyverno's own kind matcher (pkg/utils/match/kind.go CheckKind) runs the parsed kind segment
+// through its ext/wildcard package (ext/wildcard/match.go, confirmed against the real source):
+// a single-backtrack, two-pointer glob matcher, not a regex engine. "*" matches zero or more
+// characters and "?" matches exactly one. This is a direct port of that algorithm rather than a
+// translation into a regex, since naively turning every "*" into ".*" hands the pattern to the
+// native regex engine's own backtracking, and a pathological pattern (many "*" characters
+// against a long non-matching kind, e.g. "****************Pod" against
+// "HorizontalPodAutoscaler") can make that backtracking combinatorial and freeze this
+// synchronous render. This port is linear in the length of `kind`: each `*` is backtracked to
+// at most once, and every backtrack advances the position it resumes from, so there is no
+// equivalent blowup to guard against.
 function kindPatternMatches(pattern: string, kind: string): boolean {
+  if (pattern === '') return kind === '';
   if (pattern === '*') return true;
-  let regexSource = '';
-  for (const ch of pattern) {
-    if (ch === '*') regexSource += '.*';
-    else if (ch === '?') regexSource += '.';
-    else regexSource += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const p = Array.from(pattern);
+  const s = Array.from(kind);
+  let pIdx = 0;
+  let sIdx = 0;
+  let starIdx = -1; // index in p of the last '*' seen, or -1
+  let sTmpIdx = 0; // s index to resume from after that '*'
+
+  while (sIdx < s.length) {
+    if (pIdx < p.length && p[pIdx] === '*') {
+      starIdx = pIdx;
+      sTmpIdx = sIdx;
+      pIdx++; // '*' provisionally consumes zero characters
+    } else if (pIdx < p.length && (p[pIdx] === '?' || p[pIdx] === s[sIdx])) {
+      sIdx++;
+      pIdx++;
+    } else if (starIdx !== -1) {
+      pIdx = starIdx + 1; // backtrack: let the last '*' consume one more character
+      sTmpIdx++;
+      sIdx = sTmpIdx;
+    } else {
+      return false;
+    }
   }
-  return new RegExp(`^${regexSource}$`).test(kind);
+
+  // Consume any trailing '*' in the pattern.
+  while (pIdx < p.length && p[pIdx] === '*') {
+    pIdx++;
+  }
+  return pIdx === p.length;
 }
 
 function selectorMentionsKind(selector: MatchSelectorEntry, kind: string): boolean {
@@ -366,6 +409,59 @@ function describeConstraints(selectors: MatchSelectorEntry[], kind: string): str
     parts.push(
       `namespaces matching all of ${namespaceGroups.map(ns => `[${ns.join(', ')}]`).join(' and ')}`
     );
+  }
+  for (const selector of selectors) {
+    // Same per-selector intersection reasoning as namespaces above applies to name patterns: a
+    // match.all entry restricting names to ['database-*'] alongside another constraining kind
+    // only is still an AND, so omitting it here described the policy's scope as broader than it
+    // actually is. Kyverno supports both the plural `names` (a pattern list) and the singular
+    // `name` (one exact name) on the same ResourceDescription, confirmed against the real CRD
+    // schema, so both are folded into the same constraint instead of only reading the plural form.
+    const names = selector.resources?.names || [];
+    const allNames = selector.resources?.name ? [selector.resources.name, ...names] : names;
+    if (allNames.length > 0) {
+      parts.push(`names [${allNames.join(', ')}]`);
+    }
+    // resources.annotations is a real match restriction on Kyverno's ResourceDescription,
+    // distinct from `selector` (a label selector on metadata.labels) below. Omitting it
+    // described a rule restricted to, say, annotations: { team: 'platform' } as matching every
+    // Pod rather than just the ones carrying that annotation.
+    const annotations = Object.entries(selector.resources?.annotations || {});
+    if (annotations.length > 0) {
+      parts.push(
+        `annotations [${annotations.map(([key, value]) => `${key}=${value}`).join(', ')}]`
+      );
+    }
+    // resources.operations is an admission-only constraint on which request verbs (CREATE, UPDATE,
+    // DELETE, CONNECT) the rule fires for. Omitting it described a rule restricted to CREATE-only
+    // as if it applied to every operation, overstating scope for read-heavy workloads.
+    const operations = selector.resources?.operations || [];
+    if (operations.length > 0) {
+      parts.push(`operations [${operations.join(', ')}]`);
+    }
+    // subjects, roles, and clusterRoles are admission-request constraints that restrict which
+    // user, group, or service account (subjects), or which bound role (roles/clusterRoles), has
+    // to be making the request for the rule to fire. A match.all entry combining a Pod kind
+    // selector with subjects: [{kind: User, name: alice}] only applies when alice makes the
+    // request, not to any Pod operation. Omitting these made such a rule appear unrestricted by
+    // user and overstated its scope.
+    const subjects = selector.subjects || [];
+    if (subjects.length > 0) {
+      const subjectLabels = subjects.map(s =>
+        s.kind ? `${s.name ?? ''} (${s.kind})`.trim() : s.name ?? ''
+      );
+      parts.push(`subjects [${subjectLabels.join(', ')}]`);
+    }
+    const rawRoles = selector.roles;
+    const roles = Array.isArray(rawRoles) ? (rawRoles as string[]) : [];
+    if (roles.length > 0) {
+      parts.push(`roles [${roles.join(', ')}]`);
+    }
+    const rawClusterRoles = selector.clusterRoles;
+    const clusterRoles = Array.isArray(rawClusterRoles) ? (rawClusterRoles as string[]) : [];
+    if (clusterRoles.length > 0) {
+      parts.push(`cluster roles [${clusterRoles.join(', ')}]`);
+    }
   }
   if (selectors.some(s => s.resources?.selector)) {
     parts.push('a label selector');
@@ -477,6 +573,11 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   if (rule.validate?.anyPattern) {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
+  if (rule.validate?.foreach && (rule.validate.foreach as ForEachValidation[]).length > 0) {
+    const first = (rule.validate.foreach as ForEachValidation[])[0];
+    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
+    return `This rule uses validate.foreach over${listExpr}. Each element must satisfy the nested pattern or deny condition inside the foreach block. Review the foreach block in ${ruleLabel} on policy "${target.policy}" and update each element of the specified list in the resource so it passes.`;
+  }
   if (rule.validate?.deny) {
     // deny.conditions (any/all, confirmed against the real CRD schema) is what
     // actually decides whether a given matched resource gets denied, a deny rule
@@ -494,8 +595,118 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   if (rule.validate?.cel) {
     return `This rule is enforced with a CEL expression. Review validate.cel.expressions on ${ruleLabel} and adjust the resource so the expression evaluates to true.`;
   }
+  if (rule.mutate?.foreach && (rule.mutate.foreach as ForEachMutation[]).length > 0) {
+    const first = (rule.mutate.foreach as ForEachMutation[])[0];
+    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
+    return `This is a foreach mutation rule that patches each element of${listExpr}. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
+  }
   if (rule.mutate) {
     return `This is a mutation rule; Kyverno should patch the resource automatically. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
   }
   return `Review the message above together with ${ruleLabel} on policy "${target.policy}" to see what condition failed.`;
+}
+
+/**
+ * Explains, in plain language, which matchConstraints rule caused a CEL
+ * ValidatingPolicy to consider a given resource kind. Reads
+ * `matchConstraints.resourceRules[]` directly from the policy spec.
+ *
+ * CEL policies use resource names (plural lowercase) rather than kind names,
+ * so a perfect kind-to-resource mapping is not always possible. The function
+ * attempts a case-insensitive `kind + "s"` heuristic and also accepts `*`
+ * wildcards, but shows the raw resource names the policy declares rather than
+ * claiming a match it cannot fully verify. Callers needing exact kind matching
+ * should rely on the live report (already accurate) rather than this function.
+ */
+export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string): string[] {
+  const mc = spec.matchConstraints;
+  if (!mc) {
+    return [
+      `This ValidatingPolicy has no matchConstraints; it may evaluate all admission requests.`,
+    ];
+  }
+
+  const rules = mc.resourceRules || [];
+  if (rules.length === 0) {
+    return [
+      `This ValidatingPolicy's matchConstraints specifies no resourceRules; it may evaluate all admission requests.`,
+    ];
+  }
+
+  // resourceRules use plural lowercase resource names (e.g. "pods"), not kinds.
+  // A wildcard ("*") matches everything. A case-insensitive "kind + s" heuristic
+  // covers the common core group case; misses irregular plurals but is still
+  // more helpful than reporting nothing.
+  const kindLower = kind.toLowerCase();
+  const matchingRules = rules.filter(
+    r =>
+      !r.resources ||
+      r.resources.length === 0 ||
+      r.resources.includes('*') ||
+      r.resources.some(
+        res =>
+          res === '*' || res.toLowerCase() === kindLower || res.toLowerCase() === `${kindLower}s`
+      )
+  );
+
+  // When the heuristic finds no matching rule, fall back to presenting all declared
+  // rules. The report itself is already authoritative proof that the resource was
+  // evaluated; an irregular plural (e.g. Ingress -> ingresses) simply defeats the
+  // kind+s heuristic. Showing the declared rules is more useful than asserting none
+  // matched when the report proves otherwise.
+  const rulesToDescribe = matchingRules.length > 0 ? matchingRules : rules;
+
+  const reasons = rulesToDescribe.map(r => {
+    const parts: string[] = [];
+    if (r.resources && r.resources.length > 0) {
+      parts.push(`resources [${r.resources.join(', ')}]`);
+    }
+    if (r.apiGroups && r.apiGroups.length > 0) {
+      parts.push(`API groups [${r.apiGroups.join(', ')}]`);
+    }
+    if (r.apiVersions && r.apiVersions.length > 0) {
+      parts.push(`versions [${r.apiVersions.join(', ')}]`);
+    }
+    if (r.operations && r.operations.length > 0) {
+      parts.push(`operations [${r.operations.join(', ')}]`);
+    }
+    const desc = parts.length > 0 ? parts.join(' and ') : 'all resources';
+    return `matchConstraints.resourceRules targets ${desc}.`;
+  });
+
+  // Append any additional constraints that further narrow the policy scope.
+  if (mc.namespaceSelector && Object.keys(mc.namespaceSelector).length > 0) {
+    reasons.push(
+      `matchConstraints.namespaceSelector further restricts which namespaces this policy applies to.`
+    );
+  }
+  if (mc.labelSelector && Object.keys(mc.labelSelector).length > 0) {
+    reasons.push(
+      `matchConstraints.labelSelector further restricts which resources this policy applies to by label.`
+    );
+  }
+  if (mc.matchConditions && mc.matchConditions.length > 0) {
+    const names = mc.matchConditions.map(c => `"${c.name}"`).join(', ');
+    reasons.push(
+      `matchConstraints.matchConditions [${names}] further restrict when this policy applies.`
+    );
+  }
+
+  return reasons;
+}
+
+/**
+ * Heuristic remediation guidance for a single CEL ValidatingPolicy validation
+ * entry. Shows the policy-authored message (or messageExpression label) and
+ * the raw CEL expression so the user knows exactly which condition failed.
+ */
+export function suggestCELFix(validation: CELValidation, target: DrillDownTarget): string {
+  const policyLabel = `policy "${target.policy}"`;
+  if (validation.message) {
+    return `This validation requires: "${validation.message}". Review the CEL expression on ${policyLabel} and update the resource so the expression evaluates to true.`;
+  }
+  if (validation.messageExpression) {
+    return `This validation's failure message is computed dynamically by the expression on ${policyLabel}. Review the CEL expression and update the resource so it evaluates to true.`;
+  }
+  return `This validation uses a CEL expression on ${policyLabel}. Review the expression and update the resource so it evaluates to true.`;
 }

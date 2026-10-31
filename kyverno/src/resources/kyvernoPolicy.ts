@@ -22,9 +22,17 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 export interface MatchSelectorEntry {
   resources?: {
     kinds?: string[];
+    // Kyverno still supports this singular form alongside the plural `names` below (both are
+    // real fields on the Go ResourceDescription type, confirmed against
+    // api/kyverno/v1/match_resources_types.go), a single exact name instead of a pattern list.
+    name?: string;
     names?: string[];
     namespaces?: string[];
     operations?: string[];
+    // A resource-level annotation restriction, confirmed on the real ResourceDescription type
+    // alongside kinds/names/namespaces above, not to be confused with `selector` (a label
+    // selector) below.
+    annotations?: Record<string, string>;
     selector?: Record<string, unknown>;
     namespaceSelector?: Record<string, unknown>;
   };
@@ -49,6 +57,32 @@ export interface MatchSelector {
   resources?: MatchSelectorEntry['resources'];
 }
 
+// Confirmed against Kyverno's Go source (api/kyverno/v1/rule_types.go,
+// ForEachValidation). Each entry iterates a JMESPath list expression and
+// applies a nested validate block to each element.
+export interface ForEachValidation {
+  list?: string;
+  context?: unknown[];
+  preconditions?: unknown;
+  pattern?: unknown;
+  anyPattern?: unknown[];
+  deny?: unknown;
+  elementScope?: boolean;
+  foreach?: ForEachValidation[];
+}
+
+// Confirmed against Kyverno's Go source (api/kyverno/v1/rule_types.go,
+// ForEachMutation). Each entry iterates a JMESPath list and applies a patch
+// to each element.
+export interface ForEachMutation {
+  list?: string;
+  context?: unknown[];
+  preconditions?: unknown;
+  patchStrategicMerge?: unknown;
+  patchesJson6902?: string;
+  foreach?: ForEachMutation[];
+}
+
 export interface PolicyRule {
   name: string;
   match?: MatchSelector;
@@ -57,6 +91,7 @@ export interface PolicyRule {
     message?: string;
     pattern?: unknown;
     anyPattern?: unknown[];
+    foreach?: ForEachValidation[];
     deny?: unknown;
     cel?: unknown;
     podSecurity?: {
@@ -66,7 +101,10 @@ export interface PolicyRule {
     failureAction?: string;
     [key: string]: unknown;
   };
-  mutate?: Record<string, unknown>;
+  mutate?: {
+    foreach?: ForEachMutation[];
+    [key: string]: unknown;
+  };
   generate?: Record<string, unknown>;
   verifyImages?: unknown[];
   context?: unknown[];

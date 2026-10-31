@@ -15,8 +15,14 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
-import { PolicyRule } from './kyvernoPolicy';
-import { collectPolicyImpact, describeMatchReasons, suggestFix } from './policyImpact';
+import { ForEachValidation, PolicyRule } from './kyvernoPolicy';
+import {
+  collectPolicyImpact,
+  describeCELMatchReasons,
+  describeMatchReasons,
+  suggestCELFix,
+  suggestFix,
+} from './policyImpact';
 import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from './policyReport';
 
 // policyReport.ts extends KubeObject from @kinvolk/headlamp-plugin/lib/k8s/cluster,
@@ -977,6 +983,153 @@ describe('describeMatchReasons', () => {
     expect(reasons[0]).not.toContain('namespaces [team-*, *-prod]');
   });
 
+  test('includes resource-name constraints in the explanation, found via Copilot review', () => {
+    // Omitting a selector's names [] understated the policy's actual scope: a selector
+    // restricted to kinds ['Pod'], namespaces ['prod'], names ['database-*'] used to be
+    // described as covering every Pod in prod, not just the ones matching that name pattern.
+    const namedResourceRules: PolicyRule[] = [
+      {
+        name: 'database-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], namespaces: ['prod'], names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(namedResourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('namespaces [prod]');
+    expect(reasons[0]).toContain('names [database-*]');
+  });
+
+  test('includes the singular resources.name selector in the explanation, found via Copilot review', () => {
+    // Kyverno supports this singular exact-name form (one name) alongside the plural `names`
+    // (a pattern list) on the same ResourceDescription. Reading only `names` described a rule with
+    // kinds: ['Pod'], name: 'database-primary' as matching every Pod, omitting its name
+    // restriction entirely.
+    const singularNameRules: PolicyRule[] = [
+      {
+        name: 'database-primary-pod',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary' } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(singularNameRules, 'Pod');
+
+    expect(reasons[0]).toContain('names [database-primary]');
+  });
+
+  test('combines the singular resources.name with the plural names when both are set, found via Copilot review', () => {
+    const bothNameFormsRules: PolicyRule[] = [
+      {
+        name: 'mixed-name-selector',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], name: 'database-primary', names: ['database-*'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(bothNameFormsRules, 'Pod');
+
+    expect(reasons[0]).toContain('names [database-primary, database-*]');
+  });
+
+  test('includes resource annotation constraints in the explanation, found via Copilot review', () => {
+    // resources.annotations is a real match restriction on Kyverno's ResourceDescription, distinct
+    // from `selector` (a label selector). Omitting it described a selector restricted to
+    // kinds: ['Pod'], annotations: { team: 'platform' } as matching every Pod.
+    const annotatedResourceRules: PolicyRule[] = [
+      {
+        name: 'platform-team-pods',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], annotations: { team: 'platform' } } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(annotatedResourceRules, 'Pod');
+
+    expect(reasons[0]).toContain('annotations [team=platform]');
+  });
+
+  test('includes admission operations constraint in the explanation, found via Copilot review', () => {
+    // resources.operations restricts which request verbs the rule fires for. Omitting it made a
+    // CREATE-only rule appear to apply to every operation.
+    const operationsRules: PolicyRule[] = [
+      {
+        name: 'block-pod-create',
+        match: {
+          any: [{ resources: { kinds: ['Pod'], operations: ['CREATE'] } }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(operationsRules, 'Pod');
+
+    expect(reasons[0]).toContain('operations [CREATE]');
+  });
+
+  test('includes subjects constraint in the explanation, found via Copilot review', () => {
+    // A match.all combining a Pod kind selector with subjects: [{kind: User, name: alice}] only
+    // fires when alice makes the request, not for any Pod operation. Omitting subjects made the
+    // rule appear unrestricted by user and overstated its scope.
+    const subjectsRules: PolicyRule[] = [
+      {
+        name: 'alice-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'User', name: 'alice' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(subjectsRules, 'Pod');
+
+    expect(reasons[0]).toContain('subjects [alice (User)]');
+  });
+
+  test('does not emit "undefined" for a subject that has a kind but no name, found via Copilot review', () => {
+    // MatchSelectorEntry types name as optional (name?: string), so a subject entry with only a
+    // kind (e.g., matching any ServiceAccount) is valid input. A naive `${s.name} (${s.kind})`
+    // template literal coerces the undefined name to the four-character string "undefined".
+    const kindOnlySubjectRules: PolicyRule[] = [
+      {
+        name: 'any-sa-pods',
+        match: {
+          all: [{ resources: { kinds: ['Pod'] } }, { subjects: [{ kind: 'ServiceAccount' }] }],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(kindOnlySubjectRules, 'Pod');
+
+    expect(reasons[0]).not.toContain('undefined');
+    expect(reasons[0]).toContain('(ServiceAccount)');
+  });
+
+  test('includes roles and clusterRoles constraints in the explanation, found via Copilot review', () => {
+    const roleRules: PolicyRule[] = [
+      {
+        name: 'role-bound-pods',
+        match: {
+          any: [
+            {
+              resources: { kinds: ['Pod'] },
+              roles: ['pod-editor'],
+              clusterRoles: ['cluster-admin'],
+            },
+          ],
+        },
+      },
+    ];
+
+    const reasons = describeMatchReasons(roleRules, 'Pod');
+
+    expect(reasons[0]).toContain('roles [pod-editor]');
+    expect(reasons[0]).toContain('cluster roles [cluster-admin]');
+  });
+
   test('recognizes the deprecated direct match.resources form, not just any/all, found via Copilot review', () => {
     // Confirmed against api/kyverno/v1/match_resources_types.go: MatchResources
     // embeds ResourceDescription directly as `resources`, deprecated in favor
@@ -1039,6 +1192,21 @@ describe('describeMatchReasons', () => {
     const reasons = describeMatchReasons(qualifiedRules, 'Deployment');
 
     expect(reasons[0]).toContain('Rule "check-deployments" matches kind "Deployment"');
+  });
+
+  test('does not mistake a group name starting with alpha/beta for a version segment, found via Copilot review', () => {
+    // Kyverno's own versionRegex (pkg/utils/kube/kind.go) requires at least one digit after
+    // "alpha"/"beta", so a 3-segment pattern whose first segment is the API group "v1alpha" (no
+    // trailing digit, not a real version) is "group/version/kind", not "version/kind/subresource".
+    // Allowing zero digits would misread "v1alpha" as a version and return segments[1] ("v1")
+    // as the kind instead of the real kind in segments[2] ("Widget").
+    const groupQualifiedRules: PolicyRule[] = [
+      { name: 'check-widgets', match: { any: [{ resources: { kinds: ['v1alpha/v1/Widget'] } }] } },
+    ];
+
+    const reasons = describeMatchReasons(groupQualifiedRules, 'Widget');
+
+    expect(reasons[0]).toContain('Rule "check-widgets" matches kind "Widget"');
   });
 
   test('recognizes a version-qualified kind pattern as a match, found via Copilot review', () => {
@@ -1215,6 +1383,28 @@ describe('describeMatchReasons', () => {
     expect(reasons[1]).toContain('exclude block covering kind "Pod"');
   });
 
+  test('does not freeze on a pathological run of wildcards against a non-matching kind, found via Copilot review', () => {
+    // Converting every "*" to ".*" and handing the result to a regex engine lets a pattern like
+    // this one trigger combinatorial backtracking on a non-match: the engine tries every way of
+    // partitioning the input across the repeated ".*" groups before giving up. A linear matcher
+    // settles this in well under a second regardless of how many "*" characters the pattern has.
+    const pathologicalRules: PolicyRule[] = [
+      {
+        name: 'check-pod-like',
+        match: { any: [{ resources: { kinds: [`${'*'.repeat(5000)}Pod`] } }] },
+      },
+    ];
+
+    const start = Date.now();
+    const reasons = describeMatchReasons(pathologicalRules, 'HorizontalPodAutoscaler');
+    const elapsedMs = Date.now() - start;
+
+    expect(elapsedMs).toBeLessThan(1000);
+    expect(reasons[0]).toContain(
+      'No rule in this policy explicitly lists kind "HorizontalPodAutoscaler"'
+    );
+  });
+
   test('recognizes a kind pattern with a wildcard version segment Kyverno accepts positionally ("apps/v*/Deployment"), found via Copilot review', () => {
     // Confirmed against Kyverno's real ParseKindSelector (pkg/utils/kube/kind.go): once there
     // are 3 segments and the first does not itself look like a version, Kyverno treats them as
@@ -1376,5 +1566,136 @@ describe('suggestFix', () => {
 
     expect(result).toContain('outright');
     expect(result).toContain('match and exclude blocks');
+  });
+
+  test('names the list expression for a validate.foreach rule', () => {
+    const foreach: ForEachValidation = { list: 'request.object.spec.containers[]' };
+    const rule: PolicyRule = { name: 'check-containers', validate: { foreach: [foreach] } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('validate.foreach');
+    expect(result).toContain('request.object.spec.containers[]');
+    expect(result).toContain('rule "check-containers"');
+  });
+
+  test('falls back gracefully when a foreach rule has no list expression', () => {
+    const foreach: ForEachValidation = {};
+    const rule: PolicyRule = { name: 'check-items', validate: { foreach: [foreach] } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('validate.foreach');
+    expect(result).toContain('a list expression');
+    expect(result).not.toContain('undefined');
+  });
+});
+
+describe('describeCELMatchReasons', () => {
+  test('returns a no-matchConstraints message when spec has no matchConstraints', () => {
+    const reasons = describeCELMatchReasons({}, 'Pod');
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('no matchConstraints');
+  });
+
+  test('returns a no-resourceRules message when matchConstraints has no resourceRules', () => {
+    const reasons = describeCELMatchReasons({ matchConstraints: {} }, 'Pod');
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('no resourceRules');
+  });
+
+  test('matches the kind via exact plural form (pods -> Pod)', () => {
+    const reasons = describeCELMatchReasons(
+      { matchConstraints: { resourceRules: [{ resources: ['pods'] }] } },
+      'Pod'
+    );
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('resources [pods]');
+  });
+
+  test('matches when resources contains wildcard *', () => {
+    const reasons = describeCELMatchReasons(
+      { matchConstraints: { resourceRules: [{ resources: ['*'] }] } },
+      'Deployment'
+    );
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('resources [*]');
+  });
+
+  test('falls back to all declared rules for an irregular plural like Ingress -> ingresses', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [
+            { resources: ['ingresses'], apiGroups: ['networking.k8s.io'], operations: ['CREATE'] },
+          ],
+        },
+      },
+      'Ingress'
+    );
+    // The kind+s heuristic ("ingresss") doesn't match "ingresses", but the report proves
+    // evaluation happened. describeCELMatchReasons should fall back to the declared rule.
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('ingresses');
+    expect(reasons[0]).not.toContain('No resourceRule');
+  });
+
+  test('includes apiGroups, versions, and operations when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [
+            {
+              resources: ['pods'],
+              apiGroups: [''],
+              apiVersions: ['v1'],
+              operations: ['CREATE', 'UPDATE'],
+            },
+          ],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons[0]).toContain('API groups []');
+    expect(reasons[0]).toContain('versions [v1]');
+    expect(reasons[0]).toContain('operations [CREATE, UPDATE]');
+  });
+
+  test('appends namespaceSelector, labelSelector, and matchConditions when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          namespaceSelector: { matchLabels: { env: 'prod' } },
+          labelSelector: { matchLabels: { app: 'web' } },
+          matchConditions: [
+            { name: 'only-on-create', expression: 'request.operation == "CREATE"' },
+          ],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('namespaceSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('labelSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('"only-on-create"'))).toBe(true);
+  });
+});
+
+describe('suggestCELFix', () => {
+  const target = { policy: 'dd-require-cost-center', status: 'fail' as const };
+
+  test('cites the validation message when one is present', () => {
+    const result = suggestCELFix({ expression: 'true', message: 'Must have cost-center' }, target);
+    expect(result).toContain('Must have cost-center');
+    expect(result).toContain('dd-require-cost-center');
+  });
+
+  test('mentions messageExpression when there is no static message', () => {
+    const result = suggestCELFix({ expression: 'true', messageExpression: 'self.name' }, target);
+    expect(result).toContain('computed dynamically');
+    expect(result).toContain('dd-require-cost-center');
+  });
+
+  test('falls back to a generic message when neither message nor messageExpression is set', () => {
+    const result = suggestCELFix({ expression: 'has(object.metadata.labels.app)' }, target);
+    expect(result).toContain('CEL expression');
+    expect(result).toContain('dd-require-cost-center');
+    expect(result).not.toContain('undefined');
   });
 });

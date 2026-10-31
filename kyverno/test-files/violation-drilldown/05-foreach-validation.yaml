@@ -1,0 +1,33 @@
+# Exercises suggestFix(rule.validate.foreach) path.
+# Each container in a Pod must declare resource requests; the foreach iterates
+# spec.containers[] and validates each element individually.
+# Expected drill-down fix text: "This rule uses validate.foreach over the list
+# expression "request.object.spec.containers[]"..."
+#
+# foreach field confirmed against Kyverno's Go source
+# (api/kyverno/v1/rule_types.go, ForEachValidation.List / ForEachValidation.Pattern).
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: dd-containers-require-requests
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-container-requests
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - drilldown-test
+      validate:
+        message: "validation error: every container must declare CPU and memory resource requests."
+        foreach:
+          - list: "request.object.spec.containers[]"
+            pattern:
+              resources:
+                requests:
+                  memory: "?*"
+                  cpu: "?*"
