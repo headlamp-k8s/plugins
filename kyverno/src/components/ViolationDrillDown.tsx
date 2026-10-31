@@ -182,7 +182,18 @@ function LegacyContent({ target, rules }: { target: DrillDownTarget; rules: Poli
   const { t } = useTranslation();
   const kind = target.kind || 'Unknown';
   const reasons = describeMatchReasons(rules, kind);
-  const matchingRule = target.rule ? rules.find(r => r.name === target.rule) : undefined;
+  // Kyverno autogenerates rules for pod-controller kinds (autogen- / autogen-cronjob- prefix).
+  // Those names are not present in policy.rules, so strip the prefix to find the source rule.
+  const resolveRule = (ruleName: string) => {
+    const exact = rules.find(r => r.name === ruleName);
+    if (exact) return exact;
+    if (ruleName.startsWith('autogen-cronjob-'))
+      return rules.find(r => r.name === ruleName.slice('autogen-cronjob-'.length));
+    if (ruleName.startsWith('autogen-'))
+      return rules.find(r => r.name === ruleName.slice('autogen-'.length));
+    return undefined;
+  };
+  const matchingRule = target.rule ? resolveRule(target.rule) : undefined;
   const fix = matchingRule ? suggestFix(matchingRule, target) : undefined;
 
   return (
@@ -304,6 +315,7 @@ function TargetSummary({ target }: { target: DrillDownTarget }) {
           alignItems: 'baseline',
         }}
       >
+        {target.apiVersion && <InfoPair label={t('API Version')} value={target.apiVersion} />}
         {target.kind && <InfoPair label={t('Kind')} value={target.kind} />}
         {target.name && <InfoPair label={t('Resource')} value={target.name} />}
         {target.namespace && <InfoPair label={t('Namespace')} value={target.namespace} />}
