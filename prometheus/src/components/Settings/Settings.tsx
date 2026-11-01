@@ -1,8 +1,9 @@
+import { Icon } from '@iconify/react';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
-import { Button } from '@mui/material';
+import { Button, IconButton, Tooltip } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import ListSubheader from '@mui/material/ListSubheader';
@@ -12,6 +13,7 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
+import { DiscoveryIntrospectionDialog } from './DiscoveryIntrospectionDialog';
 
 /**
  * Validates if the given address string is in the correct format.
@@ -58,6 +60,7 @@ export function Settings(props: SettingsProps) {
   const [addressError, setAddressError] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const [introspectionOpen, setIntrospectionOpen] = useState(false);
   const request = ApiProxy.request;
 
   const clusters = useClustersConf() || {};
@@ -172,20 +175,34 @@ export function Settings(props: SettingsProps) {
     {
       name: t('Auto detect'),
       value: (
-        <Switch
-          inputProps={{ 'aria-label': t('Auto detect') }}
-          disabled={!isMetricsEnabled}
-          checked={isAutoDetectEnabled}
-          onChange={e =>
-            onDataChange({
-              ...(data || {}),
-              [selectedCluster]: {
-                ...((data || {})[selectedCluster] || {}),
-                autoDetect: e.target.checked,
-              },
-            })
-          }
-        />
+        <Box display="flex" alignItems="center" gap={1}>
+          <Switch
+            inputProps={{ 'aria-label': t('Auto detect') }}
+            disabled={!isMetricsEnabled}
+            checked={isAutoDetectEnabled}
+            onChange={e =>
+              onDataChange({
+                ...(data || {}),
+                [selectedCluster]: {
+                  ...((data || {})[selectedCluster] || {}),
+                  autoDetect: e.target.checked,
+                },
+              })
+            }
+          />
+          <Tooltip title={t('Prometheus autodetection info')}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={!isAutoDetectEnabled}
+                onClick={() => setIntrospectionOpen(true)}
+                aria-label={t('Prometheus autodetection info')}
+              >
+                <Icon icon="mdi:information-outline" width="20px" height="20px" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
       ),
     },
     {
@@ -363,6 +380,11 @@ export function Settings(props: SettingsProps) {
         </Select>
       </Box>
       <NameValueTable rows={settingsRows} />
+      <DiscoveryIntrospectionDialog
+        open={introspectionOpen}
+        onClose={() => setIntrospectionOpen(false)}
+        cluster={selectedCluster}
+      />
     </Box>
   );
 }
