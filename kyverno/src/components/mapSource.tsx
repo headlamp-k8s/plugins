@@ -202,8 +202,15 @@ export const kyvernoMapSource = {
           // a stable key from kind/namespace/name, consistent with
           // collectPolicyImpact's own dedup key so the same resource hit by two
           // policies resolves to a single node in the Map.
+          // Include the API group (stripped of version) so that two resources with the same
+          // kind/namespace/name but different API groups don't collide in the Map node map.
+          // Mirrors the nameKey construction in collectPolicyImpact (policyImpact.ts).
+          const apiGroup = res.apiVersion?.includes('/')
+            ? res.apiVersion.slice(0, res.apiVersion.indexOf('/'))
+            : '';
           const resourceId =
-            res.uid ?? `kyverno-res-${res.kind ?? 'Unknown'}-${res.namespace ?? ''}-${res.name}`;
+            res.uid ??
+            `kyverno-res-${apiGroup}-${res.kind ?? 'Unknown'}-${res.namespace ?? ''}-${res.name}`;
 
           if (!resourceNodeMap.has(resourceId)) {
             const subtitle = res.namespace
