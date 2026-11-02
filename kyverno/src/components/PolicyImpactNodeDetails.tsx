@@ -16,7 +16,8 @@
 
 import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Box, Chip, Divider, Typography } from '@mui/material';
+import { Box, Chip, Divider, Link as MuiLink, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { ImpactedResource, PolicyImpactSummary } from '../resources/policyImpact';
 
 interface MapNodeData {
@@ -46,6 +47,16 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
         width="16"
         aria-label={status}
         style={{ color: 'rgb(237, 108, 2)', flexShrink: 0 }}
+      />
+    );
+  }
+  if (status === 'skip') {
+    return (
+      <Icon
+        icon="mdi:minus-circle"
+        width="16"
+        aria-label={status}
+        style={{ color: 'rgb(120, 120, 120)', flexShrink: 0 }}
       />
     );
   }
@@ -80,6 +91,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
 
   const data: MapNodeData | undefined = node.data;
   const impact = data?.impact;
+  const policyListUrl = namespace ? '/kyverno/policies' : '/kyverno/clusterpolicies';
 
   return (
     <Box sx={{ p: 2 }}>
@@ -162,13 +174,14 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
                 </Box>
               ))}
               {data?.clipped && (
-                <Typography
+                <MuiLink
+                  component={RouterLink}
+                  to={policyListUrl}
                   variant="caption"
-                  color="text.secondary"
                   sx={{ display: 'block', mt: 0.5 }}
                 >
                   {t('More resources not shown. Open the policy detail page to see all.')}
-                </Typography>
+                </MuiLink>
               )}
             </>
           )}
