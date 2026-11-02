@@ -281,6 +281,7 @@ export interface ImageAttestation {
 }
 
 export interface ImageValidatingPolicySpec {
+  validationActions?: string[];
   matchImageReferences?: ImageMatchReference[];
   attestors?: Attestor[];
   attestations?: ImageAttestation[];
@@ -307,6 +308,10 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
 
   get status() {
     return this.jsonData.status;
+  }
+
+  get validationActions(): string[] {
+    return effectiveValidationActions(this.spec.validationActions);
   }
 
   get imagePatterns(): string[] {
