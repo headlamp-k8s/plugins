@@ -61,8 +61,6 @@ Other plugin views do not require Prometheus.
   not CEL policy kinds.
 - Drill-down links from impacted resources to individual report results and
   integration with Headlamp's Map view are not included in this release.
-- Overview policy totals still count legacy Policy and ClusterPolicy resources,
-  not CEL policies.
 - Long namespaced CEL sidebar labels can truncate at the default sidebar width.
 
 ## Prerequisites

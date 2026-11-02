@@ -76,6 +76,7 @@
   "Kyverno ephemeral reports (reports.kyverno.io/v1) were not detected on this cluster. Kyverno 1.11+ is required.": "Kyverno ephemeral reports (reports.kyverno.io/v1) were not detected on this cluster. Kyverno 1.11+ is required.",
   "{{kind}} (policies.kyverno.io/v1) was not detected on this cluster. Kyverno {{version}}+ is required.": "{{kind}} (policies.kyverno.io/v1) was not detected on this cluster. Kyverno {{version}}+ is required.",
   "This Kyverno CEL policy kind (policies.kyverno.io/v1) requires a newer Kyverno version than what is installed on this cluster.": "This Kyverno CEL policy kind (policies.kyverno.io/v1) requires a newer Kyverno version than what is installed on this cluster.",
+  "Some policy kinds couldn't be listed, so this can't be confirmed.": "Some policy kinds couldn't be listed, so this can't be confirmed.",
   "Kyverno Overview": "Kyverno Overview",
   "Total Policies": "Total Policies",
   "Compliance": "Compliance",
