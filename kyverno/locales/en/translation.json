@@ -180,5 +180,12 @@
   "By Policy": "By Policy",
   "By Namespace": "By Namespace",
   "By Kind": "By Kind",
-  "No violations found.": "No violations found."
+  "No violations found.": "No violations found.",
+  "Enforcement": "Enforcement",
+  "{{count}} rules_one": "{{count}} rule",
+  "{{count}} rules_other": "{{count}} rules",
+  "passing": "passing",
+  "No evaluated resources yet.": "No evaluated resources yet.",
+  "Affected resources (top {{count}}):": "Affected resources (top {{count}}):",
+  "More resources not shown. Open the policy detail page to see all.": "More resources not shown. Open the policy detail page to see all."
 }
