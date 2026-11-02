@@ -21,8 +21,22 @@ import { NotInstalledBanner } from './common';
 
 export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading' | 'celResources'>;
 
+/** One CRD group, or several of which any one is enough; never an empty list. */
+export type CRDRequirement = CRDGroup | [CRDGroup, ...CRDGroup[]];
+
+/** API group/version that useKyvernoCRDs probes to detect each CRD group. */
+const API_GROUPS: Record<CRDGroup, string> = {
+  legacy: 'kyverno.io/v1',
+  cel: 'policies.kyverno.io/v1',
+  cleanup: 'kyverno.io/v2',
+  reports: 'wgpolicyk8s.io/v1alpha2',
+  exceptions: 'kyverno.io/v2',
+  ephemeralReports: 'reports.kyverno.io/v1',
+};
+
 interface CRDGuardProps {
-  requires: CRDGroup;
+  /** CRD group the children need; when given several, any one of them is enough. */
+  requires: CRDRequirement;
   children: ReactNode;
   message?: string;
   /**
@@ -72,8 +86,20 @@ export function CRDGuard({
     return <NotInstalledBanner loading />;
   }
 
-  if (!status[requires]) {
-    return <NotInstalledBanner message={message || defaultMessages[requires]} />;
+  const requiredGroups = Array.isArray(requires) ? requires : [requires];
+  if (!requiredGroups.some(group => status[group])) {
+    // When any of several API groups would do, the first group's own message would suggest
+    // that only it is accepted, so name them all. Headlamp's plugin i18n instances don't
+    // HTML-escape interpolated values, so the slashes come through as they are.
+    const apiGroups = [...new Set(requiredGroups.map(group => API_GROUPS[group]))];
+    const fallback =
+      apiGroups.length > 1
+        ? t(
+            'None of the Kyverno APIs this page works with ({{apiGroups}}) were detected on this cluster.',
+            { apiGroups: apiGroups.join(', ') }
+          )
+        : defaultMessages[requiredGroups[0]];
+    return <NotInstalledBanner message={message || fallback} />;
   }
 
   if (requiresResource && !status.celResources.has(requiresResource)) {
