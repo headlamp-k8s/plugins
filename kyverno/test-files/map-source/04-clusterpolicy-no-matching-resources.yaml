@@ -1,0 +1,26 @@
+# ClusterPolicy with no matching resources (targets a kind not present in the
+# test namespace). Exercises the "zero evaluated resources" state so the grey
+# shield-outline icon is visible on a policy node in the Map view alongside
+# the red/green ones.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: ms-require-secret-label
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-secret-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Secret
+              namespaces:
+                - map-source-test
+      validate:
+        message: "Every Secret must carry a 'managed-by' label."
+        pattern:
+          metadata:
+            labels:
+              managed-by: "?*"
