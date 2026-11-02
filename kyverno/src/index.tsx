@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   registerAppBarAction,
+  registerKindIcon,
+  registerKubeObjectGlance,
+  registerMapSource,
   registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
@@ -41,6 +45,7 @@ import {
   NamespacedImageValidatingPolicyList,
 } from './components/ImageValidatingPolicyList';
 import { KyvernoReportList } from './components/KyvernoReportList';
+import { kyvernoMapSource, KyvernoPolicyGlance } from './components/mapSource';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
@@ -357,3 +362,25 @@ registerKyvernoPage({
 
 // --- App Bar ---
 registerAppBarAction(ComplianceBadge);
+
+// --- Map view ---
+// Register kind icons so ClusterPolicy and Policy nodes show the Kyverno logo
+// in the Map view instead of a generic CRD icon.
+registerKindIcon('ClusterPolicy', {
+  icon: <Icon icon="kyverno:logo" />,
+  color: '#326CE5',
+});
+registerKindIcon('Policy', {
+  icon: <Icon icon="kyverno:logo" />,
+  color: '#326CE5',
+});
+
+// Hover glance for ClusterPolicy and Policy nodes anywhere in the Map.
+registerKubeObjectGlance({
+  id: 'kyverno-policy-glance',
+  component: KyvernoPolicyGlance,
+});
+
+// Register Kyverno policies (ClusterPolicy + Policy) as Map view nodes,
+// with edges to the resources each policy has evaluated.
+registerMapSource(kyvernoMapSource);

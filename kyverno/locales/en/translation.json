@@ -212,5 +212,12 @@
   "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.": "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.",
   "Rule \"{{rule}}\" matches {{constraints}}.": "Rule \"{{rule}}\" matches {{constraints}}.",
   "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.": "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.",
-  "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.": "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan."
+  "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.": "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.",
+  "Enforcement": "Enforcement",
+  "{{count}} rules_one": "{{count}} rule",
+  "{{count}} rules_other": "{{count}} rules",
+  "passing": "passing",
+  "No evaluated resources yet.": "No evaluated resources yet.",
+  "Affected resources (top {{count}}):": "Affected resources (top {{count}}):",
+  "More resources not shown. Open the policy detail page to see all.": "More resources not shown. Open the policy detail page to see all."
 }
