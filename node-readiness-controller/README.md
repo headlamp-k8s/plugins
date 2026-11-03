@@ -23,6 +23,13 @@ A Headlamp plugin for managing and observing [Node Readiness Controller](https:/
   - Target node selector configuration chips.
   - **Conditions to Evaluate** table listing required conditions, expected status, and default fallback states.
   - **Dry-Run Simulation** section detailing affected nodes, risky operations, and predicted taint additions/removals.
+- **Node Evaluations Overview & Inspection**:
+  - Cluster-level list view displaying all `NodeReadinessEvaluation` custom resources.
+  - Node evaluation details view with target node linkage, overall readiness state, rules progress chips, and active NRC taints.
+  - Expandable rule evaluations drawer with lifecycle timestamps (`firstEvaluatedAt`, `taintObservedAt`, `taintAddedAt`, `taintRemovedAt`), blocked/unblocked duration timers, and condition-by-condition breakdown.
+- **Node Details Lifecycle Extension**:
+  - Injects a **Node Readiness Lifecycle** section directly into Headlamp's native Node details view, positioned above the Events section.
+  - Immediate inline visibility into node readiness state, gating taints, and evaluated rules with a direct link to the full evaluation report.
 
 ---
 
@@ -33,27 +40,35 @@ The plugin codebase is structured following established Headlamp plugin standard
 ```
 src/
 |-- resources/              # Upstream CRD definitions & types
-|   |-- types.ts            # TypeScript interfaces for NodeReadinessRule spec & status
-|   |-- nodeReadinessRule.ts # Headlamp KubeObject class definition
+|   |-- types.ts            # TypeScript interfaces for NRR & NRE spec/status
+|   |-- nodeReadinessRule.ts # Headlamp KubeObject for NodeReadinessRule
+|   |-- nodeReadinessEvaluation.ts # Headlamp KubeObject for NodeReadinessEvaluation
 |   `-- index.ts
 |-- components/             # Reusable UI components
 |   |-- common/             # Atomic, reusable presentation widgets
+|   |   |-- CrdNotInstalled.tsx
 |   |   |-- TaintChip.tsx
 |   |   |-- NodeSelectorSummary.tsx
 |   |   |-- NodeSelectorDetails.tsx
 |   |   |-- NodeStatusChips.tsx
 |   |   `-- index.ts
-|   `-- rules/              # Domain-specific rule views & sections
-|       |-- RuleList.tsx
-|       |-- RuleDetails.tsx
-|       |-- RuleConditionsTable.tsx
-|       |-- DryRunResultsSection.tsx
-|       |-- RuleDetails.test.tsx
+|   |-- landing/            # Landing page overview cards & attention section
+|   |-- rules/              # Rule list and details inspection views
+|   |-- evaluations/        # NodeReadinessEvaluation list & detail drawer views
+|   |   |-- EvaluationList.tsx
+|   |   |-- EvaluationDetails.tsx
+|   |   |-- EvaluationRuleTable.tsx
+|   |   |-- EvaluationRuleDrawer.tsx
+|   |   |-- EvaluationConditionsTable.tsx
+|   |   `-- index.ts
+|   `-- node-extension/     # Native Node details extension
+|       |-- NodeReadinessExtension.tsx
 |       `-- index.ts
 |-- utils/                  # Pure utility functions & routes
 |   |-- routes.ts           # Centralized route paths and helpers
 |   |-- ruleStats.ts        # Pure status computation & failure precedence
-|   |-- ruleStats.test.ts
+|   |-- evaluationStats.ts  # Rule satisfaction progress & duration formatting
+|   |-- controllerHealth.ts # Multi-tiered leader lease & deployment health detection
 |   `-- index.ts
 |-- index.tsx               # Declarative plugin entrypoint
 `-- index.test.tsx          # Registration test suite
@@ -67,13 +82,14 @@ Requires Headlamp 0.41 or newer for the custom-resource factory, read-only detai
 and resource-table APIs used by this plugin.
 
 1. **Kubernetes Cluster**: A dedicated, disposable test cluster (Kind or Minikube recommended; Kubernetes 1.28+). Never use a production or shared cluster for test fixtures.
-2. **CRD Installed**: The `NodeReadinessRule` CRD must be present in the cluster:
+2. **CRDs Installed**: The `NodeReadinessRule` and `NodeReadinessEvaluation` CRDs must be present in the cluster:
    ```bash
-   kubectl get crd nodereadinessrules.readiness.node.x-k8s.io
+   kubectl get crd nodereadinessrules.readiness.node.x-k8s.io nodereadinessevaluations.readiness.node.x-k8s.io
    ```
-   To apply the CRD directly:
+   To apply the CRDs directly from upstream:
    ```bash
    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/node-readiness-controller/main/config/crd/bases/readiness.node.x-k8s.io_nodereadinessrules.yaml
+   kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/node-readiness-controller/main/config/crd/bases/readiness.node.x-k8s.io_nodereadinessevaluations.yaml
    ```
 3. **Node.js**: Node 18+ and npm installed.
 
@@ -159,8 +175,8 @@ kubectl scale deployment -n nrr-system nrr-controller-manager --replicas=0
 # 3. Apply rule specifications
 kubectl apply -f test-files/
 
-# 4. Seed the status subresource for fixtures with predefined status (01-04, 06)
-for file in test-files/0[1-4,6]*.yaml; do
+# 4. Seed the status subresource for fixtures with predefined status (01-04, 06-08, 10-11)
+for file in test-files/0[1-4,6-8]*.yaml test-files/1[0-1]*.yaml; do
   kubectl replace --subresource=status -f "$file"
 done
 ```

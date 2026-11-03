@@ -1,6 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+/**
+ * @vitest-environment jsdom
+ */
+import '@testing-library/jest-dom/vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeReadinessRule } from '../../resources';
-import { getRuleDetailSections } from './RuleDetails';
+import RuleDetails, { getRuleDetailSections } from './RuleDetails';
+
+const { mockUseGet, mockDetailsGridProps } = vi.hoisted(() => ({
+  mockUseGet: vi.fn(),
+  mockDetailsGridProps: vi.fn(),
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
   makeCustomResourceClass: vi.fn().mockImplementation(() => {
@@ -8,6 +19,9 @@ vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
       jsonData: any;
       constructor(jsonData: any) {
         this.jsonData = jsonData;
+      }
+      static useGet(...args: any[]) {
+        return mockUseGet(...args);
       }
     };
   }),
@@ -17,13 +31,33 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   DateLabel: ({ date }: { date: string }) => <span>{date}</span>,
   StatusLabel: ({ children }: any) => <span>{children}</span>,
   Resource: {
-    DetailsGrid: () => null,
+    DetailsGrid: (props: any) => {
+      mockDetailsGridProps(props);
+      return <div data-testid="details-grid">{props.name}</div>;
+    },
   },
-  SectionBox: ({ children }: any) => <div>{children}</div>,
+  SectionBox: ({ title, children }: any) => (
+    <div data-testid="section-box">
+      {title && <h3>{title}</h3>}
+      {children}
+    </div>
+  ),
   SimpleTable: () => null,
 }));
 
+vi.mock('react-router-dom', () => ({
+  useParams: () => ({ name: 'my-test-rule' }),
+}));
+
 describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
+  beforeEach(() => {
+    mockUseGet.mockReturnValue([null, null]);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
   it('handles a newly created dry-run rule with no status without throwing', () => {
     const mockRule = new NodeReadinessRule({
       spec: {
@@ -113,5 +147,21 @@ describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
   it('returns empty array when rule or spec is missing', () => {
     expect(getRuleDetailSections(null)).toEqual([]);
     expect(getRuleDetailSections(new NodeReadinessRule({} as any))).toEqual([]);
+  });
+
+  it('renders CrdNotInstalled when NodeReadinessRule lookup fails with 404 or 403', () => {
+    mockUseGet.mockReturnValue([null, { status: 404, message: 'Resource not found' }]);
+    render(<RuleDetails />);
+    expect(screen.getByText('NodeReadinessRule Unavailable')).toBeInTheDocument();
+    expect(screen.queryByTestId('details-grid')).not.toBeInTheDocument();
+
+    cleanup();
+
+    mockUseGet.mockReturnValue([null, { status: 403, message: 'Forbidden' }]);
+    render(<RuleDetails />);
+    expect(
+      screen.getByText('Permission Denied: Cannot Read Node Readiness Rule')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('details-grid')).not.toBeInTheDocument();
   });
 });
