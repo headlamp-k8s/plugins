@@ -13,6 +13,8 @@ This directory contains sample `NodeReadinessRule` custom resource manifests des
 | [`05-pending-rule.yaml`](./05-pending-rule.yaml)                                 | Pending / Unreconciled        | Newly submitted rule without controller status; verifies graceful handling of uninitialized status and zero-count states without crashing. |
 | [`06-multicondition-fallback-rule.yaml`](./06-multicondition-fallback-rule.yaml) | Multi-condition with fallback | `conditionPolicy: allOf`; multiple condition evaluations with fallback `defaultStatus: "False"` tested in Conditions table.                |
 | [`07-attention-multi-issue-rule.yaml`](./07-attention-multi-issue-rule.yaml)     | Multiple attention conditions | Combines evaluation errors (`failedNodes`), active taint (`Present`), and out-of-sync spec (`observedGen < gen`) on a single card.         |
+| [`10-nre-worker1-available.yaml`](./10-nre-worker1-available.yaml)               | NRE Available                 | `status.state: Available`; node satisfies all rule criteria; managed taint is absent; unblock duration timestamps populated.               |
+| [`11-nre-worker2-blocked.yaml`](./11-nre-worker2-blocked.yaml)                   | NRE Blocked                   | `status.state: NotAvailable`; GPU condition unsatisfied; managed taint is present; currently blocked timer testable.                       |
 
 ## Quickstart Testing
 

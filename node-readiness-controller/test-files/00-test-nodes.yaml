@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Node
+metadata:
+  name: worker-node-01
+  labels:
+    node-role.kubernetes.io/worker: ''
+spec:
+  taints: []
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: worker-node-02
+  labels:
+    node-role.kubernetes.io/worker: ''
+spec:
+  taints:
+    - key: readiness.k8s.io/gpu-not-ready
+      effect: NoSchedule

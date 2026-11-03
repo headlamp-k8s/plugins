@@ -5,9 +5,10 @@ import {
   SectionBox,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, CircularProgress, Link, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
+import { CrdNotInstalled } from './components/common';
 import { MetricCardsGrid, RulesAttentionSection, StatusHeader } from './components/landing';
 import { NodeReadinessRule } from './resources';
 import {
@@ -70,8 +71,22 @@ export default function LandingPage() {
   });
 
   if (rulesError) {
-    const isForbidden = (rulesError as any)?.status === 403;
-    const isNotFound = (rulesError as any)?.status === 404;
+    const isForbidden =
+      (rulesError as any)?.status === 403 ||
+      (rulesError as any)?.code === 403 ||
+      (rulesError as any)?.reason === 'Forbidden' ||
+      String((rulesError as any)?.message || rulesError)
+        .toLowerCase()
+        .includes('forbidden');
+
+    const isNotFound =
+      (rulesError as any)?.status === 404 ||
+      (rulesError as any)?.code === 404 ||
+      (rulesError as any)?.reason === 'NotFound' ||
+      String((rulesError as any)?.message || rulesError)
+        .toLowerCase()
+        .includes('not found') ||
+      String((rulesError as any)?.message || rulesError).includes('404');
 
     if (!isForbidden && !isNotFound) {
       return (
@@ -111,7 +126,7 @@ export default function LandingPage() {
     return (
       <PageGrid>
         <SectionBox title="Node Readiness Controller">
-          <Box mb={3} display="flex" alignItems="center" gap={1.5}>
+          <Box mb={2} display="flex" alignItems="center" gap={1.5}>
             <Typography
               variant="body2"
               color="text.secondary"
@@ -128,29 +143,19 @@ export default function LandingPage() {
               {isForbidden ? 'Permission Denied' : 'Not Installed'}
             </StatusLabel>
           </Box>
-          <Box m={4}>
-            <EmptyContent color="error">
-              <Typography variant="h6">
-                {isForbidden
-                  ? 'Permission Denied: Cannot Read Node Readiness Rules'
-                  : 'Node Readiness Controller CRDs not installed'}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                {isForbidden ? (
-                  'Your Kubernetes user or service account lacks read permissions for readiness.node.x-k8s.io/nodereadinessrules.'
-                ) : (
-                  <Link
-                    href="https://node-readiness-controller.sigs.k8s.io/getting-started/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Please refer to the Node Readiness Controller installation documentation to set
-                    up CRDs.
-                  </Link>
-                )}
-              </Typography>
-            </EmptyContent>
-          </Box>
+          <CrdNotInstalled
+            isForbidden={isForbidden}
+            title={
+              isForbidden
+                ? 'Permission Denied: Cannot Read Node Readiness Rules'
+                : 'Node Readiness Controller CRDs not installed'
+            }
+            description={
+              isForbidden
+                ? 'Your Kubernetes user or service account lacks read permissions for readiness.node.x-k8s.io/nodereadinessrules.'
+                : 'Please refer to the Node Readiness Controller installation documentation to set up CRDs.'
+            }
+          />
         </SectionBox>
       </PageGrid>
     );

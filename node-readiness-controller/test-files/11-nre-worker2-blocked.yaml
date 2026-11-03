@@ -1,0 +1,41 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessEvaluation
+metadata:
+  name: worker-node-02
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: nre-blocked
+spec:
+  nodeName: worker-node-02
+status:
+  state: NotAvailable
+  conditions:
+    - type: Evaluated
+      status: 'True'
+      reason: EvaluationSuccess
+      message: 'All rules evaluated successfully'
+      lastTransitionTime: '2026-10-14T10:15:00Z'
+    - type: Available
+      status: 'False'
+      reason: RulesNotSatisfied
+      message: 'One or more rules are not satisfied'
+      lastTransitionTime: '2026-10-14T10:15:00Z'
+  rules:
+    - ruleName: 02-tainted-rule
+      ruleUID: '029a4b23-9876-5432-b2c3-d4e5f6a7b8c9'
+      ruleStatus: Unsatisfied
+      taintStatus: Present
+      taintKey: readiness.k8s.io/gpu-not-ready
+      taintEffect: NoSchedule
+      conditionPolicy: allOf
+      reason: ConditionsNotMet
+      message: 'Condition nvidia.com/GPUReady is False (required True)'
+      firstEvaluatedAt: '2026-10-14T10:00:00Z'
+      taintObservedAt: '2026-10-14T10:00:00Z'
+      taintAddedAt: '2026-10-14T10:00:05Z'
+      lastEvaluatedAt: '2026-10-14T10:15:00Z'
+      readinessConditions:
+        - type: nvidia.com/GPUReady
+          requiredStatus: 'True'
+          currentStatus: 'False'

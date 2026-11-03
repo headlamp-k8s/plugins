@@ -1,0 +1,42 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessEvaluation
+metadata:
+  name: worker-node-01
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: nre-available
+spec:
+  nodeName: worker-node-01
+status:
+  state: Available
+  conditions:
+    - type: Evaluated
+      status: 'True'
+      reason: EvaluationSuccess
+      message: 'All rules evaluated successfully'
+      lastTransitionTime: '2026-10-14T10:02:15Z'
+    - type: Available
+      status: 'True'
+      reason: AllRulesSatisfied
+      message: 'Node satisfied all rules and is available for scheduling'
+      lastTransitionTime: '2026-10-14T10:02:15Z'
+  rules:
+    - ruleName: 01-healthy-rule
+      ruleUID: '018f3a12-8765-4321-a1b2-c3d4e5f6a7b8'
+      ruleStatus: Satisfied
+      taintStatus: Absent
+      taintKey: readiness.k8s.io/NetworkReady
+      taintEffect: NoSchedule
+      conditionPolicy: allOf
+      reason: AllConditionsSatisfied
+      message: 'Node met all required conditions'
+      firstEvaluatedAt: '2026-10-14T10:00:00Z'
+      taintObservedAt: '2026-10-14T10:00:00Z'
+      taintAddedAt: '2026-10-14T10:00:05Z'
+      taintRemovedAt: '2026-10-14T10:02:15Z'
+      lastEvaluatedAt: '2026-10-14T10:02:15Z'
+      readinessConditions:
+        - type: network.kubernetes.io/CNIReady
+          requiredStatus: 'True'
+          currentStatus: 'True'
