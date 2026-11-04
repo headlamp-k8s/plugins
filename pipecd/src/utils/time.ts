@@ -26,7 +26,7 @@ export function formatTimestamp(unix: number | undefined): string {
 }
 
 /** The `t` function from `useTranslation`, narrowed to what the formatters need. */
-type Translate = (key: string, options?: Record<string, unknown>) => string;
+export type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 /** Formats a PipeCD unix timestamp (seconds) as a short relative time, e.g. "3h ago". */
 export function relativeTime(unix: number | undefined, t: Translate): string {
