@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unlabeled-pod-a
+  namespace: policy-impact-a
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-pod-a
+  namespace: policy-impact-a
+  labels:
+    policy-impact/exempt: "true"
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod-a
+  namespace: policy-impact-a
+  labels:
+    team: platform
+    owner: platform-team
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unlabeled-pod-b
+  namespace: policy-impact-b
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod-b
+  namespace: policy-impact-b
+  labels:
+    team: platform
+    cost-center: platform-eng
+spec:
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+---
+# No "team" label on the pod template, so require-team-label's autogen rule
+# flags this Deployment object itself on admission (kind "Deployment"), even
+# though require-team-label's own spec.rules only ever names kind "Pod".
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: policy-impact-b
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.9
