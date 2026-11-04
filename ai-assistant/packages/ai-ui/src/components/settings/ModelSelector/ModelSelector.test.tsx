@@ -419,6 +419,29 @@ describe('ModelSelector saved configuration actions', () => {
 });
 
 describe('ModelSelector configuration editing', () => {
+  it('preserves a removed model when editing only the configuration name', async () => {
+    const onChange = vi.fn();
+    const options = modelProviders
+      .find(provider => provider.id === 'openai')
+      ?.fields.find(field => field.name === 'model')?.options;
+    expect(options).not.toContain('gpt-4o');
+    renderSelector(withMultipleProvidersArgs, { onChange });
+    await openEditDialog();
+
+    expect(screen.getByDisplayValue('gpt-4o')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('Give this configuration a name'), {
+      target: { value: 'Renamed configuration' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configId: 'openai-primary',
+        config: expect.objectContaining({ model: 'gpt-4o' }),
+      })
+    );
+  });
+
   it('disables save until required values are present', async () => {
     renderSelector({ ...emptyArgs, savedConfigs: { providers: [], termsAccepted: true } });
     fireEvent.click(screen.getByRole('button', { name: 'Add Provider' }));
