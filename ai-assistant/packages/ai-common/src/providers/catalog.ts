@@ -54,6 +54,9 @@ export interface ModelProvider {
   description?: string;
 }
 
+/** Default used when the GitHub model catalog cannot be loaded. */
+export const DEFAULT_COPILOT_MODEL = 'gpt-5.6-sol';
+
 /**
  * Registry of supported model providers and their configuration fields.
  */
@@ -79,23 +82,16 @@ export const modelProviders: ModelProvider[] = [
         type: 'select',
         required: true,
         options: [
+          'gpt-6.1-sol',
+          'gpt-6.1-terra',
+          'gpt-6-astra',
+          'gpt-6-sol',
+          'gpt-6-luna',
           'gpt-5.6-sol',
-          'gpt-5.4',
-          'gpt-5.2',
-          'gpt-5.1',
-          'gpt-4.1',
-          'gpt-4o',
-          'gpt-4o-mini',
-          'o4-mini',
-          'o3',
-          'o3-mini',
-          'o1',
-          'o1-mini',
-          'claude-sonnet-4',
-          'claude-3.5-sonnet',
-          'claude-3.5-haiku',
+          'gpt-5.6-terra',
+          'gpt-5.6-luna',
         ],
-        default: 'gpt-4o',
+        default: DEFAULT_COPILOT_MODEL,
       },
     ],
   },

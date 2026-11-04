@@ -32,9 +32,9 @@ describe('modelConfig', () => {
     expect(fieldNames).toContain('model');
   });
 
-  it('copilot provider default model is gpt-4o', () => {
+  it('copilot provider default model is gpt-5.6-sol', () => {
     const defaults = getDefaultConfig('copilot');
-    expect(defaults.model).toBe('gpt-4o');
+    expect(defaults.model).toBe('gpt-5.6-sol');
   });
 
   it('all providers have unique IDs', () => {
@@ -54,6 +54,22 @@ describe('modelConfig', () => {
 
   it('does not suggest models excluded by the lifecycle policy', () => {
     const excludedModelsByProvider = {
+      copilot: [
+        'gpt-5.4',
+        'gpt-5.2',
+        'gpt-5.1',
+        'gpt-4.1',
+        'gpt-4o',
+        'gpt-4o-mini',
+        'o4-mini',
+        'o3',
+        'o3-mini',
+        'o1',
+        'o1-mini',
+        'claude-sonnet-4',
+        'claude-3.5-sonnet',
+        'claude-3.5-haiku',
+      ],
       openai: ['gpt-5.1-mini', 'gpt-5-mini', 'o4-mini', 'o3', 'o3-mini', 'o1', 'o1-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
       mistral: ['magistral-medium-2507', 'magistral-small-2507'],
