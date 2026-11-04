@@ -81,7 +81,7 @@ export interface LinkRendererProps extends React.AnchorHTMLAttributes<HTMLAnchor
 }
 
 /** Default link renderer — opens external links in a new tab. */
-const DefaultLinkRenderer = React.memo(({ href, children, ...props }: LinkRendererProps) => {
+export const DefaultLinkRenderer = React.memo(({ href, children, ...props }: LinkRendererProps) => {
   const safeHref = href?.startsWith('//')
     ? `https:${href}`
     : href && /^(https?:|mailto:|#|\/(?!\/))/i.test(href)
