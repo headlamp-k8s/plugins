@@ -30,6 +30,11 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   }),
 }));
 
+vi.mock('@kinvolk/headlamp-plugin/lib/Utils', () => ({
+  getCluster: () => null,
+  getClusterPrefixedPath: (path: string) => path,
+}));
+
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   StatusLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
@@ -195,16 +200,16 @@ describe('ApplicationList', () => {
     expect(screen.queryByText('just now')).toBeNull();
   });
 
-  // There is no detail page yet, so the name must not look clickable. Use the
-  // Open in PipeCD link to reach the application.
-  it('shows the application name as text, not a link', async () => {
+  it('links the application name to its detail page', async () => {
     setupConfigured();
     mockListSuccess();
 
     renderList();
     await screen.findByText('frontend-prod');
 
-    expect(screen.queryByRole('link', { name: 'frontend-prod' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'frontend-prod' }).getAttribute('href')).toBe(
+      '/pipecd/applications/app-k8s-001'
+    );
   });
 
   it('links each application to PipeCD in a new tab', async () => {

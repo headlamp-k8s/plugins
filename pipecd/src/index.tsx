@@ -17,7 +17,9 @@
 import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
+import { ApplicationDetail } from './components/ApplicationDetail';
 import { ApplicationList } from './components/ApplicationList';
+import { DeploymentDetail } from './components/DeploymentDetail';
 import { SettingsPage } from './components/SettingsPage';
 
 const PIPECD_ICON_NAME = 'pipecd:logo';
@@ -71,6 +73,24 @@ registerRoute({
   sidebar: 'pipecd-settings',
   name: 'PipeCDSettings',
   component: () => <SettingsPage />,
+  exact: true,
+  noAuthRequired: false,
+});
+
+registerRoute({
+  path: '/pipecd/applications/:id',
+  sidebar: 'pipecd-applications',
+  name: 'PipeCDApplicationDetail',
+  component: () => <ApplicationDetail />,
+  exact: true,
+  noAuthRequired: false,
+});
+
+registerRoute({
+  path: '/pipecd/deployments/:id',
+  sidebar: 'pipecd-applications',
+  name: 'PipeCDDeploymentDetail',
+  component: () => <DeploymentDetail />,
   exact: true,
   noAuthRequired: false,
 });
