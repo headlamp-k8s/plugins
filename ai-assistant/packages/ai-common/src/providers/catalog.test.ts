@@ -155,4 +155,12 @@ describe('modelConfig', () => {
     expect(options).toContain('mistral-large-4');
     expect(getDefaultConfig('mistral').model).toBe('mistral-small-2603');
   });
+
+  it('suggests Claude 5.5 without changing the existing default', () => {
+    const options = getProviderFields('anthropic').find(field => field.name === 'model')?.options;
+    expect(options).toEqual(
+      expect.arrayContaining(['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'])
+    );
+    expect(getDefaultConfig('anthropic').model).toBe('claude-sonnet-5');
+  });
 });

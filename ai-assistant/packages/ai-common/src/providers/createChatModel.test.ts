@@ -306,6 +306,50 @@ describe('createLangChainModel — Mistral tool compatibility', () => {
   );
 });
 
+describe('createLangChainModel — Claude 5.5 tool compatibility', () => {
+  it.each(['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'])(
+    'sends tool calls for %s through Messages',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'msg_test',
+            type: 'message',
+            role: 'assistant',
+            model: modelId,
+            content: [{ type: 'text', text: 'ok' }],
+            stop_reason: 'end_turn',
+            stop_sequence: null,
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('anthropic', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('Claude model must support tools');
+      const runnable = model.bindTools([
+        {
+          type: 'function',
+          function: {
+            name: 'lookup_resource',
+            description: 'Look up a Kubernetes resource',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.anthropic.com/v1/messages');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ name: 'lookup_resource', input_schema: { type: 'object' } }],
+      });
+    }
+  );
+});
+
 describe('createLangChainModel — Azure deployment routing', () => {
   it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
     'sends tool calls for %s to the configured deployment',
