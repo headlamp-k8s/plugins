@@ -42,6 +42,22 @@ describe('modelConfig', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('uses a current Azure default and keeps settings and chat suggestions synchronized', () => {
+    const azure = getProviderById('azure');
+    const options = getProviderFields('azure').find(field => field.name === 'model')?.options;
+    expect(getDefaultConfig('azure').model).toBe('gpt-5.4');
+    expect(options).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+      'gpt-5.4',
+      'gpt-5.4-mini',
+      'gpt-5.2',
+      'gpt-5.1',
+    ]);
+    expect(azure?.models).toEqual(options);
+  });
+
   it('includes each provider default in its model options', () => {
     for (const provider of modelProviders) {
       const modelField = provider.fields.find(field => field.name === 'model');
@@ -71,6 +87,7 @@ describe('modelConfig', () => {
         'claude-3.5-haiku',
       ],
       openai: ['gpt-5.1-mini', 'gpt-5-mini', 'o4-mini', 'o3', 'o3-mini', 'o1', 'o1-mini'],
+      azure: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
       mistral: ['magistral-medium-2507', 'magistral-small-2507'],
       gemini: ['gemini-3-pro-preview', 'gemini-3.1-flash-lite'],

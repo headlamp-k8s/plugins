@@ -170,6 +170,55 @@ describe('createLangChainModel — validation errors', () => {
   });
 });
 
+describe('createLangChainModel — Azure deployment routing', () => {
+  it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
+    'sends tool calls for %s to the configured deployment',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'chatcmpl-test',
+            object: 'chat.completion',
+            created: 0,
+            model: modelId,
+            choices: [
+              { index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('azure', {
+        apiKey: 'test-key',
+        endpoint: 'https://test.openai.azure.com',
+        deploymentName: 'cluster-chat',
+        model: modelId,
+      });
+      if (!model.bindTools) throw new Error('Azure model must support tools');
+      const runnable = model.bindTools([
+        {
+          type: 'function',
+          function: {
+            name: 'lookup_resource',
+            description: 'Look up a Kubernetes resource',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ]);
+
+      expect((await runnable.invoke('List resources')).content).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toContain('/openai/deployments/cluster-chat/chat/completions');
+      expect(request.url).toContain('api-version=2025-04-01-preview');
+      expect(await request.json()).toMatchObject({
+        tools: [{ type: 'function', function: { name: 'lookup_resource' } }],
+      });
+    }
+  );
+});
+
 describe('createLangChainModel — vLLM URL normalisation', () => {
   it('appends /v1 when the URL has no path', () => {
     const m = createChatModel('vllm', { baseUrl: 'http://localhost:8080', model: 'llama3' });
