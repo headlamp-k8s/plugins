@@ -123,7 +123,7 @@ export class VolcanoNamespaceQueue extends KubeObject<KubeVolcanoNamespaceQueue>
   }
 
   get spec() {
-    return this.jsonData.spec;
+    return this.jsonData.spec ?? {};
   }
 
   get status() {
