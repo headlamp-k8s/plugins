@@ -226,6 +226,42 @@ describe('createLangChainModel — OpenAI Responses API routing', () => {
   });
 });
 
+describe('createLangChainModel — Gemini tool compatibility', () => {
+  it('sends Gemini 4 tools through generateContent', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            { content: { role: 'model', parts: [{ text: 'ok' }] }, finishReason: 'STOP', index: 0 },
+          ],
+          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+        }),
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    const model = createChatModel('gemini', { apiKey: 'test-key', model: 'gemini-4-argon' });
+    if (!model.bindTools) throw new Error('Gemini model must support tools');
+    const runnable = model.bindTools([
+      {
+        type: 'function',
+        function: {
+          name: 'lookup_resource',
+          description: 'Look up a Kubernetes resource',
+          parameters: { type: 'object', properties: {} },
+        },
+      },
+    ]);
+
+    expect((await runnable.invoke('List resources')).text).toBe('ok');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const request = new Request(...fetchSpy.mock.calls[0]);
+    expect(request.url).toContain('/models/gemini-4-argon:generateContent');
+    expect(await request.json()).toMatchObject({
+      tools: [{ functionDeclarations: [{ name: 'lookup_resource' }] }],
+    });
+  });
+});
+
 describe('createLangChainModel — Azure deployment routing', () => {
   it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
     'sends tool calls for %s to the configured deployment',

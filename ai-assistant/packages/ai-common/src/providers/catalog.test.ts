@@ -103,7 +103,14 @@ describe('modelConfig', () => {
       azure: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
       mistral: ['magistral-medium-2507', 'magistral-small-2507'],
-      gemini: ['gemini-3-pro-preview', 'gemini-3.1-flash-lite'],
+      gemini: [
+        'gemini-3.7-flash',
+        'gemini-3.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-3-pro-preview',
+        'gemini-3.1-flash-lite',
+      ],
     };
 
     for (const [providerId, excludedModels] of Object.entries(excludedModelsByProvider)) {
@@ -128,5 +135,11 @@ describe('modelConfig', () => {
       expect.arrayContaining(['gpt-6-luna', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-6.1-terra'])
     );
     expect(getDefaultConfig('openai').model).toBe('gpt-5.6-terra');
+  });
+
+  it('suggests Gemini 4 while keeping the Flash default', () => {
+    const options = getProviderFields('gemini').find(field => field.name === 'model')?.options;
+    expect(options).toContain('gemini-4-argon');
+    expect(getDefaultConfig('gemini').model).toBe('gemini-3.8-flash');
   });
 });
