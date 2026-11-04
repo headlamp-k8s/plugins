@@ -86,7 +86,20 @@ describe('modelConfig', () => {
         'claude-3.5-sonnet',
         'claude-3.5-haiku',
       ],
-      openai: ['gpt-5.1-mini', 'gpt-5-mini', 'o4-mini', 'o3', 'o3-mini', 'o1', 'o1-mini'],
+      openai: [
+        'gpt-5.1',
+        'gpt-4.1',
+        'gpt-4.1-mini',
+        'gpt-4o',
+        'gpt-4o-mini',
+        'gpt-5.1-mini',
+        'gpt-5-mini',
+        'o4-mini',
+        'o3',
+        'o3-mini',
+        'o1',
+        'o1-mini',
+      ],
       azure: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
       mistral: ['magistral-medium-2507', 'magistral-small-2507'],
@@ -107,5 +120,13 @@ describe('modelConfig', () => {
     const copilotIndex = ids.indexOf('copilot');
     const openaiIndex = ids.indexOf('openai');
     expect(copilotIndex).toBeLessThan(openaiIndex);
+  });
+
+  it('suggests current direct OpenAI models without changing the existing default', () => {
+    const options = getProviderFields('openai').find(field => field.name === 'model')?.options;
+    expect(options).toEqual(
+      expect.arrayContaining(['gpt-6-luna', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-6.1-terra'])
+    );
+    expect(getDefaultConfig('openai').model).toBe('gpt-5.6-terra');
   });
 });

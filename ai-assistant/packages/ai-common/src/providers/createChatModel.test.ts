@@ -170,6 +170,62 @@ describe('createLangChainModel — validation errors', () => {
   });
 });
 
+describe('createLangChainModel — OpenAI Responses API routing', () => {
+  it.each(['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6.1-terra'])(
+    'sends tool calls for %s through Responses',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'resp_test',
+            object: 'response',
+            created_at: 0,
+            status: 'completed',
+            model: modelId,
+            output: [
+              {
+                id: 'msg_test',
+                type: 'message',
+                role: 'assistant',
+                status: 'completed',
+                content: [{ type: 'output_text', text: 'ok', annotations: [] }],
+              },
+            ],
+            usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('openai', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('OpenAI model must support tools');
+      const runnable = model.bindTools([
+        {
+          type: 'function',
+          function: {
+            name: 'lookup_resource',
+            description: 'Look up a Kubernetes resource',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.openai.com/v1/responses');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ type: 'function', name: 'lookup_resource' }],
+      });
+    }
+  );
+
+  it.each(['gpt-5.6-terra', 'gpt-4o', 'custom-model'])('keeps %s on Chat Completions', modelId => {
+    createChatModel('openai', { apiKey: 'test-key', model: modelId });
+    expect(chatOpenAIOptions.at(-1)).toMatchObject({ model: modelId, useResponsesApi: false });
+  });
+});
+
 describe('createLangChainModel — Azure deployment routing', () => {
   it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
     'sends tool calls for %s to the configured deployment',
