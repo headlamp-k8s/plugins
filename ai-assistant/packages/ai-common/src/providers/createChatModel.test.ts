@@ -262,6 +262,50 @@ describe('createLangChainModel — Gemini tool compatibility', () => {
   });
 });
 
+describe('createLangChainModel — Mistral tool compatibility', () => {
+  it.each(['mistral-small-2603', 'mistral-large-4'])(
+    'sends tool calls for %s through Chat Completions',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'chatcmpl-test',
+            object: 'chat.completion',
+            created: 0,
+            model: modelId,
+            choices: [
+              { index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('mistral', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('Mistral model must support tools');
+      const runnable = model.bindTools([
+        {
+          type: 'function',
+          function: {
+            name: 'lookup_resource',
+            description: 'Look up a Kubernetes resource',
+            parameters: { type: 'object', properties: {} },
+          },
+        },
+      ]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.mistral.ai/v1/chat/completions');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ type: 'function', function: { name: 'lookup_resource' } }],
+      });
+    }
+  );
+});
+
 describe('createLangChainModel — Azure deployment routing', () => {
   it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
     'sends tool calls for %s to the configured deployment',

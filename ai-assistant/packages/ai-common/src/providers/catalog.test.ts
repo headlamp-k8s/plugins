@@ -102,7 +102,14 @@ describe('modelConfig', () => {
       ],
       azure: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'],
       anthropic: ['claude-3-7-sonnet-20250219'],
-      mistral: ['magistral-medium-2507', 'magistral-small-2507'],
+      mistral: [
+        'mistral-medium-3-5',
+        'mistral-medium-latest',
+        'mistral-large-2512',
+        'mistral-large-latest',
+        'magistral-medium-2507',
+        'magistral-small-2507',
+      ],
       gemini: [
         'gemini-3.7-flash',
         'gemini-3.5-flash',
@@ -141,5 +148,11 @@ describe('modelConfig', () => {
     const options = getProviderFields('gemini').find(field => field.name === 'model')?.options;
     expect(options).toContain('gemini-4-argon');
     expect(getDefaultConfig('gemini').model).toBe('gemini-3.8-flash');
+  });
+
+  it('uses the GA Mistral Small default rather than the Large preview', () => {
+    const options = getProviderFields('mistral').find(field => field.name === 'model')?.options;
+    expect(options).toContain('mistral-large-4');
+    expect(getDefaultConfig('mistral').model).toBe('mistral-small-2603');
   });
 });
