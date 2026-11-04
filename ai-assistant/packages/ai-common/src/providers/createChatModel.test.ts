@@ -26,6 +26,15 @@ const { chatOpenAIOptions } = vi.hoisted(() => ({
   chatOpenAIOptions: [] as Record<string, unknown>[],
 }));
 
+const lookupResourceTool = {
+  type: 'function',
+  function: {
+    name: 'lookup_resource',
+    description: 'Look up a Kubernetes resource',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
 // Record constructor options so endpoint routing is asserted on what we hand to
 // LangChain rather than on instance properties it may stop exposing.
 vi.mock('@langchain/openai', async importOriginal => {
@@ -198,16 +207,7 @@ describe('createLangChainModel — OpenAI Responses API routing', () => {
       );
       const model = createChatModel('openai', { apiKey: 'test-key', model: modelId });
       if (!model.bindTools) throw new Error('OpenAI model must support tools');
-      const runnable = model.bindTools([
-        {
-          type: 'function',
-          function: {
-            name: 'lookup_resource',
-            description: 'Look up a Kubernetes resource',
-            parameters: { type: 'object', properties: {} },
-          },
-        },
-      ]);
+      const runnable = model.bindTools([lookupResourceTool]);
 
       expect((await runnable.invoke('List resources')).text).toBe('ok');
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -241,16 +241,7 @@ describe('createLangChainModel — Gemini tool compatibility', () => {
     );
     const model = createChatModel('gemini', { apiKey: 'test-key', model: 'gemini-4-argon' });
     if (!model.bindTools) throw new Error('Gemini model must support tools');
-    const runnable = model.bindTools([
-      {
-        type: 'function',
-        function: {
-          name: 'lookup_resource',
-          description: 'Look up a Kubernetes resource',
-          parameters: { type: 'object', properties: {} },
-        },
-      },
-    ]);
+    const runnable = model.bindTools([lookupResourceTool]);
 
     expect((await runnable.invoke('List resources')).text).toBe('ok');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -283,16 +274,7 @@ describe('createLangChainModel — Mistral tool compatibility', () => {
       );
       const model = createChatModel('mistral', { apiKey: 'test-key', model: modelId });
       if (!model.bindTools) throw new Error('Mistral model must support tools');
-      const runnable = model.bindTools([
-        {
-          type: 'function',
-          function: {
-            name: 'lookup_resource',
-            description: 'Look up a Kubernetes resource',
-            parameters: { type: 'object', properties: {} },
-          },
-        },
-      ]);
+      const runnable = model.bindTools([lookupResourceTool]);
 
       expect((await runnable.invoke('List resources')).text).toBe('ok');
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -327,16 +309,7 @@ describe('createLangChainModel — Claude 5.5 tool compatibility', () => {
       );
       const model = createChatModel('anthropic', { apiKey: 'test-key', model: modelId });
       if (!model.bindTools) throw new Error('Claude model must support tools');
-      const runnable = model.bindTools([
-        {
-          type: 'function',
-          function: {
-            name: 'lookup_resource',
-            description: 'Look up a Kubernetes resource',
-            parameters: { type: 'object', properties: {} },
-          },
-        },
-      ]);
+      const runnable = model.bindTools([lookupResourceTool]);
 
       expect((await runnable.invoke('List resources')).text).toBe('ok');
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -376,16 +349,7 @@ describe('createLangChainModel — Azure deployment routing', () => {
         model: modelId,
       });
       if (!model.bindTools) throw new Error('Azure model must support tools');
-      const runnable = model.bindTools([
-        {
-          type: 'function',
-          function: {
-            name: 'lookup_resource',
-            description: 'Look up a Kubernetes resource',
-            parameters: { type: 'object', properties: {} },
-          },
-        },
-      ]);
+      const runnable = model.bindTools([lookupResourceTool]);
 
       expect((await runnable.invoke('List resources')).content).toBe('ok');
       expect(fetchSpy).toHaveBeenCalledTimes(1);

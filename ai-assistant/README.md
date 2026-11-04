@@ -54,6 +54,42 @@ The plugin supports multiple AI providers, allowing you to choose the one that b
 
 You will need to provide your own API keys and endpoint information for the provider you choose to use. Please note that using AI providers may incur costs, so check the pricing details of your chosen provider.
 
+### Model catalog lifecycle
+
+The model catalog contains suggestions, not an exhaustive allowlist. You can
+enter an unlisted model name in settings. Removing a suggestion or changing a
+default does not rewrite saved configurations; configured models remain
+selectable in chat. Provider retirement can still make an existing configuration
+stop working, so migrate it before the provider's deadline.
+
+The catalog was reviewed against first-party documentation on **November 4, 2026**:
+
+| Provider             | Lifecycle guidance                                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GitHub-hosted models | Settings prefer live discovery when available. Static suggestions and the detection fallback use current models, with `gpt-5.6-sol` as the fallback default. Availability depends on your plan and organization policy.              |
+| OpenAI               | GPT-4.1/4o variants retire January 14, 2027; GPT-5.1 retires April 1, 2027. GPT-6 models use the Responses API to support tool calling with their default reasoning settings.                                                        |
+| Azure OpenAI         | `o3`, `o3-mini`, and `o4-mini` retire November 19, 2026. New configurations default to `gpt-5.4`; set the model to match your actual deployment. A catalog change does not create, upgrade, or migrate an Azure deployment.          |
+| Anthropic            | Claude Opus, Sonnet, and Haiku 5.5 are available as suggestions. The existing Sonnet 5 default is unchanged.                                                                                                                         |
+| Mistral              | Medium 3.5 and Large 3, including their documented aliases, are deprecated and retire April 30, 2027. New configurations default to the GA `mistral-small-2603`. `mistral-large-4` is an opt-in **public preview**, not the default. |
+| Gemini               | Deprecated 3.7/3.5 Flash aliases already redirect. Gemini 2.5 Pro/Flash requests switch models and billing December 1, 2026; migrate explicitly rather than relying on automatic routing. The default remains `gemini-3.8-flash`.    |
+
+Sources:
+[GitHub supported models](https://docs.github.com/en/copilot/reference/ai-models/supported-models),
+[OpenAI deprecations](https://developers.openai.com/api/docs/deprecations),
+[OpenAI model reference](https://developers.openai.com/api/docs/models),
+[Azure retirement schedule](https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule),
+[Anthropic model reference](https://platform.claude.com/docs/en/models/overview),
+[Mistral model reference](https://docs.mistral.ai/models.md), and
+[Gemini deprecations](https://aistudio.google.com/docs/deprecations).
+
+When refreshing the catalog, verify exact API identifiers, tool calling, endpoint
+compatibility, and lifecycle status separately for each provider. Do not infer
+Azure or GitHub availability from the direct OpenAI API. Keep settings options,
+chat suggestions, defaults, and lifecycle tests consistent. Compatibility tests
+exercise the installed SDKs with mocked HTTP responses; they do not prove account
+access or replace live inference checks. Local model names must match installed
+Ollama models or the model name served by the configured compatible endpoint.
+
 ## Skills and Documentation
 
 In the AI Assistant settings, enable **Kubernetes Docs** under **Suggested Skill

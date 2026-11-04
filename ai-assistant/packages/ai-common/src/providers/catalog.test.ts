@@ -68,6 +68,17 @@ describe('modelConfig', () => {
     }
   });
 
+  it('does not duplicate model suggestions within a provider', () => {
+    for (const provider of modelProviders) {
+      const options = provider.fields.find(field => field.name === 'model')?.options;
+      for (const models of [options, provider.models]) {
+        if (models) {
+          expect(new Set(models).size, provider.id).toBe(models.length);
+        }
+      }
+    }
+  });
+
   it('does not suggest models excluded by the lifecycle policy', () => {
     const excludedModelsByProvider = {
       copilot: [
