@@ -682,7 +682,11 @@ function isConditionTrue(conditions: WorkloadConditionLike[], type: string) {
 /** One entry of the visibility API's PendingWorkloadsSummary. */
 export interface PendingWorkloadSummaryItem {
   /** Workload metadata (name, namespace, owners). */
-  metadata: { name: string; namespace?: string };
+  metadata: { name: string; namespace?: string; creationTimestamp?: string };
+  /** Workload priority. */
+  priority?: number;
+  /** LocalQueue the Workload was submitted to. */
+  localQueueName?: string;
   /** Zero-based position among the ClusterQueue's pending Workloads. */
   positionInClusterQueue: number;
   /** Zero-based position among the LocalQueue's pending Workloads. */
