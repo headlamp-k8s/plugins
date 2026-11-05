@@ -1,4 +1,3 @@
-import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -32,6 +31,7 @@ import {
   renderTopologyAssignment,
   WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
+import { fetchPendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -541,11 +541,6 @@ function getTimelineSection(workload: Workload) {
   return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
 }
 
-const visibilityApiVersions = [
-  'visibility.kueue.x-k8s.io/v1beta2',
-  'visibility.kueue.x-k8s.io/v1beta1',
-];
-
 /**
  * Ask Kueue's visibility API where a pending Workload sits in its queues.
  * Returns null when the API is not served, access is denied, or the Workload is not listed.
@@ -562,23 +557,13 @@ function useQueuePosition(workload: Workload, enabled: boolean) {
     }
 
     let cancelled = false;
-    (async () => {
-      for (const apiVersion of visibilityApiVersions) {
-        try {
-          const summary = await request(
-            `/apis/${apiVersion}/namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`,
-            {},
-            false
-          );
-          if (!cancelled) {
-            setPosition(renderQueuePosition(summary?.items, name, namespace));
-          }
-          return;
-        } catch {
-          // Older Kueue serves only v1beta1, and clusters without the API return 404.
+    fetchPendingWorkloads(`namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`).then(
+      items => {
+        if (!cancelled) {
+          setPosition(items && renderQueuePosition(items, name, namespace));
         }
       }
-    })();
+    );
 
     return () => {
       cancelled = true;
