@@ -210,12 +210,14 @@ export function MCPSettings({
   };
 
   const handleDiscardChanges = (): void => {
+    if (persistenceInFlight.current) return;
     setPendingConfig(mcpConfig);
     setHasUnsavedChanges(false);
     setPersistenceError('');
   };
 
   const updatePendingConfig = (newConfig: MCPConfig): void => {
+    if (persistenceInFlight.current) return;
     setPendingConfig(newConfig);
     setHasUnsavedChanges(true);
     setPersistenceError('');
@@ -235,6 +237,7 @@ export function MCPSettings({
   };
 
   const handleOpenServerEditor = (server?: MCPServer): void => {
+    if (persistenceInFlight.current) return;
     setEditingServer(server);
     setServerEditorOpen(true);
   };
@@ -347,6 +350,7 @@ export function MCPSettings({
                 <Button
                   variant="outlined"
                   onClick={() => setJsonEditorOpen(true)}
+                  disabled={isPersisting}
                   startIcon={<Icon icon="mdi:code-json" aria-hidden="true" />}
                 >
                   {t('Edit as JSON')}
@@ -354,6 +358,7 @@ export function MCPSettings({
                 <Button
                   variant="contained"
                   onClick={() => handleOpenServerEditor()}
+                  disabled={isPersisting}
                   startIcon={<Icon icon="mdi:plus" aria-hidden="true" />}
                 >
                   {t('Add MCP Server')}
@@ -383,6 +388,7 @@ export function MCPSettings({
                   <Button
                     variant="outlined"
                     onClick={handleDiscardChanges}
+                    disabled={isPersisting}
                     startIcon={<Icon icon="mdi:cancel" aria-hidden="true" />}
                     size="small"
                   >
@@ -426,6 +432,7 @@ export function MCPSettings({
                       <TableCell align="center">
                         <Switch
                           checked={server.enabled}
+                          disabled={isPersisting}
                           onChange={() => handleToggleServerEnabled(server.name)}
                           size="small"
                           inputProps={{
@@ -436,6 +443,7 @@ export function MCPSettings({
                       <TableCell align="center">
                         <Switch
                           checked={!!server.autoApprove}
+                          disabled={isPersisting}
                           onChange={() => handleToggleServerAutoApprove(server.name)}
                           size="small"
                           inputProps={{
@@ -449,6 +457,7 @@ export function MCPSettings({
                             size="small"
                             aria-label={t('Edit server {{name}}', { name: server.name })}
                             onClick={() => handleOpenServerEditor(server)}
+                            disabled={isPersisting}
                           >
                             <Icon icon="mdi:pencil" aria-hidden="true" />
                           </IconButton>
@@ -458,6 +467,7 @@ export function MCPSettings({
                             size="small"
                             aria-label={t('Delete server {{name}}', { name: server.name })}
                             onClick={() => handleDeleteServer(server.name)}
+                            disabled={isPersisting}
                             color="error"
                           >
                             <Icon icon="mdi:delete" aria-hidden="true" />

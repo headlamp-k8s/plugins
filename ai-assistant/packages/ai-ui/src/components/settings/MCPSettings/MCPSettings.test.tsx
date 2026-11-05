@@ -198,6 +198,61 @@ it('prevents concurrent save requests while persistence is in flight', async () 
   await waitFor(() => expect(screen.queryByText('(Unsaved changes)')).toBeNull());
 });
 
+it.each([true, false])(
+  'locks staged edits until persistence settles, success=%s',
+  async success => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { desktopApi, store } = renderDesktop();
+    let finish: ((result: { success: boolean; error?: string }) => void) | undefined;
+    vi.spyOn(desktopApi.mcp, 'updateConfig').mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    await screen.findByText('cluster-inspector');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable server metrics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    for (const name of [
+      'Edit as JSON',
+      'Add MCP Server',
+      'Edit server metrics',
+      'Delete server metrics',
+      'Discard',
+      'Save Changes',
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveProperty('disabled', true);
+    }
+    for (const name of [
+      'Enable MCP Servers',
+      'Enable server metrics',
+      'Auto approve server metrics',
+    ]) {
+      expect(screen.getByRole('checkbox', { name })).toHaveProperty('disabled', true);
+    }
+    if (!finish) throw new Error('Expected the save request to be pending');
+    finish({ success, ...(success ? {} : { error: 'disk full' }) });
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'Auto approve server metrics' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
+    expect(store.mcpConfig()?.servers[1].enabled).toBe(success);
+    expect(screen.getByRole('checkbox', { name: 'Enable server metrics' })).toHaveProperty(
+      'checked',
+      true
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Auto approve server metrics' }));
+    expect(screen.getByRole('checkbox', { name: 'Auto approve server metrics' })).toHaveProperty(
+      'checked',
+      true
+    );
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toHaveProperty('disabled', false);
+  }
+);
+
 it('saves staged changes, updates the generic store, and clears unsaved state', async () => {
   const { store, onConfigChange } = renderDesktop();
   await screen.findByText('cluster-inspector');
