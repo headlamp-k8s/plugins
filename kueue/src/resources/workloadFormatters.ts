@@ -678,3 +678,35 @@ export function getWorkloadDetailRouteParams(namespace?: string, name?: string) 
 function isConditionTrue(conditions: WorkloadConditionLike[], type: string) {
   return findWorkloadCondition(conditions, type)?.status === 'True';
 }
+
+/** One entry of the visibility API's PendingWorkloadsSummary. */
+export interface PendingWorkloadSummaryItem {
+  /** Workload metadata (name, namespace, owners). */
+  metadata: { name: string; namespace?: string };
+  /** Zero-based position among the ClusterQueue's pending Workloads. */
+  positionInClusterQueue: number;
+  /** Zero-based position among the LocalQueue's pending Workloads. */
+  positionInLocalQueue: number;
+}
+
+/**
+ * Describe where a pending Workload sits in its queues, or return null when the
+ * visibility API does not list it (already reserved quota, or beyond the response limit).
+ */
+export function renderQueuePosition(
+  items: PendingWorkloadSummaryItem[] = [],
+  name: string,
+  namespace?: string
+): string | null {
+  const item = items.find(
+    entry => entry.metadata.name === name && (!namespace || entry.metadata.namespace === namespace)
+  );
+
+  if (!item) {
+    return null;
+  }
+
+  return `${item.positionInLocalQueue + 1} in its LocalQueue, ${
+    item.positionInClusterQueue + 1
+  } in its ClusterQueue`;
+}
