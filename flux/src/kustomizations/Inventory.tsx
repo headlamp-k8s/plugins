@@ -5,20 +5,12 @@ import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cr
 import React from 'react';
 import Table from '../common/Table';
 import { PluralName } from '../helpers/pluralName';
+import { getMatchingResourceClass } from './inventoryResourceClass';
 
-function parseID(id: string) {
+export function parseID(id: string) {
   const parts = id.split('_');
-  const isClusterScoped = id.startsWith('_');
-  if (isClusterScoped) {
-    return {
-      namespace: undefined,
-      group: parts[1],
-      kind: parts[2],
-      name: parts[3],
-    };
-  }
   return {
-    namespace: parts[0],
+    namespace: parts[0] || undefined,
     name: parts[1],
     group: parts[2],
     kind: parts[3],
@@ -44,16 +36,20 @@ export function GetResourcesFromInventory(
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
 
-      // @todo: this use of makeCustomResourceClass is deprecated
-      // "Use the version of the function that receives an object as its argument."
-      const resourceClass = makeCustomResourceClass({
-        apiInfo: [{ group: group, version: item.v }],
-        isNamespaced: !!namespace,
-        singularName: kind,
-        pluralName: PluralName(kind),
-        kind: kind,
-        customResourceDefinition: undefined as any,
-      });
+      // Prefer registered Headlamp resource classes when their kind, group, and version
+      // match (e.g. CustomResourceDefinition, Pod, Service) so built-in getters/methods
+      // are preserved and classes are not overwritten. Fall back to makeCustomResourceClass
+      // for unregistered custom resources or when API group/version differs.
+      const resourceClass =
+        getMatchingResourceClass(kind, group, item.v) ??
+        makeCustomResourceClass({
+          apiInfo: [{ group: group, version: item.v }],
+          isNamespaced: !!namespace,
+          singularName: kind,
+          pluralName: PluralName(kind),
+          kind: kind,
+          customResourceDefinition: undefined as any,
+        });
 
       const unsubscribe = resourceClass.apiGet(
         data => {
