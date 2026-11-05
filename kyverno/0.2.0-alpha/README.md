@@ -24,7 +24,8 @@ Watch: https://github.com/user-attachments/assets/77cad203-de41-40b3-9966-e2a3b7
 - **Policies** views for the full set of Kyverno policy types:
   - Cluster Policies and Policies (`kyverno.io/v1`)
   - Validating, Mutating, Generating, Deleting, and Image Validating Policies
-    (CEL-based), including all five namespaced counterparts
+    (CEL-based), including list and detail views for all five namespaced
+    counterparts, with namespace columns and distinct tabs for same-named policies
   - Cluster Cleanup Policies and Cleanup Policies
 - **Policy Impact Map** on legacy Policy and ClusterPolicy detail pages, showing
   evaluated resources grouped by kind, pass/fail/warning counts, and plain-language
@@ -37,25 +38,12 @@ Watch: https://github.com/user-attachments/assets/77cad203-de41-40b3-9966-e2a3b7
   - Ephemeral Reports and Cluster Ephemeral Reports (`reports.kyverno.io/v1`)
 - **Violations** view aggregating failing results across reports.
 - **Exceptions** view for Policy Exceptions.
+- **Localized tables and status text**, with interpolated counts, percentages,
+  and error messages, and table headers that update when the language changes.
 
 Views for resource types whose CRDs are not installed show an availability
 message. Each namespaced CEL policy kind is checked individually, with a
 version-specific message when unavailable.
-
-## 0.2.0-alpha Release
-
-- Added the Policy Impact Map and its report-based aggregation and match
-  explanations.
-- Added list and detail views for all five namespaced CEL policy kinds, with
-  namespace columns and distinct detail tabs for same-named policies.
-- Added opt-in Prometheus-backed Policy Engine Health monitoring.
-- Fixed translation placeholders rendering literally instead of substituting
-  counts, percentages, and error messages.
-- Fixed table headers failing to update when translations load or the language
-  changes.
-
-See the [release notes](https://github.com/headlamp-k8s/plugins/issues/1359)
-for screenshots and background.
 
 ### Policy Engine Health Setup
 
