@@ -32,7 +32,7 @@ export interface ResultEntryLike {
 }
 
 export interface ReportLike {
-  results: ResultEntryLike[];
+  results?: ResultEntryLike[];
 }
 
 /**
@@ -54,7 +54,8 @@ export function bucketReportResults(reports: ReportLike[]): PolicyResultBuckets 
   }
 
   for (const report of reports) {
-    for (const r of report.results) {
+    for (const r of report.results || []) {
+      if (!r || !r.policy) continue;
       const isFail = r.result === 'fail' || r.result === 'error';
       if (r.policy.indexOf('/') > 0) {
         bump(namespaced, r.policy, isFail);

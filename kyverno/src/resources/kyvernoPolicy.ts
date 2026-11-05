@@ -83,7 +83,7 @@ export interface PolicyCondition {
 }
 
 export interface KyvernoPolicySpec {
-  rules: PolicyRule[];
+  rules?: PolicyRule[];
   validationFailureAction?: string;
   failurePolicy?: string;
   background?: boolean;
@@ -111,7 +111,7 @@ export interface KyvernoPolicyStatus {
 }
 
 export interface KyvernoPolicyInterface extends KubeObjectInterface {
-  spec: KyvernoPolicySpec;
+  spec?: KyvernoPolicySpec;
   status?: KyvernoPolicyStatus;
 }
 
@@ -142,7 +142,7 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get rules(): PolicyRule[] {
-    return this.spec.rules || [];
+    return this.spec?.rules || [];
   }
 
   get ruleTypes(): string[] {
@@ -150,11 +150,11 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
   }
 
   get validationFailureAction(): string {
-    return this.spec.validationFailureAction || 'Audit';
+    return this.spec?.validationFailureAction || 'Audit';
   }
 
   get background(): boolean {
-    return this.spec.background ?? true;
+    return this.spec?.background ?? true;
   }
 }
 
