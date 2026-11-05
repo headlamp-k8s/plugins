@@ -1,4 +1,3 @@
-import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -32,6 +31,7 @@ import {
   renderTopologyAssignment,
   WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
+import { usePendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -541,60 +541,23 @@ function getTimelineSection(workload: Workload) {
   return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
 }
 
-/** Kueue's on-demand visibility API, served as v1beta2 since Kueue 0.15. */
-const visibilityApiVersion = 'visibility.kueue.x-k8s.io/v1beta2';
-
-/** How often to reread the visibility API, since its lists cannot be watched. */
-const queuePositionRefreshMs = 15000;
-
 /**
- * Ask Kueue's visibility API where a pending Workload sits in its queues, rereading it
- * periodically so the position follows Workloads ahead of it being admitted or deleted.
+ * Ask Kueue's visibility API where a pending Workload sits in its queues. The list is
+ * reread periodically, so the position follows Workloads ahead of it being admitted or deleted.
  * Returns null when the API is not served, access is denied, or the Workload is not listed.
  */
 function useQueuePosition(workload: Workload, enabled: boolean) {
-  const [position, setPosition] = useState<string | null>(null);
   const { name, namespace } = workload.metadata;
   const queueName = workload.queueName;
-  // The Job panel can show a Workload from another cluster than the current one.
-  const cluster = workload.cluster;
+  const items = usePendingWorkloads(
+    enabled && queueName && namespace
+      ? `namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`
+      : null,
+    // The Job panel can show a Workload from another cluster than the current one.
+    workload.cluster
+  );
 
-  useEffect(() => {
-    setPosition(null);
-    if (!enabled || !queueName || !namespace) {
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = async () => {
-      let next: string | null = null;
-      try {
-        const summary = await request(
-          `/apis/${visibilityApiVersion}/namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`,
-          cluster ? { cluster } : {},
-          false
-        );
-        next = renderQueuePosition(summary?.items, name, namespace);
-      } catch {
-        // Clusters without the visibility API return 404, and users without access get 403.
-        // Clear the position so a failing refresh does not leave an old one showing.
-      }
-      if (!cancelled) {
-        setPosition(next);
-        // Wait for this request before starting the next, so slow ones cannot overlap.
-        timer = setTimeout(load, queuePositionRefreshMs);
-      }
-    };
-    load();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [enabled, name, namespace, queueName, cluster]);
-
-  return position;
+  return items && renderQueuePosition(items, name, namespace);
 }
 
 /** Blocker rows plus the Workload's queue position, which needs a request of its own. */
