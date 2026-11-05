@@ -59,6 +59,26 @@ vi.mock('@headlamp-k8s/ai-common/skills/SkillManager', () => ({
 
 // Capture the props passed to SettingsPage so we can assert on them.
 const capturedProps: Record<string, unknown>[] = [];
+vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
+  SectionBox: ({ children, title }: { children: React.ReactNode; title: React.ReactNode }) => (
+    <section>
+      {title}
+      {children}
+    </section>
+  ),
+  SectionHeader: ({
+    title,
+    headerStyle = 'main',
+  }: {
+    title: React.ReactNode;
+    headerStyle?: 'main' | 'subsection' | 'normal' | 'label';
+  }) =>
+    React.createElement(
+      { main: 'h1', subsection: 'h2', normal: 'h3', label: 'h4' }[headerStyle],
+      null,
+      title
+    ),
+}));
 vi.mock('@headlamp-k8s/ai-ui/components/settings/SettingsPage', () => ({
   SettingsPage: (props: Record<string, unknown>) => {
     capturedProps.push(props);
@@ -84,8 +104,8 @@ vi.mock('../../pluginState', () => ({
   usePluginConfig: () => ({ testMode: true }),
 }));
 
-import { render } from '@testing-library/react';
-import Settings from './Settings';
+import { render, screen } from '@testing-library/react';
+import Settings, { SettingsRows, SettingsSection } from './Settings';
 
 describe('Settings', () => {
   it('displays verified companion guidance and includes its byte count', async () => {
@@ -111,6 +131,55 @@ describe('Settings', () => {
     } finally {
       skillManagerMock.skills.length = 0;
     }
+  });
+
+  it('uses flexible descriptive rows rather than a fixed native label column', () => {
+    render(
+      <SettingsRows
+        rows={[{ name: 'Readable helper text', value: <button>Toggle setting</button> }]}
+      />
+    );
+    const label = screen.getByText('Readable helper text');
+    const row = label.parentElement;
+    expect(row && getComputedStyle(row).gridTemplateColumns).toBe('minmax(0, 1fr) auto');
+    expect(screen.getByRole('button', { name: 'Toggle setting' })).toBeTruthy();
+  });
+
+  it('keeps native section actions beside the heading in a wrapping header', () => {
+    render(
+      <SettingsSection title="Layout preview" actions={<button>Add configuration</button>}>
+        <p>Section content</p>
+      </SettingsSection>
+    );
+    const heading = screen.getByRole('heading', { name: 'Layout preview' });
+    const header = heading.parentElement?.parentElement;
+    expect(header?.contains(screen.getByRole('button', { name: 'Add configuration' }))).toBe(true);
+    expect(header && getComputedStyle(header).flexWrap).toBe('wrap');
+    expect(screen.getByText('Section content')).toBeTruthy();
+  });
+
+  it('keeps parent sections above their level-three subsection headings', () => {
+    render(
+      <SettingsSection title="Skills">
+        <h3>Suggested Skill Repositories</h3>
+        <h3>Custom GitHub Repository Sources</h3>
+      </SettingsSection>
+    );
+    expect(screen.getByRole('heading', { name: 'Skills', level: 2 })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Suggested Skill Repositories', level: 3 })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Custom GitHub Repository Sources', level: 3 })
+    ).toBeTruthy();
+  });
+
+  it('injects native sections and descriptive settings rows', () => {
+    capturedProps.length = 0;
+    render(React.createElement(Settings));
+    expect(capturedProps[0].SectionWrapper).toBeTypeOf('function');
+    expect(capturedProps[0].SettingsTable).toBeTypeOf('function');
+    expect(capturedProps[0].SettingsTable).toBe(SettingsRows);
   });
 
   it('logs when GitHub and Azure CLI auto-detection is available', () => {

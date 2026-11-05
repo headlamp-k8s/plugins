@@ -7,6 +7,9 @@ The scenarios cover:
 - viewing the KWOK-backed cluster in Headlamp;
 - changing and persisting preview, Kubernetes tool, and Holmes service settings;
 - adding and removing the built-in mock testing model;
+- opening the collapsed Advanced settings after navigation and reload before
+  using mock/developer controls, and verifying default providers within their
+  configuration table rows;
 - chatting with the fixture-backed model;
 - keeping one registered Headlamp event callback across real pod navigation and
   assistant rerenders, and keeping pod/deployment suggestion drafts bound to the

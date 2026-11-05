@@ -340,6 +340,76 @@ describe('SettingsPage provider orchestration', () => {
 });
 
 describe('SettingsPage optional sections', () => {
+  it('leaves 16px above the warning and 24px before provider setup', () => {
+    renderSettings(emptySettingsArgs);
+    const warning = screen.getByRole('alert');
+    const page = warning.parentElement;
+    expect(page && getComputedStyle(page).paddingTop).toBe('16px');
+    expect(getComputedStyle(warning).marginBottom).toBe('24px');
+  });
+
+  it('shows provider setup before features and keeps advanced controls collapsed', () => {
+    renderSettings(fullSettingsArgs, { devOptions: {}, onDevOptionsChange: vi.fn() });
+    const providerSection = screen.getByRole('region', { name: 'Model Selector' });
+    const featuresHeading = screen.getByRole('heading', { name: 'Features' });
+    expect(
+      providerSection.compareDocumentPosition(featuresHeading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('AI provider usage may incur costs');
+    expect(screen.getByRole('button', { name: /Advanced/ }).getAttribute('aria-expanded')).toBe(
+      'false'
+    );
+    expect(screen.queryByRole('checkbox', { name: /Test Mode/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change Developer Options' })).toBeNull();
+  });
+
+  it('keeps active developer overrides visible in the collapsed summary', () => {
+    renderSettings(emptySettingsArgs, {
+      devOptions: { enableAutoApproval: true },
+      onDevOptionsChange: vi.fn(),
+    });
+    expect(screen.getByText('Developer overrides enabled')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Advanced/ }).getAttribute('aria-expanded')).toBe(
+      'false'
+    );
+  });
+
+  it('lets both active-state indicators wrap within the Advanced summary', async () => {
+    renderSettings(emptySettingsArgs, {
+      isTestMode: true,
+      onTestModeChange: vi.fn(),
+      devOptions: { enableAutoApproval: true },
+      onDevOptionsChange: vi.fn(),
+    });
+    const heading = screen.getByRole('heading', { name: 'Advanced' });
+    const indicators = heading.parentElement;
+    expect(indicators && getComputedStyle(indicators).flexWrap).toBe('wrap');
+    expect(indicators?.contains(screen.getByText('Test mode enabled'))).toBe(true);
+    expect(indicators?.contains(screen.getByText('Developer overrides enabled'))).toBe(true);
+    await expect(runAxe()).resolves.toEqual([]);
+  });
+
+  it('uses host-provided section and settings-row layouts', () => {
+    renderSettings(withProviderArgs, {
+      SectionWrapper: ({ title, children }) => (
+        <section aria-label={`Native ${title}`}>{children}</section>
+      ),
+      SettingsTable: ({ rows }) => (
+        <div data-testid="native-settings-rows">
+          {rows.map((row, index) => (
+            <div key={index}>
+              {row.name}
+              {row.value}
+            </div>
+          ))}
+        </div>
+      ),
+    });
+    expect(screen.getByRole('region', { name: 'Native Features' })).toBeTruthy();
+    expect(screen.getByTestId('native-settings-rows')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Preview Features/ })).toBeTruthy();
+  });
+
   it('renders and wires the preview toggle', () => {
     const onPreviewChange = vi.fn();
     renderSettings(emptySettingsArgs, { onPreviewChange, previewEnabled: false });
@@ -390,6 +460,7 @@ describe('SettingsPage optional sections', () => {
       onResetPopover,
     });
 
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Test Mode/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
@@ -400,6 +471,7 @@ describe('SettingsPage optional sections', () => {
 
   it('treats an omitted test-mode value as controlled and disabled', () => {
     renderSettings(emptySettingsArgs, { onTestModeChange: vi.fn(), isTestMode: undefined });
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: /Test Mode/ }).checked).toBe(
       false
     );
@@ -413,6 +485,7 @@ describe('SettingsPage optional sections', () => {
       onResetPopover: vi.fn(),
     });
 
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     expect(screen.getByText(/will show when no AI providers/)).toBeTruthy();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Reset' }).disabled).toBe(true);
   });
@@ -449,6 +522,7 @@ describe('SettingsPage optional sections', () => {
       onConfigsChange,
     });
 
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Change Developer Options' }));
     fireEvent.click(screen.getByRole('button', { name: 'Change Developer Configs' }));
 

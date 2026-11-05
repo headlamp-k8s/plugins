@@ -63,6 +63,12 @@ import {
   Paper,
   Select,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -76,7 +82,12 @@ import {
   translateProviderFieldLabel,
   translateProviderFieldPlaceholder,
 } from '../../../ownedUiTranslations';
-import { DefaultDialog } from '../../defaults/DefaultSlots/DefaultSlots';
+import {
+  DefaultDialog,
+  DefaultSectionWrapper,
+  type DefaultSectionWrapperProps,
+  SettingsSectionActions,
+} from '../../defaults/DefaultSlots/DefaultSlots';
 import TermsDialog from '../TermsDialog/TermsDialog';
 
 /** Props for the ProviderSelectionDialog that lets users pick an AI provider. */
@@ -872,6 +883,8 @@ function ConfigurationDialog({
 
 /** Props for the ModelSelector component that manages AI provider configurations. */
 export interface ModelSelectorProps {
+  /** Optional host section layout and header actions. */
+  SectionWrapper?: React.ComponentType<DefaultSectionWrapperProps>;
   /** Stable ID of the currently selected saved configuration. */
   selectedConfigId?: string;
   /** ID of the currently selected AI provider. */
@@ -930,6 +943,7 @@ export default function ModelSelector({
   onAutoDetect,
   autoDetecting = false,
   DialogSlot = DefaultDialog,
+  SectionWrapper = DefaultSectionWrapper,
   onAutoDetectResults,
   commandRunner,
 }: ModelSelectorProps) {
@@ -1271,55 +1285,84 @@ export default function ModelSelector({
     }
   };
 
+  const renderMenuButton = (savedConfig: StoredProviderConfig, index: number) => (
+    <IconButton
+      id={`${menuIdPrefix}-provider-menu-${index}`}
+      size="small"
+      aria-label={t('More options for {{configuration}}', {
+        configuration:
+          savedConfig.displayName ||
+          getProviderById(savedConfig.providerId)?.name ||
+          savedConfig.providerId,
+      })}
+      aria-haspopup="menu"
+      aria-expanded={openMenu && menuConfigId === savedConfig.id}
+      onClick={event => {
+        event.stopPropagation();
+        setAnchorEl(event.currentTarget);
+        setMenuConfigId(savedConfig.id ?? null);
+      }}
+      sx={{
+        minWidth: 32,
+        minHeight: 32,
+        ...(!isConfigView ? { position: 'absolute', top: 8, right: 8 } : {}),
+      }}
+    >
+      <Icon icon="mdi:dots-vertical" width="16px" />
+    </IconButton>
+  );
+
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Configured Providers Section */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="subtitle1">
-            {!normalizedSavedConfigs.providers?.length
-              ? t('No Configured Providers')
-              : t('Configured Providers')}
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Icon icon="mdi:plus-circle" />}
-            onClick={handleAddProviderClick}
-          >
-            {t('Add Provider')}
-          </Button>
-          {(onAutoDetect || (commandRunner && onAutoDetectResults)) && (
-            <Button
-              variant="outlined"
-              startIcon={
-                autoDetecting || builtInDetecting ? (
-                  <CircularProgress
-                    size={20}
-                    color="inherit"
-                    aria-label={t('Detecting providers')}
-                  />
-                ) : (
-                  <Icon icon="mdi:magnify-scan" />
-                )
-              }
-              onClick={() => {
-                if (!hasAcceptedTerms()) {
-                  setPendingAcquisition('detect');
-                  setTermsDialogOpen(true);
-                } else {
-                  void (onAutoDetect ? onAutoDetect() : handleDetectAllProviders());
+      <SectionWrapper
+        title={
+          !normalizedSavedConfigs.providers?.length
+            ? t('No Configured Providers')
+            : t('Configured Providers')
+        }
+        actions={
+          <SettingsSectionActions>
+            {(onAutoDetect || (commandRunner && onAutoDetectResults)) && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  autoDetecting || builtInDetecting ? (
+                    <CircularProgress
+                      size={20}
+                      color="inherit"
+                      aria-label={t('Detecting providers')}
+                    />
+                  ) : (
+                    <Icon icon="mdi:magnify-scan" />
+                  )
                 }
-              }}
-              disabled={autoDetecting || builtInDetecting}
-              aria-busy={autoDetecting || builtInDetecting}
-              sx={{ ml: 1 }}
+                onClick={() => {
+                  if (!hasAcceptedTerms()) {
+                    setPendingAcquisition('detect');
+                    setTermsDialogOpen(true);
+                  } else {
+                    void (onAutoDetect ? onAutoDetect() : handleDetectAllProviders());
+                  }
+                }}
+                disabled={autoDetecting || builtInDetecting}
+                aria-busy={autoDetecting || builtInDetecting}
+              >
+                {autoDetecting || builtInDetecting ? t('Detecting…') : t('Auto Detect')}
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<Icon icon="mdi:plus-circle" />}
+              onClick={handleAddProviderClick}
             >
-              {autoDetecting || builtInDetecting ? t('Detecting…') : t('Auto Detect')}
+              {t('Add Provider')}
             </Button>
-          )}
-        </Box>
-
+          </SettingsSectionActions>
+        }
+      >
         {!normalizedSavedConfigs.providers?.length ? (
           <Paper
             sx={{
@@ -1343,6 +1386,74 @@ export default function ModelSelector({
               {t('Click "Add Provider" to configure your first AI provider')}
             </Typography>
           </Paper>
+        ) : isConfigView ? (
+          <TableContainer>
+            <Table size="small" aria-label={t('Configured Providers')}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('Configuration')}</TableCell>
+                  <TableCell>{t('Model')}</TableCell>
+                  <TableCell>{t('Default')}</TableCell>
+                  <TableCell align="right">{t('Actions')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {normalizedSavedConfigs.providers.map((savedConfig, index) => {
+                  const provider = getProviderById(savedConfig.providerId);
+                  const name = savedConfig.displayName || provider?.name || savedConfig.providerId;
+                  return (
+                    <TableRow key={savedConfig.id}>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Icon
+                            icon={provider?.icon || 'mdi:server'}
+                            width="24px"
+                            aria-hidden="true"
+                          />
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {name}
+                            </Typography>
+                            {provider && name !== provider.name && (
+                              <Typography variant="caption" color="text.secondary">
+                                {provider.name}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                        <Typography variant="body2">
+                          {savedConfig.config.model || savedConfig.config.deploymentName || '-'}
+                        </Typography>
+                        {savedConfig.config.deploymentName && savedConfig.config.model && (
+                          <Typography variant="caption" color="text.secondary">
+                            {savedConfig.config.deploymentName}
+                          </Typography>
+                        )}
+                        {savedConfig.config.showOnlyThisModel === true && (
+                          <Typography variant="caption" color="text.secondary">
+                            {t('Only this model')}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {index === (normalizedSavedConfigs.defaultProviderIndex ?? 0) && (
+                          <Chip
+                            label={t('Default')}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell align="right">{renderMenuButton(savedConfig, index)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         ) : (
           <Grid container spacing={2}>
             {normalizedSavedConfigs.providers?.map((savedConfig, index) => {
@@ -1441,104 +1552,88 @@ export default function ModelSelector({
                         )}
                       </Typography>
                     </Paper>
-                    <IconButton
-                      id={`${menuIdPrefix}-provider-menu-${index}`}
-                      size="small"
-                      aria-label={t('More options for {{configuration}}', {
-                        configuration:
-                          savedConfig.displayName || savedProvider?.name || savedConfig.providerId,
-                      })}
-                      aria-haspopup="menu"
-                      aria-expanded={openMenu && menuConfigId === savedConfig.id}
-                      onClick={e => {
-                        e.stopPropagation();
-                        setAnchorEl(e.currentTarget);
-                        setMenuConfigId(savedConfig.id ?? null);
-                      }}
-                      sx={{ position: 'absolute', top: 8, right: 8 }}
-                    >
-                      <Icon icon="mdi:dots-vertical" width="16px" />
-                    </IconButton>
-
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={openMenu && menuConfigId === savedConfig.id}
-                      onClose={handleCloseMenu}
-                      MenuListProps={{
-                        'aria-labelledby': `${menuIdPrefix}-provider-menu-${index}`,
-                      }}
-                    >
-                      <MenuItem
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleCloseMenu();
-                          if (menuConfigId) {
-                            const selectedSavedConfig = normalizedSavedConfigs.providers?.find(
-                              provider => provider.id === menuConfigId
-                            );
-                            if (!selectedSavedConfig) return;
-                            // Use false for isNewConfig to indicate we're editing an existing config
-                            handleOpenDialog(selectedSavedConfig.providerId, false);
-                            setEditingConfigId(selectedSavedConfig.id);
-                            // Pre-select this saved config
-                            setDialogConfig({ ...selectedSavedConfig.config });
-                            setDialogConfigName(selectedSavedConfig.displayName || '');
-                          }
-                        }}
-                      >
-                        <Icon icon="mdi:pencil" width="16px" style={{ marginRight: 8 }} />
-                        {t('Edit')}
-                      </MenuItem>
-                      <MenuItem
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleCloseMenu();
-                          // Handle make default action using selectedConfigIndex
-                          if (menuConfigId) {
-                            const selectedSavedConfig = normalizedSavedConfigs.providers?.find(
-                              provider => provider.id === menuConfigId
-                            );
-                            if (!selectedSavedConfig) return;
-                            if (selectedSavedConfig.id && onChange) {
-                              onChange({
-                                configId: selectedSavedConfig.id,
-                                providerId: selectedSavedConfig.providerId,
-                                config: selectedSavedConfig.config,
-                                displayName: selectedSavedConfig.displayName || '',
-                                savedConfigs: setDefaultProviderConfig(
-                                  normalizedSavedConfigs,
-                                  selectedSavedConfig.id
-                                ),
-                              });
-                            }
-                          }
-                        }}
-                      >
-                        <Icon icon="mdi:star" width="16px" style={{ marginRight: 8 }} />
-                        {t('Make Default')}
-                      </MenuItem>
-                      <MenuItem
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleCloseMenu();
-                          // Handle delete action using selectedConfigIndex
-                          if (menuConfigId) {
-                            setShowDeleteConfirm(true);
-                          }
-                        }}
-                        sx={{ color: 'error.main' }}
-                      >
-                        <Icon icon="mdi:trash-can" width="16px" style={{ marginRight: 8 }} />
-                        {t('Delete')}
-                      </MenuItem>
-                    </Menu>
+                    {renderMenuButton(savedConfig, index)}
                   </Box>
                 </Grid>
               );
             })}
           </Grid>
         )}
-      </Box>
+      </SectionWrapper>
+      <Menu
+        anchorEl={anchorEl}
+        open={openMenu}
+        onClose={handleCloseMenu}
+        MenuListProps={{
+          'aria-labelledby': `${menuIdPrefix}-provider-menu-${normalizedSavedConfigs.providers?.findIndex(
+            provider => provider.id === menuConfigId
+          )}`,
+        }}
+      >
+        <MenuItem
+          onClick={e => {
+            e.stopPropagation();
+            handleCloseMenu();
+            if (menuConfigId) {
+              const selectedSavedConfig = normalizedSavedConfigs.providers?.find(
+                provider => provider.id === menuConfigId
+              );
+              if (!selectedSavedConfig) return;
+              // Use false for isNewConfig to indicate we're editing an existing config
+              handleOpenDialog(selectedSavedConfig.providerId, false);
+              setEditingConfigId(selectedSavedConfig.id);
+              // Pre-select this saved config
+              setDialogConfig({ ...selectedSavedConfig.config });
+              setDialogConfigName(selectedSavedConfig.displayName || '');
+            }
+          }}
+        >
+          <Icon icon="mdi:pencil" width="16px" style={{ marginRight: 8 }} />
+          {t('Edit')}
+        </MenuItem>
+        <MenuItem
+          onClick={e => {
+            e.stopPropagation();
+            handleCloseMenu();
+            // Handle make default action using selectedConfigIndex
+            if (menuConfigId) {
+              const selectedSavedConfig = normalizedSavedConfigs.providers?.find(
+                provider => provider.id === menuConfigId
+              );
+              if (!selectedSavedConfig) return;
+              if (selectedSavedConfig.id && onChange) {
+                onChange({
+                  configId: selectedSavedConfig.id,
+                  providerId: selectedSavedConfig.providerId,
+                  config: selectedSavedConfig.config,
+                  displayName: selectedSavedConfig.displayName || '',
+                  savedConfigs: setDefaultProviderConfig(
+                    normalizedSavedConfigs,
+                    selectedSavedConfig.id
+                  ),
+                });
+              }
+            }
+          }}
+        >
+          <Icon icon="mdi:star" width="16px" style={{ marginRight: 8 }} />
+          {t('Make Default')}
+        </MenuItem>
+        <MenuItem
+          onClick={e => {
+            e.stopPropagation();
+            handleCloseMenu();
+            // Handle delete action using selectedConfigIndex
+            if (menuConfigId) {
+              setShowDeleteConfirm(true);
+            }
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <Icon icon="mdi:trash-can" width="16px" style={{ marginRight: 8 }} />
+          {t('Delete')}
+        </MenuItem>
+      </Menu>
 
       {/* Terms Dialog */}
       <TermsDialog open={termsDialogOpen} onClose={handleTermsClose} onAccept={handleTermsAccept} />

@@ -90,6 +90,33 @@ exercise the installed SDKs with mocked HTTP responses; they do not prove accoun
 access or replace live inference checks. Local model names must match installed
 Ollama models or the model name served by the configured compatible endpoint.
 
+### Settings layout
+
+Configure providers first, then features and tool permissions.
+Configured providers appear as compact rows with their model, default indicator,
+and management menu. MCP servers, skills, and supported agent integrations use
+the same section layout. Test mode, onboarding resets, and developer overrides
+are grouped under **Advanced**, collapsed by default; active test mode and
+developer overrides remain indicated in its summary.
+**Add Repository** is a filled primary action until changes are pending, when
+it becomes outlined so **Save Changes** has the strongest emphasis.
+Section-level actions share one header row, with the primary action on the
+right. MCP and Skills summaries and staged **Discard / Save Changes** actions
+use matching footers below their content; immediate-save toggles remain immediate.
+
+Headlamp supplies native section headings through layout slots, using level-two
+headings above level-three subsections. Descriptive settings use flexible label
+columns and trailing controls rather than the native
+fixed name/value split, so helper text can use the available width.
+Standalone UI consumers retain MUI fallbacks. This presentation
+change does not alter saved configurations, approval behavior, or platform
+availability.
+
+The global MCP enable switch applies immediately; server edits require **Save
+Changes**. Configuration controls and Discard are locked during persistence to
+prevent edits from being overwritten by an in-flight save. Failed saves retain
+staged changes and re-enable the controls for correction or retry.
+
 ## Skills and Documentation
 
 In the AI Assistant settings, enable **Kubernetes Docs** under **Suggested Skill
