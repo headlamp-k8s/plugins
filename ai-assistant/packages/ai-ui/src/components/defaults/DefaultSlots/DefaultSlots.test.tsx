@@ -9,6 +9,9 @@ import {
   DefaultDialog,
   DefaultEditorDialog,
   DefaultSectionWrapper,
+  DefaultSettingsTable,
+  SettingsSectionActions,
+  SettingsSectionFooter,
 } from './DefaultSlots';
 import {
   actionButtonArgs,
@@ -29,6 +32,51 @@ vi.mock('@iconify/react', () => ({
 }));
 
 afterEach(cleanup);
+
+it('wraps header actions and keeps footer save controls after the summary', () => {
+  render(
+    <main>
+      <SettingsSectionActions>
+        <button>Inspect</button>
+        <button>Add</button>
+      </SettingsSectionActions>
+      <SettingsSectionFooter
+        summary="2 configured"
+        actions={
+          <>
+            <button>Discard</button>
+            <button>Save Changes</button>
+          </>
+        }
+      />
+    </main>
+  );
+  const inspect = screen.getByRole('button', { name: 'Inspect' });
+  const headerActions = inspect.parentElement;
+  expect(headerActions && getComputedStyle(headerActions).flexWrap).toBe('wrap');
+  const summary = screen.getByText('2 configured');
+  const discard = screen.getByRole('button', { name: 'Discard' });
+  const save = screen.getByRole('button', { name: 'Save Changes' });
+  const footerActions = discard.parentElement;
+  expect(footerActions && getComputedStyle(footerActions).marginLeft).toBe('auto');
+  expect(summary.compareDocumentPosition(discard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(discard.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it('renders section actions and aligned settings controls', () => {
+  render(
+    <DefaultSectionWrapper title="Features" actions={<button>Configure</button>}>
+      <DefaultSettingsTable rows={[{ name: 'Preview features', value: <button>Enable</button> }]} />
+    </DefaultSectionWrapper>
+  );
+  expect(screen.getByRole('heading', { name: 'Features' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Configure' })).toBeTruthy();
+  expect(screen.getByText('Preview features')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Enable' })).toBeTruthy();
+  const label = screen.getByText('Preview features');
+  const row = label.parentElement;
+  expect(row && getComputedStyle(row).gridTemplateColumns).toBe('minmax(0, 1fr) auto');
+});
 
 it('renders an accessible default action button and forwards clicks', async () => {
   const onClick = vi.fn();
