@@ -12,7 +12,7 @@ import {
   VeleroPodVolumeRestore,
 } from '../../resources/datamovement';
 import { formatByteProgress } from '../../utils/bytes';
-import { getBackupStatusColor } from '../../utils/status';
+import { getDataMovementStatusColor } from '../../utils/status';
 
 type ErrorWithStatus = Error & { status?: number };
 
@@ -88,7 +88,9 @@ export function BackupDataMovementSections({
             {
               label: 'Phase',
               getter: (row: VeleroPodVolumeBackup) => (
-                <StatusLabel status={getBackupStatusColor(row.phase)}>{row.phase}</StatusLabel>
+                <StatusLabel status={getDataMovementStatusColor(row.phase)}>
+                  {row.phase}
+                </StatusLabel>
               ),
             },
             {
@@ -129,7 +131,9 @@ export function BackupDataMovementSections({
             {
               label: 'Phase',
               getter: (row: VeleroDataUpload) => (
-                <StatusLabel status={getBackupStatusColor(row.phase)}>{row.phase}</StatusLabel>
+                <StatusLabel status={getDataMovementStatusColor(row.phase)}>
+                  {row.phase}
+                </StatusLabel>
               ),
             },
             {
@@ -183,7 +187,9 @@ export function RestoreDataMovementSections({
             {
               label: 'Phase',
               getter: (row: VeleroPodVolumeRestore) => (
-                <StatusLabel status={getBackupStatusColor(row.phase)}>{row.phase}</StatusLabel>
+                <StatusLabel status={getDataMovementStatusColor(row.phase)}>
+                  {row.phase}
+                </StatusLabel>
               ),
             },
             {
@@ -223,7 +229,9 @@ export function RestoreDataMovementSections({
             {
               label: 'Phase',
               getter: (row: VeleroDataDownload) => (
-                <StatusLabel status={getBackupStatusColor(row.phase)}>{row.phase}</StatusLabel>
+                <StatusLabel status={getDataMovementStatusColor(row.phase)}>
+                  {row.phase}
+                </StatusLabel>
               ),
             },
             {
