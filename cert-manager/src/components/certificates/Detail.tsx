@@ -1,13 +1,17 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DetailsGrid,
+  Link,
   NameValueTable,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Box } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
 import { IssuerRef, NotInstalledBanner, StringArray } from '../common/CommonComponents';
+import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 
 export function CertificateDetail() {
   const { t } = useTranslation();
@@ -70,7 +74,18 @@ export function CertificateDetail() {
               },
               {
                 name: t('Secret Name'),
-                value: item.spec.secretName,
+                value:
+                  item.metadata?.namespace && item.spec?.secretName ? (
+                    <Link
+                      routeName={K8s.ResourceClasses.Secret.kind}
+                      params={{ name: item.spec.secretName, namespace: item.metadata.namespace }}
+                      activeCluster={item.cluster}
+                    >
+                      {item.spec.secretName}
+                    </Link>
+                  ) : (
+                    item.spec?.secretName || '-'
+                  ),
               },
               {
                 name: t('Issuer Ref'),
@@ -237,7 +252,17 @@ export function CertificateDetail() {
                         },
                         {
                           name: t('Not After'),
-                          value: item.status?.notAfter,
+                          value: item.status?.notAfter ? (
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                              <span>{localeDate(item.status.notAfter)}</span>
+                              <CertificateExpiryLabel
+                                notAfter={item.status.notAfter}
+                                showRemainingSuffix
+                              />
+                            </Box>
+                          ) : (
+                            '-'
+                          ),
                         },
                         {
                           name: t('Renewal Time'),
@@ -249,7 +274,21 @@ export function CertificateDetail() {
                         },
                         {
                           name: t('Next Private Key Secret'),
-                          value: item.status?.nextPrivateKeySecretName,
+                          value:
+                            item.metadata?.namespace && item.status?.nextPrivateKeySecretName ? (
+                              <Link
+                                routeName={K8s.ResourceClasses.Secret.kind}
+                                params={{
+                                  name: item.status.nextPrivateKeySecretName,
+                                  namespace: item.metadata.namespace,
+                                }}
+                                activeCluster={item.cluster}
+                              >
+                                {item.status.nextPrivateKeySecretName}
+                              </Link>
+                            ) : (
+                              item.status?.nextPrivateKeySecretName || '-'
+                            ),
                         },
                       ]}
                     />
