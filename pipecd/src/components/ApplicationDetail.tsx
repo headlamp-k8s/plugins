@@ -43,6 +43,7 @@ import { lastSyncedAt } from './ApplicationList';
 import { DeploymentStatusLabel } from './DeploymentStatusLabel';
 import { KindBadge } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
+import { SyncButton } from './SyncButton';
 import { SyncStatusLabel } from './SyncStatusLabel';
 
 const DEPLOYMENT_PAGE_SIZE = 20;
@@ -75,6 +76,7 @@ export function ApplicationDetail(): JSX.Element {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     if (!isConfigured(config) || !id) {
@@ -84,7 +86,9 @@ export function ApplicationDetail(): JSX.Element {
 
     const controller = new AbortController();
     let cancelled = false;
-    setLoading(true);
+    // Reloading the same application stays in the background, so a reload after a
+    // sync does not unmount the Sync button and lose its result message.
+    setLoading(app?.id !== id);
     setError(null);
 
     Promise.all([
@@ -113,7 +117,7 @@ export function ApplicationDetail(): JSX.Element {
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, config.baseURL, config.apiKey]);
+  }, [id, config.baseURL, config.apiKey, reloadToken]);
 
   if (!isConfigured(config)) {
     return <NotConfigured />;
@@ -170,6 +174,14 @@ export function ApplicationDetail(): JSX.Element {
             </Stack>
 
             <Stack direction="row" alignItems="center" gap={1} sx={{ flexShrink: 0 }}>
+              <SyncButton
+                config={config}
+                applicationId={app.id}
+                applicationName={app.name}
+                disabled={app.disabled}
+                onSynced={() => setReloadToken(token => token + 1)}
+              />
+
               <Button
                 size="small"
                 variant="outlined"
