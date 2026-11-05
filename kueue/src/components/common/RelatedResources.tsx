@@ -4,6 +4,7 @@ import {
   Loader,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { LocalQueue } from '../../resources/localQueue';
@@ -185,7 +186,7 @@ function RelatedLocalQueueWorkloadsSection({
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
 }
 
-function RelatedWorkloadsTable({
+export function RelatedWorkloadsTable({
   workloads,
   loadWarning,
 }: {
@@ -234,6 +235,25 @@ function RelatedWorkloadsTable({
           {
             label: 'Status',
             getter: (workload: Workload) => workload.statusDisplay,
+          },
+          {
+            label: 'Blocked On',
+            getter: (workload: Workload) => {
+              const blocker = workload.blocker;
+              if (!blocker) {
+                return '-';
+              }
+
+              return (
+                <StatusLabel status={blocker.stage === 'Evicted' ? 'error' : 'warning'}>
+                  {blocker.stage}
+                </StatusLabel>
+              );
+            },
+          },
+          {
+            label: 'Why',
+            getter: (workload: Workload) => workload.blockerWhyDisplay,
           },
         ]}
       />
