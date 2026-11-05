@@ -19,8 +19,13 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { APIService } from '../generated/pkg/app/server/service/apiservice/service_pb';
 import type { Application as GenApplication } from '../generated/pkg/model/application_pb';
 import { ApplicationSyncStatus as GenSyncStatus } from '../generated/pkg/model/application_pb';
+import type { Command as GenCommand } from '../generated/pkg/model/command_pb';
+import { CommandStatus as GenCommandStatus } from '../generated/pkg/model/command_pb';
 import type { ApplicationGitPath as GenGitPath } from '../generated/pkg/model/common_pb';
-import { ApplicationKind as GenApplicationKind } from '../generated/pkg/model/common_pb';
+import {
+  ApplicationKind as GenApplicationKind,
+  SyncStrategy as GenSyncStrategy,
+} from '../generated/pkg/model/common_pb';
 import type {
   Deployment as GenDeployment,
   PipelineStage as GenPipelineStage,
@@ -34,6 +39,8 @@ import { LogSeverity as GenLogSeverity } from '../generated/pkg/model/logblock_p
 import type {
   Application,
   ApplicationKind,
+  Command,
+  CommandStatus,
   Deployment,
   DeploymentStatus,
   DeploymentTrigger,
@@ -46,6 +53,7 @@ import type {
   PipelineStage,
   StageStatus,
   SyncStatus,
+  SyncStrategyName,
 } from '../types/pipecd';
 
 export interface PipeCDConfig {
@@ -163,6 +171,13 @@ const STAGE_STATUS_MAP: Record<number, StageStatus> = {
   [GenStageStatus.STAGE_CANCELLED]: 'STAGE_CANCELLED',
   [GenStageStatus.STAGE_SKIPPED]: 'STAGE_SKIPPED',
   [GenStageStatus.STAGE_EXITED]: 'STAGE_EXITED',
+};
+
+const COMMAND_STATUS_MAP: Record<number, CommandStatus> = {
+  [GenCommandStatus.COMMAND_NOT_HANDLED_YET]: 'COMMAND_NOT_HANDLED_YET',
+  [GenCommandStatus.COMMAND_SUCCEEDED]: 'COMMAND_SUCCEEDED',
+  [GenCommandStatus.COMMAND_FAILED]: 'COMMAND_FAILED',
+  [GenCommandStatus.COMMAND_TIMEOUT]: 'COMMAND_TIMEOUT',
 };
 
 const LOG_SEVERITY_MAP: Record<number, LogSeverity> = {
@@ -459,4 +474,68 @@ export async function listStageLogs(
     };
   }
   return { stageLogs };
+}
+
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+const SYNC_STRATEGIES: Record<SyncStrategyName, GenSyncStrategy> = {
+  AUTO: GenSyncStrategy.AUTO,
+  QUICK_SYNC: GenSyncStrategy.QUICK_SYNC,
+  PIPELINE: GenSyncStrategy.PIPELINE,
+};
+
+export interface SyncOptions extends RequestOptions {
+  /** Defaults to AUTO, which is what PipeCD does when no strategy is given. */
+  strategy?: SyncStrategyName;
+}
+
+function mapCommand(c: GenCommand): Command {
+  return {
+    id: c.id,
+    applicationId: c.applicationId,
+    deploymentId: c.deploymentId,
+    status: COMMAND_STATUS_MAP[c.status] ?? 'COMMAND_NOT_HANDLED_YET',
+    handledAt: toNumber(c.handledAt),
+    createdAt: toNumber(c.createdAt),
+  };
+}
+
+/**
+ * Asks PipeCD to sync an application, returning the id of the queued command.
+ *
+ * Requires a READ_WRITE API key; a read-only key is rejected by the server.
+ *
+ * The sync strategy needs a PipeCD server that accepts it on APIService. An
+ * older server ignores the field and runs its default.
+ */
+export async function syncApplication(
+  config: PipeCDConfig,
+  applicationId: string,
+  options: SyncOptions = {}
+): Promise<string> {
+  const client = getClient(config);
+  const resp = await call('SyncApplication', () =>
+    client.syncApplication(
+      { applicationId, syncStrategy: SYNC_STRATEGIES[options.strategy ?? 'AUTO'] },
+      { signal: options.signal }
+    )
+  );
+  return resp.commandId;
+}
+
+export async function getCommand(
+  config: PipeCDConfig,
+  commandId: string,
+  options: RequestOptions = {}
+): Promise<Command> {
+  const client = getClient(config);
+  const resp = await call('GetCommand', () =>
+    client.getCommand({ commandId }, { signal: options.signal })
+  );
+  if (!resp.command) {
+    throw new PipeCDApiError(`PipeCD API returned no command for ${commandId}`, 5, '');
+  }
+  return mapCommand(resp.command);
 }

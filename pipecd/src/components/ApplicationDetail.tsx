@@ -32,7 +32,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { getApplication, isConfigured, listDeployments, loadConfig } from '../api/pipecd';
 import type { Application, Deployment, SyncStatus } from '../types/pipecd';
@@ -45,6 +45,7 @@ import { lastSyncedAt } from './ApplicationList';
 import { DeploymentStatusLabel } from './DeploymentStatusLabel';
 import { KindBadge } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
+import { SyncButton } from './SyncButton';
 import { SyncStatusLabel } from './SyncStatusLabel';
 
 const DEPLOYMENT_PAGE_SIZE = 20;
@@ -77,6 +78,10 @@ export function ApplicationDetail(): JSX.Element {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  // Set only by a reload after a sync, never by a new id or new settings.
+  const backgroundReload = useRef(false);
 
   useEffect(() => {
     if (!isConfigured(config) || !id) {
@@ -86,12 +91,19 @@ export function ApplicationDetail(): JSX.Element {
 
     const controller = new AbortController();
     let cancelled = false;
-    setLoading(true);
+    // A reload after a sync stays in the background, so it does not unmount the
+    // Sync button and lose its result message.
+    const background = backgroundReload.current;
+    backgroundReload.current = false;
+    setLoading(!background);
     setError(null);
-    // Drop the previous application, so a failed fetch for a new id cannot
-    // show it again under the new URL.
-    setApp(null);
-    setDeployments([]);
+    setRefreshError(null);
+    if (!background) {
+      // Drop the previous application, so a failed fetch for a new id or new
+      // settings cannot show it, or its Sync button, again.
+      setApp(null);
+      setDeployments([]);
+    }
 
     Promise.all([
       getApplication(config, id),
@@ -108,7 +120,10 @@ export function ApplicationDetail(): JSX.Element {
       })
       .catch(err => {
         if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
-        setError(err instanceof Error ? err.message : String(err));
+        const message = err instanceof Error ? err.message : String(err);
+        // A failed refresh keeps the page that is already on screen.
+        if (background) setRefreshError(message);
+        else setError(message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -119,7 +134,7 @@ export function ApplicationDetail(): JSX.Element {
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, config.baseURL, config.apiKey]);
+  }, [id, config.baseURL, config.apiKey, reloadToken]);
 
   if (!isConfigured(config)) {
     return <NotConfigured />;
@@ -176,6 +191,17 @@ export function ApplicationDetail(): JSX.Element {
             </Stack>
 
             <Stack direction="row" alignItems="center" gap={1} sx={{ flexShrink: 0 }}>
+              <SyncButton
+                config={config}
+                applicationId={app.id}
+                applicationName={app.name}
+                disabled={app.disabled}
+                onSynced={() => {
+                  backgroundReload.current = true;
+                  setReloadToken(token => token + 1);
+                }}
+              />
+
               <Button
                 size="small"
                 variant="outlined"
@@ -188,6 +214,12 @@ export function ApplicationDetail(): JSX.Element {
               </Button>
             </Stack>
           </Stack>
+
+          {refreshError && (
+            <Alert severity="warning" sx={[{ mb: 2 }, alertTextSx('warning')]}>
+              {t('Could not refresh the application: {{error}}', { error: refreshError })}
+            </Alert>
+          )}
 
           {app.syncState?.shortReason && (
             <Alert

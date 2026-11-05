@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { RouteComponentProps } from 'react-router-dom';
 import { MemoryRouter, Route } from 'react-router-dom';
@@ -42,7 +42,13 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 
 vi.mock('../api/pipecd', async importOriginal => {
   const original = await importOriginal<typeof import('../api/pipecd')>();
-  return { ...original, getApplication: vi.fn(), listDeployments: vi.fn() };
+  return {
+    ...original,
+    getApplication: vi.fn(),
+    listDeployments: vi.fn(),
+    syncApplication: vi.fn(),
+    getCommand: vi.fn(),
+  };
 });
 
 function setupConfigured(): void {
@@ -75,9 +81,12 @@ describe('ApplicationDetail', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
     vi.mocked(pipecdApi.getApplication).mockReset();
     vi.mocked(pipecdApi.listDeployments).mockReset();
+    vi.mocked(pipecdApi.syncApplication).mockReset();
+    vi.mocked(pipecdApi.getCommand).mockReset();
   });
 
   it('shows NotConfigured when there is no saved API key', () => {
@@ -160,6 +169,133 @@ describe('ApplicationDetail', () => {
     expect(screen.queryByText(formatTimestamp(1722000000))).toBeNull();
   });
 
+  it('offers a sync action', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+
+    renderDetail();
+
+    await screen.findByText('frontend-prod');
+    expect(screen.getByRole('button', { name: /^Sync$/ })).toBeTruthy();
+  });
+
+  it('does not sync without confirmation', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+
+    renderDetail();
+
+    await screen.findByText('frontend-prod');
+    fireEvent.click(screen.getByRole('button', { name: /^Sync$/ }));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(pipecdApi.syncApplication).not.toHaveBeenCalled();
+  });
+
+  it('keeps the sync result on screen while the page reloads', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setupConfigured();
+    // The reload has to stay pending, or the loading state is never rendered.
+    let finishReload: (app: typeof appKubernetesSynced) => void = () => {};
+    vi.mocked(pipecdApi.getApplication)
+      .mockResolvedValueOnce(appKubernetesSynced)
+      .mockReturnValueOnce(
+        new Promise(resolve => {
+          finishReload = resolve;
+        })
+      );
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+    vi.mocked(pipecdApi.syncApplication).mockResolvedValue('cmd-1');
+    vi.mocked(pipecdApi.getCommand).mockResolvedValue({
+      id: 'cmd-1',
+      applicationId: 'app-k8s-001',
+      deploymentId: 'deploy-1',
+      status: 'COMMAND_SUCCEEDED',
+      handledAt: 0,
+      createdAt: 0,
+    });
+
+    renderDetail();
+    await screen.findByText('frontend-prod');
+    fireEvent.click(screen.getByRole('button', { name: /^Sync$/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Sync$/ }));
+    await vi.advanceTimersByTimeAsync(2500);
+
+    await waitFor(() => {
+      expect(pipecdApi.getApplication).toHaveBeenCalledTimes(2);
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(screen.getByText('Sync started for frontend-prod.')).toBeTruthy();
+
+    finishReload(appKubernetesSynced);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(screen.getByText('Sync started for frontend-prod.')).toBeTruthy();
+  });
+
+  it('shows a warning, not a page error, when the reload after a sync fails', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication)
+      .mockResolvedValueOnce(appKubernetesSynced)
+      .mockRejectedValueOnce(new Error('network blip'));
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+    vi.mocked(pipecdApi.syncApplication).mockResolvedValue('cmd-1');
+    vi.mocked(pipecdApi.getCommand).mockResolvedValue({
+      id: 'cmd-1',
+      applicationId: 'app-k8s-001',
+      deploymentId: 'deploy-1',
+      status: 'COMMAND_SUCCEEDED',
+      handledAt: 0,
+      createdAt: 0,
+    });
+
+    renderDetail();
+    await screen.findByText('frontend-prod');
+    fireEvent.click(screen.getByRole('button', { name: /^Sync$/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Sync$/ }));
+    await vi.advanceTimersByTimeAsync(2500);
+
+    expect(await screen.findByText('Could not refresh the application: network blip')).toBeTruthy();
+    expect(screen.queryByText(/Failed to load application/i)).toBeNull();
+    expect(screen.getByText('frontend-prod')).toBeTruthy();
+  });
+
+  it('does not keep the application when new settings fail to load it', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication)
+      .mockResolvedValueOnce(appKubernetesSynced)
+      .mockRejectedValue(new Error('unauthenticated'));
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+
+    const navigate = renderDetail('app-k8s-001');
+    await screen.findByText('frontend-prod');
+
+    // A new API key, then a re-render of the same page.
+    pipecdApi.saveConfig({ baseURL: 'https://pipecd.example.com', apiKey: 'other-key' });
+    navigate('app-k8s-001');
+
+    await screen.findByText(/Failed to load application/i);
+    expect(screen.queryByText('frontend-prod')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Sync$/ })).toBeNull();
+  });
+
+  it('blocks syncing a disabled application', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue({
+      ...appKubernetesSynced,
+      disabled: true,
+    });
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+
+    renderDetail();
+
+    await screen.findByText('frontend-prod');
+    const button = screen.getByRole('button', { name: /^Sync$/ }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+  });
+
   it('links back to the applications list', async () => {
     setupConfigured();
     vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
@@ -203,5 +339,7 @@ describe('ApplicationDetail', () => {
     await screen.findByText(/Failed to load application/i);
     expect(screen.queryByText('frontend-prod')).toBeNull();
     expect(screen.queryByText('feat: add dark mode support')).toBeNull();
+    // No Sync button is left behind for the previous application.
+    expect(screen.queryByRole('button', { name: /^Sync$/ })).toBeNull();
   });
 });

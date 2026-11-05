@@ -24,6 +24,8 @@ const mockClient = {
   listDeployments: vi.fn(),
   getDeployment: vi.fn(),
   listStageLogs: vi.fn(),
+  syncApplication: vi.fn(),
+  getCommand: vi.fn(),
 };
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -40,6 +42,7 @@ vi.mock('@connectrpc/connect', async importOriginal => {
 
 import {
   getApplication,
+  getCommand,
   isConfigured,
   listApplications,
   listDeployments,
@@ -47,6 +50,7 @@ import {
   loadConfig,
   PipeCDApiError,
   saveConfig,
+  syncApplication,
 } from '../api/pipecd';
 
 const MOCK_CONFIG = {
@@ -509,5 +513,61 @@ describe('listStageLogs', () => {
     const result = await listStageLogs(MOCK_CONFIG, 'dep-1');
 
     expect(result.stageLogs).toEqual({});
+  });
+});
+
+describe('syncApplication', () => {
+  beforeEach(() => {
+    mockClient.syncApplication.mockReset();
+    mockClient.syncApplication.mockResolvedValue({ commandId: 'cmd-1' });
+  });
+
+  it('defaults to AUTO and returns the command id', async () => {
+    const commandId = await syncApplication(MOCK_CONFIG, 'app-k8s-001');
+
+    expect(commandId).toBe('cmd-1');
+    expect(mockClient.syncApplication.mock.calls[0][0]).toEqual({
+      applicationId: 'app-k8s-001',
+      syncStrategy: 0,
+    });
+  });
+
+  it.each([
+    ['QUICK_SYNC', 1],
+    ['PIPELINE', 2],
+  ] as const)('sends %s as its protobuf value', async (strategy, expected) => {
+    await syncApplication(MOCK_CONFIG, 'app-k8s-001', { strategy });
+
+    expect(mockClient.syncApplication.mock.calls[0][0].syncStrategy).toBe(expected);
+  });
+});
+
+describe('getCommand', () => {
+  beforeEach(() => {
+    mockClient.getCommand.mockReset();
+  });
+
+  it('maps the command status', async () => {
+    mockClient.getCommand.mockResolvedValue({
+      command: {
+        id: 'cmd-1',
+        applicationId: 'app-k8s-001',
+        deploymentId: 'dep-1',
+        status: 1, // COMMAND_SUCCEEDED
+        handledAt: BigInt(10),
+        createdAt: BigInt(5),
+      },
+    });
+
+    const command = await getCommand(MOCK_CONFIG, 'cmd-1');
+
+    expect(command.status).toBe('COMMAND_SUCCEEDED');
+    expect(command.handledAt).toBe(10);
+  });
+
+  it('throws when the server returns no command', async () => {
+    mockClient.getCommand.mockResolvedValue({});
+
+    await expect(getCommand(MOCK_CONFIG, 'cmd-1')).rejects.toBeInstanceOf(PipeCDApiError);
   });
 });
