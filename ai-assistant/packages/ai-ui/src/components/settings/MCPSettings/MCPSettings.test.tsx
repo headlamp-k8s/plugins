@@ -134,6 +134,28 @@ it('loads and renders configured desktop servers with named controls and passes 
   await expect(runAxe()).resolves.toEqual([]);
 });
 
+it('keeps section actions in the header and staged save actions below the table', async () => {
+  renderDesktop();
+  await screen.findByText('cluster-inspector');
+  const heading = screen.getByRole('heading', { name: 'MCP Servers' });
+  const edit = screen.getByRole('button', { name: 'Edit as JSON' });
+  const add = screen.getByRole('button', { name: 'Add MCP Server' });
+  expect(heading.parentElement?.contains(edit)).toBe(true);
+  expect(heading.parentElement?.contains(add)).toBe(true);
+  expect(edit.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Configured Servers' })).toBeNull();
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Enable server metrics' }));
+  const table = screen.getByRole('table', { name: 'Configured MCP servers' });
+  const save = screen.getByRole('button', { name: 'Save Changes' });
+  const discard = screen.getByRole('button', { name: 'Discard' });
+  expect(table.compareDocumentPosition(discard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(discard.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(heading.parentElement?.contains(save)).toBe(false);
+  expect(add.classList.contains('MuiButton-outlined')).toBe(true);
+  expect(save.classList.contains('MuiButton-contained')).toBe(true);
+});
+
 it('preserves staged server edits when globally disabling MCP', async () => {
   const { desktopApi, onConfigChange } = renderDesktop();
   const updateConfig = vi.spyOn(desktopApi.mcp, 'updateConfig');
@@ -199,9 +221,9 @@ it('prevents concurrent save requests while persistence is in flight', async () 
 });
 
 it.each([true, false])(
-  'locks staged edits until persistence settles, success=%s',
+  'locks edits during a pending save and unlocks after success=%s',
   async success => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { desktopApi, store } = renderDesktop();
     let finish: ((result: { success: boolean; error?: string }) => void) | undefined;
     vi.spyOn(desktopApi.mcp, 'updateConfig').mockImplementation(
@@ -214,23 +236,22 @@ it.each([true, false])(
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable server metrics' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-    for (const name of [
+    const buttons = [
       'Edit as JSON',
       'Add MCP Server',
       'Edit server metrics',
       'Delete server metrics',
-      'Discard',
-      'Save Changes',
-    ]) {
+    ];
+    const switches = ['Enable MCP Servers', 'Enable server metrics', 'Auto approve server metrics'];
+    for (const name of [...buttons, 'Discard', 'Save Changes']) {
       expect(screen.getByRole('button', { name })).toHaveProperty('disabled', true);
     }
-    for (const name of [
-      'Enable MCP Servers',
-      'Enable server metrics',
-      'Auto approve server metrics',
-    ]) {
+    for (const name of switches) {
       expect(screen.getByRole('checkbox', { name })).toHaveProperty('disabled', true);
     }
+    fireEvent.click(screen.getByRole('button', { name: 'Delete server metrics' }));
+    expect(screen.getByText('metrics')).toBeTruthy();
+
     if (!finish) throw new Error('Expected the save request to be pending');
     finish({ success, ...(success ? {} : { error: 'disk full' }) });
     await waitFor(() =>
@@ -239,11 +260,18 @@ it.each([true, false])(
         false
       )
     );
+    for (const name of buttons) {
+      expect(screen.getByRole('button', { name })).toHaveProperty('disabled', false);
+    }
     expect(store.mcpConfig()?.servers[1].enabled).toBe(success);
     expect(screen.getByRole('checkbox', { name: 'Enable server metrics' })).toHaveProperty(
       'checked',
       true
     );
+    if (!success) {
+      expect(screen.getByRole('alert').textContent).toContain('Failed to save MCP configuration.');
+      expect(consoleError).toHaveBeenCalled();
+    }
     fireEvent.click(screen.getByRole('checkbox', { name: 'Auto approve server metrics' }));
     expect(screen.getByRole('checkbox', { name: 'Auto approve server metrics' })).toHaveProperty(
       'checked',
@@ -252,6 +280,17 @@ it.each([true, false])(
     expect(screen.getByRole('button', { name: 'Save Changes' })).toHaveProperty('disabled', false);
   }
 );
+
+it('explains the immediate-save toggle with an accessible description', async () => {
+  renderDesktop();
+  await screen.findByText('cluster-inspector');
+  const description = screen.getByText(
+    'Applies immediately. Server changes below require Save Changes.'
+  );
+  expect(
+    screen.getByRole('checkbox', { name: 'Enable MCP Servers' }).getAttribute('aria-describedby')
+  ).toBe(description.id);
+});
 
 it('saves staged changes, updates the generic store, and clears unsaved state', async () => {
   const { store, onConfigChange } = renderDesktop();

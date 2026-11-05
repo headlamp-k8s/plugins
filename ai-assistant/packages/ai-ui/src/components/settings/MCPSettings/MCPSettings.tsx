@@ -4,7 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  FormControlLabel,
   IconButton,
   Paper,
   Switch,
@@ -19,7 +18,15 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DefaultDialog, DefaultSectionWrapper } from '../../defaults/DefaultSlots/DefaultSlots';
+import {
+  DefaultDialog,
+  DefaultSectionWrapper,
+  type DefaultSectionWrapperProps,
+  DefaultSettingsTable,
+  type DefaultSettingsTableProps,
+  SettingsSectionActions,
+  SettingsSectionFooter,
+} from '../../defaults/DefaultSlots/DefaultSlots';
 import MCPConfigEditorDialog from '../MCPConfigEditorDialog/MCPConfigEditorDialog';
 import MCPServerEditor from '../MCPServerEditor/MCPServerEditor';
 
@@ -92,7 +99,9 @@ export interface MCPSettingsProps {
   /** Plugin config store for reading/writing settings. */
   configStore: ConfigStore;
   /** Optional wrapper component for layout (e.g. SectionBox). Falls back to a simple Box with title. */
-  SectionWrapper?: React.ComponentType<{ title: string; children: React.ReactNode }>;
+  SectionWrapper?: React.ComponentType<DefaultSectionWrapperProps>;
+  /** Optional host layout for the MCP enable setting. */
+  SettingsTable?: React.ComponentType<DefaultSettingsTableProps>;
   /** Component used to render dialog shells. Falls back to MUI Dialog. */
   DialogSlot?: React.ElementType;
 }
@@ -108,6 +117,7 @@ export function MCPSettings({
   isRunningAsApp,
   configStore,
   SectionWrapper = DefaultSectionWrapper,
+  SettingsTable = DefaultSettingsTable,
   DialogSlot = DefaultDialog,
 }: MCPSettingsProps): React.ReactElement {
   const { t } = useTranslation();
@@ -123,6 +133,7 @@ export function MCPSettings({
   const [persistenceError, setPersistenceError] = useState('');
   const [isPersisting, setIsPersisting] = useState(false);
   const persistenceInFlight = React.useRef(false);
+  const enableDescriptionId = React.useId();
 
   /** Commits one successfully persisted config to local state and the host callback. */
   const commitConfig = React.useCallback(
@@ -312,7 +323,33 @@ export function MCPSettings({
   const displayConfig = pendingConfig || mcpConfig;
 
   return (
-    <SectionWrapper title={t('MCP Servers')}>
+    <SectionWrapper
+      title={t('MCP Servers')}
+      actions={
+        displayConfig.enabled && (
+          <SettingsSectionActions>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={isPersisting}
+              onClick={() => setJsonEditorOpen(true)}
+              startIcon={<Icon icon="mdi:code-json" aria-hidden="true" />}
+            >
+              {t('Edit as JSON')}
+            </Button>
+            <Button
+              variant={hasUnsavedChanges ? 'outlined' : 'contained'}
+              size="small"
+              disabled={isPersisting}
+              onClick={() => handleOpenServerEditor()}
+              startIcon={<Icon icon="mdi:plus" aria-hidden="true" />}
+            >
+              {t('Add MCP Server')}
+            </Button>
+          </SettingsSectionActions>
+        )
+      }
+    >
       <Box sx={{ mb: 3 }}>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           {t(
@@ -320,16 +357,30 @@ export function MCPSettings({
           )}
         </Typography>
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={mcpConfig.enabled}
-              onChange={handleToggleEnabled}
-              disabled={isPersisting}
-              inputProps={{ 'aria-label': t('Enable MCP Servers') }}
-            />
-          }
-          label={t('Enable MCP Servers')}
+        <SettingsTable
+          rows={[
+            {
+              name: (
+                <Box>
+                  <Typography>{t('Enable MCP Servers')}</Typography>
+                  <Typography id={enableDescriptionId} variant="body2" color="text.secondary">
+                    {t('Applies immediately. Server changes below require Save Changes.')}
+                  </Typography>
+                </Box>
+              ),
+              value: (
+                <Switch
+                  checked={mcpConfig.enabled}
+                  onChange={handleToggleEnabled}
+                  disabled={isPersisting}
+                  inputProps={{
+                    'aria-label': t('Enable MCP Servers'),
+                    'aria-describedby': enableDescriptionId,
+                  }}
+                />
+              ),
+            },
+          ]}
         />
         {persistenceError && (
           <Alert severity="error" sx={{ mt: 2 }}>
@@ -340,75 +391,6 @@ export function MCPSettings({
 
       {displayConfig.enabled && (
         <>
-          {/* Configuration Header */}
-          <Box sx={{ mb: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" component="h3">
-                {t('Configured Servers')}
-              </Typography>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setJsonEditorOpen(true)}
-                  disabled={isPersisting}
-                  startIcon={<Icon icon="mdi:code-json" aria-hidden="true" />}
-                >
-                  {t('Edit as JSON')}
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => handleOpenServerEditor()}
-                  disabled={isPersisting}
-                  startIcon={<Icon icon="mdi:plus" aria-hidden="true" />}
-                >
-                  {t('Add MCP Server')}
-                </Button>
-              </Box>
-            </Box>
-
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2" color="textSecondary">
-                {t('{{configured}} configured; {{enabled}} enabled', {
-                  configured:
-                    displayConfig.servers.length === 1
-                      ? t('1 server')
-                      : t('{{count}} servers', { count: displayConfig.servers.length }),
-                  enabled: displayConfig.servers.filter(server => server.enabled).length,
-                })}
-                {hasUnsavedChanges && (
-                  <Typography component="span" color="warning.main" sx={{ ml: 1 }}>
-                    <Box component="span" role="status" aria-live="polite">
-                      {t('(Unsaved changes)')}
-                    </Box>
-                  </Typography>
-                )}
-              </Typography>
-              {hasUnsavedChanges && (
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Button
-                    variant="outlined"
-                    onClick={handleDiscardChanges}
-                    disabled={isPersisting}
-                    startIcon={<Icon icon="mdi:cancel" aria-hidden="true" />}
-                    size="small"
-                  >
-                    {t('Discard')}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveChanges}
-                    startIcon={<Icon icon="mdi:content-save" aria-hidden="true" />}
-                    color="primary"
-                    size="small"
-                    disabled={isPersisting}
-                  >
-                    {t('Save Changes')}
-                  </Button>
-                </Box>
-              )}
-            </Box>
-          </Box>
-
           {/* Server List Table */}
           {displayConfig.servers.length > 0 ? (
             <TableContainer component={Paper} variant="outlined">
@@ -455,9 +437,9 @@ export function MCPSettings({
                         <Tooltip title={t('Edit')}>
                           <IconButton
                             size="small"
+                            disabled={isPersisting}
                             aria-label={t('Edit server {{name}}', { name: server.name })}
                             onClick={() => handleOpenServerEditor(server)}
-                            disabled={isPersisting}
                           >
                             <Icon icon="mdi:pencil" aria-hidden="true" />
                           </IconButton>
@@ -465,9 +447,9 @@ export function MCPSettings({
                         <Tooltip title={t('Delete')}>
                           <IconButton
                             size="small"
+                            disabled={isPersisting}
                             aria-label={t('Delete server {{name}}', { name: server.name })}
                             onClick={() => handleDeleteServer(server.name)}
-                            disabled={isPersisting}
                             color="error"
                           >
                             <Icon icon="mdi:delete" aria-hidden="true" />
@@ -486,6 +468,51 @@ export function MCPSettings({
               </Typography>
             </Paper>
           )}
+          <SettingsSectionFooter
+            summary={
+              <>
+                {t('{{configured}} configured; {{enabled}} enabled', {
+                  configured:
+                    displayConfig.servers.length === 1
+                      ? t('1 server')
+                      : t('{{count}} servers', { count: displayConfig.servers.length }),
+                  enabled: displayConfig.servers.filter(server => server.enabled).length,
+                })}
+                {hasUnsavedChanges && (
+                  <Typography component="span" color="warning.main" sx={{ ml: 1 }}>
+                    <Box component="span" role="status" aria-live="polite">
+                      {t('(Unsaved changes)')}
+                    </Box>
+                  </Typography>
+                )}
+              </>
+            }
+            actions={
+              hasUnsavedChanges && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={handleDiscardChanges}
+                    disabled={isPersisting}
+                    startIcon={<Icon icon="mdi:cancel" aria-hidden="true" />}
+                    size="small"
+                  >
+                    {t('Discard')}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveChanges}
+                    startIcon={<Icon icon="mdi:content-save" aria-hidden="true" />}
+                    color="primary"
+                    size="small"
+                    disabled={isPersisting}
+                  >
+                    {t('Save Changes')}
+                  </Button>
+                </>
+              )
+            }
+          />
         </>
       )}
 

@@ -134,6 +134,9 @@ it('renders browser defaults with labeled controls and no axe violations', async
   expect(screen.getByText('Suggested Skill Repositories')).toBeTruthy();
   expect(screen.getAllByText(/GitHub repositories to load skills from/).length).toBeGreaterThan(0);
   expect(screen.queryByText('Detected Skill Directories')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Add Repository' }));
   expect(screen.getByText('Git only')).toBeTruthy();
   expect(screen.getByRole('checkbox', { name: 'Enable Kubeshark' })).toBeTruthy();
@@ -179,6 +182,30 @@ it.each([{ ref: 'v0.50.0' }, { sha256: 'a'.repeat(64) }])(
     expect(getSkillsConfig(store.data()).sources).toEqual([createInspektorGadgetSkillsSource()]);
   }
 );
+it('groups inspection and creation actions in the header and saves below source settings', () => {
+  renderSettings({
+    configStore: createMemoryConfigStore({ skills: configuredSkills }),
+    loadSkills: vi.fn().mockResolvedValue([]),
+  });
+  const heading = screen.getByRole('heading', { name: 'Skills' });
+  const view = screen.getByRole('button', { name: 'View Loaded Skills' });
+  const add = screen.getByRole('button', { name: 'Add Repository' });
+  expect(heading.parentElement?.contains(view)).toBe(true);
+  expect(heading.parentElement?.contains(add)).toBe(true);
+  expect(view.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  fireEvent.click(
+    screen.getByRole('checkbox', {
+      name: 'Enable https://github.com/example/skills-repo (k8s)',
+    })
+  );
+  const content = screen.getByRole('heading', { name: 'Custom GitHub Repository Sources' });
+  const discard = screen.getByRole('button', { name: 'Discard' });
+  const save = screen.getByRole('button', { name: 'Save Changes' });
+  expect(content.compareDocumentPosition(discard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(discard.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(heading.parentElement?.contains(save)).toBe(false);
+});
 
 it('keeps same-repository sources with different paths distinct', () => {
   const url = 'https://github.com/example/shared';
@@ -324,12 +351,24 @@ it('toggles custom sources, discards, saves, edits, adds, and deletes', async ()
   const sourceLabel = `${sourceUrl} (k8s)`;
   fireEvent.click(screen.getByRole('checkbox', { name: `Enable ${sourceLabel}` }));
   expect(screen.getByText('(Unsaved changes)')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-outlined')
+  ).toBe(true);
+  expect(
+    screen.getByRole('button', { name: 'Save Changes' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
   expect(screen.queryByText('(Unsaved changes)')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
 
   fireEvent.click(screen.getByRole('checkbox', { name: `Enable ${sourceLabel}` }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
   expect(onConfigChange).toHaveBeenCalled();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   expect(
     getSkillsConfig(store.data()).sources.find(source => source.url === sourceUrl)?.enabled
   ).toBe(false);
