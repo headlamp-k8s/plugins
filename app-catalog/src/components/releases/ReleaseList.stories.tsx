@@ -48,6 +48,9 @@ const mockReleases = [
 ];
 
 const initialState = {
+  filter: {
+    namespaces: new Set<string>(),
+  },
   config: {
     settings: {
       tableRowsPerPageOptions: [15, 25, 50],
