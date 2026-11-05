@@ -1,0 +1,31 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-team-label
+  # No pod-policies.kyverno.io/autogen-controllers annotation: Kyverno's
+  # GetRequestedControllers/GetControllers treat an unset annotation as the
+  # default controller set, not the literal string "all" (that's not a
+  # recognized controller name and would be intersected away to nothing).
+  # Leaving it unset generates equivalent rules for the Pod controller kinds
+  # (Deployment, ReplicaSet, DaemonSet, StatefulSet, Job, CronJob) even though
+  # this policy's own spec.rules only ever mentions "Pod". Those generated
+  # rules never appear in spec.rules or get passed to the Policy Impact
+  # panel, so a Deployment this policy flags is the scenario
+  # describeMatchReasons() falls back to its "likely reached through a
+  # generated rule" explanation for.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-for-team-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "validation error: the 'team' label is required on all Pods."
+        pattern:
+          metadata:
+            labels:
+              team: "?*"

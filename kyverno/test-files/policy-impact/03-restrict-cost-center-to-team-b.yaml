@@ -1,0 +1,35 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-cost-center-to-team-b
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    # match.all is AND: every entry has to hold at once, so this rule's real
+    # scope is the INTERSECTION of the two namespace lists below
+    # (policy-impact-b only), not their union. describeMatchReasons() has to
+    # describe each selector's own namespace list separately for kind "Pod"
+    # rather than merging them into one list, otherwise this reads as "any
+    # pod in policy-impact-a or policy-impact-b", which is not what this rule
+    # actually does.
+    - name: check-for-cost-center-label
+      match:
+        all:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - policy-impact-a
+                - policy-impact-b
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - policy-impact-b
+      validate:
+        message: "validation error: the 'cost-center' label is required on all Pods in policy-impact-b."
+        pattern:
+          metadata:
+            labels:
+              cost-center: "?*"
