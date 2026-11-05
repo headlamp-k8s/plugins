@@ -1,5 +1,6 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
 import { formattedTableContent } from '../MCPFormattedMessage/MCPFormattedMessage.stories';
@@ -52,8 +53,8 @@ it('parses JSON and validates complete LOGS_BUTTON data', () => {
   expect(
     parseLogsButtonData(
       'prefix LOGS_BUTTON:{"data":{"logs":"ready","resourceName":"api"}} suffix',
-      'prefix '.length
-    )
+      'prefix '.length,
+    ),
   ).toEqual({
     success: true,
     data: {
@@ -80,7 +81,7 @@ it('renders Storybook markdown, safe links, a collapsible table, and passes axe'
         {...markdownContentArgs}
         content={`${markdownContentArgs.content}\n| a | 1 |\n| b | 2 |\n| c | 3 |\n| d | 4 |\n| e | 5 |\n| f | 6 |\n\n[Unsafe](javascript:alert(1))`}
       />
-    </main>
+    </main>,
   );
   expect(screen.getByRole('heading', { name: 'Cluster summary' })).toBeTruthy();
   expect(screen.getByRole('heading', { name: 'Cluster summary', level: 1 })).toBeTruthy();
@@ -115,7 +116,7 @@ it('renders short tables without expansion controls and internal links in place'
   expect(screen.getByRole('link', { name: 'Section' }).getAttribute('target')).toBeNull();
   expect(screen.getByRole('link', { name: 'CDN' })).toHaveProperty(
     'href',
-    'https://cdn.example.com/file'
+    'https://cdn.example.com/file',
   );
 });
 
@@ -131,7 +132,7 @@ it('dispatches formatted MCP and logs payloads to their specialized children', (
   const { rerender } = render(<ContentRenderer content={formattedTableContent} />);
   expect(screen.getByRole('region', { name: 'MCP output' })).toBeTruthy();
   rerender(
-    <ContentRenderer content='Pod failed. LOGS_BUTTON:{"data":{"logs":"line one","resourceName":"api"}} Logs were collected.' />
+    <ContentRenderer content='Pod failed. LOGS_BUTTON:{"data":{"logs":"line one","resourceName":"api"}} Logs were collected.' />,
   );
   expect(screen.getByText('Pod failed.')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'api: line one' })).toBeTruthy();
@@ -163,27 +164,27 @@ it('renders Storybook YAML and JSON Kubernetes resources through YamlDisplay', (
   const { rerender } = render(<ContentRenderer {...yamlContentArgs} />);
   expect(screen.getByRole('region', { name: /YAML Deployment/ })).toBeTruthy();
   rerender(
-    <ContentRenderer content='{"apiVersion":"v1","kind":"Service","metadata":{"name":"api"}}' />
+    <ContentRenderer content='{"apiVersion":"v1","kind":"Service","metadata":{"name":"api"}}' />,
   );
   expect(screen.getByRole('region', { name: /YAML Service - api/ })).toBeTruthy();
   rerender(
     <ContentRenderer
       content={'```yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cfg\n```'}
       onYamlDetected={vi.fn()}
-    />
+    />,
   );
   expect(screen.getByRole('region', { name: 'YAML ConfigMap' })).toBeTruthy();
   rerender(
     <ContentRenderer
       content={'```json\n{"apiVersion":"v1","kind":"Secret","metadata":{"name":"key"}}\n```'}
       onYamlDetected={vi.fn()}
-    />
+    />,
   );
   expect(screen.getByRole('region', { name: 'YAML Secret - key' })).toBeTruthy();
   rerender(
     <ContentRenderer
       content={'```yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: demo\n```'}
-    />
+    />,
   );
   expect(screen.getByRole('region', { name: 'YAML Namespace' })).toBeTruthy();
 });
@@ -219,7 +220,7 @@ it('applies prompt width and updates when it changes', () => {
 
 it('renders fenced code, inline code, malformed YAML, and empty content safely', () => {
   const { container, rerender } = render(
-    <ContentRenderer content={'Run `kubectl get pods`.\n\n```bash\necho ready\necho done\n```'} />
+    <ContentRenderer content={'Run `kubectl get pods`.\n\n```bash\necho ready\necho done\n```'} />,
   );
   expect(screen.getByText('kubectl get pods')).toBeTruthy();
   expect(screen.getByText(/echo ready/)).toBeTruthy();
@@ -234,7 +235,7 @@ it('uses dark-theme colors for inline and block code', () => {
   const { container } = render(
     <ThemeProvider theme={darkTheme}>
       <ContentRenderer content={'Run `status`.\n\n```bash\necho ready\necho done\n```'} />
-    </ThemeProvider>
+    </ThemeProvider>,
   );
   const codeElements = container.querySelectorAll('code');
   const colorProbe = document.createElement('span');
@@ -245,7 +246,7 @@ it('uses dark-theme colors for inline and block code', () => {
   expect(codeElements).toHaveLength(2);
   expect(getComputedStyle(codeElements[0]).backgroundColor).toBe(expectedBackground);
   expect(getComputedStyle(codeElements[1].parentElement ?? codeElements[1]).backgroundColor).toBe(
-    expectedBackground
+    expectedBackground,
   );
 });
 
@@ -256,7 +257,7 @@ it('honors a custom link slot and memoizes unchanged content', () => {
     </a>
   );
   const { rerender } = render(
-    <ContentRenderer content="[Docs](https://example.com)" LinkRendererSlot={LinkSlot} />
+    <ContentRenderer content="[Docs](https://example.com)" LinkRendererSlot={LinkSlot} />,
   );
   const link = screen.getByRole('link', { name: 'Docs' });
   expect(link.hasAttribute('data-custom')).toBe(true);
@@ -268,7 +269,7 @@ it('honors a custom link slot and memoizes unchanged content', () => {
     </a>
   );
   rerender(
-    <ContentRenderer content="[Docs](https://example.com)" LinkRendererSlot={OtherLinkSlot} />
+    <ContentRenderer content="[Docs](https://example.com)" LinkRendererSlot={OtherLinkSlot} />,
   );
   expect(screen.getByRole('link', { name: 'Docs' }).hasAttribute('data-other')).toBe(true);
 });
@@ -277,7 +278,7 @@ it('escapes raw HTML in markdown instead of executing it (XSS regression)', () =
   const { container } = render(
     <main>
       <ContentRenderer content={'<img src=x onerror="alert(1)"> <script>alert(2)</script> hello'} />
-    </main>
+    </main>,
   );
   // Raw HTML must not be materialized into live DOM nodes.
   expect(container.querySelector('img')).toBeNull();
@@ -286,4 +287,83 @@ it('escapes raw HTML in markdown instead of executing it (XSS regression)', () =
   expect(container.textContent).toContain('onerror');
   expect(container.textContent).toContain('alert(2)');
   expect(screen.getByText(/hello/)).toBeTruthy();
+});
+
+it('renders language header and copies code block to clipboard with feedback', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText },
+    configurable: true,
+  });
+
+  render(<ContentRenderer content={'```bash\nkubectl get pods\n```'} />);
+
+  expect(screen.getByText('BASH')).toBeTruthy();
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  expect(copyBtn).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(writeText).toHaveBeenCalledWith('kubectl get pods\n');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+});
+
+it('renders fallback CODE label when fenced block specifies no language', () => {
+  render(<ContentRenderer content={'```\nplain text\n```'} />);
+
+  expect(screen.getByText('CODE')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+  expect(screen.getByText('plain text')).toBeTruthy();
+});
+
+it('falls back to execCommand when clipboard writeText rejects', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(true);
+  document.execCommand = execSpy;
+
+  render(<ContentRenderer content={'```python\nprint("hello")\n```'} />);
+
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.getByRole('button', { name: 'Copied!' })).toBeTruthy();
+  delete (document as any).execCommand;
+});
+
+it('does not show copied state and cleans up textarea when execCommand returns false', async () => {
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+    configurable: true,
+  });
+  const execSpy = vi.fn().mockReturnValue(false);
+  document.execCommand = execSpy;
+
+  render(<ContentRenderer content={'```python\nprint("hello")\n```'} />);
+
+  const copyBtn = screen.getByRole('button', { name: 'Copy code' });
+  await act(async () => {
+    fireEvent.click(copyBtn);
+  });
+
+  expect(execSpy).toHaveBeenCalledWith('copy');
+  expect(screen.queryByRole('button', { name: 'Copied!' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Copy code' })).toBeTruthy();
+  expect(document.querySelector('textarea')).toBeNull();
+  delete (document as any).execCommand;
+});
+
+it('preserves punctuation in language identifiers like c++ and c#', () => {
+  render(<ContentRenderer content={'```c++\nint x = 0;\n```'} />);
+  expect(screen.getByText('C++')).toBeTruthy();
+
+  render(<ContentRenderer content={'```c#\nint x = 0;\n```'} />);
+  expect(screen.getByText('C#')).toBeTruthy();
 });
