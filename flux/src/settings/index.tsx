@@ -4,7 +4,7 @@ import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import FormHelperText from '@mui/material/FormHelperText';
 import Switch from '@mui/material/Switch';
-import { type ChangeEvent, type ReactNode, useEffect, useId, useState } from 'react';
+import { type ChangeEvent, type ReactNode, useId, useState } from 'react';
 
 interface AutoSaveSwitchProps {
   label: string;
@@ -22,27 +22,12 @@ function AutoSaveSwitch({
   describedBy,
 }: AutoSaveSwitchProps) {
   const [value, setValue] = useState(defaultValue);
-  const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.checked;
     setValue(newValue);
-
-    if (timer) {
-      clearTimeout(timer);
-    }
-
-    const newTimer = setTimeout(() => onSave(newValue), 100);
-    setTimer(newTimer);
+    onSave(newValue);
   };
-
-  useEffect(() => {
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
-  }, [timer]);
 
   return (
     <>
@@ -95,7 +80,7 @@ export function FluxSettings() {
   }));
 
   // Merge into the latest stored config rather than this render's snapshot, so
-  // switches saved within the same debounce window don't overwrite each other.
+  // a save only changes the settings it was given.
   function handleSave(update: Partial<PluginConfig>) {
     store.update(update);
     setCurrentConfig(prev => ({ ...prev, ...update }));

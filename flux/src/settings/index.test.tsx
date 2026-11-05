@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { areFluxManagedActionsAllowed, FluxSettings, type PluginConfig, store } from '.';
 
 vi.mock('@kinvolk/headlamp-plugin/lib', async importOriginal => {
@@ -55,31 +55,23 @@ describe('areFluxManagedActionsAllowed', () => {
 
 describe('FluxSettings', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     store.set({} as PluginConfig);
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('enables actions only in the cluster whose switch was turned on', () => {
     render(<FluxSettings />);
 
     fireEvent.click(clusterSwitch('qa'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(true);
     expect(areFluxManagedActionsAllowed(store.get(), 'prod')).toBe(false);
   });
 
-  it('keeps both settings when switches are toggled within the save delay', () => {
+  it('keeps both settings when switches are toggled one after another', () => {
     render(<FluxSettings />);
 
     fireEvent.click(linkHRelSwitch());
-    act(() => vi.advanceTimersByTime(50));
     fireEvent.click(clusterSwitch('qa'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(store.get()).toMatchObject({
       linkHRelToKs: true,
@@ -87,15 +79,22 @@ describe('FluxSettings', () => {
     });
   });
 
-  it('keeps every cluster when cluster switches are toggled within the save delay', () => {
+  it('keeps every cluster when cluster switches are toggled one after another', () => {
     render(<FluxSettings />);
 
     fireEvent.click(clusterSwitch('qa'));
-    act(() => vi.advanceTimersByTime(50));
     fireEvent.click(clusterSwitch('prod'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(store.get()?.allowFluxManagedActions).toEqual({ qa: true, prod: true });
+  });
+
+  it('keeps a change when the page is left right after a toggle', () => {
+    const { unmount } = render(<FluxSettings />);
+
+    fireEvent.click(clusterSwitch('qa'));
+    unmount();
+
+    expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(true);
   });
 
   it('links each cluster switch to the warning', () => {
