@@ -1,0 +1,22 @@
+version: 0.2.0-alpha
+name: headlamp_kyverno
+displayName: Kyverno
+createdAt: "2026-11-05T00:00:00Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/kyverno/logo.svg"
+description: A UI for viewing Kyverno policies and policy reports in Headlamp.
+changes:
+  - kind: added
+    description: "Policy Impact Map on legacy Policy and ClusterPolicy detail pages, showing evaluated resources grouped by kind, result counts, and plain-language match explanations."
+  - kind: added
+    description: "List and detail views for all five namespaced CEL policy kinds, with namespace columns, distinct detail tabs, and per-kind availability checks."
+  - kind: added
+    description: "Opt-in Prometheus-backed Policy Engine Health section with admission rate, denied requests, circuit breaker trips, controller requeues, policies not ready, and P95 admission review latency."
+  - kind: fixed
+    description: "Translation placeholders now substitute counts, percentages, and error messages instead of rendering raw template text."
+  - kind: fixed
+    description: "Table and list headers update correctly when translations load or the interface language changes."
+annotations:
+  headlamp/plugin/archive-url: "https://github.com/headlamp-k8s/plugins/releases/download/kyverno-0.2.0-alpha/headlamp-k8s-kyverno-0.2.0-alpha.tar.gz"
+  headlamp/plugin/archive-checksum: "SHA256:4b64aa8f0a8169f9a37d893ec50eceae689b4d402aee57c42dc42826bdcf7540"
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
