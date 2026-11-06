@@ -37,7 +37,7 @@ interface ChartConfig {
   key: string;
   label: string;
   icon: string;
-  queries: Record<string, string>;
+  queries: Record<string, unknown>;
   component: React.ComponentType<any>;
 }
 
@@ -212,6 +212,12 @@ export function VolcanoChart(props: VolcanoChartProps) {
         return t('Memory');
       case 'podgroups':
         return t('PodGroups');
+      case 'workloads':
+        return t('Workloads');
+      case 'quota-usage':
+        return t('Quota usage');
+      case 'admission-wait':
+        return t('Admission wait');
       default:
         return config.label;
     }
