@@ -1,16 +1,23 @@
 import {
   ConditionsSection,
+  DateLabel,
   DetailsGrid,
+  Link,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
 import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
+import type { PendingWorkloadSummaryItem } from '../../resources/workloadFormatters';
+import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { fetchPendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
   renderCohortLink,
+  renderLocalQueueLink,
   renderResourceFlavorLink,
 } from '../common/KueueResourceLinks';
 import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
@@ -198,6 +205,80 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
   };
 }
 
+/**
+ * Pending Workloads in the order Kueue will try them, from the visibility API.
+ * Renders nothing when the API is not served, access is denied, or nothing is pending.
+ */
+function PendingWorkloadsSection(props: { clusterQueueName: string; pendingCount?: number }) {
+  const { clusterQueueName, pendingCount } = props;
+  const [items, setItems] = useState<PendingWorkloadSummaryItem[] | null>(null);
+
+  // Refetch when the pending count changes, since the list is not watched.
+  useEffect(() => {
+    let cancelled = false;
+    fetchPendingWorkloads(`clusterqueues/${clusterQueueName}/pendingworkloads`).then(result => {
+      if (!cancelled) {
+        setItems(result);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clusterQueueName, pendingCount]);
+
+  if (!items?.length) {
+    return null;
+  }
+
+  return (
+    <SectionBox title="Pending Workloads in Admission Order">
+      <SimpleTable
+        data={items}
+        columns={[
+          {
+            label: 'Position',
+            getter: (item: PendingWorkloadSummaryItem) => item.positionInClusterQueue + 1,
+          },
+          {
+            label: 'Workload',
+            getter: (item: PendingWorkloadSummaryItem) => (
+              <Link
+                routeName={kueueRouteNames.workloadDetail}
+                params={{ namespace: item.metadata.namespace, name: item.metadata.name }}
+              >
+                {item.metadata.name}
+              </Link>
+            ),
+          },
+          {
+            label: 'Namespace',
+            getter: (item: PendingWorkloadSummaryItem) => item.metadata.namespace || '-',
+          },
+          {
+            label: 'LocalQueue',
+            getter: (item: PendingWorkloadSummaryItem) =>
+              renderLocalQueueLink(item.localQueueName, item.metadata.namespace),
+          },
+          {
+            label: 'Priority',
+            getter: (item: PendingWorkloadSummaryItem) => item.priority ?? '-',
+          },
+          {
+            label: 'Age',
+            getter: (item: PendingWorkloadSummaryItem) =>
+              item.metadata.creationTimestamp ? (
+                <DateLabel date={item.metadata.creationTimestamp} format="mini" />
+              ) : (
+                '-'
+              ),
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
 /** Build the standard Headlamp conditions section for ClusterQueue status. */
 function getConditionsSection(clusterQueue: ClusterQueue) {
   if (!clusterQueue.conditions.length) {
@@ -288,6 +369,15 @@ export default function ClusterQueueDetail() {
                 getConditionsSection(clusterQueue),
                 getResourceGroupsSection(clusterQueue),
                 getAdmissionChecksSection(clusterQueue),
+                {
+                  id: 'pending-workloads-order',
+                  section: (
+                    <PendingWorkloadsSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      pendingCount={clusterQueue.status.pendingWorkloads}
+                    />
+                  ),
+                },
                 getFlavorUsageSection(
                   'Flavor Reservations',
                   'flavor-reservations',

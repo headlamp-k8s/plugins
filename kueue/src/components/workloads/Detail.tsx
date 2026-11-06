@@ -24,12 +24,14 @@ import {
   getWorkloadBlocker,
   getWorkloadTimeline,
   renderPodSetRequests,
+  renderQueuePosition,
   renderResourceList,
   renderStringMap,
   renderText,
   renderTopologyAssignment,
   WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
+import { fetchPendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -539,6 +541,55 @@ function getTimelineSection(workload: Workload) {
   return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
 }
 
+/**
+ * Ask Kueue's visibility API where a pending Workload sits in its queues.
+ * Returns null when the API is not served, access is denied, or the Workload is not listed.
+ */
+function useQueuePosition(workload: Workload, enabled: boolean) {
+  const [position, setPosition] = useState<string | null>(null);
+  const { name, namespace } = workload.metadata;
+  const queueName = workload.queueName;
+
+  useEffect(() => {
+    setPosition(null);
+    if (!enabled || !queueName || !namespace) {
+      return;
+    }
+
+    let cancelled = false;
+    fetchPendingWorkloads(`namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`).then(
+      items => {
+        if (!cancelled) {
+          setPosition(items && renderQueuePosition(items, name, namespace));
+        }
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, name, namespace, queueName]);
+
+  return position;
+}
+
+/** Blocker rows plus the Workload's queue position, which needs a request of its own. */
+function WorkloadBlockerTable(props: {
+  workload: Workload;
+  inQueue: boolean;
+  rows: { name: string; value: React.ReactNode; hide?: boolean }[];
+}) {
+  const { workload, inQueue, rows } = props;
+  const position = useQueuePosition(workload, inQueue);
+  const [stage, ...rest] = rows;
+
+  return (
+    <NameValueTable
+      rows={[stage, { name: 'Queue position', value: position, hide: !position }, ...rest]}
+    />
+  );
+}
+
 /** Build the section explaining what is stopping the Workload from being admitted. */
 export function getBlockerSection(workload: Workload) {
   const blocker = getWorkloadBlocker(
@@ -587,7 +638,12 @@ export function getBlockerSection(workload: Workload) {
     id: 'blocker',
     section: (
       <SectionBox title="Why is this Workload not admitted?">
-        <NameValueTable rows={rows} />
+        <WorkloadBlockerTable
+          workload={workload}
+          // Only Workloads still waiting for quota are listed by the visibility API.
+          inQueue={blocker.stage === 'Not evaluated' || blocker.stage === 'Waiting for quota'}
+          rows={rows}
+        />
       </SectionBox>
     ),
   };
