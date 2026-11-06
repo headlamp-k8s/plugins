@@ -14,7 +14,47 @@
  * limitations under the License.
  */
 
-import type { MCPSettings, MCPToolState } from '../types';
+import type { MCPServer, MCPSettings, MCPToolState } from '../types';
+
+/** Whether an untrusted JSON value is a non-null object mapping. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Whether an untrusted value is a mapping containing only string values. */
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every(item => typeof item === 'string');
+}
+
+/** Known external and native MCP configuration formats. */
+export type McpConfigFormat =
+  | 'headlamp'
+  | 'claude'
+  | 'vscode'
+  | 'servers-map'
+  | 'servers-array'
+  | 'unknown';
+
+/** Result when an untrusted MCP configuration is successfully normalized. */
+export interface NormalizedMcpSettingsResult {
+  valid: true;
+  config: MCPSettings;
+  format: McpConfigFormat;
+  error?: undefined;
+}
+
+/** Result when an untrusted MCP configuration fails validation. */
+export interface InvalidMcpSettingsResult {
+  valid: false;
+  error: string;
+  config?: undefined;
+  format?: undefined;
+}
+
+/** Validation and normalization result for MCP configuration. */
+export type McpSettingsValidationResult =
+  | NormalizedMcpSettingsResult
+  | InvalidMcpSettingsResult;
 
 /** Runtime MCP server configuration consumed by MultiServerMCPClient. */
 type MCPServerConfig = {
@@ -480,4 +520,469 @@ export function summarizeMcpToolStateChanges(
     totalChanges,
     summaryText: summaryParts.join('\n\n'),
   };
+}
+
+/**
+ * Extracts a map of input IDs to default values from VS Code input definitions.
+ *
+ * @param value - Untrusted JSON configuration root.
+ * @returns Map of input IDs to default string values.
+ */
+function extractVsCodeInputDefaults(value: unknown): Record<string, string> {
+  const inputDefaults: Record<string, string> = {};
+  if (!isRecord(value)) return inputDefaults;
+
+  let rawInputs: unknown = undefined;
+  if (Array.isArray(value.inputs)) {
+    rawInputs = value.inputs;
+  } else if (isRecord(value.mcp) && Array.isArray((value.mcp as Record<string, unknown>).inputs)) {
+    rawInputs = (value.mcp as Record<string, unknown>).inputs;
+  }
+
+  if (Array.isArray(rawInputs)) {
+    for (const item of rawInputs) {
+      if (isRecord(item) && typeof item.id === 'string' && item.id.trim()) {
+        const id = item.id.trim();
+        if (typeof item.default === 'string') {
+          inputDefaults[id] = item.default;
+        } else if (typeof item.value === 'string') {
+          inputDefaults[id] = item.value;
+        }
+      }
+    }
+  }
+
+  return inputDefaults;
+}
+
+/**
+ * Resolves `${input:<id>}` placeholders using available input defaults,
+ * or identifies any unresolved input references.
+ *
+ * @param text - String value potentially containing `${input:...}` placeholders.
+ * @param inputDefaults - Map of input IDs to default string values.
+ * @returns Resolved string and any remaining unresolved input reference.
+ */
+function resolveVsCodeInputReference(
+  text: string,
+  inputDefaults: Record<string, string>
+): { resolved: string; unresolved?: string } {
+  const resolved = text.replace(/\$\{input:([^}]+)\}/g, (match, id) => {
+    const trimmedId = id.trim();
+    if (Object.prototype.hasOwnProperty.call(inputDefaults, trimmedId)) {
+      return inputDefaults[trimmedId];
+    }
+    return match;
+  });
+
+  const unresolvedMatch = resolved.match(/\$\{input:([^}]+)\}/);
+  if (unresolvedMatch) {
+    return { resolved, unresolved: unresolvedMatch[0] };
+  }
+
+  return { resolved };
+}
+
+/**
+ * Parses an array of untrusted server definitions.
+ *
+ * @param rawServers - Array of server objects.
+ * @param format - Detected config format.
+ * @param enabled - Top-level enabled state.
+ * @param inputDefaults - Map of input IDs to default string values.
+ * @returns Validation result with normalized MCPSettings.
+ */
+function parseServerArray(
+  rawServers: unknown[],
+  format: McpConfigFormat,
+  enabled: boolean,
+  inputDefaults: Record<string, string> = {}
+): McpSettingsValidationResult {
+  const servers: MCPServer[] = [];
+  const serverNames = new Set<string>();
+
+  for (let index = 0; index < rawServers.length; index += 1) {
+    const server = rawServers[index];
+    const number = index + 1;
+
+    if (!isRecord(server)) {
+      return { valid: false, error: `Server ${number} must be an object` };
+    }
+    if (typeof server.name !== 'string' || !server.name.trim()) {
+      return { valid: false, error: `Server ${number}: name must be a non-empty string` };
+    }
+    if (typeof server.command !== 'string' || !server.command.trim()) {
+      return { valid: false, error: `Server ${number}: command must be a non-empty string` };
+    }
+
+    const normalizedName = server.name.trim();
+    if (serverNames.has(normalizedName.toLowerCase())) {
+      return { valid: false, error: 'Server names must be unique' };
+    }
+    serverNames.add(normalizedName.toLowerCase());
+
+    const args = server.args;
+    const normalizedArgs: string[] = [];
+    if (args !== undefined) {
+      if (!Array.isArray(args) || !args.every(a => typeof a === 'string')) {
+        return { valid: false, error: `Server ${number}: args must be an array of strings` };
+      }
+      for (const arg of args as string[]) {
+        const { resolved, unresolved } = resolveVsCodeInputReference(arg, inputDefaults);
+        if (unresolved) {
+          return {
+            valid: false,
+            error: `Server ${number}: args contain unresolved VS Code input reference "${unresolved}". Please replace it with the actual value.`,
+          };
+        }
+        normalizedArgs.push(resolved);
+      }
+    }
+
+    const env = server.env;
+    let normalizedEnv: Record<string, string> | undefined = undefined;
+    if (env !== undefined) {
+      if (!isStringRecord(env)) {
+        return {
+          valid: false,
+          error: `Server ${number}: env must contain only string key-value pairs`,
+        };
+      }
+      normalizedEnv = {};
+      for (const [envKey, envValue] of Object.entries(env)) {
+        const { resolved, unresolved } = resolveVsCodeInputReference(envValue, inputDefaults);
+        if (unresolved) {
+          return {
+            valid: false,
+            error: `Server ${number}: env "${envKey}" contains unresolved VS Code input reference "${unresolved}". Please replace it with the actual value.`,
+          };
+        }
+        normalizedEnv[envKey] = resolved;
+      }
+    }
+
+    if (server.enabled !== undefined && typeof server.enabled !== 'boolean') {
+      return { valid: false, error: `Server ${number}: enabled must be a boolean` };
+    }
+
+    if (server.disabled !== undefined && typeof server.disabled !== 'boolean') {
+      return { valid: false, error: `Server ${number}: disabled must be a boolean` };
+    }
+
+    if (server.autoApprove !== undefined && typeof server.autoApprove !== 'boolean') {
+      return { valid: false, error: `Server ${number}: autoApprove must be a boolean` };
+    }
+
+    const normalizedServer: MCPServer = {
+      name: normalizedName,
+      command: server.command.trim(),
+      args: normalizedArgs,
+      enabled: server.disabled !== true && server.enabled !== false,
+    };
+    if (normalizedEnv) normalizedServer.env = normalizedEnv;
+    if (typeof server.autoApprove === 'boolean') normalizedServer.autoApprove = server.autoApprove;
+    servers.push(normalizedServer);
+  }
+
+  return { valid: true, config: { enabled, servers }, format };
+}
+
+/**
+ * Parses an object mapping of server names to server definitions.
+ *
+ * @param rawServers - Object mapping of server configurations.
+ * @param format - Detected config format.
+ * @param enabled - Top-level enabled state.
+ * @param inputDefaults - Map of input IDs to default string values.
+ * @returns Validation result with normalized MCPSettings.
+ */
+function parseServerRecord(
+  rawServers: Record<string, unknown>,
+  format: McpConfigFormat,
+  enabled: boolean,
+  inputDefaults: Record<string, string> = {}
+): McpSettingsValidationResult {
+  if (!isRecord(rawServers)) {
+    return { valid: false, error: 'servers must be an object mapping' };
+  }
+
+  const servers: MCPServer[] = [];
+  const serverNames = new Set<string>();
+
+  for (const [rawName, server] of Object.entries(rawServers)) {
+    const normalizedName = rawName.trim();
+    if (!normalizedName) {
+      return { valid: false, error: 'Server name must be a non-empty string' };
+    }
+    if (serverNames.has(normalizedName.toLowerCase())) {
+      return { valid: false, error: 'Server names must be unique' };
+    }
+    serverNames.add(normalizedName.toLowerCase());
+
+    if (!isRecord(server)) {
+      return { valid: false, error: `Server "${normalizedName}" must be an object` };
+    }
+    if (typeof server.command !== 'string' || !server.command.trim()) {
+      return {
+        valid: false,
+        error: `Server "${normalizedName}": command must be a non-empty string`,
+      };
+    }
+
+    const args = server.args;
+    const normalizedArgs: string[] = [];
+    if (args !== undefined) {
+      if (!Array.isArray(args) || !args.every(a => typeof a === 'string')) {
+        return {
+          valid: false,
+          error: `Server "${normalizedName}": args must be an array of strings`,
+        };
+      }
+      for (const arg of args as string[]) {
+        const { resolved, unresolved } = resolveVsCodeInputReference(arg, inputDefaults);
+        if (unresolved) {
+          return {
+            valid: false,
+            error: `Server "${normalizedName}": args contain unresolved VS Code input reference "${unresolved}". Please replace it with the actual value.`,
+          };
+        }
+        normalizedArgs.push(resolved);
+      }
+    }
+
+    const env = server.env;
+    let normalizedEnv: Record<string, string> | undefined = undefined;
+    if (env !== undefined) {
+      if (!isStringRecord(env)) {
+        return {
+          valid: false,
+          error: `Server "${normalizedName}": env must contain only string key-value pairs`,
+        };
+      }
+      normalizedEnv = {};
+      for (const [envKey, envValue] of Object.entries(env)) {
+        const { resolved, unresolved } = resolveVsCodeInputReference(envValue, inputDefaults);
+        if (unresolved) {
+          return {
+            valid: false,
+            error: `Server "${normalizedName}": env "${envKey}" contains unresolved VS Code input reference "${unresolved}". Please replace it with the actual value.`,
+          };
+        }
+        normalizedEnv[envKey] = resolved;
+      }
+    }
+
+    if (server.enabled !== undefined && typeof server.enabled !== 'boolean') {
+      return { valid: false, error: `Server "${normalizedName}": enabled must be a boolean` };
+    }
+
+    if (server.disabled !== undefined && typeof server.disabled !== 'boolean') {
+      return { valid: false, error: `Server "${normalizedName}": disabled must be a boolean` };
+    }
+
+    let isServerEnabled = true;
+    if (server.disabled === true) {
+      isServerEnabled = false;
+    } else if (typeof server.enabled === 'boolean') {
+      isServerEnabled = server.enabled;
+    }
+
+    const normalizedServer: MCPServer = {
+      name: normalizedName,
+      command: server.command.trim(),
+      args: normalizedArgs,
+      enabled: isServerEnabled,
+    };
+    if (normalizedEnv) normalizedServer.env = normalizedEnv;
+    if (typeof server.autoApprove === 'boolean') normalizedServer.autoApprove = server.autoApprove;
+    servers.push(normalizedServer);
+  }
+
+  return { valid: true, config: { enabled, servers }, format };
+}
+
+/**
+ * Detects the source format of an MCP configuration object.
+ *
+ * Supports Headlamp native format, Claude Desktop (`mcpServers`),
+ * VS Code / Cursor (`mcp.servers` or `.vscode/mcp.json`), and raw server collections.
+ *
+ * @param value - Untrusted parsed JSON configuration.
+ * @returns Detected configuration format.
+ */
+export function detectMcpConfigFormat(value: unknown): McpConfigFormat {
+  if (Array.isArray(value)) {
+    return 'servers-array';
+  }
+  if (!isRecord(value)) {
+    return 'unknown';
+  }
+  if (isRecord(value.mcpServers)) {
+    return 'claude';
+  }
+  if (isRecord(value.mcp) && isRecord((value.mcp as Record<string, unknown>).servers)) {
+    return 'vscode';
+  }
+  if (Array.isArray(value.servers)) {
+    return 'headlamp';
+  }
+  if (typeof value.enabled === 'boolean' && 'servers' in value) {
+    return 'headlamp';
+  }
+  if (isRecord(value.servers)) {
+    return 'servers-map';
+  }
+  const entries = Object.entries(value);
+  if (
+    entries.length > 0 &&
+    typeof value.enabled !== 'boolean' &&
+    entries.every(([, v]) => isRecord(v) && typeof (v as Record<string, unknown>).command === 'string')
+  ) {
+    return 'servers-map';
+  }
+  return 'unknown';
+}
+
+/**
+ * Normalizes and validates an untrusted MCP configuration in any recognized format
+ * (Headlamp native, Claude Desktop, VS Code, Cursor, or raw server collections).
+ *
+ * @param value - Untrusted JSON configuration to normalize.
+ * @returns Normalized MCPSettings or validation error message.
+ */
+export function normalizeMcpSettings(value: unknown): McpSettingsValidationResult {
+  if (!isRecord(value) && !Array.isArray(value)) {
+    return { valid: false, error: 'enabled field must be a boolean' };
+  }
+
+  const inputDefaults = extractVsCodeInputDefaults(value);
+  const format = detectMcpConfigFormat(value);
+
+  // 1. Claude Desktop format: { mcpServers: { [name]: { command, args, env, ... } } }
+  if (format === 'claude') {
+    const rawServers = (value as Record<string, unknown>).mcpServers as Record<string, unknown>;
+    return parseServerRecord(rawServers, format, true, inputDefaults);
+  }
+
+  // 2. VS Code settings format: { mcp: { servers: { [name]: { ... } } } }
+  if (format === 'vscode') {
+    const mcpObj = (value as Record<string, unknown>).mcp as Record<string, unknown>;
+    const rawServers = mcpObj.servers as Record<string, unknown>;
+    return parseServerRecord(rawServers, format, true, inputDefaults);
+  }
+
+  // 3. Servers map format: { servers: { [name]: { ... } } } or direct { [name]: { command, ... } }
+  if (format === 'servers-map') {
+    const rawServers = isRecord((value as Record<string, unknown>).servers)
+      ? ((value as Record<string, unknown>).servers as Record<string, unknown>)
+      : (value as Record<string, unknown>);
+    return parseServerRecord(rawServers, format, true, inputDefaults);
+  }
+
+  // 4. Raw server array: [ { name, command, args, ... } ]
+  if (format === 'servers-array') {
+    return parseServerArray(value as unknown[], format, true, inputDefaults);
+  }
+
+  // 5. Headlamp format: { enabled: boolean, servers: MCPServer[] }
+  if (format === 'headlamp') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.enabled !== 'boolean') {
+      return { valid: false, error: 'enabled field must be a boolean' };
+    }
+    if (!Array.isArray(record.servers)) {
+      return { valid: false, error: 'servers field must be an array' };
+    }
+    return parseServerArray(record.servers, 'headlamp', record.enabled, inputDefaults);
+  }
+
+  return { valid: false, error: 'enabled field must be a boolean' };
+}
+
+/**
+ * Attempts to convert an external MCP configuration (Claude Desktop, VS Code, Cursor)
+ * to native Headlamp MCPSettings.
+ *
+ * @param value - Untrusted JSON configuration to convert.
+ * @returns Converted MCPSettings if recognized and valid, or null otherwise.
+ */
+export function convertExternalMcpConfig(value: unknown): MCPSettings | null {
+  const result = normalizeMcpSettings(value);
+  return result.valid ? result.config : null;
+}
+
+/**
+ * Known default locations for MCP configuration files in popular tools.
+ *
+ * @param platform - Platform override (defaults to process.platform or 'linux').
+ * @param env - Environment override (defaults to process.env).
+ *
+ * @returns Array of known configuration files with their source and path.
+ */
+export function getKnownMcpConfigFilePaths(
+  platform?: string,
+  env?: Record<string, string | undefined>
+): Array<{ source: 'claude' | 'cursor' | 'vscode'; path: string; description: string }> {
+  const effectivePlatform =
+    platform ?? (typeof process !== 'undefined' ? process.platform : 'linux');
+  const effectiveEnv = env ?? (typeof process !== 'undefined' ? process.env ?? {} : {});
+  const home = effectiveEnv.HOME || effectiveEnv.USERPROFILE || '';
+  const appData = effectiveEnv.APPDATA || (home ? `${home}\\AppData\\Roaming` : '');
+  const xdgConfig = effectiveEnv.XDG_CONFIG_HOME || (home ? `${home}/.config` : '');
+
+  const configs: Array<{ source: 'claude' | 'cursor' | 'vscode'; path: string; description: string }> = [];
+
+  // Claude Desktop
+  if (effectivePlatform === 'win32' && appData) {
+    configs.push({
+      source: 'claude',
+      path: `${appData}\\Claude\\claude_desktop_config.json`,
+      description: 'Claude Desktop (Windows)',
+    });
+  } else if (effectivePlatform === 'darwin' && home) {
+    configs.push({
+      source: 'claude',
+      path: `${home}/Library/Application Support/Claude/claude_desktop_config.json`,
+      description: 'Claude Desktop (macOS)',
+    });
+  } else if (xdgConfig) {
+    configs.push({
+      source: 'claude',
+      path: `${xdgConfig}/Claude/claude_desktop_config.json`,
+      description: 'Claude Desktop (Linux)',
+    });
+  }
+
+  // Cursor
+  if (home) {
+    const sep = effectivePlatform === 'win32' ? '\\' : '/';
+    configs.push({
+      source: 'cursor',
+      path: `${home}${sep}.cursor${sep}mcp.json`,
+      description: 'Cursor MCP Configuration',
+    });
+  }
+
+  // VS Code (User configuration)
+  if (effectivePlatform === 'win32' && appData) {
+    configs.push({
+      source: 'vscode',
+      path: `${appData}\\Code\\User\\mcp.json`,
+      description: 'VS Code User MCP Configuration',
+    });
+  } else if (effectivePlatform === 'darwin' && home) {
+    configs.push({
+      source: 'vscode',
+      path: `${home}/Library/Application Support/Code/User/mcp.json`,
+      description: 'VS Code User MCP Configuration',
+    });
+  } else if (xdgConfig) {
+    configs.push({
+      source: 'vscode',
+      path: `${xdgConfig}/Code/User/mcp.json`,
+      description: 'VS Code User MCP Configuration',
+    });
+  }
+
+  return configs;
 }
