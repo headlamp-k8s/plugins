@@ -37,8 +37,8 @@ import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPa
 import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
 import { Headlamp, runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { SectionBox, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Paper } from '@mui/material';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Paper, Typography } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
@@ -84,7 +84,9 @@ export function SettingsSection({ title, children, actions }: DefaultSectionWrap
         title={
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
-              <SectionHeader title={title} headerStyle="subsection" noPadding />
+              <Typography variant="h5" component="h2">
+                {title}
+              </Typography>
             </Box>
             {actions && <Box sx={{ ml: 'auto', maxWidth: '100%' }}>{actions}</Box>}
           </Box>
