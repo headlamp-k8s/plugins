@@ -421,6 +421,78 @@ namespace: default`;
     expect(out).toContain('name: db-credentials');
   });
 
+  it('redacts the last-applied-configuration annotation of a JSON Secret', () => {
+    const applied = JSON.stringify({
+      apiVersion: 'v1',
+      data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+      kind: 'Secret',
+      metadata: { name: 'db', namespace: 'default' },
+    });
+    const secret = JSON.stringify({
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: 'db',
+        annotations: {
+          'kubectl.kubernetes.io/last-applied-configuration': `${applied}\n`,
+          team: 'payments',
+        },
+      },
+      data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+    });
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('"kubectl.kubernetes.io/last-applied-configuration": "[REDACTED]"');
+    expect(out).toContain('"team": "payments"');
+
+    const list = JSON.stringify({
+      kind: 'SecretList',
+      items: [
+        {
+          metadata: {
+            name: 'db',
+            annotations: { 'kubectl.kubernetes.io/last-applied-configuration': applied },
+          },
+          data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+        },
+      ],
+    });
+    expect(redactSecrets(list)).not.toContain('cG9zdGdyZXM6Ly8=');
+  });
+
+  it('redacts the last-applied-configuration annotation of a YAML Secret', () => {
+    const secret = [
+      'apiVersion: v1',
+      'data:',
+      '  DATABASE_URL: cG9zdGdyZXM6Ly8=',
+      'kind: Secret',
+      'metadata:',
+      '  annotations:',
+      '    kubectl.kubernetes.io/last-applied-configuration: |',
+      '      {"apiVersion":"v1","data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    team: payments',
+      '  name: db',
+      'type: Opaque',
+    ].join('\n');
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('kubectl.kubernetes.io/last-applied-configuration: [REDACTED]');
+    expect(out).toContain('team: payments');
+    expect(out).toContain('name: db');
+    expect(out).toContain('type: Opaque');
+  });
+
+  it('keeps the last-applied-configuration annotation of a ConfigMap', () => {
+    const cm = [
+      'kind: ConfigMap',
+      'metadata:',
+      '  annotations:',
+      '    kubectl.kubernetes.io/last-applied-configuration: |',
+      '      {"data":{"app.conf":"hello-world"},"kind":"ConfigMap"}',
+    ].join('\n');
+    expect(redactSecrets(cm)).toBe(cm);
+  });
+
   it('does not over-redact ConfigMap data', () => {
     const cm = ['kind: ConfigMap', 'data:', '  app.conf: hello-world'].join('\n');
     expect(redactSecrets(cm)).toContain('app.conf: hello-world');
@@ -447,6 +519,27 @@ describe('redactSecretsInValue', () => {
     const out = redactSecretsInValue(value) as any;
     expect(out.data.DATABASE_PASSWORD).toBe('[REDACTED]');
     expect(out.metadata.name).toBe('db-credentials');
+  });
+
+  it('redacts the last-applied-configuration annotation of a parsed Secret object', () => {
+    const value = {
+      kind: 'Secret',
+      metadata: {
+        name: 'db',
+        annotations: {
+          'kubectl.kubernetes.io/last-applied-configuration':
+            '{"kind":"Secret","data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="}}',
+        },
+      },
+      data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.metadata.annotations['kubectl.kubernetes.io/last-applied-configuration']).toBe(
+      '[REDACTED]'
+    );
+    expect(
+      value.metadata.annotations['kubectl.kubernetes.io/last-applied-configuration']
+    ).toContain('cG9zdGdyZXM6Ly8=');
   });
 
   it('redacts data fields of items in a parsed SecretList object', () => {
