@@ -24,8 +24,6 @@ export function EditorDialog(props: {
   handleEditor: (open: boolean) => void;
   chartProfile: string;
 }) {
-  if (!props.chart) return null;
-
   const { openEditor, handleEditor, chart, chartProfile } = props;
   const { t } = useTranslation();
   const [installLoading, setInstallLoading] = useState(false);
@@ -94,6 +92,7 @@ export function EditorDialog(props: {
   }
 
   useEffect(() => {
+    if (!chart) return;
     if (chartCfg.chartProfile === chartProfile) {
       const versionsArray =
         AVAILABLE_VERSIONS instanceof Map && AVAILABLE_VERSIONS.get && chart.name
@@ -121,13 +120,16 @@ export function EditorDialog(props: {
         }
       });
     }
-  }, [chart]);
+  }, [chart, chartProfile]);
 
   useEffect(() => {
+    if (!chart) return;
     if (selectedVersion) {
       handleChartValueFetch(chart);
     }
-  }, [selectedVersion]);
+  }, [selectedVersion, chart, chartProfile]);
+
+  if (!chart) return null;
 
   function checkInstallStatus(releaseName: string) {
     setTimeout(() => {
