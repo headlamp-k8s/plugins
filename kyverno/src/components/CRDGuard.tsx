@@ -72,11 +72,11 @@ export function CRDGuard({
     return <NotInstalledBanner loading />;
   }
 
-  if (!status[requires]) {
+  if (status[requires] === false) {
     return <NotInstalledBanner message={message || defaultMessages[requires]} />;
   }
 
-  if (requiresResource && !status.celResources.has(requiresResource)) {
+  if (status.cel === true && requiresResource && !status.celResources.has(requiresResource)) {
     return (
       <NotInstalledBanner
         message={
