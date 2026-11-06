@@ -1,0 +1,82 @@
+apiVersion: messaging.knative.dev/v1beta1
+kind: KafkaChannel
+metadata:
+  name: orders-kafka
+  namespace: knative-eventing-test
+spec:
+  numPartitions: 3
+  replicationFactor: 1
+  retentionDuration: PT24H
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: v1
+        kind: Service
+        name: event-display
+---
+apiVersion: messaging.knative.dev/v1alpha1
+kind: NatsJetStreamChannel
+metadata:
+  name: orders-nats
+  namespace: knative-eventing-test
+spec:
+  stream:
+    config:
+      retention: Limits
+      maxAge: 24h
+      storage: File
+  consumerConfigTemplate:
+    deliverPolicy: All
+    maxDeliver: 5
+  delivery:
+    retry: 4
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+---
+apiVersion: messaging.knative.dev/v1
+kind: Channel
+metadata:
+  name: payments-kafka
+  namespace: knative-eventing-test
+spec:
+  channelTemplate:
+    apiVersion: messaging.knative.dev/v1beta1
+    kind: KafkaChannel
+    spec:
+      numPartitions: 2
+      replicationFactor: 1
+---
+apiVersion: messaging.knative.dev/v1
+kind: Subscription
+metadata:
+  name: kafka-to-display
+  namespace: knative-eventing-test
+spec:
+  channel:
+    apiVersion: messaging.knative.dev/v1beta1
+    kind: KafkaChannel
+    name: orders-kafka
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+---
+apiVersion: messaging.knative.dev/v1
+kind: Subscription
+metadata:
+  name: nats-to-display
+  namespace: knative-eventing-test
+spec:
+  channel:
+    apiVersion: messaging.knative.dev/v1alpha1
+    kind: NatsJetStreamChannel
+    name: orders-nats
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display

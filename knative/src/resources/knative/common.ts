@@ -68,8 +68,8 @@ export interface Destination {
 
 /**
  * How events are delivered and retried, as Knative's `DeliverySpec` defines it. The CRDs keep
- * unknown fields here, so `timeout`, `retryAfterMax` and, on a Broker, `format` are stored
- * although their schemas do not list them.
+ * unknown fields here, so `timeout`, `backoffMax`, `retryAfterMax` and, on a Broker, `format` are
+ * stored although their schemas do not list them.
  */
 export interface DeliverySpec {
   /** The sink that receives events that could not be delivered. */
@@ -84,6 +84,12 @@ export interface DeliverySpec {
    * `backoffDelay * 2^<numberOfRetries>`.
    */
   backoffDelay?: string;
+  /**
+   * The longest delay between retries, as an ISO 8601 duration greater than zero. It caps the
+   * delay from `backoffPolicy` and `backoffDelay`, not a delay a `Retry-After` header asks for, and
+   * needs Knative's `delivery-backoff-max` feature.
+   */
+  backoffMax?: string;
   /** How the event is serialized in the HTTP request: `json`, `binary`, or unset. */
   format?: string;
   /**

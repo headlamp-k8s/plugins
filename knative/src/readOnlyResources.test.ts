@@ -18,6 +18,17 @@ import { DetailsViewDefaultHeaderActions } from '@kinvolk/headlamp-plugin/lib';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { vi } from 'vitest';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import { KnativeChannelImplementation } from './resources/knative';
+
+vi.mock('./resources/knative', () => ({
+  KnativeChannelImplementation: class {
+    jsonData: unknown;
+
+    constructor(jsonData: unknown) {
+      this.jsonData = jsonData;
+    }
+  },
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   DetailsViewDefaultHeaderActions: {
@@ -66,6 +77,12 @@ describe('read-only Knative detail actions', () => {
     ['networking.internal.knative.dev/v1alpha1', 'Certificate'],
     ['messaging.knative.dev/v1', 'Channel'],
     ['messaging.knative.dev/v1', 'Subscription'],
+    ['messaging.knative.dev/v1', 'InMemoryChannel'],
+    ['messaging.knative.dev/v1', 'KafkaChannel'],
+    ['messaging.knative.dev/v1beta1', 'KafkaChannel'],
+    ['messaging.knative.dev/v1alpha1', 'NatsJetStreamChannel'],
+    ['sources.knative.dev/v1', 'ContainerSource'],
+    ['sources.knative.dev/v1', 'SinkBinding'],
   ])('removes mutating defaults from %s %s', (apiVersion, kind) => {
     const servingResource = resource(apiVersion, kind);
 
@@ -86,6 +103,34 @@ describe('read-only Knative detail actions', () => {
 
     expect(filterReadOnlyKnativeHeaderActions(unownedRoute, actions)).toBe(actions);
     expect(filterReadOnlyKnativeHeaderActions(nonControllerRoute, actions)).toBe(actions);
+  });
+
+  it('protects a channel implementation of any kind once a Channel or Broker created it', () => {
+    const channel = (controller: boolean) =>
+      new KnativeChannelImplementation({
+        apiVersion: 'example.dev/v1',
+        kind: 'WidgetChannel',
+        metadata: {
+          name: 'orders',
+          uid: 'uid-1',
+          creationTimestamp: '',
+          ownerReferences: [
+            {
+              apiVersion: 'messaging.knative.dev/v1',
+              kind: 'Channel',
+              name: 'orders',
+              uid: 'uid-0',
+              controller,
+              blockOwnerDeletion: true,
+            },
+          ],
+        },
+      });
+
+    expect(
+      filterReadOnlyKnativeHeaderActions(channel(true), actions).map(action => action.id)
+    ).toEqual([DetailsViewDefaultHeaderActions.VIEW, 'plugin-specific-action']);
+    expect(filterReadOnlyKnativeHeaderActions(channel(false), actions)).toBe(actions);
   });
 
   it('does not match the same kind from another API group or version', () => {
