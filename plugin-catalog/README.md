@@ -2,6 +2,13 @@
 
 This plugin enhances Headlamp by adding a plugin catalog powered by ArtifactHub.
 
+## Settings
+
+Open **Settings > Plugins > plugin-catalog** to choose whether the catalog shows
+only official plugins or only verified plugins. Both filters are enabled by default.
+Changes are saved automatically when a switch is toggled; there is no Save or
+Cancel step.
+
 ## Developing Headlamp Plugins
 
 ### Setting up the Environment

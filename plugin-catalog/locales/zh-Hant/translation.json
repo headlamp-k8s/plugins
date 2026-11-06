@@ -38,6 +38,8 @@
   "Official Chart": "",
   "Verified Publisher": "",
   "Update available": "",
-  "Display only Official Plugins": "",
-  "Display only Verified Plugins": ""
+  "Display only official plugins": "",
+  "Show only official packages from Artifact Hub.": "",
+  "Display only verified plugins": "",
+  "Show only packages from verified publishers on Artifact Hub.": ""
 }
