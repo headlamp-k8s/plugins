@@ -1,7 +1,7 @@
 import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Pagination, TextField } from '@mui/material';
+import { Box, Button, Pagination, TextField } from '@mui/material';
 import { Typography } from '@mui/material';
 import { Switch } from '@mui/material';
 import { FormControlLabel } from '@mui/material';
@@ -166,6 +166,9 @@ export interface PurePluginListProps {
   onPageChange: (event: React.ChangeEvent<unknown>, page: number) => void;
   isOfficialSwitchChecked: boolean;
   onOfficialSwitchChange: (isChecked: boolean) => void;
+  /** Shown instead of the plugins when they couldn't be loaded. */
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 interface OfficialSwitchProps {
@@ -218,6 +221,8 @@ export function PurePluginList({
   onPageChange,
   isOfficialSwitchChecked,
   onOfficialSwitchChange,
+  error,
+  onRetry,
 }: PurePluginListProps) {
   const { t } = useTranslation();
   return (
@@ -247,7 +252,18 @@ export function PurePluginList({
         alignContent="stretch"
         sx={{ gap: 2 }}
       >
-        {plugins ? (
+        {error ? (
+          <Box textAlign="center" paddingTop={2} sx={{ width: '100%' }}>
+            <Typography align="center" color="error" role="alert">
+              {error}
+            </Typography>
+            {onRetry && (
+              <Button variant="contained" onClick={onRetry} sx={{ mt: 2 }}>
+                {t('Try again')}
+              </Button>
+            )}
+          </Box>
+        ) : plugins ? (
           plugins.length > 0 ? (
             plugins.map(plugin => <PluginCard key={plugin.package_id} plugin={plugin} />)
           ) : (
@@ -278,8 +294,11 @@ export function PurePluginList({
 }
 
 export function PluginList() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [page, setPage] = useState(1);
   const conf = usePluginCatalogConfig();
   const [fetchSettings, setFetchSettings] = useState<PluginCatalogConfig | null>({
@@ -288,12 +307,29 @@ export function PluginList() {
   });
 
   useEffect(() => {
+    // Settings can change while a load is running, so only the latest load may update the list.
+    let superseded = false;
     const fetchAndProcessPlugins = async () => {
-      const { plugins } = await processPlugins();
-      setAllPlugins(plugins);
+      setLoadFailed(false);
+      try {
+        const { plugins } = await processPlugins();
+        if (!superseded) {
+          setAllPlugins(plugins);
+        }
+      } catch (err) {
+        if (superseded) {
+          return;
+        }
+        // Without this the list stays on the loader forever when Artifact Hub can't be reached.
+        console.error('plugin-catalog: Failed to load plugins', err);
+        setLoadFailed(true);
+      }
     };
     fetchAndProcessPlugins();
-  }, [fetchSettings]);
+    return () => {
+      superseded = true;
+    };
+  }, [fetchSettings, retryCount]);
 
   useEffect(() => {
     if (!conf) {
@@ -355,6 +391,8 @@ export function PluginList() {
       onOfficialSwitchChange={(isChecked: boolean) => {
         configStore.update({ displayOnlyOfficialPlugins: isChecked });
       }}
+      error={loadFailed ? t('Failed to load plugins from Artifact Hub.') : null}
+      onRetry={() => setRetryCount(count => count + 1)}
     />
   );
 }

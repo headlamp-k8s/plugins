@@ -110,3 +110,15 @@ Empty.args = {
 };
 
 export const Loading = Template.bind({});
+
+export const LoadError = Template.bind({});
+LoadError.args = {
+  search: '',
+  plugins: null,
+  totalPages: 0,
+  page: 1,
+  error: 'Failed to load plugins from Artifact Hub.',
+  onRetry: () => console.log('Retry'),
+  onSearchChange: event => console.log('Search change:', event.target.value),
+  onPageChange: (event, page) => console.log('Page change:', page),
+};
