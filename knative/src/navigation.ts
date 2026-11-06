@@ -153,6 +153,12 @@ export const knativeNavigationSections = [
         path: '/knative/subscriptions',
         routeName: 'knativeSubscriptions',
       },
+      {
+        name: 'knative-sources',
+        label: 'Sources',
+        path: '/knative/sources',
+        routeName: 'knativeSources',
+      },
     ],
   },
 ] as const satisfies readonly KnativeNavigationSectionShape[];
