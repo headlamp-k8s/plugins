@@ -14,6 +14,7 @@ import { processJobsTableColumns } from './components/jobs/kueueJobColumns';
 import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
+import KueueOverview from './components/overview/Overview';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
@@ -25,7 +26,14 @@ registerSidebarEntry({
   name: 'kueue',
   label: 'Kueue',
   icon: 'mdi:queue-first-in-last-out',
-  url: kueueRoutePaths.clusterQueuesList,
+  url: kueueRoutePaths.overview,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-overview',
+  label: 'Overview',
+  url: kueueRoutePaths.overview,
 });
 
 registerSidebarEntry({
@@ -68,6 +76,14 @@ registerSidebarEntry({
   name: 'kueue-workloads',
   label: 'Workloads',
   url: kueueRoutePaths.workloadsList,
+});
+
+registerRoute({
+  path: kueueRoutePaths.overview,
+  sidebar: 'kueue-overview',
+  name: kueueRouteNames.overview,
+  exact: true,
+  component: () => <KueueOverview />,
 });
 
 registerRoute({
