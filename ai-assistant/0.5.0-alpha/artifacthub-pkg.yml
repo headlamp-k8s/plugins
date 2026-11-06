@@ -1,0 +1,38 @@
+version: 0.5.0-alpha
+name: headlamp_ai_assistant
+displayName: AI Assistant
+createdAt: '2026-11-02T00:00:00Z'
+logoURL: 'https://raw.githubusercontent.com/headlamp-k8s/plugins/main/ai-assistant/logo.png'
+description: 'The AI Assistant plugin for Headlamp provides an AI-powered assistant to help users interact with their Kubernetes clusters more efficiently.'
+changes:
+  - kind: changed
+    description: 'Refresh provider model suggestions and defaults while preserving saved configurations and custom models, and support GPT-6 tool calls through the Responses API.'
+  - kind: changed
+    description: 'Make settings easier to scan with compact provider rows, grouped controls, and clear staged-save actions; retain MCP edits when saving fails.'
+  - kind: fixed
+    description: 'Keep long lines in Apply Patch previews inside a horizontally scrollable preview instead of overflowing the dialog.'
+  - kind: changed
+    description: 'Keep diagnoses and chat reachable in one scroll area, with compact cards, pause/resume, queued chat, retry/dismiss, and visible cluster scope and freshness.'
+  - kind: added
+    description: 'Offer context-aware starter questions for more resource kinds and list views, with resource names and namespaces in suggested drafts.'
+  - kind: added
+    description: 'Offer opt-in, pinned Inspektor Gadget troubleshooting skills with verified companion playbooks, without installing or running Gadget.'
+  - kind: fixed
+    description: 'Preserve the reviewed target when applying suggested YAML, require a choice for ambiguous clusters, and apply to one cluster only.'
+  - kind: fixed
+    description: 'Load Kubernetes Docs from the bounded Concepts subset and support titled documentation pages while preserving customized sources.'
+  - kind: fixed
+    description: 'Redact Secret and SecretList GET responses before chat history, and preserve redacted mutation errors for follow-up requests.'
+  - kind: fixed
+    description: 'Register navigation callbacks after render without accumulating handlers, and keep them connected to current assistant state.'
+  - kind: fixed
+    description: 'Use MCP tools own manifest descriptions in approval dialogs and allow Kubernetes API query parameters in the CLI.'
+  - kind: fixed
+    description: 'Harden parsers and credential redaction against pathological inputs, protect MCP tool-state maps, and correct resource URL and suggestion parsing.'
+  - kind: changed
+    description: 'Update dependencies and headlamp-plugin tooling to 0.15.0-alpha.0, remove unused sanitize-html, and expand unit and real-cluster browser regression coverage.'
+annotations:
+  headlamp/plugin/archive-url: https://github.com/headlamp-k8s/plugins/releases/download/ai-assistant-0.5.0-alpha/headlamp-k8s-ai-assistant-0.5.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: 'SHA256:a8bdc0b4b83a4ae04e8a3db32be24260e260a001e0f61aa6d3a9f4124bf7c8c7'
+  headlamp/plugin/version-compat: '>=0.22'
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
