@@ -1,13 +1,17 @@
+import { createMuiTheme } from '@kinvolk/headlamp-plugin/lib/lib/themes';
+import { ThemeProvider } from '@mui/material/styles';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { areFluxManagedActionsAllowed, FluxSettings, type PluginConfig, store } from '.';
+
+const longClusterName = 'production-cluster-with-an-unbroken-context-name-'.repeat(4);
+const clusters = vi.hoisted(() => ({ qa: {}, prod: {} } as Record<string, object>));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', async importOriginal => {
   const actual = await importOriginal<typeof import('@kinvolk/headlamp-plugin/lib')>();
   return {
     ...actual,
-    K8s: { ...actual.K8s, useClustersConf: () => ({ qa: {}, prod: {} }) },
+    K8s: { ...actual.K8s, useClustersConf: () => clusters },
     useTranslation: () => ({
       t: (key: string, options?: Record<string, string>) =>
         key.replace(/{{(\w+)}}/g, (_, name) => options?.[name] ?? ''),
@@ -15,18 +19,15 @@ vi.mock('@kinvolk/headlamp-plugin/lib', async importOriginal => {
   };
 });
 
-vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
-  NameValueTable: ({ rows }: { rows: Array<{ name: ReactNode; value: ReactNode }> }) => (
-    <div>
-      {rows.map((row, index) => (
-        <div key={index}>
-          {row.name}
-          {row.value}
-        </div>
-      ))}
-    </div>
-  ),
-}));
+const theme = createMuiTheme({ name: 'light', base: 'light' });
+
+function renderSettings() {
+  return render(
+    <ThemeProvider theme={theme}>
+      <FluxSettings />
+    </ThemeProvider>
+  );
+}
 
 function linkHRelSwitch() {
   return screen.getByLabelText('Link HelmReleases to Kustomizations instead of HelmRepositories');
@@ -60,13 +61,28 @@ describe('FluxSettings', () => {
   });
 
   afterEach(() => {
+    delete clusters[longClusterName];
     vi.useRealTimers();
   });
 
-  it('enables actions only in the cluster whose switch was turned on', () => {
-    render(<FluxSettings />);
+  it('allows unbroken cluster names to wrap and keeps their switches usable', () => {
+    clusters[longClusterName] = {};
+    renderSettings();
 
-    fireEvent.click(clusterSwitch('qa'));
+    const label = screen.getByText(longClusterName);
+    expect(getComputedStyle(label).overflowWrap).toBe('anywhere');
+    fireEvent.click(label);
+    act(() => vi.advanceTimersByTime(100));
+
+    expect(areFluxManagedActionsAllowed(store.get(), longClusterName)).toBe(true);
+    expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(false);
+    expect(areFluxManagedActionsAllowed(store.get(), 'prod')).toBe(false);
+  });
+
+  it('enables actions only in the cluster whose switch was turned on', () => {
+    renderSettings();
+
+    fireEvent.click(screen.getByText('qa'));
     act(() => vi.advanceTimersByTime(100));
 
     expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(true);
@@ -74,7 +90,7 @@ describe('FluxSettings', () => {
   });
 
   it('keeps both settings when switches are toggled within the save delay', () => {
-    render(<FluxSettings />);
+    renderSettings();
 
     fireEvent.click(linkHRelSwitch());
     act(() => vi.advanceTimersByTime(50));
@@ -88,7 +104,7 @@ describe('FluxSettings', () => {
   });
 
   it('keeps every cluster when cluster switches are toggled within the save delay', () => {
-    render(<FluxSettings />);
+    renderSettings();
 
     fireEvent.click(clusterSwitch('qa'));
     act(() => vi.advanceTimersByTime(50));
@@ -99,13 +115,22 @@ describe('FluxSettings', () => {
   });
 
   it('links each cluster switch to the warning', () => {
-    render(<FluxSettings />);
+    renderSettings();
 
-    const warningId = clusterSwitch('qa').getAttribute('aria-describedby');
+    for (const cluster of ['qa', 'prod']) {
+      const warningId = clusterSwitch(cluster).getAttribute('aria-describedby');
 
-    expect(warningId).toBeTruthy();
-    expect(document.getElementById(warningId!)?.textContent).toContain(
-      'Intended for testing in non-production clusters.'
-    );
+      expect(warningId).toBeTruthy();
+      expect(document.getElementById(warningId!)?.textContent).toContain(
+        'Intended for testing in non-production clusters.'
+      );
+    }
+  });
+
+  it('uses section headings below the plugin page title', () => {
+    renderSettings();
+
+    expect(screen.getByRole('heading', { name: 'Map settings', level: 2 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Resource actions', level: 2 })).toBeTruthy();
   });
 });
