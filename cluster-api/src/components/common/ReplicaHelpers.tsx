@@ -94,7 +94,7 @@ export function showReplicas(item: ReplicaOwner | ReplicaLike): boolean {
  * @returns A MetadataDictGrid component showing the replica counts.
  * @see https://cluster-api.sigs.k8s.io/reference/glossary.html#replicaset
  */
-export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
+export function renderReplicas(item: ReplicaOwner | ReplicaLike, t: (key: string) => string) {
   if (!showReplicas(item)) return null;
 
   const status = item.status;
@@ -114,18 +114,18 @@ export function renderReplicas(item: ReplicaOwner | ReplicaLike) {
   }
 
   const values: Record<string, string> = {
-    Desired: desired,
-    Ready: String(ready),
+    [t('Desired')]: desired,
+    [t('Ready')]: String(ready),
   };
 
   if (upToDate !== undefined) {
-    values['Up-to-date'] = String(upToDate);
+    values[t('Up-to-date')] = String(upToDate);
   }
   if (available !== undefined) {
-    values['Available'] = String(available);
+    values[t('Available')] = String(available);
   }
 
-  values['Total'] = String(total);
+  values[t('Total')] = String(total);
 
   return (
     <MetadataDictGrid
