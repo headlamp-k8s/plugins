@@ -14,9 +14,9 @@ import { processIssuerExtraInfo } from '../common/processIssuerExtraInfo';
 export function ClusterIssuerDetail() {
   const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
-  return isManagerInstalled ? (
+  return !notInstalled && !isLoading ? (
     <DetailsGrid
       resourceType={ClusterIssuer}
       name={name}
@@ -42,6 +42,6 @@ export function ClusterIssuerDetail() {
       }
     />
   ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+    <NotInstalledBanner isLoading={isLoading} />
   );
 }
