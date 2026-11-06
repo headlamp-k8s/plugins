@@ -5,6 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ControllerHealthResult } from '../../utils/controllerHealth';
 import StatusHeader from './StatusHeader';
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
@@ -23,8 +24,7 @@ describe('StatusHeader', () => {
     render(
       <StatusHeader
         totalRules={5}
-        deployment={null}
-        deploymentError={{ status: 403 }}
+        controllerHealth={{ status: 'forbidden' }}
         onExploreRules={onExploreMock}
       />
     );
@@ -39,87 +39,97 @@ describe('StatusHeader', () => {
     expect(onExploreMock).toHaveBeenCalledTimes(1);
   });
 
-  it('omits controller health badge when deployment access is forbidden (403)', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={null}
-        deploymentError={{ status: 403 }}
-        onExploreRules={vi.fn()}
-      />
-    );
+  describe('controllerHealth prop', () => {
+    it('renders Active (Leader) badge when status is active-leader', () => {
+      const health: ControllerHealthResult = {
+        active: true,
+        reason: 'Active (Leader: nrc-pod-1)',
+        status: 'active-leader',
+        badgeLabel: 'Active (Leader)',
+        badgeStatus: 'success',
+        tooltip: 'Leader: nrc-pod-1 • Renewed 5s ago',
+      };
 
-    expect(screen.queryByText('Controller:')).toBeNull();
-  });
+      render(<StatusHeader totalRules={0} controllerHealth={health} onExploreRules={vi.fn()} />);
 
-  it('omits controller health badge when deployment lookup fails with a generic error (e.g. 500)', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={null}
-        deploymentError={{ status: 500 }}
-        onExploreRules={vi.fn()}
-      />
-    );
+      expect(screen.getByText('Controller:')).toBeInTheDocument();
+      expect(screen.getByText('Active (Leader)')).toBeInTheDocument();
+      expect(screen.getAllByTestId('status-label-success')[1]).toHaveTextContent('Active (Leader)');
+    });
 
-    expect(screen.queryByText('Controller:')).toBeNull();
-  });
+    it('renders Active badge when status is active-deployment', () => {
+      const health: ControllerHealthResult = {
+        active: true,
+        reason: 'Lease access restricted by RBAC; verified via ready deployment replicas',
+        status: 'active-deployment',
+        badgeLabel: 'Active',
+        badgeStatus: 'success',
+        tooltip: 'Deployment nrc-manager ready (1 replica)',
+      };
 
-  it('omits controller health badge while deployment is loading (null deployment and null error)', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={null}
-        deploymentError={null}
-        onExploreRules={vi.fn()}
-      />
-    );
+      render(<StatusHeader totalRules={0} controllerHealth={health} onExploreRules={vi.fn()} />);
 
-    expect(screen.queryByText('Controller:')).toBeNull();
-  });
+      expect(screen.getByText('Controller:')).toBeInTheDocument();
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getAllByTestId('status-label-success')[1]).toHaveTextContent('Active');
+    });
 
-  it('renders Controller: Not Detected badge when deployment is not found (404)', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={null}
-        deploymentError={{ status: 404 }}
-        onExploreRules={vi.fn()}
-      />
-    );
+    it('renders Inactive badge when status is inactive', () => {
+      const health: ControllerHealthResult = {
+        active: false,
+        reason: 'Leader lease expired',
+        status: 'inactive',
+        badgeLabel: 'Inactive',
+        badgeStatus: 'error',
+        tooltip: 'Leader lease expired (50s ago, threshold 45s)',
+      };
 
-    expect(screen.getByText('Controller:')).toBeInTheDocument();
-    expect(screen.getByText('Not Detected')).toBeInTheDocument();
-    expect(screen.getByTestId('status-label-warning')).toHaveTextContent('Not Detected');
-  });
+      render(<StatusHeader totalRules={0} controllerHealth={health} onExploreRules={vi.fn()} />);
 
-  it('renders Controller: Running badge when deployment readyReplicas > 0', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={{ status: { readyReplicas: 2 } }}
-        deploymentError={null}
-        onExploreRules={vi.fn()}
-      />
-    );
+      expect(screen.getByText('Controller:')).toBeInTheDocument();
+      expect(screen.getByText('Inactive')).toBeInTheDocument();
+      expect(screen.getByTestId('status-label-error')).toHaveTextContent('Inactive');
+    });
 
-    expect(screen.getByText('Controller:')).toBeInTheDocument();
-    expect(screen.getByText('Running')).toBeInTheDocument();
-    expect(screen.getAllByTestId('status-label-success')[1]).toHaveTextContent('Running');
-  });
+    it('renders Not Detected badge when status is not-detected', () => {
+      const health: ControllerHealthResult = {
+        active: false,
+        reason: 'Controller presence could not be determined',
+        status: 'not-detected',
+        badgeLabel: 'Not Detected',
+        badgeStatus: 'warning',
+        tooltip: 'Controller lease and deployment not detected',
+      };
 
-  it('renders Controller: Stopped badge when deployment readyReplicas === 0', () => {
-    render(
-      <StatusHeader
-        totalRules={0}
-        deployment={{ status: { readyReplicas: 0 } }}
-        deploymentError={null}
-        onExploreRules={vi.fn()}
-      />
-    );
+      render(<StatusHeader totalRules={0} controllerHealth={health} onExploreRules={vi.fn()} />);
 
-    expect(screen.getByText('Controller:')).toBeInTheDocument();
-    expect(screen.getByText('Stopped')).toBeInTheDocument();
-    expect(screen.getByTestId('status-label-error')).toHaveTextContent('Stopped');
+      expect(screen.getByText('Controller:')).toBeInTheDocument();
+      expect(screen.getByText('Not Detected')).toBeInTheDocument();
+      expect(screen.getByTestId('status-label-warning')).toHaveTextContent('Not Detected');
+    });
+
+    it('omits controller badge when status is forbidden', () => {
+      render(
+        <StatusHeader
+          totalRules={0}
+          controllerHealth={{ status: 'forbidden' }}
+          onExploreRules={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByText('Controller:')).toBeNull();
+    });
+
+    it('omits controller badge when status is loading', () => {
+      render(
+        <StatusHeader
+          totalRules={0}
+          controllerHealth={{ status: 'loading' }}
+          onExploreRules={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByText('Controller:')).toBeNull();
+    });
   });
 });

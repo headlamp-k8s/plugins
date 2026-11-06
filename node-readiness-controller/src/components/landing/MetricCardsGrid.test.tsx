@@ -19,7 +19,7 @@ describe('MetricCardsGrid', () => {
         totalRules={8}
         rulesWithTaintsPresent={2}
         rulesWithEvaluationErrors={1}
-        reconcilingRules={3}
+        pendingSyncRules={3}
         onCardClick={onCardClickMock}
       />
     );

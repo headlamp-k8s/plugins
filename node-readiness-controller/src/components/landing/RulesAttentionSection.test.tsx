@@ -28,7 +28,7 @@ describe('RulesAttentionSection', () => {
     expect(screen.getByText('All Rules Healthy')).toBeInTheDocument();
   });
 
-  it('renders attention rule cards with failure, taint, and reconciling details', () => {
+  it('renders attention rule cards with failure, taint, and pending sync details', () => {
     const onRuleClickMock = vi.fn();
     const mockAttentionRules = [
       {
@@ -41,9 +41,8 @@ describe('RulesAttentionSection', () => {
         status: { nodeEvaluations: [{ nodeName: 'node-2', taintStatus: 'Present' }] },
       },
       {
-        metadata: { name: 'dryrun-reconciling-rule' },
+        metadata: { name: 'dryrun-pending-sync-rule', generation: 2 },
         spec: { dryRun: true },
-        jsonData: { metadata: { generation: 2 } },
         status: { observedGeneration: 1 },
       },
     ];
@@ -62,7 +61,7 @@ describe('RulesAttentionSection', () => {
     expect(screen.getByText('tainted-rule')).toBeInTheDocument();
     expect(screen.getByText('1 node with taint present')).toBeInTheDocument();
 
-    expect(screen.getByText('dryrun-reconciling-rule')).toBeInTheDocument();
+    expect(screen.getByText('dryrun-pending-sync-rule')).toBeInTheDocument();
     expect(screen.getByText('Dry Run')).toBeInTheDocument();
     expect(screen.getByText('Spec modified (pending sync)')).toBeInTheDocument();
 
@@ -102,9 +101,8 @@ describe('RulesAttentionSection', () => {
   it('renders multiple condition indicators simultaneously on a single attention card', () => {
     const mockAttentionRules = [
       {
-        metadata: { name: 'multi-condition-rule' },
+        metadata: { name: 'multi-condition-rule', generation: 3 },
         spec: { dryRun: false },
-        jsonData: { metadata: { generation: 3 } },
         status: {
           observedGeneration: 2,
           failedNodes: [{ nodeName: 'node-error', reason: 'Crash' }],

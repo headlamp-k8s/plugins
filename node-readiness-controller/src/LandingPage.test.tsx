@@ -2,16 +2,25 @@
  * @vitest-environment jsdom
  */
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LandingPage from './LandingPage';
 
-const { mockPush, mockRuleUseList, mockDeploymentUseGet, mockCreateRouteURL } = vi.hoisted(() => ({
+const {
+  mockPush,
+  mockRuleUseList,
+  mockLeaseUseList,
+  mockDeploymentUseList,
+  mockCreateRouteURL,
+  mockGetAllowedNamespaces,
+} = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockRuleUseList: vi.fn(),
-  mockDeploymentUseGet: vi.fn(),
+  mockLeaseUseList: vi.fn(),
+  mockDeploymentUseList: vi.fn(),
   mockCreateRouteURL: vi.fn(),
+  mockGetAllowedNamespaces: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -28,9 +37,15 @@ vi.mock('./resources', () => ({
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   K8s: {
+    cluster: {
+      getAllowedNamespaces: () => mockGetAllowedNamespaces(),
+    },
     ResourceClasses: {
       Deployment: {
-        useGet: mockDeploymentUseGet,
+        useList: mockDeploymentUseList,
+      },
+      Lease: {
+        useList: mockLeaseUseList,
       },
     },
   },
@@ -61,10 +76,13 @@ describe('LandingPage', () => {
     cleanup();
     vi.clearAllMocks();
     mockRuleUseList.mockReset();
-    mockDeploymentUseGet.mockReset();
+    mockLeaseUseList.mockReset();
+    mockDeploymentUseList.mockReset();
     mockCreateRouteURL.mockReset();
-    // Default to 403 Forbidden or absent deployment (omitted badge)
-    mockDeploymentUseGet.mockReturnValue([null, { status: 403 }]);
+    mockGetAllowedNamespaces.mockReturnValue([]);
+    // Default to 403 Forbidden (omitted badge)
+    mockLeaseUseList.mockReturnValue([null, { status: 403 }]);
+    mockDeploymentUseList.mockReturnValue([null, { status: 403 }]);
   });
 
   it('renders loading state when rules are null', () => {
@@ -122,7 +140,6 @@ describe('LandingPage', () => {
     expect(screen.getByText('readiness.node.x-k8s.io/v1alpha1')).toBeInTheDocument();
     expect(screen.getByText('Total Rules')).toBeInTheDocument();
     expect(screen.getByText('No Node Readiness Rules in Cluster')).toBeInTheDocument();
-    expect(mockDeploymentUseGet).toHaveBeenCalledWith('nrr-controller-manager', 'nrr-system');
   });
 
   it('renders summary cards and CRD active status adhering to design doc', () => {
@@ -136,51 +153,46 @@ describe('LandingPage', () => {
           nodeEvaluations: [{ nodeName: 'node-1', taintStatus: 'Present' }],
           failedNodes: [],
         },
-        jsonData: { metadata: { generation: 1 } },
       },
-      // Rule 2: Live rule with taint absent
-      {
-        metadata: { name: 'rule-live-absent', generation: 1 },
-        spec: { dryRun: false },
-        status: {
-          observedGeneration: 1,
-          nodeEvaluations: [{ nodeName: 'node-2', taintStatus: 'Absent' }],
-          failedNodes: [],
-        },
-        jsonData: { metadata: { generation: 1 } },
-      },
-      // Rule 3: Dry-run rule with taint present in simulation (STRICTLY EXCLUDED from live taints present!)
-      {
-        metadata: { name: 'rule-dry-run', generation: 1 },
-        spec: { dryRun: true },
-        status: {
-          observedGeneration: 1,
-          nodeEvaluations: [{ nodeName: 'node-3', taintStatus: 'Present' }],
-          failedNodes: [],
-        },
-        jsonData: { metadata: { generation: 1 } },
-      },
-      // Rule 4: Rule with failed nodes (Evaluation error)
+      // Rule 2: Rule with evaluation error
       {
         metadata: { name: 'rule-with-errors', generation: 1 },
         spec: { dryRun: false },
         status: {
           observedGeneration: 1,
+          failedNodes: [{ nodeName: 'node-2', reason: 'Timeout' }],
           nodeEvaluations: [],
-          failedNodes: [{ nodeName: 'node-4', reason: 'Error' }],
         },
-        jsonData: { metadata: { generation: 1 } },
       },
-      // Rule 5: Rule currently reconciling (observedGeneration < generation)
+      // Rule 3: Pending sync rule (observedGeneration < generation)
       {
-        metadata: { name: 'rule-reconciling', generation: 2 },
+        metadata: { name: 'rule-pending-sync', generation: 2 },
         spec: { dryRun: false },
         status: {
           observedGeneration: 1,
-          nodeEvaluations: [],
           failedNodes: [],
+          nodeEvaluations: [],
         },
-        jsonData: { metadata: { generation: 2 } },
+      },
+      // Rule 4: Completely healthy rule
+      {
+        metadata: { name: 'rule-healthy', generation: 1 },
+        spec: { dryRun: false },
+        status: {
+          observedGeneration: 1,
+          failedNodes: [],
+          nodeEvaluations: [{ nodeName: 'node-1', taintStatus: 'Absent' }],
+        },
+      },
+      // Rule 5: Dry run rule with taint present (should NOT increment active taints)
+      {
+        metadata: { name: 'rule-dry-run', generation: 1 },
+        spec: { dryRun: true },
+        status: {
+          observedGeneration: 1,
+          failedNodes: [],
+          nodeEvaluations: [{ nodeName: 'node-1', taintStatus: 'Present' }],
+        },
       },
     ];
 
@@ -188,26 +200,22 @@ describe('LandingPage', () => {
 
     render(<LandingPage />);
 
-    // Check API status header
-    expect(screen.getByText('API Status:')).toBeInTheDocument();
-    expect(screen.getByText('API Available')).toBeInTheDocument();
-
-    // Total rules should be 5
+    // Total Rules should be 5
     expect(screen.getByText('Total Rules').closest('div')).toHaveTextContent('5');
 
-    // Taints Present should be 1 (only rule-live-present; dry-run rule is excluded!)
+    // Taints Present should be 1 (only rule-live-present counts, dry-run is excluded)
     expect(screen.getByText('Taints Present').closest('div')).toHaveTextContent('1');
 
     // Evaluation Errors should be 1 (rule-with-errors)
     expect(screen.getByText('Evaluation Errors').closest('div')).toHaveTextContent('1');
 
-    // Pending Rule Sync should be 1 (rule-reconciling)
+    // Pending Rule Sync should be 1 (rule-pending-sync)
     expect(screen.getByText('Pending Rule Sync').closest('div')).toHaveTextContent('1');
 
     // Check rules in attention list
     expect(screen.getByText('rule-live-present')).toBeInTheDocument();
     expect(screen.getByText('rule-with-errors')).toBeInTheDocument();
-    expect(screen.getByText('rule-reconciling')).toBeInTheDocument();
+    expect(screen.getByText('rule-pending-sync')).toBeInTheDocument();
   });
 
   it('navigates to rules list on button click', () => {
@@ -220,40 +228,138 @@ describe('LandingPage', () => {
     expect(mockPush).toHaveBeenCalledWith('/nrc/rules');
   });
 
-  it('omits controller health badge when deployment access is forbidden (403)', () => {
+  it('omits controller health badge when access is forbidden (403)', () => {
     mockRuleUseList.mockReturnValue([[], null]);
-    mockDeploymentUseGet.mockReturnValue([null, { status: 403 }]);
+    mockLeaseUseList.mockReturnValue([null, { status: 403 }]);
+    mockDeploymentUseList.mockReturnValue([null, { status: 403 }]);
 
     render(<LandingPage />);
     expect(screen.queryByText('Controller:')).toBeNull();
   });
 
-  it('renders Controller: Not Detected badge when deployment is not found (404)', () => {
+  it('omits controller health badge when allowed namespaces are configured and no lease is found in them', () => {
     mockRuleUseList.mockReturnValue([[], null]);
-    mockDeploymentUseGet.mockReturnValue([null, { status: 404 }]);
+    mockLeaseUseList.mockReturnValue([[], null]);
+    mockDeploymentUseList.mockReturnValue([[], null]);
+    mockGetAllowedNamespaces.mockReturnValue(['tenant-a']);
+
+    render(<LandingPage />);
+    expect(screen.queryByText('Controller:')).toBeNull();
+  });
+
+  it('renders Controller: Active (Leader) badge when lease is active', () => {
+    mockRuleUseList.mockReturnValue([[], null]);
+    mockLeaseUseList.mockReturnValue([
+      [
+        {
+          metadata: { name: 'ba65f13e.readiness.node.x-k8s.io' },
+          spec: {
+            holderIdentity: 'nrc-controller-manager-xyz',
+            renewTime: new Date().toISOString(),
+          },
+        },
+      ],
+      null,
+    ]);
+
+    render(<LandingPage />);
+    expect(screen.getByText('Controller:')).toBeInTheDocument();
+    expect(screen.getByText('Active (Leader)')).toBeInTheDocument();
+  });
+
+  it('renders Controller: Inactive badge when leader lease is expired', () => {
+    mockRuleUseList.mockReturnValue([[], null]);
+    const expiredTime = new Date(Date.now() - 60 * 1000).toISOString();
+    mockLeaseUseList.mockReturnValue([
+      [
+        {
+          metadata: { name: 'ba65f13e.readiness.node.x-k8s.io' },
+          spec: {
+            holderIdentity: 'nrc-controller-manager-xyz',
+            renewTime: expiredTime,
+          },
+        },
+      ],
+      null,
+    ]);
+
+    render(<LandingPage />);
+    expect(screen.getByText('Controller:')).toBeInTheDocument();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+  });
+
+  it('updates controller health badge when lease expires over time without new watch events', () => {
+    vi.useFakeTimers();
+    const startTime = new Date('2026-11-01T12:00:00Z').getTime();
+    vi.setSystemTime(startTime);
+
+    mockRuleUseList.mockReturnValue([[], null]);
+    // Lease renewed 5 seconds ago with 15s lease duration (grace window = 30s)
+    mockLeaseUseList.mockReturnValue([
+      [
+        {
+          metadata: { name: 'ba65f13e.readiness.node.x-k8s.io' },
+          spec: {
+            holderIdentity: 'nrc-controller-manager-xyz',
+            renewTime: new Date(startTime - 5 * 1000).toISOString(),
+            leaseDurationSeconds: 15,
+          },
+        },
+      ],
+      null,
+    ]);
+
+    render(<LandingPage />);
+    expect(screen.getByText('Active (Leader)')).toBeInTheDocument();
+
+    // Advance time by 35 seconds (exceeding 30s lease grace window)
+    act(() => {
+      vi.advanceTimersByTime(35 * 1000);
+    });
+
+    // Badge should now transition to Inactive automatically via the interval timer
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('renders Controller: Active badge via deployment fallback when lease access is 403 but deployment is ready', () => {
+    mockRuleUseList.mockReturnValue([[], null]);
+    mockLeaseUseList.mockReturnValue([null, { status: 403 }]);
+    mockDeploymentUseList.mockReturnValue([
+      [
+        {
+          metadata: { name: 'node-readiness-controller-manager' },
+          spec: {
+            template: {
+              spec: {
+                containers: [
+                  { name: 'manager', image: 'registry.k8s.io/node-readiness-controller:v0.1.0' },
+                ],
+              },
+            },
+          },
+          status: { readyReplicas: 1 },
+        },
+      ],
+      null,
+    ]);
+
+    render(<LandingPage />);
+    expect(screen.getByText('Controller:')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('renders Controller: Not Detected badge when neither lease nor deployment is found', () => {
+    mockRuleUseList.mockReturnValue([[], null]);
+    mockLeaseUseList.mockReturnValue([[], null]);
+    mockDeploymentUseList.mockReturnValue([[], null]);
 
     render(<LandingPage />);
     expect(screen.getByText('Controller:')).toBeInTheDocument();
     expect(screen.getByText('Not Detected')).toBeInTheDocument();
   });
 
-  it('renders Controller: Running badge when deployment readyReplicas > 0', () => {
-    mockRuleUseList.mockReturnValue([[], null]);
-    mockDeploymentUseGet.mockReturnValue([{ status: { readyReplicas: 1 } }, null]);
-
-    render(<LandingPage />);
-    expect(screen.getByText('Controller:')).toBeInTheDocument();
-    expect(screen.getByText('Running')).toBeInTheDocument();
-  });
-
-  it('renders Controller: Stopped badge when deployment readyReplicas === 0', () => {
-    mockRuleUseList.mockReturnValue([[], null]);
-    mockDeploymentUseGet.mockReturnValue([{ status: { readyReplicas: 0 } }, null]);
-
-    render(<LandingPage />);
-    expect(screen.getByText('Controller:')).toBeInTheDocument();
-    expect(screen.getByText('Stopped')).toBeInTheDocument();
-  });
   it('navigates using cluster-aware route URL when Router.createRouteURL is available', () => {
     mockRuleUseList.mockReturnValue([[], null]);
     mockCreateRouteURL.mockImplementation((routeName: string) => {
@@ -272,8 +378,7 @@ describe('LandingPage', () => {
   it('navigates to rule details using cluster-aware URL when attention rule card is clicked', () => {
     const mockRules = [
       {
-        metadata: { name: '02-tainted-rule' },
-        jsonData: { metadata: { generation: 1 } },
+        metadata: { name: '02-tainted-rule', generation: 1 },
         spec: { dryRun: false },
         status: {
           observedGeneration: 1,
@@ -297,12 +402,12 @@ describe('LandingPage', () => {
     });
     expect(mockPush).toHaveBeenCalledWith('/c/kind-nrc-dev/nrc/rules/02-tainted-rule');
   });
+
   it('excludes failed nodes when counting active taints on rules with overlapping node records', () => {
     const mockRules = [
       {
-        metadata: { name: 'rule-overlap' },
+        metadata: { name: 'rule-overlap', generation: 1 },
         spec: { dryRun: false },
-        jsonData: { metadata: { generation: 1 } },
         status: {
           observedGeneration: 1,
           failedNodes: [{ nodeName: 'node-1', reason: 'Timeout' }],

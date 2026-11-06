@@ -1,8 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
+import { NodeReadinessRule } from '../../resources';
 import { getRuleDetailSections } from './RuleDetails';
 
 vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
-  makeCustomResourceClass: vi.fn().mockReturnValue(class MockCRD {}),
+  makeCustomResourceClass: vi.fn().mockImplementation(() => {
+    return class MockCRD {
+      jsonData: any;
+      constructor(jsonData: any) {
+        this.jsonData = jsonData;
+      }
+    };
+  }),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
@@ -17,18 +25,16 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 
 describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
   it('handles a newly created dry-run rule with no status without throwing', () => {
-    const mockRule = {
-      jsonData: {
-        spec: {
-          dryRun: true,
-          enforcementMode: 'continuous',
-          conditionPolicy: 'allOf',
-          conditions: [{ type: 'Ready', requiredStatus: 'True' }],
-          nodeSelector: {},
-          taint: { key: 'example.com/unready', effect: 'NoSchedule' },
-        },
+    const mockRule = new NodeReadinessRule({
+      spec: {
+        dryRun: true,
+        enforcementMode: 'continuous',
+        conditionPolicy: 'allOf',
+        conditions: [{ type: 'Ready', requiredStatus: 'True' }],
+        nodeSelector: {},
+        taint: { key: 'example.com/unready', effect: 'NoSchedule' },
       },
-    } as any;
+    });
 
     expect(() => getRuleDetailSections(mockRule)).not.toThrow();
 
@@ -46,27 +52,25 @@ describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
   });
 
   it('renders simulation results as primary section for dry-run rules with results', () => {
-    const mockRule = {
-      jsonData: {
-        spec: {
-          dryRun: true,
-          enforcementMode: 'continuous',
-          conditionPolicy: 'allOf',
-          conditions: [{ type: 'Ready', requiredStatus: 'True' }],
-          nodeSelector: {},
-          taint: { key: 'example.com/unready', effect: 'NoSchedule' },
-        },
-        status: {
-          dryRunResults: {
-            summary: 'Dry run completed successfully',
-            affectedNodes: 5,
-            taintsToAdd: 2,
-            taintsToRemove: 1,
-            riskyOperations: 0,
-          },
+    const mockRule = new NodeReadinessRule({
+      spec: {
+        dryRun: true,
+        enforcementMode: 'continuous',
+        conditionPolicy: 'allOf',
+        conditions: [{ type: 'Ready', requiredStatus: 'True' }],
+        nodeSelector: {},
+        taint: { key: 'example.com/unready', effect: 'NoSchedule' },
+      },
+      status: {
+        dryRunResults: {
+          summary: 'Dry run completed successfully',
+          affectedNodes: 5,
+          taintsToAdd: 2,
+          taintsToRemove: 1,
+          riskyOperations: 0,
         },
       },
-    } as any;
+    });
 
     const sections = getRuleDetailSections(mockRule);
     const sectionNames = sections.map(s => s.name);
@@ -79,27 +83,25 @@ describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
   });
 
   it('renders normal Node Status counters for non-dry-run rules', () => {
-    const mockRule = {
-      jsonData: {
-        spec: {
-          dryRun: false,
-          enforcementMode: 'continuous',
-          conditions: [],
-          taint: { key: 'example.com/unready', effect: 'NoSchedule' },
-        },
-        status: {
-          nodeEvaluations: [
-            {
-              nodeName: 'node-1',
-              taintStatus: 'Absent',
-              lastEvaluationTime: '2026-10-14T00:00:00Z',
-              conditionResults: [],
-            },
-          ],
-          failedNodes: [],
-        },
+    const mockRule = new NodeReadinessRule({
+      spec: {
+        dryRun: false,
+        enforcementMode: 'continuous',
+        conditions: [],
+        taint: { key: 'example.com/unready', effect: 'NoSchedule' },
       },
-    } as any;
+      status: {
+        nodeEvaluations: [
+          {
+            nodeName: 'node-1',
+            taintStatus: 'Absent',
+            lastEvaluationTime: '2026-10-14T00:00:00Z',
+            conditionResults: [],
+          },
+        ],
+        failedNodes: [],
+      },
+    });
 
     const sections = getRuleDetailSections(mockRule);
     const sectionNames = sections.map(s => s.name);
@@ -110,6 +112,6 @@ describe('NodeReadinessRuleDetails getRuleDetailSections', () => {
 
   it('returns empty array when rule or spec is missing', () => {
     expect(getRuleDetailSections(null)).toEqual([]);
-    expect(getRuleDetailSections({ jsonData: {} } as any)).toEqual([]);
+    expect(getRuleDetailSections(new NodeReadinessRule({} as any))).toEqual([]);
   });
 });

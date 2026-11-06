@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getRuleStats, getRuleStatusInfo } from './ruleStats';
+import { getRuleStats, getRuleStatusInfo, isFreshRule, isRulePendingSync } from './ruleStats';
 
 describe('utils', () => {
   describe('getRuleStats', () => {
     it('returns default stats for empty rule', () => {
-      const mockRule = { jsonData: {} } as any;
+      const mockRule = {} as any;
       const stats = getRuleStats(mockRule);
       expect(stats.targeted).toBe(0);
       expect(stats.satisfied).toBe(0);
@@ -16,26 +16,24 @@ describe('utils', () => {
 
     it('returns correctly calculated stats from nodeEvaluations and failedNodes', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-              {
-                nodeName: 'node-2',
-                taintStatus: 'Present',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [
-              { nodeName: 'node-3', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'error' },
-            ],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+            {
+              nodeName: 'node-2',
+              taintStatus: 'Present',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [
+            { nodeName: 'node-3', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'error' },
+          ],
         },
       } as any;
 
@@ -50,35 +48,33 @@ describe('utils', () => {
 
     it('gives failedNodes precedence over overlapping older nodeEvaluations without double-counting', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-              {
-                nodeName: 'node-2',
-                taintStatus: 'Present',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [
-              {
-                nodeName: 'node-2',
-                lastEvaluationTime: '2026-10-14T00:01:00Z',
-                message: 'error on node-2',
-              },
-              {
-                nodeName: 'node-3',
-                lastEvaluationTime: '2026-10-14T00:01:00Z',
-                message: 'error on node-3',
-              },
-            ],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+            {
+              nodeName: 'node-2',
+              taintStatus: 'Present',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [
+            {
+              nodeName: 'node-2',
+              lastEvaluationTime: '2026-10-14T00:01:00Z',
+              message: 'error on node-2',
+            },
+            {
+              nodeName: 'node-3',
+              lastEvaluationTime: '2026-10-14T00:01:00Z',
+              message: 'error on node-3',
+            },
+          ],
         },
       } as any;
 
@@ -93,11 +89,9 @@ describe('utils', () => {
 
     it('returns correct stats and affectedNodes for dry-run', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-          status: {
-            dryRunResults: { affectedNodes: 5, summary: 'Simulation complete' },
-          },
+        spec: { dryRun: true },
+        status: {
+          dryRunResults: { affectedNodes: 5, summary: 'Simulation complete' },
         },
       } as any;
 
@@ -112,14 +106,12 @@ describe('utils', () => {
 
     it('counts failedNodes on dry-run rules and marks status as Failed', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-          status: {
-            dryRunResults: { affectedNodes: 5, summary: 'Simulation complete' },
-            failedNodes: [
-              { nodeName: 'node-1', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'err' },
-            ],
-          },
+        spec: { dryRun: true },
+        status: {
+          dryRunResults: { affectedNodes: 5, summary: 'Simulation complete' },
+          failedNodes: [
+            { nodeName: 'node-1', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'err' },
+          ],
         },
       } as any;
 
@@ -137,12 +129,27 @@ describe('utils', () => {
       expect(info.severity).toBe('error');
     });
 
+    it('returns N/A for satisfied and unsatisfied in dry-run rules with results', () => {
+      const mockRule = {
+        spec: { dryRun: true },
+        status: {
+          dryRunResults: { affectedNodes: 10, taintsToAdd: 3, summary: 'Simulation complete' },
+        },
+      } as any;
+
+      const stats = getRuleStats(mockRule);
+      expect(stats.targeted).toBe(10);
+      expect(stats.satisfied).toBe('N/A');
+      expect(stats.unsatisfied).toBe('N/A');
+      expect(stats.failed).toBe(0);
+      expect(stats.isDryRun).toBe(true);
+      expect(stats.hasSummary).toBe(true);
+    });
+
     it('returns pending (hasSummary: false) for dry-run before results are recorded', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-          status: {},
-        },
+        spec: { dryRun: true },
+        status: {},
       } as any;
 
       const stats = getRuleStats(mockRule);
@@ -156,9 +163,7 @@ describe('utils', () => {
 
     it('handles rule with spec.dryRun: true and completely missing status without throwing', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-        },
+        spec: { dryRun: true },
       } as any;
 
       const stats = getRuleStats(mockRule);
@@ -172,18 +177,16 @@ describe('utils', () => {
 
     it('memoizes calculation for the same rule/status object', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [],
         },
       } as any;
 
@@ -197,7 +200,6 @@ describe('utils', () => {
     it('returns Terminating when deletionTimestamp is present', () => {
       const mockRule = {
         metadata: { deletionTimestamp: '2026-10-14T10:00:00Z' },
-        jsonData: {},
       } as any;
 
       const info = getRuleStatusInfo(mockRule);
@@ -208,25 +210,21 @@ describe('utils', () => {
 
     it('returns Dry Run when simulation summary is present', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-          status: {
-            dryRunResults: { affectedNodes: 7, summary: 'Simulation complete' },
-          },
+        spec: { dryRun: true },
+        status: {
+          dryRunResults: { affectedNodes: 7, summary: 'Simulation complete' },
         },
       } as any;
 
       const info = getRuleStatusInfo(mockRule);
       expect(info.status).toBe('Dry Run');
       expect(info.label).toBe('Dry Run');
-      expect(info.severity).toBe('info');
+      expect(info.severity).toBe('');
     });
 
     it('returns Pending for dry-run rules without status/results', () => {
       const mockRule = {
-        jsonData: {
-          spec: { dryRun: true },
-        },
+        spec: { dryRun: true },
       } as any;
 
       const info = getRuleStatusInfo(mockRule);
@@ -237,20 +235,18 @@ describe('utils', () => {
 
     it('returns Failed and prevents OK when failed > 0', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [
-              { nodeName: 'node-2', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'error' },
-            ],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [
+            { nodeName: 'node-2', lastEvaluationTime: '2026-10-14T00:00:00Z', message: 'error' },
+          ],
         },
       } as any;
 
@@ -262,24 +258,22 @@ describe('utils', () => {
 
     it('returns OK only when all nodes are satisfied and failed is 0', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-              {
-                nodeName: 'node-2',
-                taintStatus: 'Absent',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+            {
+              nodeName: 'node-2',
+              taintStatus: 'Absent',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [],
         },
       } as any;
 
@@ -291,18 +285,16 @@ describe('utils', () => {
 
     it('returns Pending with error severity when unsatisfied nodes exist', () => {
       const mockRule = {
-        jsonData: {
-          status: {
-            nodeEvaluations: [
-              {
-                nodeName: 'node-1',
-                taintStatus: 'Present',
-                lastEvaluationTime: '2026-10-14T00:00:00Z',
-                conditionResults: [],
-              },
-            ],
-            failedNodes: [],
-          },
+        status: {
+          nodeEvaluations: [
+            {
+              nodeName: 'node-1',
+              taintStatus: 'Present',
+              lastEvaluationTime: '2026-10-14T00:00:00Z',
+              conditionResults: [],
+            },
+          ],
+          failedNodes: [],
         },
       } as any;
 
@@ -310,6 +302,51 @@ describe('utils', () => {
       expect(info.status).toBe('Pending');
       expect(info.label).toBe('Pending');
       expect(info.severity).toBe('error');
+    });
+  });
+
+  describe('isRulePendingSync and isFreshRule', () => {
+    it('identifies newly created rules with undefined observedGeneration as pending sync and fresh', () => {
+      const newRule = {
+        metadata: { name: 'brand-new-rule', generation: 1 },
+        status: {},
+      };
+      expect(isRulePendingSync(newRule)).toBe(true);
+      expect(isFreshRule(newRule)).toBe(true);
+    });
+
+    it('identifies updated rules with observedGeneration < generation as pending sync but not fresh', () => {
+      const updatedRule = {
+        metadata: { name: 'updated-rule', generation: 3 },
+        status: { observedGeneration: 2 },
+      };
+      expect(isRulePendingSync(updatedRule)).toBe(true);
+      expect(isFreshRule(updatedRule)).toBe(false);
+    });
+
+    it('returns false when observedGeneration matches generation (fully synced)', () => {
+      const syncedRule = {
+        metadata: { name: 'synced-rule', generation: 2 },
+        status: { observedGeneration: 2 },
+      };
+      expect(isRulePendingSync(syncedRule)).toBe(false);
+      expect(isFreshRule(syncedRule)).toBe(false);
+    });
+
+    it('returns false when metadata lacks generation', () => {
+      const ruleWithoutGen = {
+        metadata: {},
+        status: { observedGeneration: 1 },
+      };
+      expect(isRulePendingSync(ruleWithoutGen)).toBe(false);
+      expect(isFreshRule(ruleWithoutGen)).toBe(false);
+    });
+
+    it('handles null/undefined rule safely', () => {
+      expect(isRulePendingSync(null)).toBe(false);
+      expect(isRulePendingSync(undefined)).toBe(false);
+      expect(isFreshRule(null)).toBe(false);
+      expect(isFreshRule(undefined)).toBe(false);
     });
   });
 });
