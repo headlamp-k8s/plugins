@@ -126,7 +126,7 @@ function CustomResourceDetails(props) {
       },
       {
         name: t('Chart'),
-        value: sourceName,
+        value: cr?.jsonData?.spec?.chart?.spec?.chart ?? sourceName,
       },
       {
         name: t('Reconcile Strategy'),
