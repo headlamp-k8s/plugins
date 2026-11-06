@@ -63,6 +63,7 @@ function NodePoolsList() {
                 params={{
                   name: nodePoolName || '',
                 }}
+                activeCluster={nodePool.cluster}
               >
                 {nodePoolName}
               </Link>
