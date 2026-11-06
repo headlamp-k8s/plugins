@@ -22,7 +22,8 @@ import { NotInstalledBanner } from './common';
 export type CRDGroup = keyof Omit<KyvernoCRDStatus, 'loading' | 'celResources'>;
 
 interface CRDGuardProps {
-  requires: CRDGroup;
+  /** CRD group the children need; when given several, any one of them is enough. */
+  requires: CRDGroup | CRDGroup[];
   children: ReactNode;
   message?: string;
   /**
@@ -72,8 +73,9 @@ export function CRDGuard({
     return <NotInstalledBanner loading />;
   }
 
-  if (!status[requires]) {
-    return <NotInstalledBanner message={message || defaultMessages[requires]} />;
+  const requiredGroups = Array.isArray(requires) ? requires : [requires];
+  if (!requiredGroups.some(group => status[group])) {
+    return <NotInstalledBanner message={message || defaultMessages[requiredGroups[0]]} />;
   }
 
   if (requiresResource && !status.celResources.has(requiresResource)) {

@@ -31,7 +31,7 @@ import {
   YAxis,
 } from 'recharts';
 import { configStore } from '../config';
-import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
+import { usePolicyCounts } from '../hooks/usePolicyCounts';
 
 const useKyvernoConfig = configStore.useConfig();
 import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
@@ -57,8 +57,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 export function Dashboard() {
   const { t } = useTranslation();
   const config = useKyvernoConfig();
-  const [clusterPolicies] = KyvernoClusterPolicy.useList();
-  const [policies] = KyvernoPolicy.useList();
+  const policyCounts = usePolicyCounts();
   const { items: policyReports } = PolicyReport.useList();
   const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
 
@@ -98,11 +97,7 @@ export function Dashboard() {
       }
     }
 
-    const totalPolicies = (clusterPolicies?.length || 0) + (policies?.length || 0);
-    const enforceCount = [...(clusterPolicies || []), ...(policies || [])].filter(
-      p => p.validationFailureAction === 'Enforce'
-    ).length;
-    const auditCount = totalPolicies - enforceCount;
+    const { total: totalPolicies, enforce: enforceCount, audit: auditCount } = policyCounts;
     const total = counts.pass + counts.fail + counts.warn + counts.error + counts.skip;
     // Empty data → leave compliance unset; the card renders "—" instead of a misleading 100%.
     const hasData = total > 0;
@@ -120,7 +115,7 @@ export function Dashboard() {
       bySeverity,
       byNamespace,
     };
-  }, [clusterPolicies, policies, policyReports, clusterPolicyReports]);
+  }, [policyCounts, policyReports, clusterPolicyReports]);
 
   const statusData = useMemo(() => {
     return (['pass', 'fail', 'warn', 'error', 'skip'] as PolicyResultStatus[])
@@ -158,13 +153,12 @@ export function Dashboard() {
       .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
   }, [stats.byNamespace]);
 
-  // Loading until ALL streams resolve — otherwise totals/compliance flash partial values
-  // as each useList settles.
-  const isLoading =
-    clusterPolicies === null ||
-    policies === null ||
-    policyReports === null ||
-    clusterPolicyReports === null;
+  // Compliance and the empty state wait for both report lists, so they don't flash a partial
+  // value while one is still in flight. Total Policies, Enforce and Audit wait on
+  // policyCounts.loading instead: a failing report list (PolicyReport CRDs absent, RBAC denied)
+  // stays null while React Query retries it, before settling to [], and that shouldn't hold back
+  // policy counts that are already known.
+  const isLoading = policyReports === null || clusterPolicyReports === null;
 
   const complianceColor =
     stats.compliancePct === null
@@ -182,7 +176,7 @@ export function Dashboard() {
           <Grid item xs={6} sm={3}>
             <MetricCard
               title={t('Total Policies')}
-              value={isLoading ? '...' : stats.totalPolicies}
+              value={policyCounts.loading ? '...' : stats.totalPolicies}
             />
           </Grid>
           <Grid item xs={6} sm={3}>
@@ -195,10 +189,16 @@ export function Dashboard() {
             />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Enforce')} value={isLoading ? '...' : stats.enforceCount} />
+            <MetricCard
+              title={t('Enforce')}
+              value={policyCounts.loading ? '...' : stats.enforceCount}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Audit')} value={isLoading ? '...' : stats.auditCount} />
+            <MetricCard
+              title={t('Audit')}
+              value={policyCounts.loading ? '...' : stats.auditCount}
+            />
           </Grid>
         </Grid>
 

@@ -69,8 +69,8 @@ interface KyvernoPageOptions {
   icon?: string;
   /** Component to render for the route. */
   component: () => JSX.Element;
-  /** Required Kyverno CRD group — wraps the component in CRDGuard. */
-  requires?: CRDGroup;
+  /** Required Kyverno CRD group(s), any one suffices — wraps the component in CRDGuard. */
+  requires?: CRDGroup | CRDGroup[];
   /** Specific policies.kyverno.io/v1 resource name additionally required (see CRDGuard). */
   requiresResource?: string;
   /** Kind label and minimum version interpolated into CRDGuard's own translated message. */
@@ -126,7 +126,8 @@ registerKyvernoPage({
   label: 'Overview',
   path: '/kyverno',
   exact: true,
-  requires: 'legacy',
+  // The Overview counts legacy and CEL policies alike, so either set of CRDs is enough.
+  requires: ['legacy', 'cel'],
   component: () => <Dashboard />,
 });
 
