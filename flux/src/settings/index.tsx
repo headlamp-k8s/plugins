@@ -1,8 +1,8 @@
 import { ConfigStore, K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import FormHelperText from '@mui/material/FormHelperText';
+import Paper from '@mui/material/Paper';
 import Switch from '@mui/material/Switch';
 import { type ChangeEvent, type ReactNode, useEffect, useId, useState } from 'react';
 
@@ -53,6 +53,38 @@ function AutoSaveSwitch({
       />
       {helperText && <FormHelperText sx={{ ml: 1.75, mt: 0.5 }}>{helperText}</FormHelperText>}
     </>
+  );
+}
+
+function SettingsRows({ rows }: { rows: { name: string; value: ReactNode }[] }) {
+  if (rows.length === 0) return null;
+
+  return (
+    <Paper variant="outlined" sx={{ mt: 2, px: 2 }}>
+      {rows.map(row => (
+        <Box
+          component="label"
+          key={row.name}
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            alignItems: 'center',
+            gap: 2,
+            py: 1.5,
+            cursor: 'pointer',
+            '&:not(:last-child)': {
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            },
+          }}
+        >
+          <Typography component="span" sx={{ overflowWrap: 'anywhere' }}>
+            {row.name}
+          </Typography>
+          <Box component="span">{row.value}</Box>
+        </Box>
+      ))}
+    </Paper>
   );
 }
 
@@ -137,21 +169,31 @@ export function FluxSettings() {
   }));
 
   return (
-    <Box style={{ paddingTop: '8vh' }}>
-      <Typography variant="h6">{t('Map settings')}</Typography>
-      <NameValueTable rows={settingsRows} />
-      <Typography variant="h6" sx={{ mt: 4 }}>
-        {t('Resource actions')}
+    <Box sx={{ pt: 2 }}>
+      <Typography variant="h5" component="h2">
+        {t('Map settings')}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 1 }}>
-        {t('Show edit, scale, delete and rollback actions on Flux-managed resources')}
-      </Typography>
-      <FormHelperText id={actionsWarningId}>
-        {t(
-          'Changes made in Headlamp may be reverted by Flux on the next reconciliation, or leave the cluster out of sync with Git. Intended for testing in non-production clusters.'
-        )}
-      </FormHelperText>
-      <NameValueTable rows={resourceActionsRows} />
+      <SettingsRows rows={settingsRows} />
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" component="h2">
+          {t('Resource actions')}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {t('Show edit, scale, delete and rollback actions on Flux-managed resources')}
+        </Typography>
+        <Typography
+          variant="caption"
+          component="p"
+          color="text.secondary"
+          id={actionsWarningId}
+          sx={{ mt: 0.5 }}
+        >
+          {t(
+            'Changes made in Headlamp may be reverted by Flux on the next reconciliation, or leave the cluster out of sync with Git. Intended for testing in non-production clusters.'
+          )}
+        </Typography>
+        <SettingsRows rows={resourceActionsRows} />
+      </Box>
     </Box>
   );
 }

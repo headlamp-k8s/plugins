@@ -18,6 +18,14 @@ Resources created by Flux (labelled `kustomize.toolkit.fluxcd.io/name` or `helm.
 
 To bring those actions back, e.g. to test changes in a non-production cluster, go to Settings > Plugins > flux and, under "Resource actions", turn on the switch for that cluster. The setting is per cluster, so all other clusters, including ones added later, keep the actions hidden. The chip stays visible as a reminder that you are changing a resource Flux owns.
 
+Settings save automatically. Click a cluster name or its switch to change that
+cluster's setting.
+
+Settings sections use MUI `Typography` with `variant="h5"` and `component="h2"`.
+Nested headings use `subtitle1` with `component="h3"` and weight 600.
+Descriptions use `body2` and warnings use `caption`, both with `text.secondary`.
+The host provides the page title.
+
 ## Installing the Flux Headlamp plugin in a Headlamp deployment
 
 If you are deploying Headlamp using Helm, you can use the following HelmRelease manifest to install the Flux Headlamp plugin with your Headlamp deployment:
