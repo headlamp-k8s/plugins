@@ -1,4 +1,4 @@
-import { ConfigStore, PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Pagination, TextField } from '@mui/material';
@@ -8,6 +8,7 @@ import { FormControlLabel } from '@mui/material';
 import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import semver from 'semver';
+import { configStore, PluginCatalogConfig, usePluginCatalogConfig } from '../../config';
 import { getExternalProxyEndpoint } from './externalProxy';
 import { fetchAllPages } from './pagination';
 import { PluginCard } from './PluginCard';
@@ -16,12 +17,6 @@ const PAGE_SIZE = 60; // Maximum allowed by the API
 const ARTIFACTHUB_HEADLAMP_PLUGIN_KIND = '21';
 const ORGANIZATION_NAME = 'headlamp';
 
-type conf = {
-  displayOnlyOfficialPlugins: boolean;
-  displayOnlyVerifiedPlugins: boolean;
-};
-
-const configStore = new ConfigStore<conf>('@headlamp-k8s/plugin-catalog');
 type PluginSearchResult = {
   packages: PluginPackage[];
   total?: number;
@@ -286,8 +281,8 @@ export function PluginList() {
   const [search, setSearch] = useState('');
   const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
   const [page, setPage] = useState(1);
-  const conf = configStore.useConfig()();
-  const [fetchSettings, setFetchSettings] = useState<conf | null>({
+  const conf = usePluginCatalogConfig();
+  const [fetchSettings, setFetchSettings] = useState<PluginCatalogConfig | null>({
     displayOnlyOfficialPlugins: true,
     displayOnlyVerifiedPlugins: true,
   });
