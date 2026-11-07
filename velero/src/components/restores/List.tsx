@@ -1,10 +1,17 @@
+import { Icon } from '@iconify/react';
+import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Button } from '@mui/material';
+import { useState } from 'react';
 import { useVeleroNamespace } from '../../config';
-import { VeleroRestore } from '../../resources/velero';
+import { useVeleroAccess } from '../../hooks/useVeleroAccess';
+import { VeleroBackup, VeleroRestore } from '../../resources/velero';
 import { getRestoreStatusColor } from '../../utils/status';
 import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
+import RestoreCreateForm from './CreateForm';
+import type { RestoreCreateInput } from './createTypes';
 
 function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
   if (restore.backupName) {
@@ -34,8 +41,50 @@ function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
 
 function RestoreListContent() {
   const veleroNamespace = useVeleroNamespace();
-  // Pin fetch to the configured Velero namespace (ResourceListView types omit `namespaces`).
+  const { canCreateRestore } = useVeleroAccess();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
   const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
+  const [backupsList] = VeleroBackup.useList({ namespace: veleroNamespace });
+  const [namespacesList] = K8s.ResourceClasses.Namespace.useList();
+
+  const backups = backupsList ? backupsList.map(b => b.getName()) : [];
+  const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
+
+  const handleCreateRestore = async (values: RestoreCreateInput) => {
+    const body = {
+      apiVersion: 'velero.io/v1',
+      kind: 'Restore',
+      metadata: {
+        name: values.name,
+        namespace: veleroNamespace,
+      },
+      spec: {
+        backupName: values.backupName,
+        includedNamespaces:
+          values.includedNamespaces.length > 0 ? values.includedNamespaces : undefined,
+        excludedNamespaces:
+          values.excludedNamespaces.length > 0 ? values.excludedNamespaces : undefined,
+        restorePVs: values.restorePVs,
+      },
+    };
+
+    await ApiProxy.apply(body);
+    setShowCreateForm(false);
+  };
+
+  if (showCreateForm) {
+    return (
+      <Box padding={2}>
+        <RestoreCreateForm
+          backups={backups}
+          namespaces={namespaces}
+          onSubmit={handleCreateRestore}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      </Box>
+    );
+  }
 
   return (
     <ResourceListView
@@ -48,6 +97,20 @@ function RestoreListContent() {
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
+        actions: canCreateRestore
+          ? [
+              <Button
+                key="create-restore"
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={() => setShowCreateForm(true)}
+                startIcon={<Icon icon="mdi:plus" />}
+              >
+                Create Restore
+              </Button>,
+            ]
+          : [],
       }}
       columns={[
         'name',
@@ -94,7 +157,7 @@ function RestoreListContent() {
   );
 }
 
-/** Cluster-wide Velero Restore list (Phase 2; columns inspired by reasonerjt prototype). */
+/** Cluster-wide Velero Restore list — Phase 2 views + Phase 4 create. */
 export default function RestoreList() {
   return (
     <VeleroInstallCheck>
