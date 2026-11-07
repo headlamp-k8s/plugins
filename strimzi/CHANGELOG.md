@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Crash on the Kafka Topics and Users pages when the Kafka cluster list was still loading
+- Crash on the Kafka Clusters and Kafka Connectors pages when Strimzi is not installed
 
 ## [0.3.9] - 2026-03-07
 
