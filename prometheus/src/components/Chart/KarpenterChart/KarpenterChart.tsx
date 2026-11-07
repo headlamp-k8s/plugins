@@ -55,6 +55,9 @@ export function KarpenterChart(props: KarpenterChartProps) {
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
+  const [timespan, setTimespan] = useState('24h');
+  const [resolution, setResolution] = useState('medium');
+  const [subPath, setSubPath] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
@@ -74,6 +77,13 @@ export function KarpenterChart(props: KarpenterChartProps) {
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(prometheusState.INSTALLED);
+          
+          const loadedInterval = await getPrometheusInterval(cluster);
+          const loadedRes = await getPrometheusResolution(cluster);
+          const loadedSubPath = await getPrometheusSubPath(cluster);
+          setTimespan(loadedInterval ?? '1h');
+          setResolution(loadedRes ?? 'medium');
+          setSubPath(loadedSubPath);
         } else {
           setState(prometheusState.UNKNOWN);
         }
@@ -84,12 +94,7 @@ export function KarpenterChart(props: KarpenterChartProps) {
     })();
   }, [clusterConfig, cluster]);
 
-  const interval = getPrometheusInterval(cluster);
-  const graphResolution = getPrometheusResolution(cluster);
-  const subPath = getPrometheusSubPath(cluster);
 
-  const [timespan, setTimespan] = useState(interval ?? '1h');
-  const [resolution, setResolution] = useState(graphResolution ?? 'medium');
   const [selectedChart, setSelectedChart] = useState<string>(
     props.defaultChart || props.chartConfigs[0]?.key || ''
   );
