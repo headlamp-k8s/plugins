@@ -1,8 +1,11 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Button } from '@mui/material';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { resolveEveryRunAnchor, scheduleBackupLookupKey } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
+import { useVeleroAccess } from '../../hooks/useVeleroAccess';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
 import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status';
@@ -11,8 +14,9 @@ import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function ScheduleDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  // Use the route namespace so related Backups match the Schedule being viewed.
-  // useVeleroData also pins to the current cluster when a namespace override is set.
+  const { canUpdateSchedule } = useVeleroAccess();
+  const [pauseBusy, setPauseBusy] = useState(false);
+  const [pauseError, setPauseError] = useState<string | null>(null);
   const {
     latestBackupBySchedule,
     loading: backupsLoading,
@@ -26,6 +30,33 @@ function ScheduleDetailContent() {
       namespace={namespace}
       withEvents
       noDefaultActions
+      actions={schedule => {
+        if (!schedule || !canUpdateSchedule) {
+          return [];
+        }
+        const paused = schedule.paused;
+        return [
+          <Button
+            key="pause-toggle"
+            variant="outlined"
+            size="small"
+            disabled={pauseBusy}
+            onClick={async () => {
+              setPauseError(null);
+              setPauseBusy(true);
+              try {
+                await schedule.patch({ spec: { paused: !paused } });
+              } catch (err: unknown) {
+                setPauseError(err instanceof Error ? err.message : 'Failed to update schedule');
+              } finally {
+                setPauseBusy(false);
+              }
+            }}
+          >
+            {pauseBusy ? 'Updating…' : paused ? 'Unpause' : 'Pause'}
+          </Button>,
+        ];
+      }}
       extraInfo={schedule => {
         if (!schedule) {
           return [];
@@ -112,13 +143,25 @@ function ScheduleDetailContent() {
             name: 'Last status',
             value: lastStatusValue,
           },
+          ...(pauseError
+            ? [
+                {
+                  name: 'Pause error',
+                  value: (
+                    <Box component="span" sx={{ color: 'error.main' }}>
+                      {pauseError}
+                    </Box>
+                  ),
+                },
+              ]
+            : []),
         ];
       }}
     />
   );
 }
 
-/** Velero Schedule detail page (Phase 2). */
+/** Velero Schedule detail — Phase 2 fields + Phase 4 pause/unpause. */
 export default function ScheduleDetail() {
   return (
     <VeleroInstallCheck>

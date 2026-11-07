@@ -1,24 +1,69 @@
+import { Icon } from '@iconify/react';
+import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Button } from '@mui/material';
+import { useState } from 'react';
 import { useVeleroNamespace } from '../../config';
 import { resolveEveryRunAnchor, scheduleBackupLookupKey } from '../../coverage';
 import { formatNextScheduledRun } from '../../cron';
+import { useVeleroAccess } from '../../hooks/useVeleroAccess';
 import { useVeleroData } from '../../hooks/useVeleroData';
 import { VeleroSchedule } from '../../resources/velero';
 import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status';
 import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
+import ScheduleCreateForm from './CreateForm';
+import type { ScheduleCreateInput } from './createTypes';
 
 function ScheduleListContent() {
   const veleroNamespace = useVeleroNamespace();
+  const { canCreateSchedule } = useVeleroAccess();
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { latestBackupBySchedule, loading: backupsLoading, error: backupsError } = useVeleroData();
-  // Pin fetch to the configured Velero namespace (ResourceListView types omit `namespaces`).
   const [schedules, schedulesError] = VeleroSchedule.useList({ namespace: veleroNamespace });
+  const [namespacesList] = K8s.ResourceClasses.Namespace.useList();
+  const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
 
   const errorMessage = schedulesError?.message ?? backupsError?.message;
-  // Keep the table loading until related Backup data is ready so last-backup
-  // columns never show a false "None" while Backups are still loading / errored.
   const tableData = backupsLoading || schedules === null ? null : schedules;
+
+  const handleCreateSchedule = async (values: ScheduleCreateInput) => {
+    const body = {
+      apiVersion: 'velero.io/v1',
+      kind: 'Schedule',
+      metadata: {
+        name: values.name,
+        namespace: veleroNamespace,
+      },
+      spec: {
+        schedule: values.schedule,
+        paused: values.paused || undefined,
+        template: {
+          includedNamespaces:
+            values.includedNamespaces.length > 0 ? values.includedNamespaces : undefined,
+          excludedNamespaces:
+            values.excludedNamespaces.length > 0 ? values.excludedNamespaces : undefined,
+          ttl: values.ttl || undefined,
+        },
+      },
+    };
+
+    await ApiProxy.apply(body);
+    setShowCreateForm(false);
+  };
+
+  if (showCreateForm) {
+    return (
+      <Box padding={2}>
+        <ScheduleCreateForm
+          namespaces={namespaces}
+          onSubmit={handleCreateSchedule}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      </Box>
+    );
+  }
 
   return (
     <ResourceListView
@@ -31,6 +76,20 @@ function ScheduleListContent() {
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
+        actions: canCreateSchedule
+          ? [
+              <Button
+                key="create-schedule"
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={() => setShowCreateForm(true)}
+                startIcon={<Icon icon="mdi:plus" />}
+              >
+                Create Schedule
+              </Button>,
+            ]
+          : [],
       }}
       columns={[
         'name',
@@ -124,7 +183,7 @@ function ScheduleListContent() {
   );
 }
 
-/** Cluster-wide Velero Schedule list (Phase 2). */
+/** Cluster-wide Velero Schedule list — Phase 2 views + Phase 4 create. */
 export default function ScheduleList() {
   return (
     <VeleroInstallCheck>
