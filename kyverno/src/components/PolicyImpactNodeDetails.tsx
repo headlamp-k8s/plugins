@@ -15,10 +15,10 @@
  */
 
 import { Icon } from '@iconify/react';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Chip, Divider, Link as MuiLink, Typography } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
 import { ImpactedResource, PolicyImpactSummary } from '../resources/policyImpact';
+import { PolicyViewer } from './PolicyViewer';
 
 interface MapNodeData {
   impact: PolicyImpactSummary;
@@ -91,7 +91,6 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
 
   const data: MapNodeData | undefined = node.data;
   const impact = data?.impact;
-  const policyListUrl = namespace ? '/kyverno/policies' : '/kyverno/clusterpolicies';
 
   return (
     <Box sx={{ p: 2 }}>
@@ -175,10 +174,32 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
               ))}
               {data?.clipped && (
                 <MuiLink
-                  component={RouterLink}
-                  to={policyListUrl}
+                  component="button"
                   variant="caption"
-                  sx={{ display: 'block', mt: 0.5 }}
+                  sx={{
+                    display: 'block',
+                    mt: 0.5,
+                    background: 'none',
+                    border: 'none',
+                    p: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onClick={() =>
+                    Activity.launch({
+                      id: namespace ? `kyverno-pol-${namespace}-${name}` : `kyverno-cpol-${name}`,
+                      location: 'split-right',
+                      icon: <Icon icon="mdi:shield-edit" />,
+                      title: name,
+                      content: (
+                        <PolicyViewer
+                          name={name}
+                          namespace={namespace}
+                          isClusterScoped={!namespace}
+                        />
+                      ),
+                    })
+                  }
                 >
                   {t('More resources not shown. Open the policy detail page to see all.')}
                 </MuiLink>
