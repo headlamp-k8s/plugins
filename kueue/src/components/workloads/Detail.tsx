@@ -35,6 +35,7 @@ import {
   renderAdmissionCheckLink,
   renderClusterQueueLink,
   renderLocalQueueLink,
+  renderOwnerReferenceLinks,
 } from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
@@ -641,7 +642,10 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Owner References',
-                  value: workload.ownerReferencesDisplay,
+                  value: renderOwnerReferenceLinks(
+                    workload.metadata.ownerReferences,
+                    workload.metadata.namespace
+                  ),
                 },
                 {
                   name: 'Pod Sets',
