@@ -38,5 +38,5 @@ annotations:
   headlamp/plugin/archive-url: >-
     https://github.com/headlamp-k8s/plugins/releases/download/velero-0.1.0-alpha/headlamp-k8s-velero-0.1.0-alpha.tar.gz
   headlamp/plugin/archive-checksum: SHA256:8e20b22d686b45eaa11978c5b702820af287f6795f7b23a40b95ede85c46298e
-  headlamp/plugin/version-compat: ">=0.23"
+  headlamp/plugin/version-compat: ">=0.26"
   headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

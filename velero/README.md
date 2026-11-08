@@ -2,7 +2,8 @@
 
 Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
 
-Requires Headlamp 0.23 or newer for the plugin settings registration API.
+Requires Headlamp 0.26 or newer for the runtime `KubeObject` class and the
+`getValue`/`render` resource-table column APIs.
 
 ## What it does
 
