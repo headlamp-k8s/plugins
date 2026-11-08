@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
@@ -18,14 +19,15 @@ function getConditionsSection(localQueue: LocalQueue) {
 }
 
 export default function LocalQueueDetail() {
+  const { t } = useTranslation();
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
 
   return (
     <KueueAdminResourceAccess
       resourceClass={LocalQueue}
-      resourceLabel="LocalQueues"
+      resourceLabel={t('LocalQueues')}
       verb="get"
-      accessDescription="Kueue LocalQueues are namespaced user queue resources."
+      accessDescription={t('Kueue LocalQueues are namespaced user queue resources.')}
     >
       <DetailsGrid
         resourceType={LocalQueue}
@@ -36,27 +38,27 @@ export default function LocalQueueDetail() {
           localQueue
             ? [
                 {
-                  name: 'ClusterQueue',
+                  name: t('ClusterQueue'),
                   value: renderClusterQueueLink(localQueue.clusterQueueName),
                 },
                 {
-                  name: 'Stop Policy',
+                  name: t('Stop Policy'),
                   value: localQueue.stopPolicyDisplay,
                 },
                 {
-                  name: 'Pending Workloads',
+                  name: t('Pending Workloads'),
                   value: localQueue.pendingWorkloads,
                 },
                 {
-                  name: 'Admitted Workloads',
+                  name: t('Admitted Workloads'),
                   value: localQueue.admittedWorkloads,
                 },
                 {
-                  name: 'Reserving Workloads',
+                  name: t('Reserving Workloads'),
                   value: localQueue.reservingWorkloads,
                 },
                 {
-                  name: 'Status',
+                  name: t('Status'),
                   value: localQueue.statusDisplay,
                 },
               ]

@@ -1,50 +1,52 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { ClusterQueue } from '../../resources/clusterQueue';
 import { LocalQueue } from '../../resources/localQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function LocalQueueList() {
+  const { t } = useTranslation();
+
   return (
     <KueueAdminResourceAccess
       resourceClass={LocalQueue}
-      resourceLabel="LocalQueues"
+      resourceLabel={t('LocalQueues')}
       verb="list"
-      accessDescription="Kueue LocalQueues are namespaced user queue resources."
+      accessDescription={t('Kueue LocalQueues are namespaced user queue resources.')}
     >
       <ResourceListView
-        title="Kueue LocalQueues"
+        title={t('Kueue LocalQueues')}
         resourceClass={LocalQueue}
         columns={[
           'name',
           'namespace',
           {
             id: 'clusterQueue',
-            label: ClusterQueue.kind,
+            label: t('ClusterQueue'),
             getValue: (localQueue: LocalQueue) => localQueue.clusterQueueDisplay,
           },
           {
             id: 'stopPolicy',
-            label: 'Stop Policy',
+            label: t('Stop Policy'),
             getValue: (localQueue: LocalQueue) => localQueue.stopPolicyDisplay,
           },
           {
             id: 'pendingWorkloads',
-            label: 'Pending Workloads',
+            label: t('Pending Workloads'),
             getValue: (localQueue: LocalQueue) => localQueue.pendingWorkloads,
           },
           {
             id: 'admittedWorkloads',
-            label: 'Admitted Workloads',
+            label: t('Admitted Workloads'),
             getValue: (localQueue: LocalQueue) => localQueue.admittedWorkloads,
           },
           {
             id: 'reservingWorkloads',
-            label: 'Reserving Workloads',
+            label: t('Reserving Workloads'),
             getValue: (localQueue: LocalQueue) => localQueue.reservingWorkloads,
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (localQueue: LocalQueue) => localQueue.statusDisplay,
           },
           'age',

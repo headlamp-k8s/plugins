@@ -1,37 +1,40 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { AdmissionCheck } from '../../resources/admissionCheck';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function AdmissionCheckList() {
+  const { t } = useTranslation();
+
   return (
     <KueueAdminResourceAccess
       resourceClass={AdmissionCheck}
-      resourceLabel="AdmissionChecks"
+      resourceLabel={t('AdmissionChecks')}
       verb="list"
     >
       <ResourceListView
-        title="Kueue AdmissionChecks"
+        title={t('Kueue AdmissionChecks')}
         resourceClass={AdmissionCheck}
         columns={[
           'name',
           {
             id: 'controllerName',
-            label: 'Controller',
+            label: t('Controller'),
             getValue: (admissionCheck: AdmissionCheck) => admissionCheck.controllerName,
           },
           {
             id: 'parameters',
-            label: 'Parameters',
+            label: t('Parameters'),
             getValue: (admissionCheck: AdmissionCheck) => admissionCheck.parametersDisplay,
           },
           {
             id: 'retryDelayMinutes',
-            label: 'Retry Delay (Minutes)',
+            label: t('Retry Delay (Minutes)'),
             getValue: (admissionCheck: AdmissionCheck) => admissionCheck.retryDelayMinutes,
           },
           {
             id: 'status',
-            label: 'Status',
+            label: t('Status'),
             getValue: (admissionCheck: AdmissionCheck) => admissionCheck.statusDisplay,
           },
           'age',

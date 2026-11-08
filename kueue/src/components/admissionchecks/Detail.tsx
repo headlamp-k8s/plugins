@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { AdmissionCheck } from '../../resources/admissionCheck';
@@ -16,12 +17,13 @@ function getConditionsSection(admissionCheck: AdmissionCheck) {
 }
 
 export default function AdmissionCheckDetail() {
+  const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
 
   return (
     <KueueAdminResourceAccess
       resourceClass={AdmissionCheck}
-      resourceLabel="AdmissionChecks"
+      resourceLabel={t('AdmissionChecks')}
       verb="get"
     >
       <DetailsGrid
@@ -32,19 +34,19 @@ export default function AdmissionCheckDetail() {
           admissionCheck
             ? [
                 {
-                  name: 'Controller',
+                  name: t('Controller'),
                   value: admissionCheck.controllerName,
                 },
                 {
-                  name: 'Parameters',
+                  name: t('Parameters'),
                   value: admissionCheck.parametersDisplay,
                 },
                 {
-                  name: 'Status',
+                  name: t('Status'),
                   value: admissionCheck.statusDisplay,
                 },
                 {
-                  name: 'Retry Delay (Minutes)',
+                  name: t('Retry Delay (Minutes)'),
                   value: admissionCheck.retryDelayMinutes,
                 },
               ]

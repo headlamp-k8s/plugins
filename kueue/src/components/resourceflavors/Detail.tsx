@@ -1,15 +1,17 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
 import { ResourceFlavor } from '../../resources/resourceFlavor';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
 export default function ResourceFlavorDetail() {
+  const { t } = useTranslation();
   const { name } = useParams<{ name: string }>();
 
   return (
     <KueueAdminResourceAccess
       resourceClass={ResourceFlavor}
-      resourceLabel="ResourceFlavors"
+      resourceLabel={t('ResourceFlavors')}
       verb="get"
     >
       <DetailsGrid
@@ -20,19 +22,19 @@ export default function ResourceFlavorDetail() {
           resourceFlavor
             ? [
                 {
-                  name: 'Node Labels',
+                  name: t('Node Labels'),
                   value: resourceFlavor.nodeLabelsDisplay,
                 },
                 {
-                  name: 'Node Taints',
+                  name: t('Node Taints'),
                   value: resourceFlavor.nodeTaintsDisplay,
                 },
                 {
-                  name: 'Tolerations',
+                  name: t('Tolerations'),
                   value: resourceFlavor.tolerationsDisplay,
                 },
                 {
-                  name: 'Topology',
+                  name: t('Topology'),
                   value: resourceFlavor.topologyName,
                 },
               ]
