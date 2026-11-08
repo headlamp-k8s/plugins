@@ -63,6 +63,19 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
       />
     );
   }
+  if (impact.counts.skip > 0) {
+    // Resources were evaluated but skipped (e.g. exempted by a PolicyException).
+    // Not a failure, but not no-data either: distinct aria-label for screen readers.
+    return (
+      <Icon
+        icon="mdi:shield-outline"
+        width="100%"
+        height="100%"
+        aria-label="skip"
+        style={{ color: 'rgb(120, 120, 120)' }}
+      />
+    );
+  }
   // No evaluated resources yet (all counts zero).
   return (
     <Icon
@@ -146,18 +159,20 @@ export const kyvernoMapSource = {
 
   useData() {
     // Tuple-style useList (same as Dashboard.tsx) for KubeObject subclasses.
-    const [clusterPolicies] = KyvernoClusterPolicy.useList();
-    const [policies] = KyvernoPolicy.useList();
+    const [clusterPolicies, clusterPoliciesErr] = KyvernoClusterPolicy.useList();
+    const [policies, policiesErr] = KyvernoPolicy.useList();
     // Object-style useList for PolicyReport/ClusterPolicyReport (same as
     // ViolationsView.tsx, Dashboard.tsx, ComplianceBadge.tsx).
     const { items: policyReports } = PolicyReport.useList();
     const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
 
     return useMemo(() => {
-      // Return null while both policy lists are still loading so the Map shows
-      // a spinner instead of a flash of "no Kyverno nodes". Once at least one
-      // resolves (even to an empty array) we can render what we have.
-      if (clusterPolicies === null && policies === null) return null;
+      // Return null only while both policy lists are genuinely loading (no data
+      // AND no error). An error response resolves the query to null items; if we
+      // treated that as "still loading" the Map source would spin indefinitely on
+      // clusters where RBAC denies the policy list.
+      if (clusterPolicies === null && policies === null && !clusterPoliciesErr && !policiesErr)
+        return null;
 
       const nodes: any[] = [];
       const edges: any[] = [];
@@ -210,7 +225,7 @@ export const kyvernoMapSource = {
             : '';
           const resourceId =
             res.uid ??
-            `kyverno-res-${apiGroup}-${res.kind ?? 'Unknown'}-${res.namespace ?? ''}-${res.name}`;
+            `kyverno-res-${apiGroup}/${res.kind ?? 'Unknown'}/${res.namespace ?? ''}/${res.name}`;
 
           if (!resourceNodeMap.has(resourceId)) {
             const subtitle = res.namespace
@@ -237,6 +252,13 @@ export const kyvernoMapSource = {
       nodes.push(...resourceNodeMap.values());
 
       return { nodes, edges };
-    }, [clusterPolicies, policies, policyReports, clusterPolicyReports]);
+    }, [
+      clusterPolicies,
+      clusterPoliciesErr,
+      policies,
+      policiesErr,
+      policyReports,
+      clusterPolicyReports,
+    ]);
   },
 };
