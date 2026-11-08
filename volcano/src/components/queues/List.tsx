@@ -45,6 +45,7 @@ export default function QueueList() {
                 <Link
                   routeName={volcanoRouteNames.queueDetail}
                   params={{ name: queue.spec.parent }}
+                  activeCluster={queue.cluster}
                 >
                   {queue.spec.parent}
                 </Link>
