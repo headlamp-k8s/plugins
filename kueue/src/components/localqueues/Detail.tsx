@@ -1,6 +1,9 @@
+import { Icon } from '@iconify/react';
+import { Activity } from '@kinvolk/headlamp-plugin/lib';
 import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { LocalQueue } from '../../resources/localQueue';
+import { getKueueActivityId } from '../../utils/kueueActivity';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import { renderClusterQueueLink } from '../common/KueueResourceLinks';
 import { RelatedWorkloadsSection } from '../common/RelatedResources';
@@ -17,8 +20,26 @@ function getConditionsSection(localQueue: LocalQueue) {
   };
 }
 
-export default function LocalQueueDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+/** Open a LocalQueue's details in a side panel instead of navigating away. */
+export function openLocalQueueActivity(namespace: string, name: string, cluster?: string) {
+  Activity.launch({
+    id: getKueueActivityId('localqueue', cluster, namespace, name),
+    location: 'split-right',
+    icon: <Icon icon="mdi:format-list-bulleted" />,
+    title: `${namespace}/${name}`,
+    cluster,
+    content: <LocalQueueDetail namespace={namespace} name={name} cluster={cluster} />,
+  });
+}
+
+export default function LocalQueueDetail(props: {
+  namespace?: string;
+  name?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const namespace = props.namespace ?? params.namespace;
+  const name = props.name ?? params.name;
 
   return (
     <KueueAdminResourceAccess
@@ -31,13 +52,14 @@ export default function LocalQueueDetail() {
         resourceType={LocalQueue}
         name={name}
         namespace={namespace}
+        cluster={props.cluster}
         withEvents
         extraInfo={localQueue =>
           localQueue
             ? [
                 {
                   name: 'ClusterQueue',
-                  value: renderClusterQueueLink(localQueue.clusterQueueName),
+                  value: renderClusterQueueLink(localQueue.clusterQueueName, localQueue.cluster),
                 },
                 {
                   name: 'Stop Policy',
@@ -70,6 +92,7 @@ export default function LocalQueueDetail() {
                   id: 'related-workloads',
                   section: (
                     <RelatedWorkloadsSection
+                      cluster={localQueue.cluster}
                       namespace={localQueue.metadata.namespace}
                       localQueueName={localQueue.metadata.name}
                     />
