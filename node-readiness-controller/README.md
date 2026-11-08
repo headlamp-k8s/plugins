@@ -63,6 +63,9 @@ src/
 
 ## Prerequisites
 
+Requires Headlamp 0.41 or newer for the custom-resource factory, read-only detail view,
+and resource-table APIs used by this plugin.
+
 1. **Kubernetes Cluster**: A dedicated, disposable test cluster (Kind or Minikube recommended; Kubernetes 1.28+). Never use a production or shared cluster for test fixtures.
 2. **CRD Installed**: The `NodeReadinessRule` CRD must be present in the cluster:
    ```bash
@@ -175,4 +178,4 @@ See [`test-files/README.md`](./test-files/README.md) for full details on each te
 
 ## Contributing & License
 
-This project is licensed under the Apache License 2.0. Contributions and feedback are welcome! Please refer to the root [CONTRIBUTING.md](../../CONTRIBUTING.md) and [AGENTS.md](./AGENTS.md) guidelines.
+This project is licensed under the Apache License 2.0. Contributions and feedback are welcome! Please refer to the [plugin development guide](https://headlamp.dev/docs/latest/development/plugins/) and [AGENTS.md](./AGENTS.md) guidelines.
