@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/knative",
-  "version": "0.3.0-beta",
+  "version": "0.4.0-beta",
   "description": "A Headlamp plugin for managing Knative Serving Services, inspecting generated routing, autoscaling, image, and networking resources, and managing Knative Eventing Brokers, Triggers, Channels, and Subscriptions.",
   "scripts": {
     "start": "headlamp-plugin start",
