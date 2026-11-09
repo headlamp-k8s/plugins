@@ -35,6 +35,7 @@ const NEGATIVE_CONDITIONS = new Set([
   'ScalingUp',
   'Paused',
   'Deleting',
+  'Updating',
 ]);
 
 export function isNegativeConditionType(type?: string): boolean {
