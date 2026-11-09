@@ -41,7 +41,7 @@ function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
 
 function RestoreListContent() {
   const veleroNamespace = useVeleroNamespace();
-  const { canCreateRestore } = useVeleroAccess();
+  const { loading: accessLoading, canCreateRestore } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
@@ -69,7 +69,8 @@ function RestoreListContent() {
       },
     };
 
-    await ApiProxy.apply(body);
+    // POST only so duplicate names surface as AlreadyExists instead of silent apply/update.
+    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/restores`, body);
     setShowCreateForm(false);
   };
 
@@ -97,20 +98,21 @@ function RestoreListContent() {
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
-        actions: canCreateRestore
-          ? [
-              <Button
-                key="create-restore"
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setShowCreateForm(true)}
-                startIcon={<Icon icon="mdi:plus" />}
-              >
-                Create Restore
-              </Button>,
-            ]
-          : [],
+        actions:
+          !accessLoading && canCreateRestore
+            ? [
+                <Button
+                  key="create-restore"
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => setShowCreateForm(true)}
+                  startIcon={<Icon icon="mdi:plus" />}
+                >
+                  Create Restore
+                </Button>,
+              ]
+            : [],
       }}
       columns={[
         'name',

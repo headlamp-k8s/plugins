@@ -18,7 +18,7 @@ import type { ScheduleCreateInput } from './createTypes';
 
 function ScheduleListContent() {
   const veleroNamespace = useVeleroNamespace();
-  const { canCreateSchedule } = useVeleroAccess();
+  const { loading: accessLoading, canCreateSchedule } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { latestBackupBySchedule, loading: backupsLoading, error: backupsError } = useVeleroData();
   const [schedules, schedulesError] = VeleroSchedule.useList({ namespace: veleroNamespace });
@@ -49,7 +49,8 @@ function ScheduleListContent() {
       },
     };
 
-    await ApiProxy.apply(body);
+    // POST only so duplicate names surface as AlreadyExists instead of silent apply/update.
+    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/schedules`, body);
     setShowCreateForm(false);
   };
 
@@ -76,20 +77,21 @@ function ScheduleListContent() {
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
-        actions: canCreateSchedule
-          ? [
-              <Button
-                key="create-schedule"
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setShowCreateForm(true)}
-                startIcon={<Icon icon="mdi:plus" />}
-              >
-                Create Schedule
-              </Button>,
-            ]
-          : [],
+        actions:
+          !accessLoading && canCreateSchedule
+            ? [
+                <Button
+                  key="create-schedule"
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => setShowCreateForm(true)}
+                  startIcon={<Icon icon="mdi:plus" />}
+                >
+                  Create Schedule
+                </Button>,
+              ]
+            : [],
       }}
       columns={[
         'name',

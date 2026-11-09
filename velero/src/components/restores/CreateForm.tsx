@@ -136,6 +136,7 @@ export default function RestoreCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               id="included-namespaces"
               options={namespaces}
               value={includedNamespaces}
@@ -145,7 +146,7 @@ export default function RestoreCreateForm({
                   {...params}
                   variant="outlined"
                   label="Included Namespaces"
-                  placeholder="Select namespaces (empty for all from backup)"
+                  placeholder="Select or type namespaces from the backup"
                 />
               )}
               renderTags={(value, getTagProps) =>
@@ -160,6 +161,7 @@ export default function RestoreCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               id="excluded-namespaces"
               options={namespaces}
               value={excludedNamespaces}
@@ -169,7 +171,7 @@ export default function RestoreCreateForm({
                   {...params}
                   variant="outlined"
                   label="Excluded Namespaces"
-                  placeholder="Select namespaces to exclude"
+                  placeholder="Select or type namespaces to exclude"
                 />
               )}
               renderTags={(value, getTagProps) =>

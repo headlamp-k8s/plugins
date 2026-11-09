@@ -21,43 +21,50 @@ async function can(
   }
 }
 
-/** RBAC-aware flags for Phase 4 create / update actions. */
-export function useVeleroAccess() {
-  const veleroNamespace = useVeleroNamespace();
-  const [canCreateBackup, setCanCreateBackup] = useState(true);
-  const [canCreateRestore, setCanCreateRestore] = useState(true);
-  const [canCreateSchedule, setCanCreateSchedule] = useState(true);
-  const [canUpdateSchedule, setCanUpdateSchedule] = useState(true);
+/**
+ * RBAC-aware flags for Phase 4 create / patch actions.
+ * @param namespaceOverride — when set (e.g. Schedule detail route ns), check that namespace
+ *   instead of the plugin-configured Velero namespace.
+ */
+export function useVeleroAccess(namespaceOverride?: string) {
+  const configuredNamespace = useVeleroNamespace();
+  const namespace = namespaceOverride || configuredNamespace;
+  // Start denied so write controls stay hidden until SSAR finishes.
+  const [canCreateBackup, setCanCreateBackup] = useState(false);
+  const [canCreateRestore, setCanCreateRestore] = useState(false);
+  const [canCreateSchedule, setCanCreateSchedule] = useState(false);
+  const [canPatchSchedule, setCanPatchSchedule] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [backup, restore, scheduleCreate, scheduleUpdate] = await Promise.all([
-        can(VeleroBackup, 'create', veleroNamespace),
-        can(VeleroRestore, 'create', veleroNamespace),
-        can(VeleroSchedule, 'create', veleroNamespace),
-        can(VeleroSchedule, 'update', veleroNamespace),
+      const [backup, restore, scheduleCreate, schedulePatch] = await Promise.all([
+        can(VeleroBackup, 'create', namespace),
+        can(VeleroRestore, 'create', namespace),
+        can(VeleroSchedule, 'create', namespace),
+        // Pause/unpause uses schedule.patch — require patch, not update.
+        can(VeleroSchedule, 'patch', namespace),
       ]);
       if (!cancelled) {
         setCanCreateBackup(backup);
         setCanCreateRestore(restore);
         setCanCreateSchedule(scheduleCreate);
-        setCanUpdateSchedule(scheduleUpdate);
+        setCanPatchSchedule(schedulePatch);
         setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [veleroNamespace]);
+  }, [namespace]);
 
   return {
     loading,
     canCreateBackup,
     canCreateRestore,
     canCreateSchedule,
-    canUpdateSchedule,
+    canPatchSchedule,
   };
 }

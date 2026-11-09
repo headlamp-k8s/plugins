@@ -16,7 +16,7 @@ import type { BackupCreateInput } from './createTypes';
 
 function BackupListContent() {
   const veleroNamespace = useVeleroNamespace();
-  const { canCreateBackup } = useVeleroAccess();
+  const { loading: accessLoading, canCreateBackup } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [backups, error] = VeleroBackup.useList({ namespace: veleroNamespace });
@@ -46,11 +46,13 @@ function BackupListContent() {
         storageLocation: values.storageLocation || undefined,
         ttl: values.ttl || undefined,
         snapshotVolumes: values.snapshotVolumes,
-        defaultVolumesToFsBackup: values.defaultVolumesToFsBackup || undefined,
+        // Keep explicit false — `|| undefined` would drop "FS backup off".
+        defaultVolumesToFsBackup: values.defaultVolumesToFsBackup,
       },
     };
 
-    await ApiProxy.apply(body);
+    // POST only so duplicate names surface as AlreadyExists instead of silent apply/update.
+    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/backups`, body);
     setShowCreateForm(false);
   };
 
@@ -78,20 +80,21 @@ function BackupListContent() {
       headerProps={{
         noNamespaceFilter: true,
         titleSideActions: [],
-        actions: canCreateBackup
-          ? [
-              <Button
-                key="create-backup"
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setShowCreateForm(true)}
-                startIcon={<Icon icon="mdi:plus" />}
-              >
-                Create Backup
-              </Button>,
-            ]
-          : [],
+        actions:
+          !accessLoading && canCreateBackup
+            ? [
+                <Button
+                  key="create-backup"
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => setShowCreateForm(true)}
+                  startIcon={<Icon icon="mdi:plus" />}
+                >
+                  Create Backup
+                </Button>,
+              ]
+            : [],
       }}
       columns={[
         'name',

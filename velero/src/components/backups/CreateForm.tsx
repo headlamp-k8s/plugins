@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { BackupCreateFormProps, BackupCreateInput } from './createTypes';
 
 /** Create Backup form — adapted from reasonerjt prototype; namespace comes from parent. */
@@ -35,6 +35,14 @@ export default function BackupCreateForm({
   const [defaultVolumesToFsBackup, setDefaultVolumesToFsBackup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // BSL list often arrives after mount — keep Select value in sync with real options.
+  useEffect(() => {
+    if (storageLocations.length === 0) {
+      return;
+    }
+    setStorageLocation(prev => (storageLocations.includes(prev) ? prev : storageLocations[0]));
+  }, [storageLocations]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
