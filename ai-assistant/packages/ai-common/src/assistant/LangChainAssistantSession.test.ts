@@ -22,6 +22,7 @@
  * fix is applied.
  */
 
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, AIMessageChunk, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,7 @@ import { getMessageTargetCluster, sanitizeToolAlignment } from '../conversation/
 import { convertPromptsToMessages } from '../conversation/langchain/messages';
 import type { ConversationMessage as Prompt } from '../conversation/types';
 import type { ToolClient } from '../mcp/client/ToolClient';
+import { MCPOutputFormatter } from '../mcp/langchain/formatToolOutput';
 import type { UserContext } from '../mcp/tools/types';
 import { DEFAULT_SKILLS_CONFIG } from '../skills/config';
 import type { SkillManager } from '../skills/SkillManager';
@@ -1178,6 +1180,110 @@ describe('mcpClient option', () => {
       mcpClient: makeToolClient(),
     });
     expect(privateManager(manager).toolManager).toBe(toolManager);
+  });
+});
+
+describe('MCP tool output sent to the model', () => {
+  const value = 'cG9zdGdyZXM6Ly8=';
+  const secret = JSON.stringify({ kind: 'Secret', data: { DATABASE_URL: value } });
+
+  // The MCP adapter returns a single text block as a string, and anything else, like a
+  // block with metadata or several blocks, as content blocks.
+  it.each([
+    ['text', secret, value],
+    [
+      'a content block with metadata',
+      { type: 'text', text: secret, meta: { requestId: '1' } },
+      value,
+    ],
+    [
+      'several content blocks',
+      [
+        { type: 'text', text: 'Secret db:' },
+        { type: 'text', text: secret },
+      ],
+      value,
+    ],
+    // Escaped inside the serialized blocks, this is only found before serializing.
+    [
+      'a credential in a content block',
+      [{ type: 'text', text: '{"password":"hunter2"}' }],
+      'hunter2',
+    ],
+  ])('does not send secrets from %s when several MCP tools run', async (_, result, hidden) => {
+    const mcpClient: ToolClient = {
+      isAvailable: () => true,
+      getConfig: async () => ({
+        success: true,
+        config: {
+          enabled: true,
+          servers: [{ name: 'kube', command: 'x', args: [], enabled: true }],
+        },
+      }),
+      getToolsConfig: async () => ({
+        success: true,
+        config: {
+          kube: {
+            get_secret: { description: 'Get a Secret', inputSchema: {}, enabled: true },
+            list_pods: { description: 'List pods', inputSchema: {}, enabled: true },
+          },
+        },
+      }),
+      executeTool: async name => ({
+        result: name.endsWith('get_secret') ? result : '{"items":[]}',
+      }),
+      isToolEnabled: async () => true,
+      setToolEnabled: async () => true,
+      getToolStats: async () => null,
+      updateToolsConfig: async () => true,
+      parseToolName: name => {
+        const [serverName, toolName] = name.split('__');
+        return { serverName, toolName };
+      },
+    };
+    inlineToolApprovalManager.setApprovalHandler(
+      createMockApprovalManager({ mode: 'approve-all' })
+    );
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { mcpClient });
+    const toolManager = privateManager(manager).toolManager as unknown as {
+      waitForMCPToolsInitialization(): Promise<void>;
+      getMCPTools(): { name: string }[];
+      mcpFormatter: unknown;
+    };
+    await toolManager.waitForMCPToolsInitialization();
+    const names = toolManager.getMCPTools().map(tool => tool.name);
+
+    const sent: string[] = [];
+    const model: TestModel = {
+      invoke: async input => {
+        const text = JSON.stringify(input);
+        sent.push(text);
+        // The planner recommends both tools, so the session runs them together.
+        const content = text.includes('intelligent tool orchestrator')
+          ? JSON.stringify({
+              analysis: 'Both are needed',
+              shouldExecuteAll: true,
+              tools: names.map(name => ({
+                name,
+                description: name,
+                arguments: {},
+                priority: 'high',
+                reason: 'needed',
+              })),
+            })
+          : 'Done.';
+        return { content, tool_calls: [] };
+      },
+      stream: async function* () {},
+    };
+    privateManager(manager).model = model;
+    // bindToModel sets a formatter in the app, and each stored result then keeps the raw output.
+    toolManager.mcpFormatter = new MCPOutputFormatter(model as unknown as BaseChatModel);
+
+    await manager.userSend('show me the db Secret and the pods in shop');
+
+    expect(sent.some(text => text.includes('Tool Execution Results'))).toBe(true);
+    expect(sent.some(text => text.includes(hidden))).toBe(false);
   });
 });
 
