@@ -482,6 +482,63 @@ namespace: default`;
     expect(out).toContain('type: Opaque');
   });
 
+  it('redacts the last-applied-configuration annotation with a space before the colon', () => {
+    const secret = [
+      'kind: Secret',
+      'metadata:',
+      '  annotations:',
+      '    kubectl.kubernetes.io/last-applied-configuration : |',
+      '      {"data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    "kubectl.kubernetes.io/last-applied-configuration"\t: \'{"stringData":{"token":"s3cr3t"}}\'',
+      '  name: db',
+    ].join('\n');
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).not.toContain('s3cr3t');
+    expect(out).toContain('name: db');
+  });
+
+  it('redacts the last-applied-configuration annotation only on Secrets of a mixed List', () => {
+    const list = [
+      'apiVersion: v1',
+      'items:',
+      '- apiVersion: v1',
+      '  data:',
+      '    DATABASE_URL: cG9zdGdyZXM6Ly8=',
+      '  kind: Secret',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    name: db',
+      '- apiVersion: v1',
+      '  kind: ConfigMap',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"kind":"ConfigMap","metadata":{"name":"settings"}}',
+      '    name: settings',
+      '    ownerReferences:',
+      '    - apiVersion: v1',
+      '      kind: Secret',
+      '      name: db',
+      '- apiVersion: v1',
+      '  kind: ConfigMap',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"kind":"ConfigMap","metadata":{"name":"flags"}}',
+      '    name: flags',
+      'kind: List',
+      'metadata:',
+      '  resourceVersion: ""',
+    ].join('\n');
+    const out = redactSecrets(list);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"settings"}}');
+    expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"flags"}}');
+  });
+
   it('keeps the last-applied-configuration annotation of a ConfigMap', () => {
     const cm = [
       'kind: ConfigMap',
