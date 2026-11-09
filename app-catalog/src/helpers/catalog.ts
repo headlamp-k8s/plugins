@@ -37,8 +37,9 @@ export function CatalogLists() {
     for (let i = 0; i < response.items.length; i++) {
       let serviceUri = '';
       const metadata = response.items[i].metadata;
-      if (ANNOTATION_URI in metadata.annotations) {
-        serviceUri = metadata.annotations[ANNOTATION_URI];
+      const annotations = metadata.annotations ?? {};
+      if (ANNOTATION_URI in annotations) {
+        serviceUri = annotations[ANNOTATION_URI];
       }
 
       // Using the first port
@@ -48,14 +49,10 @@ export function CatalogLists() {
       }
 
       let catalogDisplayName = '';
-      if (
-        ANNOTATION_DISPLAY_NAME in metadata.annotations &&
-        metadata.annotations[ANNOTATION_DISPLAY_NAME] !== ''
-      ) {
-        catalogDisplayName = metadata.annotations[ANNOTATION_DISPLAY_NAME];
+      if (ANNOTATION_DISPLAY_NAME in annotations && annotations[ANNOTATION_DISPLAY_NAME] !== '') {
+        catalogDisplayName = annotations[ANNOTATION_DISPLAY_NAME];
       } else {
-        catalogDisplayName =
-          ANNOTATION_NAME in metadata.annotations ? metadata.annotations[ANNOTATION_NAME] : '';
+        catalogDisplayName = ANNOTATION_NAME in annotations ? annotations[ANNOTATION_NAME] : '';
       }
 
       // Represents a catalog with its metadata and URI.
@@ -66,7 +63,7 @@ export function CatalogLists() {
         displayName: catalogDisplayName,
         metadataName: metadata.name,
         namespace: metadata.namespace,
-        protocol: metadata.annotations[ANNOTATION_PROTOCOL],
+        protocol: annotations[ANNOTATION_PROTOCOL],
         uri: serviceUri,
       };
 
