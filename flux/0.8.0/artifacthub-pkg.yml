@@ -1,0 +1,31 @@
+version: 0.8.0
+name: headlamp_flux
+displayName: Flux
+createdAt: "2026-11-09T21:54:41Z"
+logoURL: "https://raw.githubusercontent.com/headlamp-k8s/plugins/main/flux/logo.png"
+description: A UI for viewing and managing Flux for Git Ops.
+changes:
+  - kind: added
+    description: "Open controller logs and terminals from the Flux overview"
+  - kind: added
+    description: "Add an opt-in per-cluster setting to allow actions on Flux-managed resource details"
+  - kind: added
+    description: "Add 18 locale catalogs and expand translatable user-facing strings"
+  - kind: changed
+    description: "Improve settings layout, heading structure and clickable cluster controls"
+  - kind: changed
+    description: "Improve readability of structured resource references and image-automation configuration"
+  - kind: fixed
+    description: "Prevent inventory crashes for cluster-scoped resources with built-in kind names"
+  - kind: fixed
+    description: "Clean up Kustomization inventory subscriptions and refresh stale inventory data"
+  - kind: fixed
+    description: "Restore namespace filter controls in the Sources view"
+  - kind: fixed
+    description: "Improve keyboard navigation, screen-reader labels, icon contrast and YAML viewer accessibility"
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/flux-0.8.0/headlamp-k8s-flux-0.8.0.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:48abf409e6f6e5b7898532d036e38c3d8b4329d646f2b3bf9af10f5f5a2b924f
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
