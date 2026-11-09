@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { TileChart } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, CircularProgress, Grid, Typography, useTheme } from '@mui/material';
@@ -80,6 +81,7 @@ interface ResourceStatusChartProps {
  * @param {string} props.title - The title to display with the chart.
  */
 function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const total = resources.length;
 
@@ -156,22 +158,22 @@ function ResourceStatusChart({ resources, title }: ResourceStatusChartProps) {
       </Typography>
       {status.success > 0 && (
         <Typography variant="caption" display="block" color="text.secondary">
-          {status.success} Succeeded
+          {t('{{count}} Succeeded', { count: status.success })}
         </Typography>
       )}
       {status.failed > 0 && (
         <Typography variant="caption" display="block" color="error">
-          {status.failed} Failed
+          {t('{{count}} Failed', { count: status.failed })}
         </Typography>
       )}
       {status.processing > 0 && (
         <Typography variant="caption" display="block" color="text.secondary">
-          {status.processing} Processing
+          {t('{{count}} Processing', { count: status.processing })}
         </Typography>
       )}
       {status.suspended > 0 && (
         <Typography variant="caption" display="block" color="text.secondary">
-          {status.suspended} Other
+          {t('{{count}} Other', { count: status.suspended })}
         </Typography>
       )}
     </Box>
@@ -204,6 +206,7 @@ interface EnvironmentTableData {
  * Overview component displays the main dashboard for Radius resources
  */
 export default function Overview() {
+  const { t } = useTranslation();
   // Fetch Radius resources from UCP API through Kubernetes API Aggregation
   const [applications, appError, appLoading] = useRadiusApplications();
   const [environments, envError, envLoading] = useRadiusEnvironments();
@@ -228,7 +231,7 @@ export default function Overview() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography color="error" variant="h6">
-          Error loading Radius resources
+          {t('Error loading Radius resources')}
         </Typography>
         {appError && <Typography color="error">{appError.message}</Typography>}
         {envError && <Typography color="error">{envError.message}</Typography>}
@@ -289,32 +292,32 @@ export default function Overview() {
 
   return (
     <>
-      <SectionBox title="Radius Overview">
+      <SectionBox title={t('Radius Overview')}>
         {/* Resource Status Charts Section */}
         <Box sx={{ mb: 4 }}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <ResourceStatusChart resources={environments || []} title="Environments" />
+              <ResourceStatusChart resources={environments || []} title={t('Environments')} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <ResourceStatusChart resources={applications || []} title="Applications" />
+              <ResourceStatusChart resources={applications || []} title={t('Applications')} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <ResourceStatusChart resources={resources || []} title="All Resources" />
+              <ResourceStatusChart resources={resources || []} title={t('All Resources')} />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <ResourceStatusChart resources={failedResources} title="Failed Resources" />
+              <ResourceStatusChart resources={failedResources} title={t('Failed Resources')} />
             </Grid>
           </Grid>
         </Box>
       </SectionBox>
 
-      <SectionBox title="Applications">
+      <SectionBox title={t('Applications')}>
         <Table
           data={applicationTableData}
           columns={[
             {
-              header: 'Name',
+              header: t('Name'),
               accessorKey: 'name',
               Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
                 const appName = row.original.name;
@@ -326,7 +329,7 @@ export default function Overview() {
               },
             },
             {
-              header: 'Environment',
+              header: t('Environment'),
               accessorKey: 'environment',
               Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
                 const envName = row.original.environment;
@@ -341,26 +344,26 @@ export default function Overview() {
               },
             },
             {
-              header: 'Provisioning State',
+              header: t('Provisioning State'),
               accessorKey: 'provisioningState',
               Cell: ({ row }: { row: { original: ApplicationTableData } }) => (
                 <RadiusStatusLabel status={row.original.provisioningState} />
               ),
             },
             {
-              header: 'Created',
+              header: t('Created'),
               accessorKey: 'created',
             },
           ]}
         />
       </SectionBox>
 
-      <SectionBox title="Environments">
+      <SectionBox title={t('Environments')}>
         <Table
           data={environmentTableData}
           columns={[
             {
-              header: 'Name',
+              header: t('Name'),
               accessorKey: 'name',
               Cell: ({ row }: { row: { original: EnvironmentTableData } }) => {
                 const envName = row.original.name;
@@ -372,26 +375,26 @@ export default function Overview() {
               },
             },
             {
-              header: 'Namespace',
+              header: t('Namespace'),
               accessorKey: 'namespace',
             },
             {
-              header: 'Provider',
+              header: t('Provider'),
               accessorKey: 'provider',
             },
             {
-              header: 'Applications',
+              header: t('Applications'),
               accessorKey: 'applications',
             },
             {
-              header: 'Provisioning State',
+              header: t('Provisioning State'),
               accessorKey: 'provisioningState',
               Cell: ({ row }: { row: { original: EnvironmentTableData } }) => (
                 <RadiusStatusLabel status={row.original.provisioningState} />
               ),
             },
             {
-              header: 'Created',
+              header: t('Created'),
               accessorKey: 'created',
             },
           ]}
