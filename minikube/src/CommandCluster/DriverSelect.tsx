@@ -65,6 +65,16 @@ export function detectOS(): 'macos' | 'windows' | 'linux' | 'unknown' {
 }
 
 /**
+ * Compares a "major.minor" macOS version string against a minimum major/minor,
+ * component-wise (not as a float — "10.9" vs "10.13" is major=10,minor=9 vs 10,13,
+ * not 10.9 vs 10.13 as numbers).
+ */
+export function isMacOSAtLeast(version: string, minMajor: number, minMinor: number): boolean {
+  const [major, minor] = version.split('.').map(Number);
+  return major > minMajor || (major === minMajor && minor >= minMinor);
+}
+
+/**
  * @returns the MacOS version as a string, e.g., "13.4"
  */
 function getMacOSVersion() {
@@ -114,7 +124,7 @@ function useDrivers(info: DriverInfo | null): { value: string; label: string }[]
 
   if (os === 'macos') {
     const macOSVersion = getMacOSVersion();
-    if (macOSVersion && parseFloat(macOSVersion) >= 10.13) {
+    if (macOSVersion && isMacOSAtLeast(macOSVersion, 10, 13)) {
       // remove vfkit if it exists
       const vfkitIndex = drivers.findIndex(driver => driver.value === 'vfkit');
       if (vfkitIndex !== -1) {
