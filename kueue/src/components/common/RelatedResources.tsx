@@ -4,10 +4,12 @@ import {
   Loader,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
 import { LocalQueue } from '../../resources/localQueue';
 import { Workload } from '../../resources/workload';
+import { getWorkloadBlocker } from '../../resources/workloadFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 
 interface RelatedLocalQueuesSectionProps {
@@ -185,6 +187,16 @@ function RelatedLocalQueueWorkloadsSection({
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
 }
 
+function getBlocker(workload: Workload) {
+  return getWorkloadBlocker(
+    workload.conditions,
+    workload.status.admissionChecks,
+    workload.status.requeueState,
+    workload.spec.active,
+    workload.status.admission
+  );
+}
+
 function RelatedWorkloadsTable({
   workloads,
   loadWarning,
@@ -234,6 +246,30 @@ function RelatedWorkloadsTable({
           {
             label: 'Status',
             getter: (workload: Workload) => workload.statusDisplay,
+          },
+          {
+            label: 'Blocked On',
+            getter: (workload: Workload) => {
+              const blocker = getBlocker(workload);
+
+              if (!blocker) {
+                return '-';
+              }
+
+              return (
+                <StatusLabel status={blocker.stage === 'Evicted' ? 'error' : 'warning'}>
+                  {blocker.stage}
+                </StatusLabel>
+              );
+            },
+          },
+          {
+            label: 'Why',
+            getter: (workload: Workload) => {
+              const blocker = getBlocker(workload);
+              // Kueue's message names the exact cause, so prefer it over the generic explanation.
+              return blocker?.message || blocker?.explanation || '-';
+            },
           },
         ]}
       />
