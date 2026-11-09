@@ -2,6 +2,7 @@ import { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KeyUsage } from './certificate';
 import { Condition, IssuerReference } from './common';
+import { getConditionStatus, isConditionTrue } from './conditions';
 
 export interface CertManagerCertificateRequest extends KubeObjectInterface {
   spec: {
@@ -42,15 +43,18 @@ export class CertificateRequest extends KubeObject<CertManagerCertificateRequest
     return this.jsonData.spec;
   }
 
+  /** Raw 'Approved' condition status ('True' | 'False' | 'Unknown'), or undefined when absent. */
   get approved() {
-    return this.status?.conditions?.find(condition => condition.type === 'Approved')?.status;
+    return getConditionStatus(this.status?.conditions, 'Approved');
   }
 
+  /** Raw 'Denied' condition status ('True' | 'False' | 'Unknown'), or undefined when absent. */
   get denied() {
-    return this.status?.conditions?.find(condition => condition.type === 'Denied')?.status;
+    return getConditionStatus(this.status?.conditions, 'Denied');
   }
 
+  /** True only when the 'Ready' condition status is 'True'. */
   get ready() {
-    return this.status?.conditions?.find(condition => condition.type === 'Ready')?.status;
+    return isConditionTrue(this.status?.conditions, 'Ready');
   }
 }
