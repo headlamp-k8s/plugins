@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { DesktopApi } from '../../../types/electron';
 import {
   type ConfigStore,
@@ -67,8 +67,11 @@ export function createMemoryConfigStore(initial: Record<string, unknown> = {}): 
 }
 
 /** Creates the complete desktop bridge surface required by the renderer declaration. */
-export function createDesktopApi(configStore: MemoryConfigStore): DesktopApi {
+export function createDesktopApi(
+  configStore: MemoryConfigStore
+): DesktopApi & { platform: NodeJS.Platform } {
   return {
+    platform: 'linux',
     send: () => undefined,
     receive: () => undefined,
     removeListener: () => undefined,
