@@ -112,6 +112,9 @@ export function KnativeChart({
   const [refresh, setRefresh] = useState<boolean>(true);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [state, setState] = useState<PrometheusState>(PrometheusState.LOADING);
+  const [timespan, setTimespan] = useState('24h');
+  const [resolution, setResolution] = useState('medium');
+  const [subPath, setSubPath] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
   useEffect(() => {
@@ -131,6 +134,13 @@ export function KnativeChart({
         if (prefix) {
           setPrometheusPrefix(prefix);
           setState(PrometheusState.INSTALLED);
+          
+          const loadedInterval = await getPrometheusInterval(cluster);
+          const loadedRes = await getPrometheusResolution(cluster);
+          const loadedSubPath = await getPrometheusSubPath(cluster);
+          setTimespan(loadedInterval ?? '1h');
+          setResolution(loadedRes ?? 'medium');
+          setSubPath(loadedSubPath);
         } else {
           setState(PrometheusState.UNKNOWN);
         }
@@ -141,12 +151,6 @@ export function KnativeChart({
     })();
   }, [clusterConfig, cluster]);
 
-  const interval = getPrometheusInterval(cluster);
-  const graphResolution = getPrometheusResolution(cluster);
-  const subPath = getPrometheusSubPath(cluster);
-
-  const [timespan, setTimespan] = useState(interval ?? '1h');
-  const [resolution, setResolution] = useState(graphResolution ?? 'medium');
   const [selectedChart, setSelectedChart] = useState<string>(chartConfigs[0].key);
 
   useEffect(() => {
