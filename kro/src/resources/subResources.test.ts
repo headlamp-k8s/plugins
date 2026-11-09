@@ -14,6 +14,13 @@ describe('getSubResourceHealth', () => {
       status: 'error',
       label: '0/0 ready',
     });
+    // Kubernetes defaults spec.replicas to 1 when omitted, so this is healthy.
+    expect(
+      getSubResourceHealth('Deployment', { spec: {}, status: { readyReplicas: 1 } })
+    ).toEqual({ status: 'success', label: '1/1 ready' });
+    expect(
+      getSubResourceHealth('StatefulSet', { spec: {}, status: { readyReplicas: 1 } })
+    ).toEqual({ status: 'success', label: '1/1 ready' });
   });
 
   it('maps PVC phases', () => {
@@ -66,6 +73,9 @@ describe('getResolvedValues', () => {
     expect(
       getResolvedValues('Deployment', { spec: { replicas: 2 }, status: { readyReplicas: 2 } })
     ).toBe('replicas: 2/2');
+    expect(getResolvedValues('Deployment', { spec: {}, status: { readyReplicas: 1 } })).toBe(
+      'replicas: 1/1'
+    );
     expect(
       getResolvedValues('Service', { spec: { type: 'ClusterIP', clusterIP: '10.0.0.1' } })
     ).toBe('type: ClusterIP, clusterIP: 10.0.0.1');
