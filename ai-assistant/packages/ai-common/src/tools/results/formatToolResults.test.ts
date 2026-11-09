@@ -117,4 +117,18 @@ describe('formatToolResultsForLLM', () => {
     expect(out).not.toContain('hunter2');
     expect(out).toContain('[REDACTED]');
   });
+
+  it('redacts Secret data in JSON returned as tool content', () => {
+    const out = formatToolResultsForLLM({
+      kubernetes: {
+        content: JSON.stringify(
+          { kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } },
+          null,
+          2
+        ),
+      },
+    });
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('[REDACTED]');
+  });
 });

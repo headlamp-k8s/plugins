@@ -33,6 +33,7 @@ interface ToolManagerTestHarness {
   filterMCPArguments(args: unknown, schema?: unknown): Record<string, unknown>;
   tools: LangChainTool[];
   addTool(tool: LangChainTool): void;
+  mcpFormatter: unknown;
 }
 
 function privateManager(manager: LangChainToolManager): ToolManagerTestHarness {
@@ -854,6 +855,35 @@ describe('ToolManager — executeTool', () => {
     const result = await mgr.executeTool('test-server__my_tool', { query: 'missing' });
     // isError should be set in metadata
     expect(result.metadata?.isError).toBe(true);
+  });
+
+  it('redacts Secret data in the raw MCP output kept next to the formatted summary', async () => {
+    const secret = JSON.stringify({ kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } });
+    const adapter = makeMCPAdapter({ executeTool: async () => ({ result: secret }) });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+    // bindToModel sets a formatter, and the content then keeps the raw output as well.
+    const summary = { type: 'text', title: 'Secret', summary: 'One Secret' };
+    privateManager(mgr).mcpFormatter = {
+      formatMCPOutput: async () => summary,
+      formatSimple: () => summary,
+    };
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'secrets' });
+    const content = JSON.parse(result.content);
+    expect(content.raw).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(content.raw).toContain('[REDACTED]');
+  });
+
+  it('redacts Secret data in MCP output used as the content without a formatter', async () => {
+    const secret = JSON.stringify({ kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } });
+    const adapter = makeMCPAdapter({ executeTool: async () => ({ result: secret }) });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'secrets' });
+    expect(result.content).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(result.content).toContain('[REDACTED]');
   });
 });
 

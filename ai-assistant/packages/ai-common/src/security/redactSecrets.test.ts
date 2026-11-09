@@ -370,6 +370,53 @@ namespace: default`;
     expect(redactSecrets(list)).not.toContain('YWJj');
   });
 
+  it('redacts Secret JSON that follows other text', () => {
+    const secret = {
+      kind: 'Secret',
+      metadata: { name: 'db' },
+      data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' },
+    };
+    const inputs = [
+      `Here is the Secret:\n${JSON.stringify(secret, null, 2)}`,
+      `Secret: ${JSON.stringify(secret)}`,
+    ];
+    for (const input of inputs) {
+      const out = redactSecrets(input);
+      expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+      expect(out).toContain('[REDACTED]');
+      expect(out).toContain('"name": "db"');
+      expect(out.startsWith(input.slice(0, input.indexOf('{')))).toBe(true);
+    }
+  });
+
+  it('redacts unfenced Secret JSON next to fenced JSON and stray brackets', () => {
+    const input = [
+      '```json\n{"kind":"Secret","data":{"first":"c2VjcmV0MQ=="}}\n```',
+      'See [1',
+      '{"kind":"Secret","stringData":{"second":"secret2"}}',
+      '{"kind":"ConfigMap","data":{"visible":"yes"}}',
+    ].join('\n');
+    const out = redactSecrets(input);
+    expect(out).not.toContain('c2VjcmV0MQ==');
+    expect(out).not.toContain('secret2');
+    expect(out).toContain('See [1');
+    expect(out).toContain('{"kind":"ConfigMap","data":{"visible":"yes"}}');
+  });
+
+  it('scans adversarial bracket input in linear time', () => {
+    const inputs = [
+      `kind: Secret\n${'{'.repeat(100_000)}`,
+      `kind: Secret\n${'[a]'.repeat(50_000)}`,
+      `kind: Secret\n${'{"a":'.repeat(30_000)}`,
+      `kind: Secret\n${'['.repeat(50_000)}${']'.repeat(50_000)}`,
+    ];
+    for (const input of inputs) {
+      const start = performance.now();
+      redactSecrets(input);
+      expect(performance.now() - start).toBeLessThan(500);
+    }
+  });
+
   it('redacts a real apiserver SecretList response (items omit their own kind)', () => {
     // This is the shape returned by `GET /api/v1/namespaces/{ns}/secrets`,
     // as opposed to `kubectl -o json`'s generic `kind: List` wrapper above.
