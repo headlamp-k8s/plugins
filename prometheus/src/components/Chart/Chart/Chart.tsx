@@ -86,7 +86,8 @@ export default function Chart(props: ChartProps) {
 
   const fetchMetricsData = async (
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
-    firstLoad: boolean = false
+    firstLoad: boolean = false,
+    cancelledRef: { current: boolean } = { current: false }
   ) => {
     const fetchedMetrics: {
       [key: string]: {
@@ -95,16 +96,17 @@ export default function Chart(props: ChartProps) {
       };
     } = {};
 
-    if (firstLoad) {
+    if (firstLoad && !cancelledRef.current) {
       setState(ChartState.LOADING);
     }
 
     // clear any previous errors on refresh
-    if (!firstLoad) {
+    if (!firstLoad && !cancelledRef.current) {
       setError(null);
     }
 
     for (const plot of plots) {
+      if (cancelledRef.current) return;
       var response;
       try {
         // recalculate time range for each fetch to ensure we get current data
@@ -119,6 +121,7 @@ export default function Chart(props: ChartProps) {
           subPath: props.subPath,
         });
       } catch (e) {
+        if (cancelledRef.current) return;
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
         setError(e.message);
         setState(ChartState.ERROR);
@@ -137,6 +140,8 @@ export default function Chart(props: ChartProps) {
       const data = plot.dataProcessor(response);
       fetchedMetrics[plot.name] = { data: data, state: ChartState.SUCCESS };
     }
+
+    if (cancelledRef.current) return;
 
     // if all the plots are in no data state, set the state to no data
     if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.NO_DATA)) {
@@ -181,7 +186,11 @@ export default function Chart(props: ChartProps) {
 
   // Fetch data on initial load and when key parameters change
   useEffect(() => {
-    fetchMetricsData(props.plots, true);
+    const cancelledRef = { current: false };
+    fetchMetricsData(props.plots, true, cancelledRef);
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [
     props.interval,
     props.resolution,
@@ -190,21 +199,22 @@ export default function Chart(props: ChartProps) {
     JSON.stringify(props.plots),
   ]);
 
-  // if reload is true, set up a timer to refresh data every 10 seconds
   // Set up a timer to refresh data every 10 seconds
   useEffect(() => {
+    const cancelledRef = { current: false };
     let refreshInterval: NodeJS.Timeout;
 
     if (props.autoRefresh) {
       refreshInterval = setInterval(() => {
-        fetchMetricsData(props.plots, false);
+        if (!cancelledRef.current) {
+          fetchMetricsData(props.plots, false, cancelledRef);
+        }
       }, 10000);
     }
 
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
+      cancelledRef.current = true;
+      clearInterval(refreshInterval);
     };
   }, [
     props.autoRefresh,
