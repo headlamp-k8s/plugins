@@ -26,6 +26,7 @@ export function Toast({ toast, onClose }: ToastProps) {
   const isDark = muiTheme.palette.mode === 'dark';
   const [isVisible, setIsVisible] = React.useState(false);
   const [isExiting, setIsExiting] = React.useState(false);
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
 
   React.useEffect(() => {
     if (toast) {
@@ -45,12 +46,17 @@ export function Toast({ toast, onClose }: ToastProps) {
     }
   }, [toast]);
 
+  // Clear the fade-out timer if the component unmounts while it's in flight
+  React.useEffect(() => {
+    return () => clearTimeout(closeTimerRef.current);
+  }, []);
+
   const handleClose = () => {
     // Trigger fade-out animation
     setIsExiting(true);
 
     // Wait for animation to complete before removing
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
       setIsVisible(false);
       setIsExiting(false);
       onClose();
