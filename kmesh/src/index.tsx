@@ -14,6 +14,7 @@ import KmeshNodeInfoDetail from './components/nodeinfo/Detail';
 import KmeshNodeInfoList from './components/nodeinfo/List';
 import WaypointDetail from './components/waypoints/Detail';
 import WaypointList from './components/waypoints/List';
+import { registerKmeshMapExtensions } from './mapRegistration';
 import { kmeshRouteNames, kmeshRoutePaths } from './utils/kmeshRoutes';
 
 /**
@@ -190,3 +191,6 @@ registerRoute({
 
 // Register Namespace Enrollment section in the details view
 registerDetailsViewSection(NamespaceEnrollment);
+
+// Traffic Map: Namespace -> Waypoint -> Service, into Headlamp's shared Map view
+registerKmeshMapExtensions();
