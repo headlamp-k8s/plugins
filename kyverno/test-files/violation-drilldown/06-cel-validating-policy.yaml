@@ -30,8 +30,6 @@ spec:
           - UPDATE
         resources:
           - pods
-        namespaces:
-          - drilldown-test
   validations:
     - expression: >-
         has(object.metadata.annotations) &&

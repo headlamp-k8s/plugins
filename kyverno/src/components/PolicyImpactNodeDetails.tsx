@@ -23,6 +23,7 @@ import { PolicyViewer } from './PolicyViewer';
 interface MapNodeData {
   impact: PolicyImpactSummary;
   clipped: boolean;
+  reportError?: string;
 }
 
 // How many failing resources to list in the sidebar panel.
@@ -140,6 +141,11 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
             )}
           </Box>
 
+          {data?.reportError && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5 }}>
+              {data.reportError}
+            </Typography>
+          )}
           {impact.resources.length === 0 ? (
             <Typography variant="caption" color="text.secondary">
               {t('No evaluated resources yet.')}
@@ -172,7 +178,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
                   </Typography>
                 </Box>
               ))}
-              {data?.clipped && (
+              {(data?.clipped || impact.resources.length > DISPLAYED_RESOURCES) && (
                 <MuiLink
                   component="button"
                   variant="caption"

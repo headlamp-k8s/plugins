@@ -158,13 +158,10 @@ export const kyvernoMapSource = {
   icon: <Icon icon="kyverno:logo" width="100%" height="100%" />,
 
   useData() {
-    // Tuple-style useList (same as Dashboard.tsx) for KubeObject subclasses.
     const [clusterPolicies, clusterPoliciesErr] = KyvernoClusterPolicy.useList();
     const [policies, policiesErr] = KyvernoPolicy.useList();
-    // Object-style useList for PolicyReport/ClusterPolicyReport (same as
-    // ViolationsView.tsx, Dashboard.tsx, ComplianceBadge.tsx).
-    const { items: policyReports } = PolicyReport.useList();
-    const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+    const { items: policyReports, errors: prErrors } = PolicyReport.useList();
+    const { items: clusterPolicyReports, errors: cprErrors } = ClusterPolicyReport.useList();
 
     return useMemo(() => {
       // Return null only while both policy lists are genuinely loading (no data
@@ -174,11 +171,15 @@ export const kyvernoMapSource = {
       if (clusterPolicies === null && policies === null && !clusterPoliciesErr && !policiesErr)
         return null;
 
+      // Surface the first report-fetch error so the sidebar can show it instead
+      // of silently presenting an empty "No evaluated resources yet." (finding 3).
+      const reportError =
+        prErrors?.find(Boolean)?.message ?? cprErrors?.find(Boolean)?.message ?? undefined;
+
       const nodes: any[] = [];
       const edges: any[] = [];
-      // Keyed by the resource's UID (when present) or a stable name-based key,
-      // shared across all policies so the same physical resource (Pod "foo")
-      // appears once with one or more incoming edges rather than once per policy.
+      // Keyed by resource UID or stable name-based key so the same physical
+      // resource appears once with multiple incoming edges, one per policy.
       const resourceNodeMap = new Map<string, any>();
 
       const allPolicies: Array<{ obj: KyvernoClusterPolicy | KyvernoPolicy; ns?: string }> = [
@@ -186,17 +187,62 @@ export const kyvernoMapSource = {
         ...(policies ?? []).map(p => ({ obj: p, ns: p.metadata.namespace })),
       ];
 
-      for (const { obj: policy, ns } of allPolicies) {
-        const policyUid = policy.metadata.uid;
-        if (!policyUid) continue;
+      // Pre-bucket report objects by the qualified policy name that appears in their
+      // results. This turns the per-policy collectPolicyImpact scan from
+      // O(policies × total results) to O(total results) for the grouping step,
+      // then O(results for that policy) per policy (finding 4).
+      const prByPolicy = new Map<string, PolicyReport[]>();
+      const cprByPolicy = new Map<string, ClusterPolicyReport[]>();
+      for (const report of policyReports ?? []) {
+        for (const name of new Set(report.results.map(r => r.policy))) {
+          const bucket = prByPolicy.get(name) ?? [];
+          bucket.push(report);
+          prByPolicy.set(name, bucket);
+        }
+      }
+      for (const report of clusterPolicyReports ?? []) {
+        for (const name of new Set(report.results.map(r => r.policy))) {
+          const bucket = cprByPolicy.get(name) ?? [];
+          bucket.push(report);
+          cprByPolicy.set(name, bucket);
+        }
+      }
 
-        const impact = collectPolicyImpact(
-          policy.metadata.name,
-          POLICY_REPORT_SOURCE.legacy,
-          policyReports,
-          clusterPolicyReports,
-          ns
-        );
+      // Pre-compute all policy impacts so we can build a cross-policy UID map
+      // before emitting any graph nodes (finding 5).
+      const policyImpacts = allPolicies
+        .filter(({ obj: policy }) => !!policy.metadata.uid)
+        .map(({ obj: policy, ns }) => {
+          const qualifiedName = ns ? `${ns}/${policy.metadata.name}` : policy.metadata.name;
+          return {
+            policy,
+            impact: collectPolicyImpact(
+              policy.metadata.name,
+              POLICY_REPORT_SOURCE.legacy,
+              prByPolicy.get(qualifiedName) ?? [],
+              cprByPolicy.get(qualifiedName) ?? [],
+              ns
+            ),
+          };
+        });
+
+      // Build a cross-policy nameKey → UID map so the same physical resource
+      // resolves to one node even when different policies' reports mix UID-carrying
+      // and UID-less references for the same object (finding 5).
+      const crossPolicyUids = new Map<string, string>();
+      for (const { impact } of policyImpacts) {
+        for (const res of impact.resources) {
+          if (res.uid) {
+            const nameKey = `kyverno-res-${apiGroupOf(res.apiVersion)}/${res.kind ?? 'Unknown'}/${
+              res.namespace ?? ''
+            }/${res.name}`;
+            if (!crossPolicyUids.has(nameKey)) crossPolicyUids.set(nameKey, res.uid);
+          }
+        }
+      }
+
+      for (const { policy, impact } of policyImpacts) {
+        const policyUid = policy.metadata.uid!;
 
         nodes.push({
           id: policyUid,
@@ -205,27 +251,22 @@ export const kyvernoMapSource = {
           icon: policyStatusIcon(impact),
           data: {
             impact,
-            // Signals to PolicyImpactNodeDetails that resources were clipped.
             clipped: impact.resources.length > MAX_RESOURCE_NODES_PER_POLICY,
+            reportError,
           },
           detailsComponent: PolicyImpactNodeDetails,
         });
 
         const resourceSlice = impact.resources.slice(0, MAX_RESOURCE_NODES_PER_POLICY);
         for (const res of resourceSlice) {
-          // UID when the report includes it (background-scan mode); otherwise
-          // a stable key from kind/namespace/name, consistent with
-          // collectPolicyImpact's own dedup key so the same resource hit by two
-          // policies resolves to a single node in the Map.
-          // Uses the same apiGroupOf helper as collectPolicyImpact so the fallback key
-          // is computed identically in both places: group only (not full apiVersion),
-          // so two references to the same resource that carry different served versions
-          // of the same API group still resolve to a single node.
-          const resourceId =
-            res.uid ??
-            `kyverno-res-${apiGroupOf(res.apiVersion)}/${res.kind ?? 'Unknown'}/${
-              res.namespace ?? ''
-            }/${res.name}`;
+          // Uses apiGroupOf (same as collectPolicyImpact) so the fallback key is
+          // computed identically in both places. Looks up cross-policy UIDs so a
+          // resource that carries a UID in one policy's reports but not another's
+          // still resolves to a single node (finding 5).
+          const nameKey = `kyverno-res-${apiGroupOf(res.apiVersion)}/${res.kind ?? 'Unknown'}/${
+            res.namespace ?? ''
+          }/${res.name}`;
+          const resourceId = res.uid ?? crossPolicyUids.get(nameKey) ?? nameKey;
 
           if (!resourceNodeMap.has(resourceId)) {
             const subtitle = res.namespace
@@ -235,9 +276,6 @@ export const kyvernoMapSource = {
               id: resourceId,
               label: res.name,
               subtitle,
-              // No kubeObject here: the resource may no longer exist (deleted
-              // after the report was written) or we simply don't have the live
-              // object. Showing it as a synthetic node is the honest choice.
             });
           }
 
@@ -258,7 +296,9 @@ export const kyvernoMapSource = {
       policies,
       policiesErr,
       policyReports,
+      prErrors,
       clusterPolicyReports,
+      cprErrors,
     ]);
   },
 };
