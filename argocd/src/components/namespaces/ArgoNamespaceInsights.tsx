@@ -64,7 +64,7 @@ function NamespaceInsights(props: { namespaceName: string }) {
   const apps = applications ?? [];
   const relatedApps = getNamespaceApplications(apps, props.namespaceName);
   const storedApps = relatedApps.filter(app => app.metadata.namespace === props.namespaceName);
-  const targetApps = relatedApps.filter(app => app.destinationNamespace === props.namespaceName);
+  const targetApps = relatedApps.filter(app => deploysIntoNamespace(app, props.namespaceName));
   const attentionApps = relatedApps.filter(
     app => app.syncStatus !== 'Synced' || app.healthStatus !== 'Healthy'
   );
@@ -237,12 +237,25 @@ function InsightsEmptyState(props: { message: string }) {
   );
 }
 
+function deploysIntoNamespace(app: ArgoApplication, namespaceName: string) {
+  const destination = app.spec.destination;
+  const hasLocalServer = destination?.server === 'https://kubernetes.default.svc';
+  const hasLocalName = destination?.name === 'in-cluster';
+
+  return (
+    destination?.namespace === namespaceName &&
+    (hasLocalServer || hasLocalName) &&
+    (!destination.server || hasLocalServer) &&
+    (!destination.name || hasLocalName)
+  );
+}
+
 function getNamespaceApplications(apps: ArgoApplication[], namespaceName: string) {
   const byKey: Record<string, ArgoApplication> = {};
 
   apps.forEach(app => {
     const isStoredHere = app.metadata.namespace === namespaceName;
-    const deploysHere = app.destinationNamespace === namespaceName;
+    const deploysHere = deploysIntoNamespace(app, namespaceName);
 
     if (isStoredHere || deploysHere) {
       byKey[`${app.metadata.namespace}/${app.metadata.name}`] = app;
@@ -254,7 +267,7 @@ function getNamespaceApplications(apps: ArgoApplication[], namespaceName: string
 
 function getAppNamespaceScope(app: ArgoApplication, namespaceName: string) {
   const isStoredHere = app.metadata.namespace === namespaceName;
-  const deploysHere = app.destinationNamespace === namespaceName;
+  const deploysHere = deploysIntoNamespace(app, namespaceName);
 
   if (isStoredHere && deploysHere) {
     return 'Stored and deploys here';
