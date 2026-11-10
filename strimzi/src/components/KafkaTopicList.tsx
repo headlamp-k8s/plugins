@@ -103,18 +103,29 @@ export function KafkaTopicList() {
     if (!editingTopic) return;
     setLoading(true);
     try {
+      // The form is filled in from the topic's config, so an empty field means the user
+      // cleared it. Remove that key instead of keeping the old value.
+      const config: Record<string, unknown> = { ...editingTopic.spec.config };
+      const formConfig: Record<string, string | undefined> = {
+        'retention.ms': formData.retentionMs?.toString(),
+        'compression.type': formData.compressionType,
+        'min.insync.replicas': formData.minInSyncReplicas?.toString(),
+      };
+      for (const [key, value] of Object.entries(formConfig)) {
+        if (value === undefined) {
+          delete config[key];
+        } else {
+          config[key] = value;
+        }
+      }
+
       const updatedTopic = {
         ...editingTopic,
         spec: {
           ...editingTopic.spec,
           partitions: formData.partitions,
           replicas: formData.replicas,
-          config: {
-            ...editingTopic.spec.config,
-            ...(formData.retentionMs != null ? { 'retention.ms': formData.retentionMs.toString() } : {}),
-            ...(formData.compressionType ? { 'compression.type': formData.compressionType } : {}),
-            ...(formData.minInSyncReplicas != null ? { 'min.insync.replicas': formData.minInSyncReplicas.toString() } : {}),
-          },
+          config,
         },
       };
 
@@ -173,9 +184,9 @@ export function KafkaTopicList() {
       cluster: topic.metadata.labels?.['strimzi.io/cluster'] || 'my-cluster',
       partitions: topic.spec.partitions || 3,
       replicas: topic.spec.replicas || 3,
-      retentionMs: topic.spec.config?.['retention.ms'] ? parseInt(topic.spec.config['retention.ms'] as string) : undefined,
+      retentionMs: topic.spec.config?.['retention.ms'] != null ? parseInt(topic.spec.config['retention.ms'] as string) : undefined,
       compressionType: topic.spec.config?.['compression.type'] as string | undefined,
-      minInSyncReplicas: topic.spec.config?.['min.insync.replicas'] ? parseInt(topic.spec.config['min.insync.replicas'] as string) : undefined,
+      minInSyncReplicas: topic.spec.config?.['min.insync.replicas'] != null ? parseInt(topic.spec.config['min.insync.replicas'] as string) : undefined,
     });
     setShowEditDialog(true);
   };
