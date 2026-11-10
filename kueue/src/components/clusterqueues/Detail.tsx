@@ -1,12 +1,20 @@
 import {
   ConditionsSection,
   DetailsGrid,
+  NameValueTable,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
+import { AdmissionCheck } from '../../resources/admissionCheck';
 import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
-import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
+import {
+  getClusterQueueInactiveCauses,
+  getResourceGroupRows,
+  ResourceGroupRow,
+} from '../../resources/clusterQueueFormatters';
+import { ResourceFlavor } from '../../resources/resourceFlavor';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
@@ -198,6 +206,75 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
   };
 }
 
+/** Explain an inactive ClusterQueue, naming every missing or inactive reference. */
+function ClusterQueueInactiveTable(props: { clusterQueue: ClusterQueue }) {
+  const { clusterQueue } = props;
+  // A list that fails (no RBAC) stays undefined, so nothing is reported missing from it.
+  const [flavors] = ResourceFlavor.useList({ cluster: clusterQueue.cluster });
+  const [admissionChecks] = AdmissionCheck.useList({ cluster: clusterQueue.cluster });
+  const causes = getClusterQueueInactiveCauses(
+    clusterQueue.activeCondition,
+    clusterQueue.resourceGroups,
+    clusterQueue.spec.admissionChecksStrategy,
+    flavors?.map(flavor => flavor.metadata.name),
+    admissionChecks?.map(check => ({
+      name: check.metadata.name,
+      active: check.activeCondition?.status === 'True',
+    }))
+  );
+
+  if (!causes) {
+    return null;
+  }
+
+  return (
+    <NameValueTable
+      rows={[
+        {
+          name: 'Reason',
+          value: <StatusLabel status="warning">{causes.reason || 'Unknown'}</StatusLabel>,
+        },
+        { name: 'What it means', value: causes.explanation, hide: !causes.explanation },
+        { name: 'Kueue message', value: causes.message, hide: !causes.message },
+        // Missing references are plain names, since a link would open a page that does not exist.
+        {
+          name: 'Missing ResourceFlavors',
+          value: causes.missingFlavors.join(', '),
+          hide: !causes.missingFlavors.length,
+        },
+        {
+          name: 'Missing AdmissionChecks',
+          value: causes.missingAdmissionChecks.join(', '),
+          hide: !causes.missingAdmissionChecks.length,
+        },
+        {
+          name: 'Inactive AdmissionChecks',
+          value: causes.inactiveAdmissionChecks.map(name => (
+            <div key={name}>{renderAdmissionCheckLink(name)}</div>
+          )),
+          hide: !causes.inactiveAdmissionChecks.length,
+        },
+      ]}
+    />
+  );
+}
+
+/** Build the section explaining why the ClusterQueue cannot admit Workloads. */
+function getInactiveSection(clusterQueue: ClusterQueue) {
+  if (clusterQueue.activeCondition?.status !== 'False') {
+    return null;
+  }
+
+  return {
+    id: 'inactive',
+    section: (
+      <SectionBox title="Why is this ClusterQueue inactive?">
+        <ClusterQueueInactiveTable clusterQueue={clusterQueue} />
+      </SectionBox>
+    ),
+  };
+}
+
 /** Build the standard Headlamp conditions section for ClusterQueue status. */
 function getConditionsSection(clusterQueue: ClusterQueue) {
   if (!clusterQueue.conditions.length) {
@@ -285,6 +362,7 @@ export default function ClusterQueueDetail() {
         extraSections={clusterQueue =>
           clusterQueue
             ? [
+                getInactiveSection(clusterQueue),
                 getConditionsSection(clusterQueue),
                 getResourceGroupsSection(clusterQueue),
                 getAdmissionChecksSection(clusterQueue),
