@@ -2,7 +2,7 @@ import '@headlamp-k8s/ai-ui/icons/iconBundles';
 import type { SavedConfigurations } from '@headlamp-k8s/ai-common/providers/savedConfigs';
 import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPage';
 import { Box } from '@mui/material';
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
 import {
   createDesktopApi,
