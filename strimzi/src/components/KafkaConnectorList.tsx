@@ -41,14 +41,14 @@ const STATE_CHIP_COLORS: Record<KafkaConnectorState, 'success' | 'warning' | 'de
 export function KafkaConnectorList() {
   const theme = useTheme();
   const { ready, installed, kafka: kafkaVersion } = useStrimziApiVersions();
-
-  if (ready && !installed) return <StrimziNotInstalledMessage />;
-
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [pendingState, setPendingState] = React.useState<{
     connector: KafkaConnectorInterface;
     targetState: KafkaConnectorState;
   } | null>(null);
+
+  // Keep this after the hooks, so the same hooks run before and after the API check finishes.
+  if (ready && !installed) return <StrimziNotInstalledMessage />;
 
   const patchState = async (
     connector: KafkaConnectorInterface,
