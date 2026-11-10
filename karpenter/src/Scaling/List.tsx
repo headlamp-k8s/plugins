@@ -1,6 +1,6 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/K8s/crd';
+import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 
 export function nodeClaimClass() {
   const nodeClaimGroup = 'karpenter.sh';
@@ -54,6 +54,7 @@ export function NodeClaimList() {
               params={{
                 name: item?.jsonData?.metadata?.name || '',
               }}
+              activeCluster={item.cluster}
             >
               {item?.jsonData?.metadata?.name || t('Unnamed')}
             </Link>
