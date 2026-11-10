@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Loader,
   ResourceListView,
@@ -19,21 +20,22 @@ interface MachinePoolsListWithDataProps {
  * @param props.MachinePoolClass - The machine pool resource class bound to a specific API version.
  */
 function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithDataProps) {
+  const { t } = useTranslation();
   return (
     <ResourceListView
-      title="Machine Pools"
+      title={t('Machine Pools')}
       resourceClass={MachinePoolClass}
       columns={[
         'name',
         'namespace',
         {
           id: 'cluster',
-          label: 'Cluster',
+          label: t('Cluster'),
           getValue: mp => mp.spec?.clusterName,
         },
         {
           id: 'ready',
-          label: 'Ready',
+          label: t('Ready'),
           getValue: mp => `${mp.status?.readyReplicas ?? 0}/${mp.spec?.replicas ?? 0}`,
           render: mp => {
             const ready = mp.status?.readyReplicas ?? 0;
@@ -48,12 +50,12 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
         },
         {
           id: 'uptodate',
-          label: 'Up-to-date',
+          label: t('Up-to-date'),
           getValue: mp => mp.upToDateReplicas ?? '-',
         },
         {
           id: 'phase',
-          label: 'Phase',
+          label: t('Phase'),
           getValue: mp => mp.status?.phase,
           render: mp => {
             const phase = mp.status?.phase;
@@ -63,7 +65,7 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
         },
         {
           id: 'available',
-          label: 'Available',
+          label: t('Available'),
           getValue: mp => mp.status?.availableReplicas ?? 0,
         },
         'age',
@@ -77,11 +79,12 @@ function MachinePoolsListWithData({ MachinePoolClass }: MachinePoolsListWithData
  * Detects the CAPI version and renders the list with the correct resource class.
  */
 export function MachinePoolsList() {
+  const { t } = useTranslation();
   const version = useCapiApiVersion(MachinePool.crdName, 'v1beta1');
   const VersionedMachinePool = useMemo(
     () => (version ? MachinePool.withApiVersion(version) : MachinePool),
     [version]
   );
-  if (!version) return <Loader title="Detecting MachinePool version" />;
+  if (!version) return <Loader title={t('Detecting MachinePool version')} />;
   return <MachinePoolsListWithData MachinePoolClass={VersionedMachinePool} />;
 }
