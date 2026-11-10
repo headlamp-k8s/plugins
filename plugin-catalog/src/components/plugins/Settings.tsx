@@ -4,25 +4,40 @@ import Paper from '@mui/material/Paper';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import { useId } from 'react';
-import { configStore, usePluginCatalogConfig } from '../../config';
+import { useCatalogMode } from '../../aks';
+import { configStore, PluginCatalogConfig, usePluginCatalogConfig } from '../../config';
+
+type SettingsRow = {
+  key: keyof PluginCatalogConfig;
+  name: string;
+  description?: string;
+};
 
 export function Settings() {
   const data = usePluginCatalogConfig();
   const { t } = useTranslation();
   const id = useId();
+  const aksMode = useCatalogMode() === 'aks';
 
-  const settingsRows = [
-    {
-      key: 'displayOnlyOfficialPlugins',
-      name: t('Display only official plugins'),
-      description: t('Show only official packages from Artifact Hub.'),
-    },
-    {
-      key: 'displayOnlyVerifiedPlugins',
-      name: t('Display only verified plugins'),
-      description: t('Show only packages from verified publishers on Artifact Hub.'),
-    },
-  ] as const;
+  const settingsRows: SettingsRow[] = aksMode
+    ? [
+        {
+          key: 'displayOnlyAksOptimizedPlugins',
+          name: t('Display only AKS optimized Plugins'),
+        },
+      ]
+    : [
+        {
+          key: 'displayOnlyOfficialPlugins',
+          name: t('Display only official plugins'),
+          description: t('Show only official packages from Artifact Hub.'),
+        },
+        {
+          key: 'displayOnlyVerifiedPlugins',
+          name: t('Display only verified plugins'),
+          description: t('Show only packages from verified publishers on Artifact Hub.'),
+        },
+      ];
 
   return (
     <Paper variant="outlined" sx={{ mt: 2, px: 2 }}>
@@ -48,22 +63,24 @@ export function Settings() {
             <Typography component="span" id={`${id}-${row.key}-label`} sx={{ display: 'block' }}>
               {row.name}
             </Typography>
-            <Typography
-              component="span"
-              id={`${id}-${row.key}-description`}
-              variant="body2"
-              color="text.secondary"
-              sx={{ display: 'block' }}
-            >
-              {row.description}
-            </Typography>
+            {row.description && (
+              <Typography
+                component="span"
+                id={`${id}-${row.key}-description`}
+                variant="body2"
+                color="text.secondary"
+                sx={{ display: 'block' }}
+              >
+                {row.description}
+              </Typography>
+            )}
           </Box>
           <Switch
             checked={data?.[row.key] ?? true}
             inputProps={{
               id: `${id}-${row.key}`,
               'aria-labelledby': `${id}-${row.key}-label`,
-              'aria-describedby': `${id}-${row.key}-description`,
+              'aria-describedby': row.description ? `${id}-${row.key}-description` : undefined,
             }}
             onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
               configStore.update({ [row.key]: event.target.checked })

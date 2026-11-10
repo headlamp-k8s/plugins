@@ -3,6 +3,7 @@ import store from '@kinvolk/headlamp-plugin/lib/redux/stores/store';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useCatalogMode } from '../../aks';
 import { configStore } from '../../config';
 import { Settings } from './Settings';
 
@@ -25,6 +26,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib', async () => {
 vi.mock('./List', () => ({ PluginList: () => null }));
 vi.mock('./Detail', () => ({ PluginDetail: () => null }));
 vi.mock('./InstalledList', () => ({ PluginInstalledList: () => null }));
+vi.mock('../../aks', () => ({ useCatalogMode: vi.fn(() => 'headlamp') }));
 
 function renderSettings() {
   return render(
@@ -38,6 +40,7 @@ describe('Plugin Catalog settings', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     configStore.set({});
+    vi.mocked(useCatalogMode).mockReturnValue('headlamp');
   });
 
   afterEach(() => {
@@ -107,5 +110,55 @@ describe('Plugin Catalog settings', () => {
       '@headlamp-k8s/plugin-catalog',
       Settings
     );
+  });
+
+  it('preserves both modes preferences when AKS is enabled and disabled', () => {
+    const initial = {
+      displayOnlyOfficialPlugins: false,
+      displayOnlyVerifiedPlugins: true,
+      displayOnlyAksOptimizedPlugins: false,
+    };
+    configStore.set(initial);
+    vi.mocked(useCatalogMode).mockReturnValue('aks');
+    const { rerender } = renderSettings();
+    expect(screen.queryByRole('checkbox', { name: 'Display only official plugins' })).toBeNull();
+    expect(
+      screen.getByRole('checkbox', { name: 'Display only AKS optimized Plugins' })
+    ).toHaveProperty('checked', false);
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(configStore.get()).toEqual({ ...initial, displayOnlyAksOptimizedPlugins: true });
+
+    vi.mocked(useCatalogMode).mockReturnValue('headlamp');
+    rerender(
+      <Provider store={store}>
+        <Settings />
+      </Provider>
+    );
+    expect(
+      screen.queryByRole('checkbox', { name: 'Display only AKS optimized Plugins' })
+    ).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Display only official plugins' })).toHaveProperty(
+      'checked',
+      false
+    );
+    expect(screen.getByRole('checkbox', { name: 'Display only verified plugins' })).toHaveProperty(
+      'checked',
+      true
+    );
+
+    vi.mocked(useCatalogMode).mockReturnValue('aks');
+    rerender(
+      <Provider store={store}>
+        <Settings />
+      </Provider>
+    );
+    expect(screen.getByRole('checkbox')).toHaveProperty('checked', true);
+  });
+
+  it('defaults the AKS filter on without writing preferences', () => {
+    vi.mocked(useCatalogMode).mockReturnValue('aks');
+    renderSettings();
+    expect(screen.getByRole('checkbox')).toHaveProperty('checked', true);
+    expect(configStore.get()).toEqual({});
   });
 });
