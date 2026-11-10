@@ -1,3 +1,4 @@
+import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -24,6 +25,7 @@ import {
   getWorkloadBlocker,
   getWorkloadTimeline,
   renderPodSetRequests,
+  renderQueuePosition,
   renderResourceList,
   renderStringMap,
   renderText,
@@ -540,6 +542,79 @@ function getTimelineSection(workload: Workload) {
   return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
 }
 
+/** Kueue's on-demand visibility API, served as v1beta2 since Kueue 0.15. */
+const visibilityApiVersion = 'visibility.kueue.x-k8s.io/v1beta2';
+
+/** How often to reread the visibility API, since its lists cannot be watched. */
+const queuePositionRefreshMs = 15000;
+
+/**
+ * Ask Kueue's visibility API where a pending Workload sits in its queues, rereading it
+ * periodically so the position follows Workloads ahead of it being admitted or deleted.
+ * Returns null when the API is not served, access is denied, or the Workload is not listed.
+ */
+function useQueuePosition(workload: Workload, enabled: boolean) {
+  const [position, setPosition] = useState<string | null>(null);
+  const { name, namespace } = workload.metadata;
+  const queueName = workload.queueName;
+  // The Job panel can show a Workload from another cluster than the current one.
+  const cluster = workload.cluster;
+
+  useEffect(() => {
+    setPosition(null);
+    if (!enabled || !queueName || !namespace) {
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = async () => {
+      let next: string | null = null;
+      try {
+        const summary = await request(
+          `/apis/${visibilityApiVersion}/namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`,
+          cluster ? { cluster } : {},
+          false
+        );
+        next = renderQueuePosition(summary?.items, name, namespace);
+      } catch {
+        // Clusters without the visibility API return 404, and users without access get 403.
+        // Clear the position so a failing refresh does not leave an old one showing.
+      }
+      if (!cancelled) {
+        setPosition(next);
+        // Wait for this request before starting the next, so slow ones cannot overlap.
+        timer = setTimeout(load, queuePositionRefreshMs);
+      }
+    };
+    load();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [enabled, name, namespace, queueName, cluster]);
+
+  return position;
+}
+
+/** Blocker rows plus the Workload's queue position, which needs a request of its own. */
+function WorkloadBlockerTable(props: {
+  workload: Workload;
+  inQueue: boolean;
+  rows: { name: string; value: React.ReactNode; hide?: boolean }[];
+}) {
+  const { workload, inQueue, rows } = props;
+  const position = useQueuePosition(workload, inQueue);
+  const [stage, ...rest] = rows;
+
+  return (
+    <NameValueTable
+      rows={[stage, { name: 'Queue position', value: position, hide: !position }, ...rest]}
+    />
+  );
+}
+
 /** Build the section explaining what is stopping the Workload from being admitted. */
 export function getBlockerSection(workload: Workload) {
   const blocker = getWorkloadBlocker(
@@ -588,7 +663,12 @@ export function getBlockerSection(workload: Workload) {
     id: 'blocker',
     section: (
       <SectionBox title="Why is this Workload not admitted?">
-        <NameValueTable rows={rows} />
+        <WorkloadBlockerTable
+          workload={workload}
+          // Only Workloads still waiting for quota are listed by the visibility API.
+          inQueue={blocker.stage === 'Not evaluated' || blocker.stage === 'Waiting for quota'}
+          rows={rows}
+        />
       </SectionBox>
     ),
   };
