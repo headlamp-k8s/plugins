@@ -4,7 +4,7 @@ A Headlamp plugin for operating Knative Serving workloads and inspecting the res
 Serving creates for them. Application owners can manage Services and traffic, while platform
 operators can follow a request from its Route and Ingress through to autoscaling and image
 resolution resources. Event-driven application owners can manage the Knative Eventing Brokers,
-Triggers, Channels and Subscriptions that route events.
+Triggers, Channels and Subscriptions that route events, and the Sources that send them.
 
 ## Requirements
 
@@ -22,8 +22,8 @@ The sidebar uses non-clickable section headings to group the views into four sec
 **Serving** for the resources application and domain owners manage, **Serving Internals** for
 internal resources, including the read-only resources Serving derives and manages itself,
 **Configuration** for cluster-level Knative settings, and **Eventing** for the Brokers, Triggers,
-Channels and Subscriptions that route events. Serving and Eventing are detected separately, so a
-cluster that runs only one of them shows only its sections.
+Channels and Subscriptions that route events and the Sources that send them. Serving and Eventing
+are detected separately, so a cluster that runs only one of them shows only its sections.
 
 ### Serving
 
@@ -61,6 +61,13 @@ cluster that runs only one of them shows only its sections.
 | Event-driven application owner | Triggers | `/knative/triggers` | Which subscriber receives events from the `default` Broker, and why is a Trigger not ready? | Manage |
 | Event-driven application owner | Channels | `/knative/channels` | Which kind of channel backs `orders`, and how many Subscriptions does it have? | Manage; view only when Knative created it |
 | Event-driven application owner | Subscriptions | `/knative/subscriptions` | Where do events from the `orders` Channel go, and which Subscriptions did a Broker create for its Triggers? | Manage; view only when Knative created it |
+| Event-driven application owner | Sources | `/knative/sources` | Which Sources send events to the `default` Broker, and why is a Source not ready? | Manage; view only when Knative created it |
+
+The Sources view lists the Sources of every kind in one table: Knative's own, such as
+ApiServerSource, PingSource and SinkBinding, and those of other projects, found through the
+`duck.knative.dev/source=true` label on their CustomResourceDefinitions. Users who may not list
+CustomResourceDefinitions see Knative's own kinds, ApiServerSource, ContainerSource, PingSource and
+SinkBinding, with a note saying so. Selecting a Source opens Headlamp's Custom Resource view.
 
 Selecting a Broker or Trigger opens its detail page. A Broker's page shows its class, address, and
 settings ConfigMap; a Trigger's page shows its Broker, filter, subscriber, and the URI the

@@ -66,6 +66,8 @@ describe('read-only Knative detail actions', () => {
     ['networking.internal.knative.dev/v1alpha1', 'Certificate'],
     ['messaging.knative.dev/v1', 'Channel'],
     ['messaging.knative.dev/v1', 'Subscription'],
+    ['sources.knative.dev/v1', 'ContainerSource'],
+    ['sources.knative.dev/v1', 'SinkBinding'],
   ])('removes mutating defaults from %s %s', (apiVersion, kind) => {
     const servingResource = resource(apiVersion, kind);
 
