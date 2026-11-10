@@ -739,16 +739,14 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
       `matchConstraints.namespaceSelector further restricts which namespaces this policy applies to.`
     );
   }
-  if (mc.labelSelector && Object.keys(mc.labelSelector).length > 0) {
+  if (mc.objectSelector && Object.keys(mc.objectSelector).length > 0) {
     reasons.push(
-      `matchConstraints.labelSelector further restricts which resources this policy applies to by label.`
+      `matchConstraints.objectSelector further restricts which resources this policy applies to by label.`
     );
   }
-  if (mc.matchConditions && mc.matchConditions.length > 0) {
-    const names = mc.matchConditions.map(c => `"${c.name}"`).join(', ');
-    reasons.push(
-      `matchConstraints.matchConditions [${names}] further restrict when this policy applies.`
-    );
+  if (spec.matchConditions && spec.matchConditions.length > 0) {
+    const names = spec.matchConditions.map(c => `"${c.name}"`).join(', ');
+    reasons.push(`matchConditions [${names}] further restrict when this policy applies.`);
   }
 
   return reasons;

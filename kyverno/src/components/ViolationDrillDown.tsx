@@ -225,11 +225,13 @@ function CELContent({ target, spec }: { target: DrillDownTarget; spec: Validatin
   const kind = target.kind || 'Unknown';
   const reasons = describeCELMatchReasons(spec, kind);
 
-  // Find the matching validation entry by message. Falls back to the first one when
-  // no message matches exactly (e.g. when the policy uses messageExpression instead).
+  // Find the matching validation entry by message. Only fall back to the first
+  // entry when there is a single validation; a dynamic messageExpression in a
+  // multi-validation policy may match none of the static messages, and showing
+  // the wrong entry's expression and fix would be misleading.
   const matchingValidation: CELValidation | undefined =
     spec.validations?.find(v => v.message && target.message?.includes(v.message)) ??
-    spec.validations?.[0];
+    (spec.validations?.length === 1 ? spec.validations[0] : undefined);
 
   const fix = matchingValidation ? suggestCELFix(matchingValidation, target) : undefined;
 

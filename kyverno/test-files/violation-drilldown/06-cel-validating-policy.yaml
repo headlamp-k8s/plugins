@@ -14,7 +14,12 @@ kind: ValidatingPolicy
 metadata:
   name: dd-require-cost-center
 spec:
+  validationActions:
+    - Audit
   matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: drilldown-test
     resourceRules:
       - apiGroups:
           - ""
@@ -25,11 +30,9 @@ spec:
           - UPDATE
         resources:
           - pods
-        namespaces:
-          - drilldown-test
   validations:
     - expression: >-
         has(object.metadata.annotations) &&
-        has(object.metadata.annotations['cost-center']) &&
+        'cost-center' in object.metadata.annotations &&
         object.metadata.annotations['cost-center'] != ''
       message: "Pods must carry a non-empty 'cost-center' annotation."

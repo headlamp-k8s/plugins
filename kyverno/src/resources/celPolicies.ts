@@ -34,8 +34,7 @@ export interface ResourceRule {
 export interface MatchConstraints {
   resourceRules?: ResourceRule[];
   namespaceSelector?: Record<string, unknown>;
-  labelSelector?: Record<string, unknown>;
-  matchConditions?: { name: string; expression: string }[];
+  objectSelector?: Record<string, unknown>;
 }
 
 export interface CELPolicyEvaluation {
@@ -65,6 +64,7 @@ export interface CELValidation {
 export interface ValidatingPolicySpec {
   validationActions?: string[];
   matchConstraints?: MatchConstraints;
+  matchConditions?: { name: string; expression: string }[];
   variables?: CELVariable[];
   validations?: CELValidation[];
   evaluation?: CELPolicyEvaluation;
