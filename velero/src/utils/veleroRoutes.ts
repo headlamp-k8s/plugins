@@ -1,5 +1,6 @@
 /** Route names registered with Headlamp for the Velero plugin. */
 export const veleroRouteNames = {
+  dashboard: 'velero-dashboard',
   schedulesList: 'velero-schedules-list',
   scheduleDetail: 'velero-schedule-detail',
   backupsList: 'velero-backups-list',
@@ -14,8 +15,9 @@ export const veleroRouteNames = {
   backupRepositoryDetail: 'velero-backuprepository-detail',
 } as const;
 
-/** URL paths for Velero Phase 2/3 cluster-wide views. */
+/** URL paths for Velero cluster-wide views (Phases 2–5). */
 export const veleroRoutePaths = {
+  dashboard: '/velero',
   schedulesList: '/velero/schedules',
   scheduleDetail: '/velero/schedules/:namespace/:name',
   backupsList: '/velero/backups',

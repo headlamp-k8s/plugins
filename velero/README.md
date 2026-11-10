@@ -24,6 +24,18 @@ Sidebar entry **Velero** with:
 
 Coverage panels and schedule views load schedule-owned Backups via a `velero.io/schedule-name` label selector, then keep the latest Backup per schedule client-side (long TTLs can still return large histories). The Backups sidebar list still shows the full Backup table.
 
+### Phase 5 — Backup health overview
+
+Sidebar **Velero → Overview** (`/velero`):
+
+- Counts for Backups / Restores (completed, failed/partial, in progress)
+- Schedule health (active, paused, failed validation)
+- Backup Storage Location table (status / provider / bucket)
+- Recent failed backups and restores tables with links into detail views
+- Quick links to Schedules, Backups, Restores, and Storage Locations
+
+Pinned to the current Headlamp cluster and the configured Velero namespace.
+
 ### Phase 4 — Create and manage (write path)
 
 - **Create Backup** / **Create Restore** / **Create Schedule** from the respective list pages (forms adapted from the reasonerjt prototype).
