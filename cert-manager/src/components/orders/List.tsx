@@ -6,9 +6,9 @@ import { NotInstalledBanner } from '../common/CommonComponents';
 
 export function OrdersList() {
   const { t } = useTranslation();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
-  return isManagerInstalled ? (
+  return !notInstalled && !isLoading ? (
     <ResourceListView
       title={t('Orders')}
       resourceClass={Order}
@@ -24,6 +24,6 @@ export function OrdersList() {
       ]}
     />
   ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+    <NotInstalledBanner isLoading={isLoading} />
   );
 }

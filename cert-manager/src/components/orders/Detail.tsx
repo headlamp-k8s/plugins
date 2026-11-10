@@ -18,11 +18,11 @@ import {
 export function OrderDetail() {
   const { t } = useTranslation();
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
   return (
     <>
-      {isManagerInstalled ? (
+      {!notInstalled && !isLoading ? (
         <DetailsGrid
           resourceType={Order}
           namespace={namespace}
@@ -129,7 +129,7 @@ export function OrderDetail() {
           }
         />
       ) : (
-        <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+        <NotInstalledBanner isLoading={isLoading} />
       )}
     </>
   );
