@@ -382,7 +382,30 @@ function redactSecretDataFields(obj: Record<string, unknown>): boolean {
       }
     }
   }
-  return changed;
+  return redactLastAppliedConfiguration(obj) || changed;
+}
+
+/**
+ * Annotation `kubectl apply` writes with the full applied manifest. On a
+ * Secret it holds a copy of `data` / `stringData`.
+ */
+const LAST_APPLIED_ANNOTATION = 'kubectl.kubernetes.io/last-applied-configuration';
+
+/**
+ * Replaces the `kubectl.kubernetes.io/last-applied-configuration` annotation
+ * of a Secret-shaped object with `[REDACTED]`, in place.
+ *
+ * @param obj - A Secret object or a `SecretList` item.
+ * @returns Whether the annotation was present and redacted.
+ */
+function redactLastAppliedConfiguration(obj: Record<string, unknown>): boolean {
+  const metadata = obj.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  const annotations = (metadata as Record<string, unknown>).annotations;
+  if (!annotations || typeof annotations !== 'object' || Array.isArray(annotations)) return false;
+  if (!Object.prototype.hasOwnProperty.call(annotations, LAST_APPLIED_ANNOTATION)) return false;
+  (annotations as Record<string, unknown>)[LAST_APPLIED_ANNOTATION] = '[REDACTED]';
+  return true;
 }
 
 /**
@@ -424,12 +447,47 @@ function redactSecretYamlDocument(input: string): string {
   const lines = input.split('\n');
   let dataBlockIndent: number | null = null;
   let blockScalarIndent: number | null = null;
+  // `kind` of the object being scanned, so a List mixing Secrets and other
+  // kinds only loses the annotation on its Secrets. `null` until a `kind` is
+  // seen for the current object (`kubectl` prints `metadata` after `kind`).
+  let objectKind: string | null = null;
+  let objectKeyColumn: number | null = null;
 
   const redacted = lines.map(line => {
     const indent = line.match(/^\s*/)?.[0].length ?? 0;
     if (blockScalarIndent !== null) {
       if (line.trim() === '' || indent > blockScalarIndent) return '';
       blockScalarIndent = null;
+    }
+
+    const keyMatch = line.match(/^(\s*)(-\s+)?\S/);
+    if (keyMatch) {
+      const keyColumn = keyMatch[1].length + (keyMatch[2]?.length ?? 0);
+      if (
+        objectKeyColumn !== null &&
+        (keyColumn < objectKeyColumn || (keyMatch[2] && keyColumn === objectKeyColumn))
+      ) {
+        objectKind = null;
+        objectKeyColumn = null;
+      }
+      const kindMatch = line.match(/^\s*(?:-\s+)?kind\s*:\s*["']?([^"'\s]+)["']?\s*$/);
+      if (
+        kindMatch &&
+        (objectKeyColumn === null || keyColumn <= objectKeyColumn || /List$/.test(objectKind ?? ''))
+      ) {
+        objectKind = kindMatch[1];
+        objectKeyColumn = keyColumn;
+      }
+    }
+
+    // `kubectl apply` keeps the whole manifest, data included, in this
+    // annotation. Drop its value and any indented continuation lines.
+    const lastAppliedMatch = line.match(
+      /^(\s*)(["']?)kubectl\.kubernetes\.io\/last-applied-configuration\2[ \t]*:(?:\s.*)?$/
+    );
+    if (lastAppliedMatch && (objectKind === null || /^Secret(List)?$/.test(objectKind))) {
+      blockScalarIndent = lastAppliedMatch[1].length;
+      return `${lastAppliedMatch[1]}${LAST_APPLIED_ANNOTATION}: [REDACTED]`;
     }
 
     const dataMatch = line.match(/^(\s*)(data|stringData):\s*$/);
@@ -503,4 +561,5 @@ function redactSecretDataFieldsInPlace(obj: Record<string, unknown>): void {
       );
     }
   }
+  redactLastAppliedConfiguration(obj);
 }
