@@ -18,6 +18,7 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControl,
@@ -29,14 +30,17 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { DrillDownTarget } from '../resources/policyImpact';
 import {
   ClusterPolicyReport,
   PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
+  PolicyReportSource,
   PolicyResultStatus,
 } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { ViolationDrillDown } from './ViolationDrillDown';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -152,6 +156,22 @@ function StatusFilterChips({
   );
 }
 
+function entryToTarget(v: ViolationEntry): DrillDownTarget {
+  const resource = v.resources?.[0] ?? v.scope;
+  return {
+    policy: v.policy,
+    source: v.source as PolicyReportSource | undefined,
+    rule: v.rule,
+    kind: resource?.kind,
+    apiVersion: resource?.apiVersion,
+    name: resource?.name,
+    namespace: resource?.namespace ?? v.reportNamespace,
+    message: v.message,
+    severity: v.severity,
+    status: v.result,
+  };
+}
+
 export function ViolationsView() {
   const { i18n, ready, t } = useTranslation();
   const { items: policyReports } = PolicyReport.useList();
@@ -159,6 +179,7 @@ export function ViolationsView() {
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
+  const [drillDownTarget, setDrillDownTarget] = useState<DrillDownTarget | null>(null);
 
   // Each header string is computed once and reused for both `header` and the
   // column id, rather than calling t() twice per column. The column array is
@@ -179,6 +200,7 @@ export function ViolationsView() {
   const severityHeader = t('Severity');
   const resultHeader = t('Result');
   const messageHeader = t('Message');
+  const detailsHeader = t('Details');
 
   const violationColumns = useMemo(
     () => [
@@ -229,6 +251,22 @@ export function ViolationsView() {
         id: 'message',
         accessorFn: (v: ViolationEntry) => v.message || '-',
       },
+      {
+        header: detailsHeader,
+        id: 'details',
+        // accessorFn returns the rule name so the column is sortable; the Cell renders the button.
+        accessorFn: (v: ViolationEntry) => v.rule ?? '',
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <Button
+            size="small"
+            variant="outlined"
+            aria-label={t('Open violation details')}
+            onClick={() => setDrillDownTarget(entryToTarget(row.original))}
+          >
+            {detailsHeader}
+          </Button>
+        ),
+      },
     ],
     [
       resourceHeader,
@@ -239,6 +277,8 @@ export function ViolationsView() {
       severityHeader,
       resultHeader,
       messageHeader,
+      detailsHeader,
+      setDrillDownTarget,
     ]
   );
 
@@ -294,6 +334,7 @@ export function ViolationsView() {
 
   return (
     <Box sx={{ p: 2 }}>
+      <ViolationDrillDown target={drillDownTarget} onClose={() => setDrillDownTarget(null)} />
       <SectionBox title={t('Violations ({{count}})', { count: filteredViolations.length })}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <StatusFilterChips
