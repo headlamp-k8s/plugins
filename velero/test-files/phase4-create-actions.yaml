@@ -1,0 +1,75 @@
+# Phase 4 fixtures — Create Backup / Restore / Schedule + Pause/Unpause
+# Apply after Velero is installed (CRDs + namespace `velero`).
+#
+#   kubectl apply -f plugins/velero/test-files/phase4-create-actions.yaml
+#
+# These CRs seed the UI so you can exercise list/detail without using the forms first.
+# Prefer creating additional objects via Headlamp Create* forms for write-path tests.
+
+---
+# Enabled schedule — shows next-run / Pause on Schedule detail
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: phase4-demo-hourly
+  namespace: velero
+spec:
+  schedule: '0 * * * *'
+  template:
+    includedNamespaces:
+      - default
+    ttl: 24h0m0s
+
+---
+# Already paused — Unpause on Schedule detail
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: phase4-demo-paused
+  namespace: velero
+spec:
+  paused: true
+  schedule: '0 2 * * *'
+  template:
+    includedNamespaces:
+      - default
+    ttl: 72h0m0s
+
+---
+# Completed Backup — seed for Create Restore form backup picker
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: phase4-demo-backup
+  namespace: velero
+  labels:
+    velero.io/storage-location: default
+spec:
+  includedNamespaces:
+    - default
+  storageLocation: default
+  ttl: 24h0m0s
+  snapshotVolumes: false
+  defaultVolumesToFsBackup: false
+status:
+  phase: Completed
+  startTimestamp: '2026-11-07T12:00:00Z'
+  completionTimestamp: '2026-11-07T12:01:00Z'
+  expiration: '2026-11-08T12:00:00Z'
+
+---
+# Completed Restore referencing the demo Backup
+apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: phase4-demo-restore
+  namespace: velero
+spec:
+  backupName: phase4-demo-backup
+  includedNamespaces:
+    - default
+  restorePVs: true
+status:
+  phase: Completed
+  startTimestamp: '2026-11-07T12:05:00Z'
+  completionTimestamp: '2026-11-07T12:06:00Z'

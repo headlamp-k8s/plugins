@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button } from '@mui/material';
 import { useState } from 'react';
 import { useVeleroNamespace } from '../../config';
@@ -18,11 +19,16 @@ import type { ScheduleCreateInput } from './createTypes';
 
 function ScheduleListContent() {
   const veleroNamespace = useVeleroNamespace();
+  // Pin form lookups + create POST to the same write-target cluster.
+  const cluster = getCluster() || undefined;
   const { loading: accessLoading, canCreateSchedule } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { latestBackupBySchedule, loading: backupsLoading, error: backupsError } = useVeleroData();
-  const [schedules, schedulesError] = VeleroSchedule.useList({ namespace: veleroNamespace });
-  const [namespacesList] = K8s.ResourceClasses.Namespace.useList();
+  const [schedules, schedulesError] = VeleroSchedule.useList({
+    namespace: veleroNamespace,
+    cluster,
+  });
+  const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
   const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
 
   const errorMessage = schedulesError?.message ?? backupsError?.message;
@@ -50,7 +56,9 @@ function ScheduleListContent() {
     };
 
     // POST only so duplicate names surface as AlreadyExists instead of silent apply/update.
-    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/schedules`, body);
+    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/schedules`, body, true, {
+      cluster,
+    });
     setShowCreateForm(false);
   };
 

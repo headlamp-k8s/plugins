@@ -112,6 +112,7 @@ export default function ScheduleCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               options={namespaces}
               value={includedNamespaces}
               onChange={(_, v) => setIncludedNamespaces(v)}
@@ -119,7 +120,7 @@ export default function ScheduleCreateForm({
                 <TextField
                   {...params}
                   label="Included Namespaces"
-                  placeholder="Empty = all namespaces"
+                  placeholder="Select or type (empty = all)"
                 />
               )}
               renderTags={(value, getTagProps) =>
@@ -133,11 +134,16 @@ export default function ScheduleCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               options={namespaces}
               value={excludedNamespaces}
               onChange={(_, v) => setExcludedNamespaces(v)}
               renderInput={params => (
-                <TextField {...params} label="Excluded Namespaces" placeholder="Optional" />
+                <TextField
+                  {...params}
+                  label="Excluded Namespaces"
+                  placeholder="Select or type (optional)"
+                />
               )}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (

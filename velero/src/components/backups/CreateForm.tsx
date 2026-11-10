@@ -29,7 +29,7 @@ export default function BackupCreateForm({
   const [excludedNamespaces, setExcludedNamespaces] = useState<string[]>([]);
   const [includedResources, setIncludedResources] = useState<string[]>([]);
   const [excludedResources, setExcludedResources] = useState<string[]>([]);
-  const [storageLocation, setStorageLocation] = useState(storageLocations[0] || 'default');
+  const [storageLocation, setStorageLocation] = useState(storageLocations[0] || '');
   const [ttl, setTtl] = useState('720h0m0s');
   const [snapshotVolumes, setSnapshotVolumes] = useState(true);
   const [defaultVolumesToFsBackup, setDefaultVolumesToFsBackup] = useState(false);
@@ -141,6 +141,7 @@ export default function BackupCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               id="included-namespaces"
               options={namespaces}
               value={selectedNamespaces}
@@ -150,7 +151,7 @@ export default function BackupCreateForm({
                   {...params}
                   variant="outlined"
                   label="Included Namespaces"
-                  placeholder="Select namespaces (empty for all)"
+                  placeholder="Select or type namespaces (empty for all)"
                 />
               )}
               renderTags={(value, getTagProps) =>
@@ -165,6 +166,7 @@ export default function BackupCreateForm({
           <Grid item xs={12} md={6}>
             <Autocomplete
               multiple
+              freeSolo
               id="excluded-namespaces"
               options={namespaces}
               value={excludedNamespaces}
@@ -174,7 +176,7 @@ export default function BackupCreateForm({
                   {...params}
                   variant="outlined"
                   label="Excluded Namespaces"
-                  placeholder="Select namespaces to exclude"
+                  placeholder="Select or type namespaces to exclude"
                 />
               )}
               renderTags={(value, getTagProps) =>

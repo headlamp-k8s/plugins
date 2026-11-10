@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Link, ResourceListView, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button } from '@mui/material';
 import { useState } from 'react';
 import { useVeleroNamespace } from '../../config';
@@ -41,12 +42,14 @@ function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
 
 function RestoreListContent() {
   const veleroNamespace = useVeleroNamespace();
+  // Pin form lookups + create POST to the same write-target cluster.
+  const cluster = getCluster() || undefined;
   const { loading: accessLoading, canCreateRestore } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
-  const [backupsList] = VeleroBackup.useList({ namespace: veleroNamespace });
-  const [namespacesList] = K8s.ResourceClasses.Namespace.useList();
+  const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace, cluster });
+  const [backupsList] = VeleroBackup.useList({ namespace: veleroNamespace, cluster });
+  const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
 
   const backups = backupsList ? backupsList.map(b => b.getName()) : [];
   const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
@@ -70,7 +73,9 @@ function RestoreListContent() {
     };
 
     // POST only so duplicate names surface as AlreadyExists instead of silent apply/update.
-    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/restores`, body);
+    await ApiProxy.post(`/apis/velero.io/v1/namespaces/${veleroNamespace}/restores`, body, true, {
+      cluster,
+    });
     setShowCreateForm(false);
   };
 

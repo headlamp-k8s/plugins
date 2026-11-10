@@ -29,7 +29,9 @@ Coverage panels and schedule views load schedule-owned Backups via a `velero.io/
 - **Create Backup** / **Create Restore** / **Create Schedule** from the respective list pages (forms adapted from the reasonerjt prototype).
 - **Pause / Unpause** on Schedule detail.
 - Creates/patches CRs in the configured Velero namespace (`Settings → Plugins → Velero`), not a hardcoded `velero` namespace.
-- Create / pause actions stay hidden until SelfSubjectAccessReview finishes, and are omitted when it denies `create` / `patch` (pause checks the Schedule’s route namespace).
+- Create / pause actions stay hidden until SelfSubjectAccessReview finishes, and are omitted when it denies `create` / `patch` (pause checks the Schedule’s route namespace and name).
+- Create forms pin lookups/POSTs to the current cluster; namespace fields allow typed values when Namespace discovery is unavailable.
+- Manual fixtures: `test-files/phase4-create-actions.yaml`.
 
 ### Phase 3 — Storage + CSI / Datamover visibility
 

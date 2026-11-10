@@ -14,8 +14,11 @@ import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
 function ScheduleDetailContent() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  // Authorize against the Schedule's route namespace (may differ from plugin settings).
-  const { loading: accessLoading, canPatchSchedule } = useVeleroAccess(namespace);
+  // Authorize against this Schedule's route ns + name (supports resourceNames RBAC).
+  const { loading: accessLoading, canPatchSchedule } = useVeleroAccess({
+    namespace,
+    name,
+  });
   const [pauseBusy, setPauseBusy] = useState(false);
   const [pauseError, setPauseError] = useState<string | null>(null);
   const {
