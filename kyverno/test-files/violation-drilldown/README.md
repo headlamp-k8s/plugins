@@ -1,10 +1,10 @@
 # Violation Drill-Down dialog test fixtures
 
-These fixtures exercise the **Violation Drill-Down dialog** introduced in PR-4:
-one failing resource per validation mechanism (pattern, anyPattern, conditional deny,
-foreach, legacy CEL inside a kyverno.io/v1 rule, CEL ValidatingPolicy), so every
-code path in `suggestFix`, `suggestCELFix`, `describeMatchReasons`, and
-`describeCELMatchReasons` can be confirmed against real report data in the browser.
+These fixtures exercise the **Violation Drill-Down dialog** introduced in PR-4 with one
+failing resource per validation mechanism (pattern, anyPattern, conditional deny, foreach,
+and CEL ValidatingPolicy), so the corresponding code paths in `suggestFix`, `suggestCELFix`,
+`describeMatchReasons`, and `describeCELMatchReasons` can be confirmed against real report
+data in the browser.
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ immediately for `07-sample-workloads.yaml` when applied after the policies.
 | `04-deny-conditional.yaml`               | `validate.deny` with conditions            | "Review those conditions and adjust the resource so they evaluate to false..."               |
 | `05-foreach-validation.yaml`             | `validate.foreach`                         | "This rule uses validate.foreach over the list expression ..."                               |
 | `06-cel-validating-policy.yaml`          | CEL `ValidatingPolicy`                     | `describeCELMatchReasons` output + CEL expression shown in the dialog                        |
-| `07-sample-workloads.yaml`               | (workloads triggering failures above)      | Each Pod/ConfigMap fails exactly one policy; opens each dialog to compare output             |
+| `07-sample-workloads.yaml`               | (workloads triggering failures above)      | Workloads trigger each policy above; `pod-no-labels` intentionally fails both label policies, while the other samples target one policy each |
 
 ## What to verify per dialog
 
