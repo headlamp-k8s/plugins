@@ -303,6 +303,18 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
     }
   }, [charts]);
 
+  // Flatten the charts into a single list (a value is either a single chart or, for
+  // vanilla Helm repos, an array of versions where we only show the first), then
+  // filter by the search term against the chart name. Filtering on the chart name
+  // rather than the map key keeps search working now that the map is keyed by a
+  // unique id (e.g. package_id) instead of the name.
+  const chartList = charts
+    ? Object.values(charts)
+        .flatMap((value: any) => (Array.isArray(value) ? value?.slice?.(0, 1) || [] : [value]))
+        .filter(Boolean)
+        .filter((chart: any) => (chart?.name ?? '').includes(search))
+    : [];
+
   return (
     <>
       <EditorDialog
@@ -342,7 +354,7 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
           >
             <Loader title="" />
           </Box>
-        ) : charts.length === 0 ? (
+        ) : chartList.length === 0 ? (
           <Box mt={2} mx={2}>
             <Typography variant="h5" component="h2">
               {search
@@ -364,235 +376,218 @@ export function ChartsList({ fetchCharts = fetchChartsFromArtifact }) {
               m: 2,
             }}
           >
-            {
-              // Flatten the charts into a single list (a value is either a single chart or, for
-              // vanilla Helm repos, an array of versions where we only show the first), then
-              // filter by the search term against the chart name. Filtering on the chart name
-              // rather than the map key keeps search working now that the map is keyed by a
-              // unique id (e.g. package_id) instead of the name.
-              Object.values(charts)
-                .flatMap((value: any) =>
-                  Array.isArray(value) ? value?.slice?.(0, 1) || [] : [value]
-                )
-                .filter((chart: any) => (chart?.name ?? '').includes(search))
-                .map((chart: any) => {
-                  return (
-                    <Card
-                      key={`${chart.name}-${chart.version}`}
+            {chartList.map((chart: any) => {
+              return (
+                <Card
+                  key={`${chart.name}-${chart.version}`}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    boxShadow: 3,
+                  }}
+                >
+                  <Box
+                    height="60px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    marginTop="15px"
+                  >
+                    {chartCfg.chartProfile === VANILLA_HELM_REPO
+                      ? iconUrls[chart.icon] && (
+                          <CardMedia
+                            image={iconUrls[chart.icon]}
+                            alt={`${chart.name} logo`}
+                            sx={{
+                              width: 60,
+                              height: 60,
+                              m: 2,
+                              alignSelf: 'flex-start',
+                              objectFit: 'contain',
+                            }}
+                            component="img"
+                          />
+                        )
+                      : chart.logo_image_id && (
+                          <CardMedia
+                            image={`https://artifacthub.io/image/${chart.logo_image_id}`}
+                            alt={`${chart.name} logo`}
+                            sx={{
+                              width: 60,
+                              height: 60,
+                              m: 2,
+                              alignSelf: 'flex-start',
+                              objectFit: 'contain',
+                            }}
+                            component="img"
+                          />
+                        )}
+                    <Box display="flex" alignItems="center" marginLeft="auto" marginRight="10px">
+                      {(chart?.cncf || chart?.repository?.cncf) && (
+                        <Tooltip title={t('CNCF Project')}>
+                          <Icon
+                            icon="simple-icons:cncf"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '20px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {(chart?.official || chart?.repository?.official) && (
+                        <Tooltip title={t('Official Chart')}>
+                          <Icon
+                            icon="mdi:star-circle"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {chart?.repository?.verified_publisher && (
+                        <Tooltip title={t('Verified Publisher')}>
+                          <Icon
+                            icon="mdi:check-decagram"
+                            style={{
+                              marginLeft: '0.5em',
+                              fontSize: '22px',
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </Box>
+                  <CardContent
+                    sx={{
+                      my: 2,
+                      pt: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
+                      flexGrow: 1,
+                    }}
+                  >
+                    <Box
                       sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                        boxShadow: 3,
+                        wordBreak: 'break-word',
                       }}
                     >
-                      <Box
-                        height="60px"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        marginTop="15px"
-                      >
-                        {chartCfg.chartProfile === VANILLA_HELM_REPO
-                          ? iconUrls[chart.icon] && (
-                              <CardMedia
-                                image={iconUrls[chart.icon]}
-                                alt={`${chart.name} logo`}
-                                sx={{
-                                  width: 60,
-                                  height: 60,
-                                  m: 2,
-                                  alignSelf: 'flex-start',
-                                  objectFit: 'contain',
-                                }}
-                                component="img"
-                              />
-                            )
-                          : chart.logo_image_id && (
-                              <CardMedia
-                                image={`https://artifacthub.io/image/${chart.logo_image_id}`}
-                                alt={`${chart.name} logo`}
-                                sx={{
-                                  width: 60,
-                                  height: 60,
-                                  m: 2,
-                                  alignSelf: 'flex-start',
-                                  objectFit: 'contain',
-                                }}
-                                component="img"
-                              />
-                            )}
-                        <Box
-                          display="flex"
-                          alignItems="center"
-                          marginLeft="auto"
-                          marginRight="10px"
-                        >
-                          {(chart?.cncf || chart?.repository?.cncf) && (
-                            <Tooltip title={t('CNCF Project')}>
-                              <Icon
-                                icon="simple-icons:cncf"
-                                style={{
-                                  marginLeft: '0.5em',
-                                  fontSize: '20px',
-                                }}
-                              />
-                            </Tooltip>
-                          )}
-                          {(chart?.official || chart?.repository?.official) && (
-                            <Tooltip title={t('Official Chart')}>
-                              <Icon
-                                icon="mdi:star-circle"
-                                style={{
-                                  marginLeft: '0.5em',
-                                  fontSize: '22px',
-                                }}
-                              />
-                            </Tooltip>
-                          )}
-                          {chart?.repository?.verified_publisher && (
-                            <Tooltip title={t('Verified Publisher')}>
-                              <Icon
-                                icon="mdi:check-decagram"
-                                style={{
-                                  marginLeft: '0.5em',
-                                  fontSize: '22px',
-                                }}
-                              />
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </Box>
-                      <CardContent
-                        sx={{
-                          my: 2,
-                          pt: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 1,
-                          flexGrow: 1,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          <Tooltip title={chart.name}>
-                            <Typography component="h2" variant="h5">
-                              {/* TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
+                      <Tooltip title={chart.name}>
+                        <Typography component="h2" variant="h5">
+                          {/* TODO: The app-catalog using artifacthub.io loads the details about the chart with an option to install the chart
                                     Fix this for vanilla helm repo */}
-                              {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
-                                chart.name
-                              ) : (
-                                <RouterLink
-                                  routeName="/helm/:repoName/charts/:chartName"
-                                  params={{
-                                    chartName: chart.name,
-                                    repoName: chart?.repository?.name,
-                                  }}
-                                >
-                                  {chart.name}
-                                </RouterLink>
-                              )}
-                            </Typography>
-                          </Tooltip>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between" my={1}>
-                          {/* If the chart.version contains v prefix, remove it */}
-                          {chart.version.startsWith('v') ? (
-                            <Typography>{chart.version}</Typography>
+                          {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
+                            chart.name
                           ) : (
-                            <Typography>v{chart.version}</Typography>
+                            <RouterLink
+                              routeName="/helm/:repoName/charts/:chartName"
+                              params={{
+                                chartName: chart.name,
+                                repoName: chart?.repository?.name,
+                              }}
+                            >
+                              {chart.name}
+                            </RouterLink>
                           )}
-                          <Box
-                            marginLeft={1}
-                            sx={{
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            <Tooltip title={chart?.repository?.name || ''}>
-                              <Typography>{chart?.repository?.name || ''}</Typography>
-                            </Tooltip>
-                          </Box>
-                        </Box>
-                        <Divider />
-                        <Box mt={1}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              wordBreak: 'break-word',
-                              minHeight: '72px',
-                              maxHeight: '72px',
-                            }}
-                          >
-                            {chart?.description?.slice(0, 100)}
-                            {chart?.description?.length > 100 && (
-                              <Tooltip title={chart?.description}>
-                                <span>…</span>
-                              </Tooltip>
-                            )}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                      <CardActions
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                    <Box display="flex" justifyContent="space-between" my={1}>
+                      {/* If the chart.version contains v prefix, remove it */}
+                      {chart.version.startsWith('v') ? (
+                        <Typography>{chart.version}</Typography>
+                      ) : (
+                        <Typography>v{chart.version}</Typography>
+                      )}
+                      <Box
+                        marginLeft={1}
                         sx={{
-                          justifyContent: 'space-between',
-                          px: 3,
-                          py: 2,
-                          gap: 1,
-                          flexWrap: 'wrap',
-                          mt: 'auto',
+                          wordBreak: 'break-word',
                         }}
                       >
-                        <Button
-                          sx={{
-                            backgroundColor: '#000',
-                            color: 'white',
-                            textTransform: 'none',
-                            '&:hover': {
-                              background: '#605e5c',
-                            },
-                          }}
-                          onClick={() => {
-                            setSelectedChartForInstall(chart);
-                            setEditorOpen(true);
-                          }}
-                        >
-                          {t('Install')}
-                        </Button>
-                        {/*
+                        <Tooltip title={chart?.repository?.name || ''}>
+                          <Typography>{chart?.repository?.name || ''}</Typography>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                    <Divider />
+                    <Box mt={1}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          wordBreak: 'break-word',
+                          minHeight: '72px',
+                          maxHeight: '72px',
+                        }}
+                      >
+                        {chart?.description?.slice(0, 100)}
+                        {chart?.description?.length > 100 && (
+                          <Tooltip title={chart?.description}>
+                            <span>…</span>
+                          </Tooltip>
+                        )}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                  <CardActions
+                    sx={{
+                      justifyContent: 'space-between',
+                      px: 3,
+                      py: 2,
+                      gap: 1,
+                      flexWrap: 'wrap',
+                      mt: 'auto',
+                    }}
+                  >
+                    <Button
+                      sx={{
+                        backgroundColor: '#000',
+                        color: 'white',
+                        textTransform: 'none',
+                        '&:hover': {
+                          background: '#605e5c',
+                        },
+                      }}
+                      onClick={() => {
+                        setSelectedChartForInstall(chart);
+                        setEditorOpen(true);
+                      }}
+                    >
+                      {t('Install')}
+                    </Button>
+                    {/*
                             Provide Learn More link only when the chart has source
                             When there are multiple sources for a chart, use the first source for the link, rather than using comma separated values
                     */}
-                        {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
-                          !chart?.sources ? (
-                            ''
-                          ) : chart?.sources?.length === 1 ? (
-                            <Link href={chart?.sources} target="_blank">
-                              {t('Learn More')}
-                            </Link>
-                          ) : (
-                            <Link href={chart?.sources[0]} target="_blank">
-                              {t('Learn More')}
-                            </Link>
-                          )
-                        ) : (
-                          <Link href={chart?.repository?.url} target="_blank">
-                            {t('Learn More')}
-                          </Link>
-                        )}
-                      </CardActions>
-                    </Card>
-                  );
-                })
-            }
+                    {chartCfg.chartProfile === VANILLA_HELM_REPO ? (
+                      !chart?.sources ? (
+                        ''
+                      ) : chart?.sources?.length === 1 ? (
+                        <Link href={chart?.sources} target="_blank">
+                          {t('Learn More')}
+                        </Link>
+                      ) : (
+                        <Link href={chart?.sources[0]} target="_blank">
+                          {t('Learn More')}
+                        </Link>
+                      )
+                    ) : (
+                      <Link href={chart?.repository?.url} target="_blank">
+                        {t('Learn More')}
+                      </Link>
+                    )}
+                  </CardActions>
+                </Card>
+              );
+            })}
           </Box>
         )}
       </Box>
-      {charts && charts.length !== 0 && (
+      {(chartList.length !== 0 || page > 1) && (
         <Box mt={2} mx="auto" maxWidth="max-content">
           <Pagination
             size="large"
