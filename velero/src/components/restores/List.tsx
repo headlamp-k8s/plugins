@@ -12,7 +12,7 @@ import { veleroListFilterFunction } from '../../utils/veleroListFilter';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 import RestoreCreateForm from './CreateForm';
-import type { RestoreCreateInput } from './createTypes';
+import { restorableBackupNames, type RestoreCreateInput } from './createTypes';
 
 function RestoreSourceCell({ restore }: { restore: VeleroRestore }) {
   if (restore.backupName) {
@@ -47,11 +47,13 @@ function RestoreListContent() {
   const { loading: accessLoading, canCreateRestore } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace, cluster });
+  const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
   const [backupsList] = VeleroBackup.useList({ namespace: veleroNamespace, cluster });
   const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
 
-  const backups = backupsList ? backupsList.map(b => b.getName()) : [];
+  const backups = restorableBackupNames(
+    (backupsList ?? []).map(backup => ({ name: backup.getName(), phase: backup.phase }))
+  );
   const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
 
   const handleCreateRestore = async (values: RestoreCreateInput) => {

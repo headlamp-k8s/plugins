@@ -1,8 +1,6 @@
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
   FormControl,
   FormControlLabel,
   Grid,
@@ -15,7 +13,14 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import type { BackupCreateFormProps, BackupCreateInput } from './createTypes';
+import FreeSoloMulti from '../common/FreeSoloMulti';
+import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
+import {
+  type BackupCreateFormProps,
+  type BackupCreateInput,
+  type FsBackupChoice,
+  fsBackupChoiceToSpec,
+} from './createTypes';
 
 /** Create Backup form — adapted from reasonerjt prototype; namespace comes from parent. */
 export default function BackupCreateForm({
@@ -25,23 +30,20 @@ export default function BackupCreateForm({
   onCancel,
 }: BackupCreateFormProps) {
   const [name, setName] = useState('');
-  const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
-  const [excludedNamespaces, setExcludedNamespaces] = useState<string[]>([]);
-  const [includedResources, setIncludedResources] = useState<string[]>([]);
-  const [excludedResources, setExcludedResources] = useState<string[]>([]);
-  const [storageLocation, setStorageLocation] = useState(storageLocations[0] || '');
+  const includedNamespaces = useFreeSoloMulti();
+  const excludedNamespaces = useFreeSoloMulti();
+  const includedResources = useFreeSoloMulti();
+  const excludedResources = useFreeSoloMulti();
+  const [storageLocation, setStorageLocation] = useState('');
   const [ttl, setTtl] = useState('720h0m0s');
   const [snapshotVolumes, setSnapshotVolumes] = useState(true);
-  const [defaultVolumesToFsBackup, setDefaultVolumesToFsBackup] = useState(false);
+  const [fsBackup, setFsBackup] = useState<FsBackupChoice>('server');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // BSL list often arrives after mount — keep Select value in sync with real options.
+  // Drop a location the user picked if it disappears. Never invent one.
   useEffect(() => {
-    if (storageLocations.length === 0) {
-      return;
-    }
-    setStorageLocation(prev => (storageLocations.includes(prev) ? prev : storageLocations[0]));
+    setStorageLocation(prev => (!prev || storageLocations.includes(prev) ? prev : ''));
   }, [storageLocations]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,14 +62,14 @@ export default function BackupCreateForm({
     try {
       const values: BackupCreateInput = {
         name: name.trim(),
-        includedNamespaces: selectedNamespaces,
-        excludedNamespaces,
-        includedResources,
-        excludedResources,
+        includedNamespaces: includedNamespaces.commit(),
+        excludedNamespaces: excludedNamespaces.commit(),
+        includedResources: includedResources.commit(),
+        excludedResources: excludedResources.commit(),
         storageLocation,
         ttl,
         snapshotVolumes,
-        defaultVolumesToFsBackup,
+        defaultVolumesToFsBackup: fsBackupChoiceToSpec(fsBackup),
       };
       await onSubmit(values);
     } catch (err: unknown) {
@@ -114,126 +116,73 @@ export default function BackupCreateForm({
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined" required disabled={isSubmitting}>
+            <FormControl fullWidth variant="outlined" disabled={isSubmitting}>
               <InputLabel id="storage-location-label">Backup Storage Location</InputLabel>
               <Select
                 labelId="storage-location-label"
                 id="storage-location"
                 value={storageLocation}
-                onChange={e => setStorageLocation(e.target.value as string)}
+                onChange={e => setStorageLocation(e.target.value)}
                 label="Backup Storage Location"
               >
-                {storageLocations.length === 0 ? (
-                  <MenuItem value="" disabled>
-                    No storage locations available
+                <MenuItem value="">Velero default</MenuItem>
+                {storageLocations.map(loc => (
+                  <MenuItem key={loc} value={loc}>
+                    {loc}
                   </MenuItem>
-                ) : (
-                  storageLocations.map(loc => (
-                    <MenuItem key={loc} value={loc}>
-                      {loc}
-                    </MenuItem>
-                  ))
-                )}
+                ))}
               </Select>
             </FormControl>
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="included-namespaces"
+              label="Included Namespaces"
+              placeholder="Select or type namespaces (empty for all)"
               options={namespaces}
-              value={selectedNamespaces}
-              onChange={(_, newValue) => setSelectedNamespaces(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Included Namespaces"
-                  placeholder="Select or type namespaces (empty for all)"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={includedNamespaces.value}
+              onChange={includedNamespaces.setValue}
+              onInputChange={includedNamespaces.onInputChange}
               disabled={isSubmitting}
             />
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="excluded-namespaces"
+              label="Excluded Namespaces"
+              placeholder="Select or type namespaces to exclude"
               options={namespaces}
-              value={excludedNamespaces}
-              onChange={(_, newValue) => setExcludedNamespaces(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Excluded Namespaces"
-                  placeholder="Select or type namespaces to exclude"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={excludedNamespaces.value}
+              onChange={excludedNamespaces.setValue}
+              onInputChange={excludedNamespaces.onInputChange}
               disabled={isSubmitting}
             />
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="included-resources"
+              label="Included Resources"
+              placeholder="Type resource and press Enter (e.g., pods)"
               options={[]}
-              value={includedResources}
-              onChange={(_, newValue) => setIncludedResources(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Included Resources"
-                  placeholder="Type resource and press Enter (e.g., pods)"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={includedResources.value}
+              onChange={includedResources.setValue}
+              onInputChange={includedResources.onInputChange}
               disabled={isSubmitting}
             />
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="excluded-resources"
+              label="Excluded Resources"
+              placeholder="Type resource to exclude and press Enter"
               options={[]}
-              value={excludedResources}
-              onChange={(_, newValue) => setExcludedResources(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Excluded Resources"
-                  placeholder="Type resource to exclude and press Enter"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={excludedResources.value}
+              onChange={excludedResources.setValue}
+              onInputChange={excludedResources.onInputChange}
               disabled={isSubmitting}
             />
           </Grid>
@@ -251,7 +200,21 @@ export default function BackupCreateForm({
             />
           </Grid>
 
-          <Grid item xs={12} md={6} display="flex" flexDirection="column" justifyContent="center">
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth variant="outlined" disabled={isSubmitting}>
+              <InputLabel id="fs-backup-label">Volume file backup (kopia)</InputLabel>
+              <Select
+                labelId="fs-backup-label"
+                id="fs-backup"
+                value={fsBackup}
+                onChange={e => setFsBackup(e.target.value as FsBackupChoice)}
+                label="Volume file backup (kopia)"
+              >
+                <MenuItem value="server">Server default</MenuItem>
+                <MenuItem value="on">On</MenuItem>
+                <MenuItem value="off">Off</MenuItem>
+              </Select>
+            </FormControl>
             <FormControlLabel
               control={
                 <Switch
@@ -262,17 +225,6 @@ export default function BackupCreateForm({
                 />
               }
               label="Snapshot Volumes (CSI)"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={defaultVolumesToFsBackup}
-                  onChange={e => setDefaultVolumesToFsBackup(e.target.checked)}
-                  color="primary"
-                  disabled={isSubmitting}
-                />
-              }
-              label="Default volumes to FS backup (kopia)"
             />
           </Grid>
         </Grid>

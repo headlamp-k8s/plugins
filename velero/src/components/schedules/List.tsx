@@ -26,7 +26,6 @@ function ScheduleListContent() {
   const { latestBackupBySchedule, loading: backupsLoading, error: backupsError } = useVeleroData();
   const [schedules, schedulesError] = VeleroSchedule.useList({
     namespace: veleroNamespace,
-    cluster,
   });
   const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
   const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];

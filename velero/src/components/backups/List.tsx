@@ -22,7 +22,7 @@ function BackupListContent() {
   const { loading: accessLoading, canCreateBackup } = useVeleroAccess();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const [backups, error] = VeleroBackup.useList({ namespace: veleroNamespace, cluster });
+  const [backups, error] = VeleroBackup.useList({ namespace: veleroNamespace });
   const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
   const [bslList] = VeleroBackupStorageLocation.useList({ namespace: veleroNamespace, cluster });
 
@@ -49,8 +49,9 @@ function BackupListContent() {
         storageLocation: values.storageLocation || undefined,
         ttl: values.ttl || undefined,
         snapshotVolumes: values.snapshotVolumes,
-        // Keep explicit false — `|| undefined` would drop "FS backup off".
-        defaultVolumesToFsBackup: values.defaultVolumesToFsBackup,
+        ...(values.defaultVolumesToFsBackup !== undefined
+          ? { defaultVolumesToFsBackup: values.defaultVolumesToFsBackup }
+          : {}),
       },
     };
 

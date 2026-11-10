@@ -1,8 +1,6 @@
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
   FormControl,
   FormControlLabel,
   Grid,
@@ -14,7 +12,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import FreeSoloMulti from '../common/FreeSoloMulti';
+import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
 import type { RestoreCreateFormProps, RestoreCreateInput } from './createTypes';
 
 /** Create Restore form — adapted from reasonerjt prototype. */
@@ -26,12 +26,21 @@ export default function RestoreCreateForm({
   onCancel,
 }: RestoreCreateFormProps) {
   const [name, setName] = useState('');
-  const [backupName, setBackupName] = useState(defaultBackupName || backups[0] || '');
-  const [includedNamespaces, setIncludedNamespaces] = useState<string[]>([]);
-  const [excludedNamespaces, setExcludedNamespaces] = useState<string[]>([]);
+  const [backupName, setBackupName] = useState(defaultBackupName);
+  const includedNamespaces = useFreeSoloMulti();
+  const excludedNamespaces = useFreeSoloMulti();
   const [restorePVs, setRestorePVs] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBackupName(prev => {
+      if (prev && (backups.length === 0 || backups.includes(prev))) {
+        return prev;
+      }
+      return backups[0] ?? '';
+    });
+  }, [backups]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +64,8 @@ export default function RestoreCreateForm({
       const values: RestoreCreateInput = {
         name: name.trim(),
         backupName: backupName.trim(),
-        includedNamespaces,
-        excludedNamespaces,
+        includedNamespaces: includedNamespaces.commit(),
+        excludedNamespaces: excludedNamespaces.commit(),
         restorePVs,
       };
       await onSubmit(values);
@@ -134,51 +143,27 @@ export default function RestoreCreateForm({
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="included-namespaces"
+              label="Included Namespaces"
+              placeholder="Select or type namespaces from the backup"
               options={namespaces}
-              value={includedNamespaces}
-              onChange={(_, newValue) => setIncludedNamespaces(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Included Namespaces"
-                  placeholder="Select or type namespaces from the backup"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={includedNamespaces.value}
+              onChange={includedNamespaces.setValue}
+              onInputChange={includedNamespaces.onInputChange}
               disabled={loading}
             />
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
               id="excluded-namespaces"
+              label="Excluded Namespaces"
+              placeholder="Select or type namespaces to exclude"
               options={namespaces}
-              value={excludedNamespaces}
-              onChange={(_, newValue) => setExcludedNamespaces(newValue)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  variant="outlined"
-                  label="Excluded Namespaces"
-                  placeholder="Select or type namespaces to exclude"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={excludedNamespaces.value}
+              onChange={excludedNamespaces.setValue}
+              onInputChange={excludedNamespaces.onInputChange}
               disabled={loading}
             />
           </Grid>

@@ -1,8 +1,6 @@
 import {
-  Autocomplete,
   Box,
   Button,
-  Chip,
   FormControlLabel,
   Grid,
   Paper,
@@ -11,6 +9,8 @@ import {
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import FreeSoloMulti from '../common/FreeSoloMulti';
+import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
 import type { ScheduleCreateFormProps, ScheduleCreateInput } from './createTypes';
 
 /** Create Schedule form — cron + namespace scope (Phase 4). */
@@ -21,8 +21,8 @@ export default function ScheduleCreateForm({
 }: ScheduleCreateFormProps) {
   const [name, setName] = useState('');
   const [schedule, setSchedule] = useState('@every 24h');
-  const [includedNamespaces, setIncludedNamespaces] = useState<string[]>([]);
-  const [excludedNamespaces, setExcludedNamespaces] = useState<string[]>([]);
+  const includedNamespaces = useFreeSoloMulti();
+  const excludedNamespaces = useFreeSoloMulti();
   const [ttl, setTtl] = useState('720h0m0s');
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -49,8 +49,8 @@ export default function ScheduleCreateForm({
       const values: ScheduleCreateInput = {
         name: name.trim(),
         schedule: schedule.trim(),
-        includedNamespaces,
-        excludedNamespaces,
+        includedNamespaces: includedNamespaces.commit(),
+        excludedNamespaces: excludedNamespaces.commit(),
         ttl,
         paused,
       };
@@ -110,46 +110,26 @@ export default function ScheduleCreateForm({
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
+              id="schedule-included-namespaces"
+              label="Included Namespaces"
+              placeholder="Select or type (empty = all)"
               options={namespaces}
-              value={includedNamespaces}
-              onChange={(_, v) => setIncludedNamespaces(v)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  label="Included Namespaces"
-                  placeholder="Select or type (empty = all)"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={includedNamespaces.value}
+              onChange={includedNamespaces.setValue}
+              onInputChange={includedNamespaces.onInputChange}
               disabled={loading}
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <Autocomplete
-              multiple
-              freeSolo
+            <FreeSoloMulti
+              id="schedule-excluded-namespaces"
+              label="Excluded Namespaces"
+              placeholder="Select or type (optional)"
               options={namespaces}
-              value={excludedNamespaces}
-              onChange={(_, v) => setExcludedNamespaces(v)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  label="Excluded Namespaces"
-                  placeholder="Select or type (optional)"
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} size="small" />
-                ))
-              }
+              value={excludedNamespaces.value}
+              onChange={excludedNamespaces.setValue}
+              onInputChange={excludedNamespaces.onInputChange}
               disabled={loading}
             />
           </Grid>
