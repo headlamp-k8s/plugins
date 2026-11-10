@@ -6,6 +6,8 @@ import JobDetail from './components/jobs/Detail';
 import JobList from './components/jobs/List';
 import JobTemplateDetail from './components/jobtemplates/Detail';
 import JobTemplateList from './components/jobtemplates/List';
+import NamespaceQueueDetail from './components/namespacequeues/Detail';
+import NamespaceQueueList from './components/namespacequeues/List';
 import Overview from './components/overview/Overview';
 import PodGroupDetail from './components/podgroups/Detail';
 import PodGroupList from './components/podgroups/List';
@@ -144,6 +146,16 @@ const volcanoResources: VolcanoResourceRegistration[] = [
     detailRouteName: volcanoRouteNames.queueDetail,
     ListComponent: QueueList,
     DetailComponent: QueueDetail,
+  },
+  {
+    sidebarName: 'volcano-namespacequeues',
+    label: 'NamespaceQueues',
+    listPath: volcanoRoutePaths.namespaceQueuesList,
+    detailPath: volcanoRoutePaths.namespaceQueueDetail,
+    listRouteName: volcanoRouteNames.namespaceQueuesList,
+    detailRouteName: volcanoRouteNames.namespaceQueueDetail,
+    ListComponent: NamespaceQueueList,
+    DetailComponent: NamespaceQueueDetail,
   },
   {
     sidebarName: 'volcano-podgroups',
