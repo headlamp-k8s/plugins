@@ -161,6 +161,13 @@ describe('DeveloperSettings helpers', () => {
 });
 
 describe('DeveloperSettings component', () => {
+  it('renders without a second disclosure when embedded in advanced settings', () => {
+    render(<DeveloperSettings {...allDisabledArgs} collapsible={false} />);
+    expect(screen.getByRole('heading', { name: 'Developer Options' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Developer Options' })).toBeNull();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+  });
+
   it('renders the collapsed disabled story with an accessible toggle', async () => {
     render(<DeveloperSettings {...allDisabledArgs} />);
 

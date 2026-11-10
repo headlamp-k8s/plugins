@@ -21,13 +21,24 @@ import {
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
 import { getSkillsConfig, getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
+import {
+  getSkillContent,
+  getSkillContentSizeBytes,
+} from '@headlamp-k8s/ai-common/skills/parseSkill';
 import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
 import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
+import {
+  type DefaultSectionWrapperProps,
+  DefaultSettingsTable,
+  type DefaultSettingsTableProps,
+} from '@headlamp-k8s/ai-ui/components/defaults/DefaultSlots';
 import type { DeveloperOptionsConfig } from '@headlamp-k8s/ai-ui/components/settings/DeveloperSettings';
 import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPage';
 import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
 import { Headlamp, runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Paper, Typography } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
@@ -58,6 +69,48 @@ interface SkillDisplayInfo {
   version?: string;
   author?: string;
   tags?: string[];
+}
+
+/**
+ * Adapts the shared settings sections to Headlamp's native section layout.
+ *
+ * @param props - Section heading, actions, and content.
+ * @returns Native settings section.
+ */
+export function SettingsSection({ title, children, actions }: DefaultSectionWrapperProps) {
+  return (
+    <Box sx={{ mb: 4 }}>
+      <SectionBox
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
+              <Typography variant="h5" component="h2">
+                {title}
+              </Typography>
+            </Box>
+            {actions && <Box sx={{ ml: 'auto', maxWidth: '100%' }}>{actions}</Box>}
+          </Box>
+        }
+        sx={{ px: 0, pt: 2 }}
+      >
+        {children}
+      </SectionBox>
+    </Box>
+  );
+}
+
+/**
+ * Gives descriptive settings the available width while keeping controls at the trailing edge.
+ *
+ * @param props - Setting labels and controls.
+ * @returns Theme-aware settings rows.
+ */
+export function SettingsRows(props: DefaultSettingsTableProps) {
+  return (
+    <Paper variant="outlined" sx={{ px: 2 }}>
+      <DefaultSettingsTable {...props} />
+    </Paper>
+  );
 }
 
 /**
@@ -133,8 +186,8 @@ export default function Settings() {
         name: s.metadata.name,
         description: s.metadata.description,
         source: s.source,
-        content: s.content,
-        contentSizeBytes: s.contentSizeBytes,
+        content: getSkillContent(s),
+        contentSizeBytes: getSkillContentSizeBytes(s),
         version: s.metadata.version,
         author: s.metadata.author,
         tags: s.metadata.tags,
@@ -197,6 +250,8 @@ export default function Settings() {
   return (
     <AiUiI18nProvider i18n={i18n}>
       <SettingsPage
+        SectionWrapper={SettingsSection}
+        SettingsTable={SettingsRows}
         savedConfigs={savedConfigs}
         onConfigsChange={configs => pluginStore.update(configs as any)}
         onTermsAccept={configs => pluginStore.update(configs as any)}

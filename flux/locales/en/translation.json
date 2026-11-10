@@ -60,6 +60,8 @@
   "Canary Pods": "Canary Pods",
   "Primary Pods": "Primary Pods",
   "A/B Testing": "A/B Testing",
+  "Enabled": "Enabled",
+  "Disabled": "Disabled",
   "A/B Headers": "A/B Headers",
   "A/B Cookies": "A/B Cookies",
   "Configuration": "Configuration",

@@ -27,6 +27,12 @@
  */
 
 import {
+  INSPEKTOR_GADGET_SKILLS_PATH,
+  INSPEKTOR_GADGET_SKILLS_REF,
+  INSPEKTOR_GADGET_SKILLS_REPO_URL,
+  INSPEKTOR_GADGET_SKILLS_SHA256,
+} from '@headlamp-k8s/ai-common/skills/builtinSources';
+import {
   getSkillsConfig,
   getSkillSourceIdentity,
   type SkillsConfig,
@@ -56,7 +62,13 @@ import {
   translateSkillDirectoryLabel,
   translateSkillRepositoryDescription,
 } from '../../../ownedUiTranslations';
-import { DefaultDialog, DefaultSectionWrapper } from '../../defaults/DefaultSlots/DefaultSlots';
+import {
+  DefaultDialog,
+  DefaultSectionWrapper,
+  type DefaultSectionWrapperProps,
+  SettingsSectionActions,
+  SettingsSectionFooter,
+} from '../../defaults/DefaultSlots/DefaultSlots';
 import type { ConfigStore } from '../MCPSettings/MCPSettings';
 import SkillSourceEditorDialog from '../SkillSourceEditorDialog/SkillSourceEditorDialog';
 import {
@@ -94,6 +106,15 @@ export const WELL_KNOWN_SKILL_DIRS = [
 
 /** Well-known GitHub repositories that contain skill files. */
 export const WELL_KNOWN_SKILL_REPOS: readonly WellKnownRepoEntry[] = [
+  {
+    url: INSPEKTOR_GADGET_SKILLS_REPO_URL,
+    label: 'Inspektor Gadget',
+    description: 'Kernel-level Kubernetes and Linux troubleshooting with eBPF',
+    path: INSPEKTOR_GADGET_SKILLS_PATH,
+    ref: INSPEKTOR_GADGET_SKILLS_REF,
+    sha256: INSPEKTOR_GADGET_SKILLS_SHA256,
+    includeReferences: true,
+  },
   {
     url: 'https://github.com/kubeshark/kubeshark',
     label: 'Kubeshark',
@@ -155,6 +176,10 @@ export interface WellKnownRepoEntry {
   path?: string;
   /** Git ref (branch/tag/SHA) to use. */
   ref?: string;
+  /** Expected SHA-256 hash of the source's Markdown content. */
+  sha256?: string;
+  /** Include the source's verified companion reference documents. */
+  includeReferences?: boolean;
 }
 
 export type { SkillsConfig } from '@headlamp-k8s/ai-common/skills/config';
@@ -198,7 +223,7 @@ export interface SkillSettingsProps {
   /** Enables filesystem source controls when desktop path APIs are available. */
   filesystemSkillsEnabled?: boolean;
   /** Optional wrapper component for layout (e.g. SectionBox). */
-  SectionWrapper?: React.ComponentType<{ title: string; children: React.ReactNode }>;
+  SectionWrapper?: React.ComponentType<DefaultSectionWrapperProps>;
   /** Component used to render dialog shells. Falls back to MUI Dialog. */
   DialogSlot?: React.ElementType;
   /** Callback when skills configuration changes. */
@@ -250,6 +275,8 @@ function setRepoEnabled(
       url: repo.url,
       ref: repo.ref || 'main',
       path: repo.path,
+      ...(repo.sha256 ? { sha256: repo.sha256 } : {}),
+      ...(repo.includeReferences ? { includeReferences: true } : {}),
       enabled,
     },
   ];
@@ -537,13 +564,16 @@ export function SkillSettings({
   );
 
   // Identify which git sources are well-known repos
-  const wellKnownRepoIdentities = new Set(
-    WELL_KNOWN_SKILL_REPOS.map(repo =>
-      getSkillSourceIdentity({ type: 'git', url: repo.url, path: repo.path })
-    )
-  );
   const customGitSources = gitSources.filter(
-    source => !wellKnownRepoIdentities.has(getSkillSourceIdentity(source))
+    source =>
+      !WELL_KNOWN_SKILL_REPOS.some(
+        repo =>
+          getSkillSourceIdentity(source) ===
+            getSkillSourceIdentity({ type: 'git', url: repo.url, path: repo.path }) &&
+          (source.ref || 'main') === (repo.ref || 'main') &&
+          source.sha256 === repo.sha256 &&
+          !!source.includeReferences === !!repo.includeReferences
+      )
   );
   const displayedWellKnownStatuses = wellKnownStatuses.map(status => {
     const fullPath = projectRoot ? `${projectRoot}/${status.path}` : status.path;
@@ -559,18 +589,51 @@ export function SkillSettings({
   });
 
   return (
-    <SectionWrapper title={t('Skills')}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-          {filesystemSkillsEnabled && projectRoot
-            ? t(
-                'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure filesystem paths and GitHub repositories to load skills from.'
-              )
-            : t(
-                'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure GitHub repositories to load skills from.'
-              )}
-        </Typography>
-      </Box>
+    <SectionWrapper
+      title={t('Skills')}
+      actions={
+        <SettingsSectionActions>
+          {loadSkills && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setViewerOpen(true)}
+              startIcon={<Icon icon="mdi:book-open-variant" />}
+            >
+              {t('View Loaded Skills')}
+            </Button>
+          )}
+          {isRunningAsApp && filesystemSkillsEnabled && projectRoot && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => handleOpenEditor({ type: 'local', url: '', enabled: true })}
+              startIcon={<Icon icon="mdi:folder-plus" />}
+            >
+              {t('Add Path')}
+            </Button>
+          )}
+          <Button
+            variant={hasUnsavedChanges ? 'outlined' : 'contained'}
+            color="primary"
+            size="small"
+            onClick={() => handleOpenEditor({ type: 'git', url: '', enabled: true })}
+            startIcon={<Icon icon="mdi:github" />}
+          >
+            {t('Add Repository')}
+          </Button>
+        </SettingsSectionActions>
+      }
+    >
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+        {filesystemSkillsEnabled && projectRoot
+          ? t(
+              'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure filesystem paths and GitHub repositories to load skills from.'
+            )
+          : t(
+              'Skills are markdown files that provide domain-specific knowledge to the AI assistant. Configure GitHub repositories to load skills from.'
+            )}
+      </Typography>
 
       {/* Well-Known Paths Section — only shown in app mode (local paths not accessible in browser) */}
       {isRunningAsApp && filesystemSkillsEnabled && projectRoot && (
@@ -737,19 +800,9 @@ export function SkillSettings({
       {/* Custom Filesystem Sources — only shown in app mode */}
       {isRunningAsApp && filesystemSkillsEnabled && projectRoot && (
         <Box sx={{ mb: 3 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography component="h3" variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {t('Filesystem Sources')}
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleOpenEditor({ type: 'local', url: '', enabled: true })}
-              startIcon={<Icon icon="mdi:folder-plus" />}
-            >
-              {t('Add Path')}
-            </Button>
-          </Box>
+          <Typography component="h3" variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+            {t('Filesystem Sources')}
+          </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
             {t('Custom filesystem directories to scan for skill files.')}
           </Typography>
@@ -819,19 +872,9 @@ export function SkillSettings({
 
       {/* GitHub Repository Sources */}
       <Box sx={{ mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography component="h3" variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {t('Custom GitHub Repository Sources')}
-          </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => handleOpenEditor({ type: 'git', url: '', enabled: true })}
-            startIcon={<Icon icon="mdi:github" />}
-          >
-            {t('Add Repository')}
-          </Button>
-        </Box>
+        <Typography component="h3" variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+          {t('Custom GitHub Repository Sources')}
+        </Typography>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
           {t('Additional GitHub repositories to load skills from through the GitHub API.')}
         </Typography>
@@ -919,10 +962,9 @@ export function SkillSettings({
         )}
       </Box>
 
-      {/* Summary / Unsaved Changes */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="body2" color="textSecondary">
+      <SettingsSectionFooter
+        summary={
+          <>
             {displayConfig.sources.length === 1
               ? t('1 source configured, {{enabledCount}} enabled.', {
                   enabledCount: displayConfig.sources.filter(source => source.enabled).length,
@@ -933,43 +975,37 @@ export function SkillSettings({
                 })}
             {hasUnsavedChanges && (
               <Typography component="span" color="warning.main" sx={{ ml: 1 }}>
-                {t('(Unsaved changes)')}
+                <Box component="span" role="status" aria-live="polite">
+                  {t('(Unsaved changes)')}
+                </Box>
               </Typography>
             )}
-          </Typography>
-          {loadSkills && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setViewerOpen(true)}
-              startIcon={<Icon icon="mdi:book-open-variant" />}
-            >
-              {t('View Loaded Skills')}
-            </Button>
-          )}
-        </Box>
-        {hasUnsavedChanges && (
-          <Box display="flex" alignItems="center" gap={1}>
-            <Button
-              variant="outlined"
-              onClick={handleDiscardChanges}
-              startIcon={<Icon icon="mdi:cancel" />}
-              size="small"
-            >
-              {t('Discard')}
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleSaveChanges}
-              startIcon={<Icon icon="mdi:content-save" />}
-              color="primary"
-              size="small"
-            >
-              {t('Save Changes')}
-            </Button>
-          </Box>
-        )}
-      </Box>
+          </>
+        }
+        actions={
+          hasUnsavedChanges && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={handleDiscardChanges}
+                startIcon={<Icon icon="mdi:cancel" />}
+                size="small"
+              >
+                {t('Discard')}
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSaveChanges}
+                startIcon={<Icon icon="mdi:content-save" />}
+                color="primary"
+                size="small"
+              >
+                {t('Save Changes')}
+              </Button>
+            </>
+          )
+        }
+      />
 
       {/* Source Editor Dialog */}
       <SkillSourceEditorDialog

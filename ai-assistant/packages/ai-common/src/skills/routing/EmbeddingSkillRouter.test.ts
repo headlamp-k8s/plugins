@@ -17,7 +17,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { cosineSimilarity } from '../../embeddings/cosineSimilarity';
 import type { EmbeddingProvider } from '../../embeddings/EmbeddingProvider';
-import { ParsedSkill } from '../parseSkill';
+import { getSkillContentSizeBytes, ParsedSkill } from '../parseSkill';
 import { buildSkillEmbeddingText, EmbeddingSkillRouter } from './EmbeddingSkillRouter';
 import { DEFAULT_ROUTER_CONFIG, SkillRouterConfig } from './KeywordSkillRouter';
 
@@ -105,6 +105,31 @@ function createMockEmbeddings(opts?: {
 // ──────────────────────────────────────────────────────────────────────
 // cosineSimilarity
 // ──────────────────────────────────────────────────────────────────────
+it('counts companion references in the embedding router budget', async () => {
+  const skill = makeSkill('guide', 'guide');
+  skill.references = [
+    { path: 'references/install.md', content: 'Install safely.', contentSizeBytes: 15 },
+  ];
+  const skills = [skill, makeSkill('other', 'unrelated')];
+  const router = new EmbeddingSkillRouter(createMockEmbeddings());
+  await router.indexSkills(skills);
+  const size = getSkillContentSizeBytes(skill);
+  expect(
+    await router.route('guide', skills, {
+      ...DEFAULT_ROUTER_CONFIG,
+      maxSkills: 1,
+      maxTotalBytes: size - 1,
+    })
+  ).toEqual([]);
+  expect(
+    await router.route('guide', skills, {
+      ...DEFAULT_ROUTER_CONFIG,
+      maxSkills: 1,
+      maxTotalBytes: size,
+    })
+  ).toEqual([skill]);
+});
+
 describe('cosineSimilarity', () => {
   it('returns 1 for identical vectors', () => {
     expect(cosineSimilarity([1, 0, 0], [1, 0, 0])).toBeCloseTo(1.0);

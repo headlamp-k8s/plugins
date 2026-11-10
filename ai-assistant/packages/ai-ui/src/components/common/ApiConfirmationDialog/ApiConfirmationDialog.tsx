@@ -252,8 +252,16 @@ export default function ApiConfirmationDialog({
             <Typography variant="body1" sx={{ mb: 2 }}>
               {t('The following patch will be applied to the resource:')}
             </Typography>
-            <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <pre>{processedBody.content}</pre>
+            <Box
+              sx={{
+                p: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                overflowX: 'auto',
+              }}
+            >
+              <pre style={{ margin: 0 }}>{processedBody.content}</pre>
             </Box>
             <Typography variant="body2" sx={{ mt: 2 }}>
               {t(

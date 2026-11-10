@@ -1,3 +1,4 @@
+import { createInspektorGadgetSkillsSource } from '@headlamp-k8s/ai-common/skills/builtinSources';
 import { getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
 import { KUBERNETES_DOCS_SOURCE } from '@headlamp-k8s/ai-common/skills/documentationSources';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -133,12 +134,77 @@ it('renders browser defaults with labeled controls and no axe violations', async
   expect(screen.getByText('Suggested Skill Repositories')).toBeTruthy();
   expect(screen.getAllByText(/GitHub repositories to load skills from/).length).toBeGreaterThan(0);
   expect(screen.queryByText('Detected Skill Directories')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Add Repository' }));
   expect(screen.getByText('Git only')).toBeTruthy();
   expect(screen.getByRole('checkbox', { name: 'Enable Kubeshark' })).toBeTruthy();
+  expect(screen.getByRole('checkbox', { name: 'Enable Inspektor Gadget' })).toHaveProperty(
+    'checked',
+    false
+  );
   expect(screen.getByText('0 sources configured, 0 enabled.')).toBeTruthy();
   expect(checkPathExists).not.toHaveBeenCalled();
   await expect(runAxe()).resolves.toEqual([]);
+});
+
+it.each([false, true])('toggles verified Gadget skills, seeded=%s', seeded => {
+  const source = createInspektorGadgetSkillsSource();
+  const store = createMemoryConfigStore({
+    skills: { ...configuredSkills, sources: seeded ? [source] : [] },
+  });
+  renderSettings({ configStore: store });
+  const toggle = screen.getByRole('checkbox', { name: 'Enable Inspektor Gadget' });
+  expect(toggle).toHaveProperty('checked', seeded);
+  fireEvent.click(toggle);
+  expect(getSkillsConfig(store.data()).sources).toEqual([{ ...source, enabled: !seeded }]);
+  fireEvent.click(toggle);
+  expect(getSkillsConfig(store.data()).sources).toEqual([{ ...source, enabled: seeded }]);
+});
+
+it.each([{ ref: 'v0.50.0' }, { sha256: 'a'.repeat(64) }])(
+  'keeps edit and delete controls for customized Gadget sources: %j',
+  overrides => {
+    const source = { ...createInspektorGadgetSkillsSource(), ...overrides };
+    const store = createMemoryConfigStore({ skills: { ...configuredSkills, sources: [source] } });
+    renderSettings({ configStore: store });
+    const label = `${source.url} (${source.path})`;
+    fireEvent.click(screen.getByRole('button', { name: `Edit ${label}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save source' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    const edited = { ...source, url: `${source.url}-edited` };
+    expect(getSkillsConfig(store.data()).sources).toEqual([edited]);
+    fireEvent.click(screen.getByRole('button', { name: `Delete ${edited.url} (${edited.path})` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(getSkillsConfig(store.data()).sources).toEqual([]);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Inspektor Gadget' }));
+    expect(getSkillsConfig(store.data()).sources).toEqual([createInspektorGadgetSkillsSource()]);
+  }
+);
+it('groups inspection and creation actions in the header and saves below source settings', () => {
+  renderSettings({
+    configStore: createMemoryConfigStore({ skills: configuredSkills }),
+    loadSkills: vi.fn().mockResolvedValue([]),
+  });
+  const heading = screen.getByRole('heading', { name: 'Skills' });
+  const view = screen.getByRole('button', { name: 'View Loaded Skills' });
+  const add = screen.getByRole('button', { name: 'Add Repository' });
+  expect(heading.parentElement?.contains(view)).toBe(true);
+  expect(heading.parentElement?.contains(add)).toBe(true);
+  expect(view.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  fireEvent.click(
+    screen.getByRole('checkbox', {
+      name: 'Enable https://github.com/example/skills-repo (k8s)',
+    })
+  );
+  const content = screen.getByRole('heading', { name: 'Custom GitHub Repository Sources' });
+  const discard = screen.getByRole('button', { name: 'Discard' });
+  const save = screen.getByRole('button', { name: 'Save Changes' });
+  expect(content.compareDocumentPosition(discard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(discard.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(heading.parentElement?.contains(save)).toBe(false);
 });
 
 it('keeps same-repository sources with different paths distinct', () => {
@@ -285,12 +351,24 @@ it('toggles custom sources, discards, saves, edits, adds, and deletes', async ()
   const sourceLabel = `${sourceUrl} (k8s)`;
   fireEvent.click(screen.getByRole('checkbox', { name: `Enable ${sourceLabel}` }));
   expect(screen.getByText('(Unsaved changes)')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-outlined')
+  ).toBe(true);
+  expect(
+    screen.getByRole('button', { name: 'Save Changes' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
   expect(screen.queryByText('(Unsaved changes)')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
 
   fireEvent.click(screen.getByRole('checkbox', { name: `Enable ${sourceLabel}` }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
   expect(onConfigChange).toHaveBeenCalled();
+  expect(
+    screen.getByRole('button', { name: 'Add Repository' }).classList.contains('MuiButton-contained')
+  ).toBe(true);
   expect(
     getSkillsConfig(store.data()).sources.find(source => source.url === sourceUrl)?.enabled
   ).toBe(false);

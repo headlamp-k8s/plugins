@@ -147,7 +147,13 @@ export function createChatModel(
     switch (providerId) {
       case 'openai':
         if (!c.apiKey) throw new Error('API key is required for OpenAI');
-        return new ChatOpenAI({ apiKey: c.apiKey, model: c.model, verbose });
+        return new ChatOpenAI({
+          apiKey: c.apiKey,
+          model: c.model,
+          // GPT-6 tool calling with the default reasoning settings requires Responses.
+          useResponsesApi: c.model.toLowerCase().startsWith('gpt-6'),
+          verbose,
+        });
 
       case 'azure':
         if (!c.apiKey || !c.endpoint || !c.deploymentName)

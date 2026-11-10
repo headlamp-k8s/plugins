@@ -2,6 +2,8 @@
 
 Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
 
+Requires Headlamp 0.23 or newer for the plugin settings registration API.
+
 ## What it does
 
 ### Phase 1 — Detail coverage panels

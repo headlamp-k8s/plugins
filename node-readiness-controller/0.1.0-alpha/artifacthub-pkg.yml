@@ -1,0 +1,38 @@
+version: 0.1.0-alpha
+name: headlamp_node_readiness_controller
+displayName: Node Readiness Controller
+createdAt: "2026-11-08T00:00:00Z"
+description: A read-only Headlamp UI for Node Readiness Controller rules, readiness conditions, managed taints, and dry-run simulation results.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/node-readiness-controller
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - node-readiness-controller
+  - readiness
+  - taints
+screenshots:
+  - title: Node Readiness Rules overview
+    url: https://github.com/user-attachments/assets/64c15533-7570-47b0-9a60-39e7bfc127fa
+  - title: Rule details and readiness conditions
+    url: https://github.com/user-attachments/assets/5292707b-02a9-4f99-99dc-c7f755b2b615
+  - title: Dry-run simulation results
+    url: https://github.com/user-attachments/assets/f6adc249-cbf0-461d-b1ba-23073a373d9a
+changes:
+  - kind: added
+    description: "Add dedicated sidebar navigation and a cluster-scoped NodeReadinessRule list."
+  - kind: added
+    description: "Show rule status, managed taints, node selectors, enforcement mode, and condition policy."
+  - kind: added
+    description: "Add read-only rule details with metadata, condition requirements, fallback states, and evaluation status."
+  - kind: added
+    description: "Display existing dry-run results with affected nodes, predicted taint additions/removals, risky operations, and evaluation errors."
+  - kind: added
+    description: "Include isolated sample fixtures, status-seeding guidance, and registration, detail-view, and status regressions."
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/node-readiness-controller-0.1.0-alpha/headlamp-k8s-node-readiness-controller-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:c50ba9f584f2c2dc38b52621cb32620c433c331e8ea0ffdc2fe12537c37e2676
+  headlamp/plugin/version-compat: ">=0.41"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

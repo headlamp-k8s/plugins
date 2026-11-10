@@ -152,6 +152,9 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
     return { type: 'local', url, enabled: value.enabled };
   }
   if (value.sha256 !== undefined && typeof value.sha256 !== 'string') return null;
+  if (value.includeReferences !== undefined && typeof value.includeReferences !== 'boolean') {
+    return null;
+  }
   const sha256 = typeof value.sha256 === 'string' ? value.sha256.trim().toLowerCase() : '';
   if (sha256 && !/^[a-fA-F0-9]{64}$/.test(sha256)) return null;
   const ref = typeof value.ref === 'string' ? value.ref.trim() : '';
@@ -163,6 +166,9 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
     ...(ref ? { ref } : {}),
     ...(path ? { path } : {}),
     ...(sha256 ? { sha256 } : {}),
+    ...(typeof value.includeReferences === 'boolean'
+      ? { includeReferences: value.includeReferences }
+      : {}),
   };
 }
 

@@ -26,6 +26,15 @@ const { chatOpenAIOptions } = vi.hoisted(() => ({
   chatOpenAIOptions: [] as Record<string, unknown>[],
 }));
 
+const lookupResourceTool = {
+  type: 'function',
+  function: {
+    name: 'lookup_resource',
+    description: 'Look up a Kubernetes resource',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
 // Record constructor options so endpoint routing is asserted on what we hand to
 // LangChain rather than on instance properties it may stop exposing.
 vi.mock('@langchain/openai', async importOriginal => {
@@ -170,6 +179,190 @@ describe('createLangChainModel — validation errors', () => {
   });
 });
 
+describe('createLangChainModel — OpenAI Responses API routing', () => {
+  it.each(['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-6.1-sol', 'gpt-6.1-terra'])(
+    'sends tool calls for %s through Responses',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'resp_test',
+            object: 'response',
+            created_at: 0,
+            status: 'completed',
+            model: modelId,
+            output: [
+              {
+                id: 'msg_test',
+                type: 'message',
+                role: 'assistant',
+                status: 'completed',
+                content: [{ type: 'output_text', text: 'ok', annotations: [] }],
+              },
+            ],
+            usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('openai', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('OpenAI model must support tools');
+      const runnable = model.bindTools([lookupResourceTool]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.openai.com/v1/responses');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ type: 'function', name: 'lookup_resource' }],
+      });
+    }
+  );
+
+  it.each(['gpt-5.6-terra', 'gpt-4o', 'custom-model'])('keeps %s on Chat Completions', modelId => {
+    createChatModel('openai', { apiKey: 'test-key', model: modelId });
+    expect(chatOpenAIOptions.at(-1)).toMatchObject({ model: modelId, useResponsesApi: false });
+  });
+});
+
+describe('createLangChainModel — Gemini tool compatibility', () => {
+  it('sends Gemini 4 tools through generateContent', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            { content: { role: 'model', parts: [{ text: 'ok' }] }, finishReason: 'STOP', index: 0 },
+          ],
+          usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 },
+        }),
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+    const model = createChatModel('gemini', { apiKey: 'test-key', model: 'gemini-4-argon' });
+    if (!model.bindTools) throw new Error('Gemini model must support tools');
+    const runnable = model.bindTools([lookupResourceTool]);
+
+    expect((await runnable.invoke('List resources')).text).toBe('ok');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const request = new Request(...fetchSpy.mock.calls[0]);
+    expect(request.url).toContain('/models/gemini-4-argon:generateContent');
+    expect(await request.json()).toMatchObject({
+      tools: [{ functionDeclarations: [{ name: 'lookup_resource' }] }],
+    });
+  });
+});
+
+describe('createLangChainModel — Mistral tool compatibility', () => {
+  it.each(['mistral-small-2603', 'mistral-large-4'])(
+    'sends tool calls for %s through Chat Completions',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'chatcmpl-test',
+            object: 'chat.completion',
+            created: 0,
+            model: modelId,
+            choices: [
+              { index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('mistral', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('Mistral model must support tools');
+      const runnable = model.bindTools([lookupResourceTool]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.mistral.ai/v1/chat/completions');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ type: 'function', function: { name: 'lookup_resource' } }],
+      });
+    }
+  );
+});
+
+describe('createLangChainModel — Claude 5.5 tool compatibility', () => {
+  it.each(['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'])(
+    'sends tool calls for %s through Messages',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'msg_test',
+            type: 'message',
+            role: 'assistant',
+            model: modelId,
+            content: [{ type: 'text', text: 'ok' }],
+            stop_reason: 'end_turn',
+            stop_sequence: null,
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('anthropic', { apiKey: 'test-key', model: modelId });
+      if (!model.bindTools) throw new Error('Claude model must support tools');
+      const runnable = model.bindTools([lookupResourceTool]);
+
+      expect((await runnable.invoke('List resources')).text).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toBe('https://api.anthropic.com/v1/messages');
+      expect(await request.json()).toMatchObject({
+        model: modelId,
+        tools: [{ name: 'lookup_resource', input_schema: { type: 'object' } }],
+      });
+    }
+  );
+});
+
+describe('createLangChainModel — Azure deployment routing', () => {
+  it.each(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.4-mini', 'gpt-5.4'])(
+    'sends tool calls for %s to the configured deployment',
+    async modelId => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'chatcmpl-test',
+            object: 'chat.completion',
+            created: 0,
+            model: modelId,
+            choices: [
+              { index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+      const model = createChatModel('azure', {
+        apiKey: 'test-key',
+        endpoint: 'https://test.openai.azure.com',
+        deploymentName: 'cluster-chat',
+        model: modelId,
+      });
+      if (!model.bindTools) throw new Error('Azure model must support tools');
+      const runnable = model.bindTools([lookupResourceTool]);
+
+      expect((await runnable.invoke('List resources')).content).toBe('ok');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const request = new Request(...fetchSpy.mock.calls[0]);
+      expect(request.url).toContain('/openai/deployments/cluster-chat/chat/completions');
+      expect(request.url).toContain('api-version=2025-04-01-preview');
+      expect(await request.json()).toMatchObject({
+        tools: [{ type: 'function', function: { name: 'lookup_resource' } }],
+      });
+    }
+  );
+});
+
 describe('createLangChainModel — vLLM URL normalisation', () => {
   it('appends /v1 when the URL has no path', () => {
     const m = createChatModel('vllm', { baseUrl: 'http://localhost:8080', model: 'llama3' });
@@ -225,6 +418,10 @@ describe('createLangChainModel — Copilot Responses API routing', () => {
     'gpt-5.6-luna',
     'gpt-5.6-terra',
     'gpt-6-astra',
+    'gpt-6-sol',
+    'gpt-6-luna',
+    'gpt-6.1-sol',
+    'gpt-6.1-terra',
     'grok-4.6',
     'mai-code-1.1-flash',
   ];

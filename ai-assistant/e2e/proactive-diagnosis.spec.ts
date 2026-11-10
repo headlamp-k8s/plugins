@@ -769,9 +769,13 @@ test('uses the current provider for an event opened after the previous panel unm
   await page.getByRole('button', { name: 'More options for Second provider', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Make Default', exact: true }).click();
   await expect(
-    page.getByText('Second provider', { exact: true }).locator('..').getByText('Default', {
-      exact: true,
-    })
+    page
+      .getByRole('table', { name: 'Configured Providers' })
+      .getByRole('row')
+      .filter({
+        has: page.getByRole('button', { name: 'More options for Second provider', exact: true }),
+      })
+      .getByRole('cell', { name: 'Default', exact: true })
   ).toBeVisible();
   expect(requests).toEqual(['first', 'first', 'first']);
 

@@ -54,6 +54,35 @@ kubectl get workloads -A
 
 After applying the examples, open `Kueue` > `Cohorts`, `Kueue` > `ClusterQueues`, `Kueue` > `LocalQueues`, `Kueue` > `ResourceFlavors`, or `Kueue` > `Workloads` in Headlamp.
 
+### Scenarios
+
+`test-files/scenarios/` sets up Workloads in the states the plugin explains, including the error conditions. Each scenario has its own namespace, ClusterQueue and LocalQueue, and only needs `test-files/deploy/resourceflavor-default.yaml` to be applied first. Remove a scenario with `kubectl delete -f test-files/scenarios/<name>/`.
+
+- `waiting-for-quota`: `kubectl apply -f test-files/scenarios/waiting-for-quota/`. One of `job-a` and `job-b` is admitted and the other is blocked on Waiting for quota. `too-big-job` is also blocked there, since it asks for more than the ClusterQueue has.
+- `admission-checks`: `kubectl apply -f test-files/scenarios/admission-checks/`. The `admission-checks` ClusterQueue is inactive because the `scenario-approval` AdmissionCheck is not Active, so `needs-approval-job` is Inadmissible. Mark the check Active (below) and `needs-approval-job` is blocked on Admission checks. Approve it (below) and it is admitted.
+- `deactivated`: `kubectl apply -f test-files/scenarios/deactivated/`, wait for `deactivated-job` to be admitted, then deactivate the Workload (below). `deactivated-job` is Deactivated, with an eviction in its timeline.
+- `preemption`: `kubectl apply -f test-files/scenarios/preemption/scenario.yaml`, wait for `low-priority-job` to be admitted, then `kubectl apply -f test-files/scenarios/preemption/high-priority-job.yaml`. `high-priority-job` is admitted, and `low-priority-job` is Evicted by preemption, requeued, and waits for quota.
+- `inadmissible`: `kubectl apply -f test-files/scenarios/inadmissible/`. `held-queue-job` uses a stopped ClusterQueue and `missing-queue-job` a LocalQueue that does not exist. Both are blocked on Waiting for quota with reason Inadmissible, and Kueue's message names the cause.
+- `owners`: `kubectl apply -f test-files/scenarios/owners/`. Workloads owned by a Job and by a plain Pod, with links to their owners on the Workload detail page. Needs Kueue's `pod` integration enabled.
+
+Commands for the manual steps:
+
+```bash
+# admission-checks: play the AdmissionCheck controller and mark the check Active
+kubectl patch admissioncheck scenario-approval --subresource=status --type=merge \
+  -p '{"status":{"conditions":[{"type":"Active","status":"True","reason":"Active","message":"Marked Active by hand","lastTransitionTime":"2026-01-01T00:00:00Z"}]}}'
+
+# admission-checks: approve the Workload
+kubectl -n kueue-admission-checks get workloads.kueue.x-k8s.io -o name | \
+  xargs -I{} kubectl -n kueue-admission-checks patch {} --subresource=status --type=json \
+  -p '[{"op":"replace","path":"/status/admissionChecks/0/state","value":"Ready"}]'
+
+# deactivated: wait for the Workload to be admitted, then deactivate it
+kubectl -n kueue-deactivated wait workloads.kueue.x-k8s.io --all --for=condition=Admitted --timeout=60s
+kubectl -n kueue-deactivated get workloads.kueue.x-k8s.io -o name | \
+  xargs -I{} kubectl -n kueue-deactivated patch {} --type=merge -p '{"spec":{"active":false}}'
+```
+
 ## Development
 
 ```bash

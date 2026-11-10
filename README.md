@@ -16,6 +16,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | | [@yolossn](https://github.com/yolossn) |
 | [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). | [@mboersma](https://github.com/mboersma) [@ChayanDass](https://github.com/ChayanDass) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
+| [hubble](./hubble) | See the network traffic Cilium Hubble records between pods. | Alpha. | [@9p-tech](https://github.com/9p-tech) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
 | [kueue](./kueue) | A UI for viewing Kueue Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads. | 0.1.0-alpha. | |
@@ -57,6 +58,12 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 ## Development
 
 For examples of plugins created for learning and documentation purposes, please refer to the [examples folder](https://github.com/headlamp-k8s/headlamp/tree/main/plugins#plugins) in Headlamp's repository.
+
+## Releases
+
+See [Preparing signed plugin releases](docs/releases.md) for the Actions-based
+build, signature and provenance attachments, Artifact Hub metadata handoff,
+and download verification.
 
 ## License
 

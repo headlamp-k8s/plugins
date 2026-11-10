@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ParsedSkill } from '../parseSkill';
+import { getSkillContentSizeBytes, ParsedSkill } from '../parseSkill';
 import {
   computeRelevanceScore,
   DEFAULT_ROUTER_CONFIG,
@@ -43,6 +43,25 @@ function makeSkill(
 }
 
 describe('SkillRouter', () => {
+  it('includes companion guidance in the routing byte budget', () => {
+    const skill = makeSkill('guide', 'guide');
+    skill.references = [
+      { path: 'references/install.md', content: 'Install safely.', contentSizeBytes: 15 },
+    ];
+    const skills = [skill, makeSkill('other', 'unrelated')];
+    const size = getSkillContentSizeBytes(skill);
+    expect(
+      routeSkills('guide', skills, {
+        ...DEFAULT_ROUTER_CONFIG,
+        maxSkills: 1,
+        maxTotalBytes: size - 1,
+      })
+    ).toEqual([]);
+    expect(
+      routeSkills('guide', skills, { ...DEFAULT_ROUTER_CONFIG, maxSkills: 1, maxTotalBytes: size })
+    ).toEqual([skill]);
+  });
+
   // ──────────────────────────────────────────────────────────────────────
   // tokenize
   // ──────────────────────────────────────────────────────────────────────

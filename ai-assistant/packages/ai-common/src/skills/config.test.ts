@@ -39,6 +39,24 @@ function makeSkill(name: string, source: string): ParsedSkill {
 }
 
 describe('getSkillsConfig', () => {
+  it('preserves the explicit reference option and rejects malformed values', () => {
+    const source = {
+      type: 'git',
+      url: 'https://github.com/owner/repo',
+      enabled: true,
+    };
+    for (const includeReferences of [false, true]) {
+      const config = getSkillsConfig({
+        skills: { sources: [{ ...source, includeReferences }] },
+      });
+      expect(config.sources).toEqual([{ ...source, includeReferences }]);
+      expect(getSkillsConfig(saveSkillsConfig({}, config)).sources).toEqual(config.sources);
+    }
+    expect(
+      getSkillsConfig({ skills: { sources: [{ ...source, includeReferences: 'yes' }] } }).sources
+    ).toEqual([]);
+  });
+
   it.each([true, false])('migrates the old Kubernetes Docs suggestion, enabled=%s', enabled => {
     const oldSource = { type: 'git', ...KUBERNETES_DOCS_SOURCE, path: 'content/en/docs', enabled };
     const data = { skills: { sources: [oldSource] } };

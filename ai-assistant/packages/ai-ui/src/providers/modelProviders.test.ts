@@ -217,6 +217,19 @@ describe('modelProviders helpers', () => {
   });
 
   describe('getProviderModels', () => {
+    it.each(['gpt-4o', 'custom-model'])(
+      'keeps configured model %s selectable after a catalog refresh',
+      model => {
+        const models = ['gpt-6.1-sol', 'gpt-5.6-terra'];
+        getProviderByIdMock.mockReturnValue({ models, fields: [] });
+        const config = makeProviderConfig({}, { model });
+
+        expect(getProviderModelsForChat(config, [config])).toEqual([...models, model]);
+        expect(models).toEqual(['gpt-6.1-sol', 'gpt-5.6-terra']);
+        expect(config.config.model).toBe(model);
+      }
+    );
+
     it('prefers provider models and appends a custom configured model', () => {
       getProviderByIdMock.mockReturnValue({
         models: ['gpt-4o', 'gpt-4.1'],
