@@ -25,6 +25,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [kro](./kro) | A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances. | Alpha. | [@danbruno101](https://github.com/danbruno101) |
 | [kyverno](./kyverno) | A UI for viewing and managing Kyverno policies and reports. | | [@joaquimrocha](https://github.com/joaquimrocha), [@itvi-1234](https://github.com/itvi-1234) |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
+| [node-readiness-controller](./node-readiness-controller) | A UI for Node Readiness Controller resources. | 0.1.0-alpha. Tracks [kubernetes-sigs/node-readiness-controller#327](https://github.com/kubernetes-sigs/node-readiness-controller/issues/327). | [@vishnukothakapu](https://github.com/vishnukothakapu), [@AnuragThePathak](https://github.com/AnuragThePathak), [@ajaysundark](https://github.com/ajaysundark) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
