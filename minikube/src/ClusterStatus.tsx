@@ -64,8 +64,12 @@ export default function ClusterStatus({ cluster, error }) {
                   justifyContent: 'center',
                 }}
               >
-                {/* <Icon icon="mdi:play" width={16} height={16} color={theme.palette.home.status.error} /> */}
-                <Icon icon="mdi:play" width={16} height={16} color={theme.palette.common.primary} />
+                <Icon
+                  icon="mdi:play"
+                  width={16}
+                  height={16}
+                  color={theme.palette.home.status.error}
+                />
               </IconButton>
             </Tooltip>
           ) : (
@@ -87,8 +91,12 @@ export default function ClusterStatus({ cluster, error }) {
                   justifyContent: 'center',
                 }}
               >
-                {/* <Icon icon="mdi:stop" width={16} height={16} color={theme.palette.home.status.success} /> */}
-                <Icon icon="mdi:stop" width={16} height={16} color={theme.palette.common.primary} />
+                <Icon
+                  icon="mdi:stop"
+                  width={16}
+                  height={16}
+                  color={theme.palette.home.status.success}
+                />
               </IconButton>
             </Tooltip>
           )}
