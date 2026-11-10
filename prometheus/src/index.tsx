@@ -12,6 +12,7 @@ import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetric
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
+import { getKueueClusterQueueChartConfigs } from './components/Chart/KueueClusterQueueChart/KueueClusterQueueChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
 import {
@@ -198,6 +199,21 @@ function PrometheusMetrics(resource: KubeObject) {
           resource.jsonData.metadata.name
         )}
         defaultChart="sync-activity"
+      />
+    );
+  }
+
+  if (
+    resourceKind === 'ClusterQueue' &&
+    resource.jsonData?.apiVersion?.startsWith('kueue.x-k8s.io/')
+  ) {
+    return (
+      <VolcanoChart
+        chartConfigs={getKueueClusterQueueChartConfigs(
+          resource.jsonData.metadata.name,
+          resource.jsonData.spec?.resourceGroups
+        )}
+        defaultChart="workloads"
       />
     );
   }

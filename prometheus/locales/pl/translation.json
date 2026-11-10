@@ -152,5 +152,15 @@
   "Default Resolution": "",
   "Select Cluster": "",
   "Hide Prometheus metrics": "",
-  "Show Prometheus metrics": ""
+  "Show Prometheus metrics": "",
+  "Pending (active)": "",
+  "Pending (inadmissible)": "",
+  "Admitted": "",
+  "p50 wait": "",
+  "p95 wait": "",
+  "Workloads": "",
+  "% of nominal quota": "",
+  "Seconds": "",
+  "Quota usage": "",
+  "Admission wait": ""
 }
