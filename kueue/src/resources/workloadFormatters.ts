@@ -1,4 +1,5 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { kueueApiGroup } from '../utils/kueueApi';
 import type { KueueCondition } from './clusterQueue';
 import type {
   Admission,
@@ -11,6 +12,7 @@ import type {
   TopologyAssignmentSliceLevelValues,
   TopologyAssignmentSlicePodCounts,
   WorkloadConditionLike,
+  WorkloadSpec,
 } from './workload';
 
 const CONDITION_TYPES = {
@@ -51,6 +53,54 @@ export function renderPriority(priority?: number | null) {
 /** Render the LocalQueue name referenced by a Workload. */
 export function renderQueueName(queueName?: string) {
   return renderText(queueName);
+}
+
+/** Normalized priority class reference combining v1beta2 priorityClassRef and v1beta1 fields. */
+export interface NormalizedPriorityClassRef {
+  /** API group of the referenced priority class. */
+  group?: string;
+  /** Kind of the referenced priority class. */
+  kind?: string;
+  /** Name of the referenced priority class. */
+  name?: string;
+  /** Whether the reference resolves to a Kueue WorkloadPriorityClass with a valid name. */
+  isWorkloadPriorityClass: boolean;
+}
+
+/**
+ * Normalize v1beta2 `spec.priorityClassRef` and v1beta1 `spec.priorityClassSource` /
+ * `spec.priorityClassName` into a consistent structure across Workload API versions.
+ */
+const LEGACY_PRIORITY_CLASS_SOURCES: Record<string, { group: string; kind: string }> = {
+  [`${kueueApiGroup}/workloadpriorityclass`]: {
+    group: kueueApiGroup,
+    kind: 'WorkloadPriorityClass',
+  },
+  'scheduling.k8s.io/priorityclass': {
+    group: 'scheduling.k8s.io',
+    kind: 'PriorityClass',
+  },
+};
+
+export function normalizePriorityClassRef(
+  spec: Pick<WorkloadSpec, 'priorityClassRef' | 'priorityClassName' | 'priorityClassSource'> = {}
+): NormalizedPriorityClassRef {
+  const ref = spec.priorityClassRef;
+  const legacySource = spec.priorityClassSource
+    ? LEGACY_PRIORITY_CLASS_SOURCES[spec.priorityClassSource]
+    : undefined;
+
+  const group = ref?.group || legacySource?.group;
+  const kind = ref?.kind || legacySource?.kind;
+  const name = ref?.name || spec.priorityClassName;
+
+  return {
+    group,
+    kind,
+    name,
+    isWorkloadPriorityClass:
+      group === kueueApiGroup && kind === 'WorkloadPriorityClass' && Boolean(name),
+  };
 }
 
 /** Render the current priority class reference name for a Workload. */

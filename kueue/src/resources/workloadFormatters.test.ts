@@ -9,6 +9,7 @@ import {
   getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   getWorkloadTimeline,
+  normalizePriorityClassRef,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
   renderAdmissionSummary,
@@ -691,6 +692,101 @@ describe('Workload formatters', () => {
           now
         ).steps[2].state
       ).toBe('deactivated');
+    });
+  });
+
+  describe('normalizePriorityClassRef', () => {
+    it('normalizes v1beta2 WorkloadPriorityClass references', () => {
+      expect(
+        normalizePriorityClassRef({
+          priorityClassRef: {
+            group: 'kueue.x-k8s.io',
+            kind: 'WorkloadPriorityClass',
+            name: 'prod-priority',
+          },
+        })
+      ).toEqual({
+        group: 'kueue.x-k8s.io',
+        kind: 'WorkloadPriorityClass',
+        name: 'prod-priority',
+        isWorkloadPriorityClass: true,
+      });
+    });
+
+    it('normalizes v1beta2 Kubernetes scheduling PriorityClass references without marking as Kueue WPC', () => {
+      expect(
+        normalizePriorityClassRef({
+          priorityClassRef: {
+            group: 'scheduling.k8s.io',
+            kind: 'PriorityClass',
+            name: 'system-cluster-critical',
+          },
+        })
+      ).toEqual({
+        group: 'scheduling.k8s.io',
+        kind: 'PriorityClass',
+        name: 'system-cluster-critical',
+        isWorkloadPriorityClass: false,
+      });
+    });
+
+    it('normalizes v1beta1 WorkloadPriorityClass references via priorityClassSource and priorityClassName', () => {
+      expect(
+        normalizePriorityClassRef({
+          priorityClassSource: 'kueue.x-k8s.io/workloadpriorityclass',
+          priorityClassName: 'legacy-wpc',
+        })
+      ).toEqual({
+        group: 'kueue.x-k8s.io',
+        kind: 'WorkloadPriorityClass',
+        name: 'legacy-wpc',
+        isWorkloadPriorityClass: true,
+      });
+    });
+
+    it('normalizes v1beta1 Kubernetes PriorityClass references via priorityClassSource', () => {
+      expect(
+        normalizePriorityClassRef({
+          priorityClassSource: 'scheduling.k8s.io/priorityclass',
+          priorityClassName: 'high-pod-priority',
+        })
+      ).toEqual({
+        group: 'scheduling.k8s.io',
+        kind: 'PriorityClass',
+        name: 'high-pod-priority',
+        isWorkloadPriorityClass: false,
+      });
+    });
+
+    it('handles missing priorityClassSource, missing names, and empty specs safely', () => {
+      expect(
+        normalizePriorityClassRef({
+          priorityClassName: 'unknown-source-priority',
+        })
+      ).toEqual({
+        group: undefined,
+        kind: undefined,
+        name: 'unknown-source-priority',
+        isWorkloadPriorityClass: false,
+      });
+
+      expect(
+        normalizePriorityClassRef({
+          priorityClassSource: 'kueue.x-k8s.io/workloadpriorityclass',
+        })
+      ).toEqual({
+        group: 'kueue.x-k8s.io',
+        kind: 'WorkloadPriorityClass',
+        name: undefined,
+        isWorkloadPriorityClass: false,
+      });
+
+      expect(normalizePriorityClassRef({})).toEqual({
+        group: undefined,
+        kind: undefined,
+        name: undefined,
+        isWorkloadPriorityClass: false,
+      });
     });
   });
 });

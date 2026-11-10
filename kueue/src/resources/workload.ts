@@ -10,6 +10,7 @@ import {
   getAdmissionFlavorNames,
   getWorkloadBlocker,
   getWorkloadDetailRouteParams,
+  normalizePriorityClassRef,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
   renderAdmissionSummary,
@@ -260,11 +261,27 @@ export interface WorkloadSpec {
    */
   queueName?: string;
   /**
-   * Priority class reference used to populate Workload priority.
+   * Priority class reference used to populate Workload priority in v1beta2+.
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#workloadspec
    */
   priorityClassRef?: PriorityClassRef;
+  /**
+   * Priority class name used in v1beta1 Workloads; replaced by priorityClassRef in v1beta2+.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#workloadspec
+   */
+  priorityClassName?: string;
+  /**
+   * Priority class source used in v1beta1 Workloads (`scheduling.k8s.io/priorityclass` or
+   * `kueue.x-k8s.io/workloadpriorityclass`); replaced by priorityClassRef in v1beta2+.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#workloadspec
+   */
+  priorityClassSource?:
+    | 'scheduling.k8s.io/priorityclass'
+    | 'kueue.x-k8s.io/workloadpriorityclass'
+    | string;
   /**
    * Numeric priority used for admission ordering.
    *
@@ -748,8 +765,16 @@ export class Workload extends KubeObject<KubeWorkload> {
     return renderPriority(this.priority);
   }
 
+  get normalizedPriorityClass() {
+    return normalizePriorityClassRef(this.spec);
+  }
+
   get priorityClassName() {
-    return this.spec.priorityClassRef?.name;
+    return this.normalizedPriorityClass.name;
+  }
+
+  get isWorkloadPriorityClass() {
+    return this.normalizedPriorityClass.isWorkloadPriorityClass;
   }
 
   get priorityClassDisplay() {

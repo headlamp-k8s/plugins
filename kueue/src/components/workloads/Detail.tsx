@@ -36,6 +36,7 @@ import {
   renderClusterQueueLink,
   renderLocalQueueLink,
   renderOwnerReferenceLinks,
+  renderWorkloadPriorityClassLink,
 } from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
@@ -634,7 +635,9 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Priority Class',
-                  value: workload.priorityClassDisplay,
+                  value: workload.isWorkloadPriorityClass
+                    ? renderWorkloadPriorityClassLink(workload.priorityClassName)
+                    : workload.priorityClassDisplay,
                 },
                 {
                   name: 'Active',
