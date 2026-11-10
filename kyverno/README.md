@@ -5,17 +5,17 @@ users a way to view Kyverno policies, reports, and policy violations directly in
 Headlamp.
 
 [Kyverno](https://kyverno.io/) is a policy engine for Kubernetes. This plugin
-discovers the Kyverno CRDs present in your cluster and only shows the views that
-apply, so it works whether you run the legacy (`kyverno.io/v1`) policy types, the
-newer CEL-based policy types, or both.
+discovers the Kyverno CRDs present in your cluster and guards views for unavailable
+resource types, so it works whether you run the legacy (`kyverno.io/v1`) policy
+types, the newer CEL-based policy types, or both.
 
 ## Demo
 
-<video src="https://github.com/user-attachments/assets/3d32d729-a892-4efc-bf98-ea0b21375592" controls width="800">
+<video src="https://github.com/user-attachments/assets/77cad203-de41-40b3-9966-e2a3b741f298" controls width="800">
   Your browser does not support the video tag.
 </video>
 
-Watch: https://github.com/user-attachments/assets/3d32d729-a892-4efc-bf98-ea0b21375592
+Watch: https://github.com/user-attachments/assets/77cad203-de41-40b3-9966-e2a3b741f298
 
 ## Features
 
@@ -24,16 +24,46 @@ Watch: https://github.com/user-attachments/assets/3d32d729-a892-4efc-bf98-ea0b21
 - **Policies** views for the full set of Kyverno policy types:
   - Cluster Policies and Policies (`kyverno.io/v1`)
   - Validating, Mutating, Generating, Deleting, and Image Validating Policies
-    (CEL-based)
+    (CEL-based), including list and detail views for all five namespaced
+    counterparts, with namespace columns and distinct tabs for same-named policies
   - Cluster Cleanup Policies and Cleanup Policies
+- **Policy Impact Map** on legacy Policy and ClusterPolicy detail pages, showing
+  evaluated resources grouped by kind, pass/fail/warning counts, and plain-language
+  match explanations derived from policy rules and report data.
+- **Policy Engine Health**, an optional Overview section showing admission rate,
+  denied requests, circuit breaker trips, controller requeues, policies not ready,
+  and P95 admission review latency.
 - **Reports** views:
   - Policy Reports and Cluster Policy Reports (`wgpolicyk8s.io/v1alpha2`)
-  - Admission, Background Scan, and Ephemeral Reports, including their
-    cluster-scoped variants
+  - Ephemeral Reports and Cluster Ephemeral Reports (`reports.kyverno.io/v1`)
 - **Violations** view aggregating failing results across reports.
 - **Exceptions** view for Policy Exceptions.
+- **Localized tables and status text**, with interpolated counts, percentages,
+  and error messages, and table headers that update when the language changes.
 
-Views for resource types whose CRDs are not installed are hidden automatically.
+Views for resource types whose CRDs are not installed show an availability
+message. Each namespaced CEL policy kind is checked individually, with a
+version-specific message when unavailable.
+
+### Policy Engine Health Setup
+
+The section is disabled by default. Enable **Policy Engine Health** under
+**Settings > Plugins > kyverno**. It requires a reachable Prometheus server
+scraping Kyverno's controller metrics and permission to read the policy resources
+used for readiness checks, including cleanup policies.
+
+Prometheus is discovered automatically. If none is found, the section is omitted.
+Other plugin views do not require Prometheus.
+
+### Known Limitations
+
+- The Policy Impact Map supports legacy Policy and ClusterPolicy resources only,
+  not CEL policy kinds.
+- Drill-down links from impacted resources to individual report results and
+  integration with Headlamp's Map view are not included in this release.
+- Overview policy totals still count legacy Policy and ClusterPolicy resources,
+  not CEL policies.
+- Long namespaced CEL sidebar labels can truncate at the default sidebar width.
 
 ## Prerequisites
 
@@ -56,13 +86,13 @@ Download the latest release from [GitHub Releases](https://github.com/headlamp-k
 **Linux:**
 ```bash
 mkdir -p ~/.config/Headlamp/plugins/kyverno
-tar -xzf kyverno-*.tar.gz -C ~/.config/Headlamp/plugins/kyverno --strip-components=1
+tar -xzf headlamp-k8s-kyverno-0.2.0-alpha.tar.gz -C ~/.config/Headlamp/plugins/kyverno --strip-components=1
 ```
 
 **macOS:**
 ```bash
 mkdir -p ~/Library/Application\ Support/Headlamp/plugins/kyverno
-tar -xzf kyverno-*.tar.gz -C ~/Library/Application\ Support/Headlamp/plugins/kyverno --strip-components=1
+tar -xzf headlamp-k8s-kyverno-0.2.0-alpha.tar.gz -C ~/Library/Application\ Support/Headlamp/plugins/kyverno --strip-components=1
 ```
 
 Restart Headlamp after extracting.
@@ -83,7 +113,7 @@ npm run tsc      # TypeScript type-check
 
 ## License
 
-This project is licensed under the Apache License 2.0 — see the [LICENSE](../../LICENSE) file for details.
+This project is licensed under the Apache License 2.0 — see the [LICENSE](https://github.com/headlamp-k8s/plugins/blob/main/LICENSE) file for details.
 
 ## References
 

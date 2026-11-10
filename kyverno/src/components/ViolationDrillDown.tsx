@@ -181,7 +181,7 @@ function LoadingPlaceholder() {
 function LegacyContent({ target, rules }: { target: DrillDownTarget; rules: PolicyRule[] }) {
   const { t } = useTranslation();
   const kind = target.kind || 'Unknown';
-  const reasons = describeMatchReasons(rules, kind);
+  const reasons = describeMatchReasons(rules, kind, t);
   // Kyverno autogenerates rules for pod-controller kinds (autogen- / autogen-cronjob- prefix).
   // Those names are not present in policy.rules, so strip the prefix to find the source rule.
   const resolveRule = (ruleName: string) => {

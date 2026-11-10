@@ -89,7 +89,7 @@ const STATUS_RANK: Record<PolicyResultStatus, number> = {
 // is a serialization detail, not part of the resource's identity. Used below for the fallback
 // key so UID-less references to the same resource reconcile across versions instead of
 // splitting into separate rows, while still keeping genuinely different groups apart.
-function apiGroupOf(apiVersion: string | undefined): string {
+export function apiGroupOf(apiVersion: string | undefined): string {
   if (!apiVersion) return '';
   const slashIndex = apiVersion.indexOf('/');
   return slashIndex === -1 ? '' : apiVersion.slice(0, slashIndex);
