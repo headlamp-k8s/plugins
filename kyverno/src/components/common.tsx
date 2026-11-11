@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Box,
@@ -112,8 +113,31 @@ export function tableRemountKey(ready: boolean, language?: string): string {
   return ready ? `translations-ready:${language ?? ''}` : 'translations-loading';
 }
 
+const statusIcons: Record<PolicyResultStatus, string> = {
+  pass: 'mdi:check-circle',
+  fail: 'mdi:close-circle',
+  error: 'mdi:close-circle',
+  warn: 'mdi:alert',
+  skip: 'mdi:minus-circle',
+};
+
+const severityIcons: Record<string, string> = {
+  critical: 'mdi:alert',
+  high: 'mdi:alert',
+  medium: 'mdi:alert-circle-outline',
+  low: 'mdi:information',
+  info: 'mdi:information-outline',
+};
+
 export function ResultStatusChip({ status }: { status: PolicyResultStatus }) {
-  return <Chip label={status} color={statusColors[status] || 'default'} size="small" />;
+  return (
+    <Chip
+      label={status}
+      color={statusColors[status] || 'default'}
+      size="small"
+      icon={<Icon icon={statusIcons[status] || 'mdi:circle'} width="14" height="14" />}
+    />
+  );
 }
 
 export function SeverityChip({ severity }: { severity?: string }) {
@@ -124,6 +148,7 @@ export function SeverityChip({ severity }: { severity?: string }) {
       color={severityColors[severity] || 'default'}
       size="small"
       variant="outlined"
+      icon={<Icon icon={severityIcons[severity] || 'mdi:circle-outline'} width="14" height="14" />}
     />
   );
 }
