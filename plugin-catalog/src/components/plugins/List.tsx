@@ -1,7 +1,7 @@
 import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Alert, Box, Pagination, TextField } from '@mui/material';
+import { Alert, Box, Button, Pagination, TextField } from '@mui/material';
 import { Typography } from '@mui/material';
 import { Switch } from '@mui/material';
 import { FormControlLabel } from '@mui/material';
@@ -185,6 +185,9 @@ export interface PurePluginListProps {
   onPageChange: (event: React.ChangeEvent<unknown>, page: number) => void;
   isOfficialSwitchChecked: boolean;
   onOfficialSwitchChange: (isChecked: boolean) => void;
+  /** Shown above the plugins when they couldn't be loaded. */
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 interface CatalogFilterSwitchProps {
@@ -247,6 +250,8 @@ export function PurePluginList({
   onPageChange,
   isOfficialSwitchChecked,
   onOfficialSwitchChange,
+  error,
+  onRetry,
 }: PurePluginListProps) {
   const { t } = useTranslation();
   return (
@@ -274,6 +279,7 @@ export function PurePluginList({
           />,
         ]}
       />
+      {error && <Alert severity="error">{error}</Alert>}
       <Box
         display="flex"
         flexWrap="wrap"
@@ -287,6 +293,14 @@ export function PurePluginList({
           ) : (
             <Box textAlign="center" paddingTop={2} sx={{ width: '100%' }}>
               <Typography align="center">{t('No plugins found')}</Typography>
+            </Box>
+          )
+        ) : error ? (
+          onRetry && (
+            <Box mt={2} mx="auto" maxWidth="max-content">
+              <Button variant="contained" onClick={onRetry}>
+                {t('Try again')}
+              </Button>
             </Box>
           )
         ) : (
@@ -315,6 +329,7 @@ export function PluginList() {
   const [search, setSearch] = useState('');
   const [result, setResult] = useState<{ key: string; plugins: PluginPackage[] } | null>(null);
   const [error, setError] = useState<{ key: string } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [page, setPage] = useState(1);
   const conf = usePluginCatalogConfig();
   const mode = useCatalogMode();
@@ -352,7 +367,7 @@ export function PluginList() {
     return () => {
       active = false;
     };
-  }, [mode, aksMode, onlyOfficial, onlyVerified, onlyAksOptimized, key]);
+  }, [mode, aksMode, onlyOfficial, onlyVerified, onlyAksOptimized, key, retryCount]);
 
   const allPlugins = result?.key === key ? result.plugins : null;
 
@@ -386,25 +401,27 @@ export function PluginList() {
   };
 
   return (
-    <>
-      {error?.key === key && <Alert severity="error">{t('Failed to fetch plugins')}</Alert>}
-      <PurePluginList
-        aksMode={aksMode}
-        plugins={paginatedPlugins}
-        totalPages={totalPages}
-        page={page}
-        search={search}
-        onSearchChange={handleSearchChange}
-        onPageChange={handlePageChange}
-        isOfficialSwitchChecked={aksMode ? onlyAksOptimized : onlyOfficial}
-        onOfficialSwitchChange={(isChecked: boolean) => {
-          configStore.update(
-            aksMode
-              ? { displayOnlyAksOptimizedPlugins: isChecked }
-              : { displayOnlyOfficialPlugins: isChecked }
-          );
-        }}
-      />
-    </>
+    <PurePluginList
+      aksMode={aksMode}
+      plugins={paginatedPlugins}
+      totalPages={totalPages}
+      page={page}
+      search={search}
+      onSearchChange={handleSearchChange}
+      onPageChange={handlePageChange}
+      isOfficialSwitchChecked={aksMode ? onlyAksOptimized : onlyOfficial}
+      onOfficialSwitchChange={(isChecked: boolean) => {
+        configStore.update(
+          aksMode
+            ? { displayOnlyAksOptimizedPlugins: isChecked }
+            : { displayOnlyOfficialPlugins: isChecked }
+        );
+      }}
+      error={error?.key === key ? t('Failed to fetch plugins') : null}
+      onRetry={() => {
+        setError(null);
+        setRetryCount(count => count + 1);
+      }}
+    />
   );
 }

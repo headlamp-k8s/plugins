@@ -263,4 +263,18 @@ describe('catalog host filtering', () => {
     expect(log).toHaveBeenCalled();
     log.mockRestore();
   });
+
+  it('offers a retry instead of loading forever when fetching fails', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const succeed = fetchMock.getMockImplementation()!;
+    fetchMock.mockRejectedValue(new Error('offline'));
+    render(<PluginList />);
+    await screen.findByRole('alert');
+    expect(screen.queryByText('Loading')).toBeNull();
+    fetchMock.mockImplementation(succeed);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText(flux.display_name);
+    expect(screen.queryByRole('alert')).toBeNull();
+    log.mockRestore();
+  });
 });
