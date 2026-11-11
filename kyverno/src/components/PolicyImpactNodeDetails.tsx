@@ -31,12 +31,22 @@ const DISPLAYED_RESOURCES = 5;
 
 // Status icon and color for a single resource row.
 function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) {
+  const { t } = useTranslation();
+  const statusLabels: Record<string, string> = {
+    fail: t('Fail'),
+    error: t('Error'),
+    warn: t('Warn'),
+    pass: t('Pass'),
+    skip: t('Skip'),
+  };
+  const label = statusLabels[status] ?? status;
+
   if (status === 'fail' || status === 'error') {
     return (
       <Icon
         icon="mdi:close-circle"
         width="16"
-        aria-label={status}
+        aria-label={label}
         style={{ color: 'rgb(211, 47, 47)', flexShrink: 0 }}
       />
     );
@@ -46,7 +56,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
       <Icon
         icon="mdi:alert-circle"
         width="16"
-        aria-label={status}
+        aria-label={label}
         style={{ color: 'rgb(237, 108, 2)', flexShrink: 0 }}
       />
     );
@@ -56,7 +66,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
       <Icon
         icon="mdi:minus-circle"
         width="16"
-        aria-label={status}
+        aria-label={label}
         style={{ color: 'rgb(120, 120, 120)', flexShrink: 0 }}
       />
     );
@@ -65,7 +75,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
     <Icon
       icon="mdi:check-circle"
       width="16"
-      aria-label={status}
+      aria-label={label}
       style={{ color: 'rgb(46, 125, 50)', flexShrink: 0 }}
     />
   );

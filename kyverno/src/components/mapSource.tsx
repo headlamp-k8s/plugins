@@ -29,14 +29,14 @@ import { PolicyImpactNodeDetails } from './PolicyImpactNodeDetails';
 // example) would flood the Map with synthetic nodes and make it unusable.
 const MAX_RESOURCE_NODES_PER_POLICY = 50;
 
-function policyStatusIcon(impact: PolicyImpactSummary) {
+function policyStatusIcon(impact: PolicyImpactSummary, t: (key: string) => string) {
   if (impact.counts.fail + impact.counts.error > 0) {
     return (
       <Icon
         icon="mdi:shield-off"
         width="100%"
         height="100%"
-        aria-label="failing"
+        aria-label={t('failing')}
         style={{ color: 'rgb(211, 47, 47)' }}
       />
     );
@@ -47,7 +47,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-alert"
         width="100%"
         height="100%"
-        aria-label="warning"
+        aria-label={t('warning')}
         style={{ color: 'rgb(237, 108, 2)' }}
       />
     );
@@ -58,7 +58,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-check"
         width="100%"
         height="100%"
-        aria-label="passing"
+        aria-label={t('passing')}
         style={{ color: 'rgb(46, 125, 50)' }}
       />
     );
@@ -71,7 +71,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-outline"
         width="100%"
         height="100%"
-        aria-label="skip"
+        aria-label={t('skip')}
         style={{ color: 'rgb(120, 120, 120)' }}
       />
     );
@@ -82,7 +82,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
       icon="mdi:shield-outline"
       width="100%"
       height="100%"
-      aria-label="no data"
+      aria-label={t('no data')}
       style={{ color: 'rgb(120, 120, 120)' }}
     />
   );
@@ -158,6 +158,7 @@ export const kyvernoMapSource = {
   icon: <Icon icon="kyverno:logo" width="100%" height="100%" />,
 
   useData() {
+    const { t } = useTranslation();
     const [clusterPolicies, clusterPoliciesErr] = KyvernoClusterPolicy.useList();
     const [policies, policiesErr] = KyvernoPolicy.useList();
     const { items: policyReports, errors: prErrors } = PolicyReport.useList();
@@ -248,7 +249,7 @@ export const kyvernoMapSource = {
           id: policyUid,
           kubeObject: policy,
           weight: 2000,
-          icon: policyStatusIcon(impact),
+          icon: policyStatusIcon(impact, t),
           data: {
             impact,
             clipped: impact.resources.length > MAX_RESOURCE_NODES_PER_POLICY,
@@ -291,6 +292,7 @@ export const kyvernoMapSource = {
 
       return { nodes, edges };
     }, [
+      t,
       clusterPolicies,
       clusterPoliciesErr,
       policies,

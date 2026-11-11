@@ -149,6 +149,7 @@ function StatusFilterChips({
           }
           variant={selected.includes(status) ? 'filled' : 'outlined'}
           onClick={() => toggle(status)}
+          aria-pressed={selected.includes(status)}
           sx={{ cursor: 'pointer' }}
         />
       ))}
