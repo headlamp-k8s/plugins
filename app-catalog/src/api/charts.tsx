@@ -8,6 +8,7 @@ import {
 import { yamlToJSON } from '../helpers';
 import { isElectron } from '../index';
 import { getCatalogConfig, setChartValuesPrefix } from './catalogConfig';
+import { getExternalProxyEndpoint } from './externalProxy';
 
 // Headlamp plugin's backend service proxy endpoint.
 // It was implemented by Headlamp's backed to proxies in-cluster requests to handle authentication
@@ -100,7 +101,7 @@ export async function fetchChartsFromArtifact(
   // CloudFront, which serves cached responses (X-Cache: Hit) without an
   // Access-Control-Allow-Origin header, so whether a request succeeds depends on the edge
   // cache state. The proxy performs the request server-side, avoiding CORS entirely.
-  const response = await fetch(`http://localhost:4466/externalproxy`, {
+  const response = await fetch(getExternalProxyEndpoint(), {
     headers: {
       'Forward-To': url.toString(),
     },
@@ -138,7 +139,7 @@ export function fetchChartDetailFromArtifact(chartName: string, repoName: string
 
   // Use /externalproxy for App-catalog desktop version
 
-  return fetch(`http://localhost:4466/externalproxy`, {
+  return fetch(getExternalProxyEndpoint(), {
     headers: {
       'Forward-To': `https://artifacthub.io/api/v1/packages/helm/${repoName}/${chartName}`,
     },
@@ -177,7 +178,7 @@ export function fetchChartValues(packageID: string, packageVersion: string) {
   }
 
   // Use /externalproxy for App-catalog desktop version
-  return fetch(`http://localhost:4466/externalproxy`, {
+  return fetch(getExternalProxyEndpoint(), {
     headers: {
       'Forward-To': `https://artifacthub.io/api/v1/packages/${packageID}/${packageVersion}/values`,
     },
@@ -217,7 +218,7 @@ export async function fetchLatestAppVersion(chartName: string): Promise<string> 
     url.searchParams.set('ts_query_web', chartName);
 
     // Route through Headlamp's external proxy to avoid CORS, same as fetchChartsFromArtifact.
-    const response = await fetch(`http://localhost:4466/externalproxy`, {
+    const response = await fetch(getExternalProxyEndpoint(), {
       headers: {
         'Forward-To': url.toString(),
       },
