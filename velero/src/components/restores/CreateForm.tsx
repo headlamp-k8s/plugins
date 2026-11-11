@@ -15,7 +15,11 @@ import {
 import { useEffect, useState } from 'react';
 import FreeSoloMulti from '../common/FreeSoloMulti';
 import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
-import type { RestoreCreateFormProps, RestoreCreateInput } from './createTypes';
+import {
+  nextBackupSelection,
+  type RestoreCreateFormProps,
+  type RestoreCreateInput,
+} from './createTypes';
 
 /** Create Restore form — adapted from reasonerjt prototype. */
 export default function RestoreCreateForm({
@@ -34,12 +38,7 @@ export default function RestoreCreateForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setBackupName(prev => {
-      if (prev && (backups.length === 0 || backups.includes(prev))) {
-        return prev;
-      }
-      return backups[0] ?? '';
-    });
+    setBackupName(prev => nextBackupSelection(prev, backups));
   }, [backups]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,6 +121,11 @@ export default function RestoreCreateForm({
                   onChange={e => setBackupName(e.target.value)}
                   label="Backup Source"
                 >
+                  {backupName === '' && (
+                    <MenuItem value="" disabled>
+                      Select a backup
+                    </MenuItem>
+                  )}
                   {backups.map(b => (
                     <MenuItem key={b} value={b}>
                       {b}

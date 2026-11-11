@@ -8,6 +8,22 @@ export function restorableBackupNames(backups: Array<{ name: string; phase: stri
     .map(backup => backup.name);
 }
 
+/**
+ * Next Backup source for the Create Restore form.
+ * An empty selection takes the first available name when the list arrives.
+ * A selection that disappears is cleared so the form does not switch to another backup.
+ * An empty list keeps a typed name, because namespace discovery may be unavailable.
+ */
+export function nextBackupSelection(current: string, backups: string[]): string {
+  if (!current) {
+    return backups[0] ?? '';
+  }
+  if (backups.length === 0 || backups.includes(current)) {
+    return current;
+  }
+  return '';
+}
+
 /** Values submitted by the Create Restore form. */
 export interface RestoreCreateInput {
   /** DNS-1123 name of the Restore in the Velero namespace. */
