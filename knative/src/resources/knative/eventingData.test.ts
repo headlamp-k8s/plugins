@@ -19,8 +19,8 @@ import {
   formatDestination,
   formatTriggerFilter,
   getBrokerClass,
+  getCrdKindInfo,
   getPreferredApiVersion,
-  getSourceKindInfo,
   getTriggerBroker,
 } from './eventingData';
 import type { KnativeTrigger } from './trigger';
@@ -74,14 +74,14 @@ describe('Knative Eventing resource data', () => {
       },
     };
 
-    expect(getSourceKindInfo(crd)).toEqual({
+    expect(getCrdKindInfo(crd)).toEqual({
       kind: 'PingSource',
       apiName: 'pingsources',
       apiVersion: 'sources.knative.dev/v1',
       isNamespaced: true,
     });
     expect(
-      getSourceKindInfo({
+      getCrdKindInfo({
         ...crd,
         spec: {
           ...crd.spec,

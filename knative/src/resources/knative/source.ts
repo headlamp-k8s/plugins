@@ -15,16 +15,25 @@
  */
 
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KnativeListRouteName } from '../../navigation';
 import type { AuthStatus, Destination } from './common';
-import { ConditionedKnativeCustomResource, type ConditionedStatus } from './conditionedResource';
+import type { ConditionedStatus } from './conditionedResource';
 import type { KnativeResourceClass } from './customResourceLinks';
+import { KNATIVE_SOURCE_KINDS } from './eventingData';
+import { type DiscoveredKindFamily, DiscoveredKindResource, getKindClass } from './kindClass';
 
-export const SOURCE_CRD_LABEL_SELECTOR = 'duck.knative.dev/source=true';
+/** The attributes of the CloudEvents a Source sends, as the Source reports them. */
+export interface SourceCloudEventAttributes {
+  /** The CloudEvent `type` attribute. */
+  type?: string;
+  /** The CloudEvent `source` attribute. */
+  source?: string;
+}
 
 /**
  * The fields every Knative Source has, whatever its kind: Knative's Source duck type, which every
- * Source CRD (labelled `duck.knative.dev/source=true`) follows. Fields that only one kind has, such
- * as a PingSource's schedule, are not part of it.
+ * Source CRD (labelled `duck.knative.dev/source=true`) follows. Each kind adds its own settings to
+ * the spec, such as a PingSource's schedule.
  */
 interface KnativeSourceResource extends KubeObjectInterface {
   /** The Source's desired state. */
@@ -39,18 +48,15 @@ interface KnativeSourceResource extends KubeObjectInterface {
        */
       extensions?: Record<string, string>;
     };
+    /** The settings of the Source's own kind, such as a PingSource's `schedule`. */
+    [setting: string]: unknown;
   };
   /** The Source's observed state. */
   status?: ConditionedStatus & {
     /** The sink URI the Source currently sends its events to. */
     sinkUri?: string;
     /** The attributes of the CloudEvents the Source sends. */
-    ceAttributes?: {
-      /** The CloudEvent `type` attribute. */
-      type?: string;
-      /** The CloudEvent `source` attribute. */
-      source?: string;
-    }[];
+    ceAttributes?: SourceCloudEventAttributes[];
     /** The sink's Certification Authority (CA) certificates, in PEM format (RFC 7468). */
     sinkCACerts?: string;
     /** The OIDC audience of the sink. */
@@ -64,7 +70,25 @@ interface KnativeSourceResource extends KubeObjectInterface {
  * A Knative Source of any kind. `getKnativeSourceClass` derives one class per kind of Source, so
  * the same type serves every kind.
  */
-export class KnativeSource extends ConditionedKnativeCustomResource<KnativeSourceResource> {
+export class KnativeSource extends DiscoveredKindResource<KnativeSourceResource> {
+  /**
+   * The plugin route that shows one Source.
+   *
+   * @returns The route name.
+   */
+  static get detailsRoute(): string {
+    return 'knativeSourceDetails';
+  }
+
+  /**
+   * The plugin route that lists Sources.
+   *
+   * @returns The route name.
+   */
+  static get listRoute(): KnativeListRouteName {
+    return 'knativeSources';
+  }
+
   /**
    * Where the Source sends its events.
    *
@@ -73,32 +97,43 @@ export class KnativeSource extends ConditionedKnativeCustomResource<KnativeSourc
   get sink(): Destination | undefined {
     return this.spec?.sink;
   }
+
+  /**
+   * The rest of the Source's spec, as written: the settings of its own kind and the changes it
+   * makes to its events.
+   *
+   * @returns Everything in the spec but the sink, or undefined when there is nothing else.
+   */
+  get settings(): Record<string, unknown> | undefined {
+    return this.getSpecWithout('sink');
+  }
 }
 
 const sourceClasses = new Map<string, typeof KnativeSource>();
 
 /**
- * Gives the class for the Sources of one kind. The same kind, plural name, scope and API version
- * always give the same class, so a list of that kind keeps its watch while its CRD changes in
- * other ways.
+ * Gives the class for the Sources of one kind, the same class each time for the same kind.
  *
  * @param info - The kind, its plural name, scope and the API version to request. A single API
  * version lets Headlamp request it directly, without first trying several.
  * @returns The class.
  */
 export function getKnativeSourceClass(info: KnativeResourceClass): typeof KnativeSource {
-  const key = JSON.stringify([info.kind, info.apiName, info.apiVersion, info.isNamespaced]);
-  const existing = sourceClasses.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const sourceClass = class extends KnativeSource {
-    static kind = info.kind;
-    static apiName = info.apiName;
-    static apiVersion = info.apiVersion;
-    static isNamespaced = info.isNamespaced;
-  };
-  sourceClasses.set(key, sourceClass);
-  return sourceClass;
+  return getKindClass(
+    sourceClasses,
+    info,
+    () =>
+      class extends KnativeSource {
+        static kind = info.kind;
+        static apiName = info.apiName;
+        static apiVersion = info.apiVersion;
+        static isNamespaced = info.isNamespaced;
+      }
+  );
 }
+
+export const SOURCE_FAMILY: DiscoveredKindFamily<typeof KnativeSource> = {
+  labelKey: 'duck.knative.dev/source',
+  fallbackKinds: KNATIVE_SOURCE_KINDS,
+  getKindClass: getKnativeSourceClass,
+};
