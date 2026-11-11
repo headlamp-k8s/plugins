@@ -203,5 +203,10 @@
   "Rule \"{{rule}}\" matches {{constraints}}.": "Rule \"{{rule}}\" matches {{constraints}}.",
   "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.": "Rule \"{{rule}}\" also has an exclude block covering kind \"{{kind}}\"; a specific resource matching it would not actually be affected by this rule.",
   "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.": "This policy's rules could not be read in a format this explanation understands; provenance for kind \"{{kind}}\" is unknown.",
-  "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.": "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan."
+  "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.": "No rule in this policy explicitly lists kind \"{{kind}}\" in its match block; it was likely reached through a generated rule or a background scan.",
+  "failing": "failing",
+  "warning": "warning",
+  "skip": "skip",
+  "no data": "no data",
+  "data points": "data points"
 }
