@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   LightTooltip,
   ResourceTable,
@@ -26,6 +27,7 @@ import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import { KService } from '../../../../../resources/knative';
+import { getTerminatedContainerDisplayStatus } from './containerStatus';
 
 type KServiceSectionProps = {
   kservice: KService;
@@ -58,15 +60,15 @@ function getPodStatus(pod: Pod): '' | 'success' | 'warning' | 'error' {
  * @param container - The container's status from its Pod.
  * @returns The colour of the state, and a tooltip that describes it.
  */
-function getContainerDisplayStatus(container: KubeContainerStatus) {
+function getContainerDisplayStatus(container: KubeContainerStatus, t: (key: string) => string) {
   const state = container.state || {};
   let color = 'grey';
-  let label = 'Unknown';
+  let label = t('Unknown');
   const tooltipLines: string[] = [`Name: ${container.name}`];
 
   if (state.waiting) {
     color = 'orange';
-    label = 'Waiting';
+    label = t('Waiting');
     if (state.waiting.reason) {
       tooltipLines.push(`Reason: ${state.waiting.reason}`);
     }
@@ -74,8 +76,9 @@ function getContainerDisplayStatus(container: KubeContainerStatus) {
       tooltipLines.push(`Message: ${state.waiting.message}`);
     }
   } else if (state.terminated) {
-    color = state.terminated.reason === 'Error' ? 'red' : 'green';
-    label = 'Terminated';
+    const terminatedStatus = getTerminatedContainerDisplayStatus(state.terminated, t);
+    color = terminatedStatus.color;
+    label = terminatedStatus.label;
     if (state.terminated.reason) {
       tooltipLines.push(`Reason: ${state.terminated.reason}`);
     }
@@ -90,7 +93,7 @@ function getContainerDisplayStatus(container: KubeContainerStatus) {
     }
   } else if (state.running) {
     color = 'green';
-    label = 'Running';
+    label = t('Running');
     if (state.running.startedAt) {
       tooltipLines.push(`Started: ${new Date(state.running.startedAt).toLocaleString()}`);
     }
@@ -109,16 +112,16 @@ function getContainerDisplayStatus(container: KubeContainerStatus) {
   };
 }
 
-function makePodStatusLabel(pod: Pod) {
+function makePodStatusLabel(pod: Pod, t: (key: string) => string) {
   const { reason, message } = pod.getDetailedStatus();
   const status = getPodStatus(pod);
 
   const containerStatuses = pod.status?.containerStatuses ?? [];
   const containerIndicators =
     containerStatuses.length > 0 ? (
-      <Box display="flex" gap={0.5}>
+      <Box display="flex" gap={1} flexWrap="wrap">
         {containerStatuses.map((cs, index) => {
-          const { color, label, tooltip } = getContainerDisplayStatus(cs);
+          const { color, label, tooltip } = getContainerDisplayStatus(cs, t);
           return (
             <LightTooltip title={tooltip} key={`${cs.name}-${index}`}>
               <Box
@@ -126,14 +129,25 @@ function makePodStatusLabel(pod: Pod) {
                 role="img"
                 aria-label={`${cs.name}: ${label}`}
                 tabIndex={0}
-                sx={{
-                  width: '0.9rem',
-                  height: '0.9rem',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  backgroundColor: color,
-                }}
-              />
+                display="inline-flex"
+                alignItems="center"
+                gap={0.5}
+              >
+                <Box
+                  component="span"
+                  aria-hidden="true"
+                  sx={{
+                    width: '0.9rem',
+                    height: '0.9rem',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    backgroundColor: color,
+                  }}
+                />
+                <Typography component="span" variant="body2">
+                  {cs.name}: {label}
+                </Typography>
+              </Box>
             </LightTooltip>
           );
         })}
@@ -153,6 +167,7 @@ function makePodStatusLabel(pod: Pod) {
 }
 
 export function PodsSection({ kservice }: KServiceSectionProps) {
+  const { t } = useTranslation();
   const namespace = kservice.metadata.namespace;
   const cluster = kservice.cluster;
   const serviceName = kservice.metadata.name;
@@ -274,7 +289,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
       getValue: pod => {
         return pod.getDetailedStatus().reason || pod.status?.phase || 'Unknown';
       },
-      render: makePodStatusLabel,
+      render: item => makePodStatusLabel(item as unknown as Pod, t),
     },
     'age',
   ];
