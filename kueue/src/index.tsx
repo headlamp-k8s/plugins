@@ -17,6 +17,8 @@ import LocalQueueList from './components/localqueues/List';
 import KueueOverview from './components/overview/Overview';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import TopologyDetail from './components/topologies/Detail';
+import TopologyList from './components/topologies/List';
 import WorkloadDetail from './components/workloads/Detail';
 import WorkloadList from './components/workloads/List';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
@@ -69,6 +71,13 @@ registerSidebarEntry({
   name: 'kueue-resourceflavors',
   label: 'ResourceFlavors',
   url: kueueRoutePaths.resourceFlavorsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-topologies',
+  label: 'Topologies',
+  url: kueueRoutePaths.topologiesList,
 });
 
 registerSidebarEntry({
@@ -164,6 +173,22 @@ registerRoute({
   name: kueueRouteNames.resourceFlavorDetail,
   exact: true,
   component: () => <ResourceFlavorDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.topologiesList,
+  sidebar: 'kueue-topologies',
+  name: kueueRouteNames.topologiesList,
+  exact: true,
+  component: () => <TopologyList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.topologyDetail,
+  sidebar: 'kueue-topologies',
+  name: kueueRouteNames.topologyDetail,
+  exact: true,
+  component: () => <TopologyDetail />,
 });
 
 registerRoute({

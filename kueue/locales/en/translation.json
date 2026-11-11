@@ -1,0 +1,13 @@
+{
+  "Topologies": "Topologies",
+  "Kueue Topologies define node and hardware hierarchy levels for Topology-Aware Scheduling (TAS).": "Kueue Topologies define node and hardware hierarchy levels for Topology-Aware Scheduling (TAS).",
+  "Total Levels": "Total Levels",
+  "Levels Chain": "Levels Chain",
+  "Topology Levels Hierarchy": "Topology Levels Hierarchy",
+  "Level {{level}}": "Level {{level}}",
+  "Unnamed Level": "Unnamed Level",
+  "Node Label": "Node Label",
+  "None": "None",
+  "Kueue Topologies": "Kueue Topologies",
+  "Levels Hierarchy": "Levels Hierarchy"
+}
