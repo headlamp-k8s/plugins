@@ -224,26 +224,33 @@ export function Dashboard() {
         {statusData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Status')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <Box
+                role="img"
+                aria-label={`${t('Results by Status')}: ${statusData
+                  .map(d => `${d.value} ${d.name}`)
+                  .join(', ')}`}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
             </SectionBox>
           </Grid>
         )}
@@ -251,26 +258,33 @@ export function Dashboard() {
         {severityData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Severity')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={severityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {severityData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <Box
+                role="img"
+                aria-label={`${t('Results by Severity')}: ${severityData
+                  .map(d => `${d.value} ${d.name}`)
+                  .join(', ')}`}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={severityData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {severityData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
             </SectionBox>
           </Grid>
         )}
@@ -323,21 +337,31 @@ export function Dashboard() {
         {namespaceData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Compliance by Namespace (Top 10)')}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={namespaceData} margin={{ top: 8, right: 16, left: 16, bottom: 8 }}>
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="pass" fill={STATUS_COLORS.pass} name={t('Pass')} stackId="a" />
-                  <Bar
-                    dataKey="failAndError"
-                    fill={STATUS_COLORS.fail}
-                    name={t('Fail/Error')}
-                    stackId="a"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <Box
+                role="img"
+                aria-label={`${t('Compliance by Namespace (Top 10)')}: ${namespaceData
+                  .map(d => `${d.name}: ${d.pass} pass, ${d.failAndError} fail`)
+                  .join('; ')}`}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={namespaceData}
+                    margin={{ top: 8, right: 16, left: 16, bottom: 8 }}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="pass" fill={STATUS_COLORS.pass} name={t('Pass')} stackId="a" />
+                    <Bar
+                      dataKey="failAndError"
+                      fill={STATUS_COLORS.fail}
+                      name={t('Fail/Error')}
+                      stackId="a"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
             </SectionBox>
           </Grid>
         )}
