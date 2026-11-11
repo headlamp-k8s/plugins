@@ -21,6 +21,7 @@ import type { ConversationMessage as Prompt } from '../../conversation/types';
 import { NullToolClient, type ToolClient } from '../../mcp/client/ToolClient';
 import { MCPOutputFormatter } from '../../mcp/langchain/formatToolOutput';
 import type { MCPToolsConfig, MCPToolState } from '../../mcp/types';
+import { redactSecrets } from '../../security/redactSecrets';
 import { AVAILABLE_TOOLS, getToolByName } from '../catalog/builtInTools';
 import type { KubernetesToolContext } from '../kubernetes/context';
 import { KubernetesTool } from '../kubernetes/langchain/KubernetesTool';
@@ -733,7 +734,9 @@ export class LangChainToolManager {
     const mcpTool = this.mcpTools.find(tool => tool.name === toolName);
     if (mcpTool) {
       try {
-        const rawResult = await mcpTool.invoke(args);
+        // Redact before the output is kept anywhere: the content below carries this raw text
+        // next to the formatted summary, and it goes to the model and the UI from there.
+        const rawResult = redactSecrets(await mcpTool.invoke(args));
 
         // Check if the raw result indicates an error
         const isError = this.detectMCPError(rawResult);

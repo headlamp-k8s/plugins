@@ -278,7 +278,8 @@ function replaceFencedJsonBlocks(
  *
  * Unlike the key-name heuristics, this removes secret material even when the
  * data keys are arbitrary (e.g. `DATABASE_URL`, `session`). Handles both JSON
- * (`kubectl -o json`, including `List` responses) and YAML (`-o yaml`) output.
+ * (`kubectl -o json`, including `List` responses) and YAML (`-o yaml`) output,
+ * including JSON that follows other text such as a heading or a label.
  * Input that does not look like a Secret is returned unchanged so ConfigMaps
  * and unrelated payloads are not over-redacted.
  *
@@ -303,22 +304,82 @@ function redactKubernetesSecretValues(input: string): string {
       return block;
     }
   });
-  if (fencedJson !== input) return fencedJson;
 
-  const trimmed = input.trim();
+  const trimmed = fencedJson.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (redactSecretsInParsedJson(parsed)) {
         return JSON.stringify(parsed, null, 2);
       }
-      return input;
+      return fencedJson;
     } catch {
-      // Not valid JSON — fall through to the YAML line scanner.
+      // Not valid JSON — fall through to the scanners below.
     }
   }
 
-  return redactKubernetesSecretValuesYaml(input);
+  // Unfenced JSON can also follow other text, e.g. a tool result under a
+  // Markdown heading, so look for it before the YAML line scanner.
+  return redactKubernetesSecretValuesYaml(redactSecretJsonInText(fencedJson));
+}
+
+/**
+ * Redacts Secret data in JSON values that appear among other text. Each
+ * outermost bracketed region is parsed at most once, so the scan stays linear.
+ *
+ * @param text - Text that may contain JSON values next to other content.
+ * @returns The text with Secret JSON values redacted and everything else unchanged.
+ */
+function redactSecretJsonInText(text: string): string {
+  let out = '';
+  let copied = 0;
+  for (const [start, end] of findOutermostJsonRegions(text)) {
+    try {
+      const parsed: unknown = JSON.parse(text.slice(start, end));
+      if (redactSecretsInParsedJson(parsed)) {
+        out += text.slice(copied, start) + JSON.stringify(parsed, null, 2);
+        copied = end;
+      }
+    } catch {
+      // Not JSON, e.g. a bracket in prose.
+    }
+  }
+  return out + text.slice(copied);
+}
+
+/**
+ * Finds the outermost `{…}` and `[…]` regions of a text in one pass. Brackets
+ * inside JSON strings are skipped, and a bracket that is never closed, like one
+ * in prose, does not hide the regions after it.
+ *
+ * @param text - Text to scan.
+ * @returns Start and end offsets of each region, in order and not overlapping.
+ */
+function findOutermostJsonRegions(text: string): Array<[number, number]> {
+  const regions: Array<[number, number]> = [];
+  const open: number[] = [];
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (char === '\\') i++;
+      // JSON strings cannot contain a raw newline, so a stray quote ends at the line.
+      else if (char === '"' || char === '\n') inString = false;
+    } else if (char === '{' || char === '[') {
+      open.push(i);
+    } else if (open.length > 0 && char === '"') {
+      inString = true;
+    } else if (open.length > 0 && (char === '}' || char === ']')) {
+      const start = open[open.length - 1];
+      if (text[start] === (char === '}' ? '{' : '[')) {
+        open.pop();
+        // A region that closes around earlier ones replaces them.
+        while (regions.length > 0 && regions[regions.length - 1][0] > start) regions.pop();
+        regions.push([start, i + 1]);
+      }
+    }
+  }
+  return regions;
 }
 
 /**
