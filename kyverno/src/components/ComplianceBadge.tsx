@@ -105,7 +105,12 @@ function ComplianceBadgeContent() {
   return (
     <>
       <Tooltip title={t('Kyverno Compliance')}>
-        <IconButton onClick={handleOpen} size="small" sx={{ color: 'inherit' }}>
+        <IconButton
+          onClick={handleOpen}
+          size="small"
+          sx={{ color: 'inherit' }}
+          aria-label={t('Kyverno Compliance')}
+        >
           <Badge badgeContent={violationCount || undefined} color={badgeColor} max={999}>
             <Icon icon="kyverno:logo" width="24" />
           </Badge>

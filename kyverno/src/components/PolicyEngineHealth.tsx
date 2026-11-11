@@ -289,53 +289,61 @@ function LatencyChart({ data, windowEnd }: { data: ChartDataPoint[]; windowEnd: 
     );
   }
 
+  const pointCount = data.filter(p => p.y !== null).length;
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={withGapMarkers(data, LATENCY_STEP_SECONDS)} style={{ fontSize: 14 }}>
-        <XAxis
-          dataKey="timestamp"
-          type="number"
-          // Anchored to the actual queried window (windowEnd - LATENCY_WINDOW_SECONDS to
-          // windowEnd), not ['dataMin', 'dataMax']: when admission scraping stops, query_range can
-          // omit trailing timestamps entirely rather than returning explicit null samples for
-          // them, so the last *returned* sample can sit well before the window's real end.
-          // withGapMarkers only inserts a gap marker between two returned samples, it has nothing
-          // to insert after the last one, so dataMax silently shrinking to that last sample would
-          // make an ongoing trailing outage invisible, the chart would just look like it ends
-          // early instead of showing the missing interval up to now.
-          domain={[windowEnd - LATENCY_WINDOW_SECONDS, windowEnd]}
-          tickFormatter={ts =>
-            new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-          stroke={theme.palette.text.secondary}
-          fontSize={12}
-        />
-        <YAxis
-          stroke={theme.palette.text.secondary}
-          fontSize={12}
-          tickFormatter={v => `${(v * 1000).toFixed(0)}ms`}
-        />
-        <Tooltip
-          labelFormatter={ts => new Date(Number(ts) * 1000).toLocaleTimeString()}
-          formatter={(value: number) => [`${(value * 1000).toFixed(1)}ms`, t('P95 latency')]}
-        />
-        <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
-        <Area
-          type="monotone"
-          dataKey="y"
-          stroke={accent}
-          strokeWidth={2}
-          fill={accent}
-          fillOpacity={0.15}
-          // No connectNulls: histogram_quantile returns NaN (rangeSeries turns that into a null
-          // point) for any interval with zero admission requests to compute a quantile over.
-          // Bridging across those with a drawn line would visually invent continuous latency data
-          // during a real no-traffic gap; recharts' default (unset = false) already renders a
-          // genuine gap there instead, which is the honest behavior.
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <Box
+      role="img"
+      aria-label={`${t('Admission Review Latency (P95, last hour)')}: ${pointCount} ${t(
+        'data points'
+      )}`}
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart data={withGapMarkers(data, LATENCY_STEP_SECONDS)} style={{ fontSize: 14 }}>
+          <XAxis
+            dataKey="timestamp"
+            type="number"
+            // Anchored to the actual queried window (windowEnd - LATENCY_WINDOW_SECONDS to
+            // windowEnd), not ['dataMin', 'dataMax']: when admission scraping stops, query_range can
+            // omit trailing timestamps entirely rather than returning explicit null samples for
+            // them, so the last *returned* sample can sit well before the window's real end.
+            // withGapMarkers only inserts a gap marker between two returned samples, it has nothing
+            // to insert after the last one, so dataMax silently shrinking to that last sample would
+            // make an ongoing trailing outage invisible, the chart would just look like it ends
+            // early instead of showing the missing interval up to now.
+            domain={[windowEnd - LATENCY_WINDOW_SECONDS, windowEnd]}
+            tickFormatter={ts =>
+              new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+            stroke={theme.palette.text.secondary}
+            fontSize={12}
+          />
+          <YAxis
+            stroke={theme.palette.text.secondary}
+            fontSize={12}
+            tickFormatter={v => `${(v * 1000).toFixed(0)}ms`}
+          />
+          <Tooltip
+            labelFormatter={ts => new Date(Number(ts) * 1000).toLocaleTimeString()}
+            formatter={(value: number) => [`${(value * 1000).toFixed(1)}ms`, t('P95 latency')]}
+          />
+          <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
+          <Area
+            type="monotone"
+            dataKey="y"
+            stroke={accent}
+            strokeWidth={2}
+            fill={accent}
+            fillOpacity={0.15}
+            // No connectNulls: histogram_quantile returns NaN (rangeSeries turns that into a null
+            // point) for any interval with zero admission requests to compute a quantile over.
+            // Bridging across those with a drawn line would visually invent continuous latency data
+            // during a real no-traffic gap; recharts' default (unset = false) already renders a
+            // genuine gap there instead, which is the honest behavior.
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </Box>
   );
 }
 
