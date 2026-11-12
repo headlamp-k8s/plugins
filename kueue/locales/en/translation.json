@@ -1,0 +1,19 @@
+{
+  "Failed to update queue stop policy.": "Failed to update queue stop policy.",
+  "Queue Maintenance & Stop Policy": "Queue Maintenance & Stop Policy",
+  "Current State": "Current State",
+  "Clear Stop Policy (None)": "Clear Stop Policy (None)",
+  "Pause Admissions (Hold)": "Pause Admissions (Hold)",
+  "Drain Queue (HoldAndDrain)": "Drain Queue (HoldAndDrain)",
+  "Confirm Queue Drainage": "Confirm Queue Drainage",
+  "Are you sure you want to set {{queueType}} \"{{name}}\" to HoldAndDrain? This will block new admissions, evict admitted workloads, and cancel reservations for Reserving workloads.": "Are you sure you want to set {{queueType}} \"{{name}}\" to HoldAndDrain? This will block new admissions, evict admitted workloads, and cancel reservations for Reserving workloads.",
+  "Cancel": "Cancel",
+  "Confirm & Drain": "Confirm & Drain",
+  "Drain (HoldAndDrain)": "Drain (HoldAndDrain)",
+  "Paused (Hold)": "Paused (Hold)",
+  "No maintenance stop policy (None)": "No maintenance stop policy (None)",
+  "Queue is in Drain mode: new admissions are blocked, admitted workloads are evicted, and reservations for Reserving workloads are cancelled.": "Queue is in Drain mode: new admissions are blocked, admitted workloads are evicted, and reservations for Reserving workloads are cancelled.",
+  "Queue is in Pause mode: new admissions are blocked, reservations for Reserving workloads are cancelled, and in-flight workloads continue running.": "Queue is in Pause mode: new admissions are blocked, reservations for Reserving workloads are cancelled, and in-flight workloads continue running.",
+  "No maintenance stop policy is applied to this queue.": "No maintenance stop policy is applied to this queue.",
+  "Custom stop policy: {{policy}}": "Custom stop policy: {{policy}}"
+}
