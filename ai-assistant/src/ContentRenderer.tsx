@@ -31,48 +31,50 @@ import { getHeadlampLink } from './headlampLink';
  * and uses `react-router-dom` for internal navigation. Falls back to
  * external links for non-headlamp URLs.
  */
-const HeadlampLinkRenderer = React.memo(({ href, children, ...props }: LinkRendererProps) => {
-  const history = useHistory();
+export const HeadlampLinkRenderer = React.memo(
+  ({ href, children, ...props }: LinkRendererProps) => {
+    const history = useHistory();
 
-  // Check if it's a resource details link
-  // Wrapped in try-catch because headlamp-plugin imports (ResourceClasses)
-  // may be undefined depending on plugin externalization
-  let headlampLinkDetails;
-  try {
-    headlampLinkDetails = getHeadlampLink(href);
-  } catch {
-    // Fall through to external link rendering
-    headlampLinkDetails = { isHeadlampLink: false, url: '', kubeObject: null };
-  }
-  if (headlampLinkDetails.isHeadlampLink) {
-    // Use RouterLink for all Headlamp links to avoid headlampEventSlice crash
-    // where DefaultHeadlampEvents is undefined
-    if (headlampLinkDetails.url) {
-      return (
-        <MuiLink
-          {...props}
-          to={headlampLinkDetails.url}
-          component={RouterLink}
-          onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
-            event.preventDefault();
-            history.push(headlampLinkDetails.url);
-          }}
-        >
-          {children}
-        </MuiLink>
-      );
+    // Check if it's a resource details link
+    // Wrapped in try-catch because headlamp-plugin imports (ResourceClasses)
+    // may be undefined depending on plugin externalization
+    let headlampLinkDetails;
+    try {
+      headlampLinkDetails = getHeadlampLink(href);
+    } catch {
+      // Fall through to external link rendering
+      headlampLinkDetails = { isHeadlampLink: false, url: '', kubeObject: null };
+    }
+    if (headlampLinkDetails.isHeadlampLink) {
+      // Use RouterLink for all Headlamp links to avoid headlampEventSlice crash
+      // where DefaultHeadlampEvents is undefined
+      if (headlampLinkDetails.url) {
+        return (
+          <MuiLink
+            {...props}
+            to={headlampLinkDetails.url}
+            component={RouterLink}
+            onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
+              event.preventDefault();
+              history.push(headlampLinkDetails.url);
+            }}
+          >
+            {children}
+          </MuiLink>
+        );
+      }
+
+      // The link is not supported in Headlamp so likely the LLM made it up
+      return <em>{children}</em>;
     }
 
-    // The link is not supported in Headlamp so likely the LLM made it up
-    return <em>{children}</em>;
+    return (
+      <MuiLink href={href} target="_blank" rel="noopener noreferrer" {...props}>
+        {children}
+      </MuiLink>
+    );
   }
-
-  return (
-    <MuiLink href={href} target="_blank" rel="noopener noreferrer" {...props}>
-      {children}
-    </MuiLink>
-  );
-});
+);
 HeadlampLinkRenderer.displayName = 'HeadlampLinkRenderer';
 
 type ContentRendererProps = Omit<BaseProps, 'LinkRendererSlot'>;
