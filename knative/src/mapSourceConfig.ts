@@ -44,5 +44,30 @@ export const knativeMapSourceConfig = {
         certificate: { id: 'knative-certificate', label: 'Certificates' },
       },
     },
+    eventing: {
+      id: 'knative-eventing',
+      label: 'Eventing',
+      isEnabledByDefault: true,
+      sources: {
+        broker: { id: 'knative-broker', label: 'Brokers' },
+        trigger: { id: 'knative-trigger', label: 'Triggers' },
+        channel: { id: 'knative-channel', label: 'Channels' },
+        channelImplementation: {
+          id: 'knative-channel-implementation',
+          label: 'Channel Implementations',
+        },
+        subscription: { id: 'knative-subscription', label: 'Subscriptions' },
+        source: { id: 'knative-source', label: 'Sources' },
+      },
+    },
+    eventingInternals: {
+      id: 'knative-eventing-internals',
+      label: 'Eventing Internals',
+      isEnabledByDefault: false,
+      sources: {
+        brokerChannel: { id: 'knative-broker-channel', label: 'Broker Channels' },
+        triggerSubscription: { id: 'knative-trigger-subscription', label: 'Trigger Subscriptions' },
+      },
+    },
   },
 } as const;

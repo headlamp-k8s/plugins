@@ -27,7 +27,8 @@ import { NotInstalledBanner } from './NotInstalledBanner';
 /**
  * Shows the detail page of a Knative Eventing resource: its metadata, the caller's rows, its
  * conditions, the caller's sections and its events, or a banner when Knative Eventing is not
- * installed in the cluster the page is for.
+ * installed in the cluster the page is for. A cluster-scoped kind is loaded without the namespace
+ * that a link may put in the route.
  *
  * @param props - The resource class to load, and the rows and sections to show once the resource
  * is loaded.
@@ -67,7 +68,7 @@ export function EventingResourceDetail<
     <DetailsGrid
       resourceType={resourceType}
       name={name}
-      namespace={namespace}
+      namespace={resourceType.isNamespaced ? namespace : undefined}
       cluster={cluster ?? undefined}
       withEvents
       extraInfo={item => (item ? extraInfo(item) : null)}

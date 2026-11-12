@@ -44,8 +44,10 @@ echo "Installing a single-node NATS JetStream server and the NatsJetStreamChanne
 kubectl apply -f "${EVENTING_DIR}/channel-implementations/nats-server.yaml"
 wait_for_rollout nats-io deployment/nats
 kubectl apply -f "${NATS_RELEASE_URL}/eventing-jsm.yaml"
+kubectl apply -f "${NATS_RELEASE_URL}/webhook-jsm.yaml"
 kubectl apply -f "https://raw.githubusercontent.com/knative-extensions/eventing-natss/${NATS_CHANNEL_RELEASE}/examples/config-nats.yaml"
 wait_for_rollout knative-eventing deployment/jetstream-ch-controller
+wait_for_rollout knative-eventing deployment/nats-webhook
 
 echo "Installing a single-node Kafka broker and the KafkaChannel"
 kubectl apply -f "${EVENTING_DIR}/channel-implementations/kafka-server.yaml"

@@ -18,16 +18,21 @@ import { describe, expect, it } from 'vitest';
 import {
   getReadyNodeStatus,
   getRevisionTraffic,
+  indexReferenceTargets,
   indexRevisionTraffic,
   makeCertificateSecretEdges,
   makeClusterDomainClaimEdges,
+  makeDestinationEdges,
   makeDomainMappingTargetEdges,
   makeImageServiceAccountEdges,
+  makeIndirectOwnerEdges,
   makeIngressBackendEdges,
   makeIngressSecretEdges,
   makeMetricTargetEdges,
   makeOwnerEdges,
+  makeOwnerEdgesFrom,
   makePodAutoscalerTargetEdges,
+  makeReferrerEdges,
   makeRouteTrafficEdges,
   makeServerlessServiceTargetEdges,
   matchesResourceClass,
@@ -330,5 +335,201 @@ describe('Knative map topology', () => {
       getReadyNodeStatus(resource('Route', 'pending', { readyCondition: { status: 'Unknown' } }))
     ).toBe('warning');
     expect(getReadyNodeStatus(resource('Route', 'unreported'))).toBe('warning');
+  });
+});
+
+describe('Knative Eventing map topology', () => {
+  const knativeService = { apiVersion: 'serving.knative.dev/v1', kind: 'Service' };
+  const kubernetesService = { apiVersion: 'v1', kind: 'Service' };
+  const broker = { apiVersion: 'eventing.knative.dev/v1', kind: 'Broker' };
+  const kafkaChannel = { apiVersion: 'messaging.knative.dev/v1beta1', kind: 'KafkaChannel' };
+  const owned = (kind: string, name: string, ownerKind: string, ownerName: string) =>
+    resource(kind, name, {
+      metadata: {
+        ownerReferences: controllerOwner(
+          ownerKind,
+          ownerName,
+          `${ownerKind.toLowerCase()}-${ownerName}`,
+          'v1'
+        ),
+      },
+    });
+
+  it('links each destination to the object of its API group, kind, namespace and name', () => {
+    const display = resource('Service', 'display');
+    const dlq = resource('Service', 'dlq', { metadata: { namespace: 'errors' } });
+    const sameNamedKubernetesService = resource('Service', 'display', {
+      metadata: { uid: 'kubernetes-display' },
+    });
+    const trigger = resource('Trigger', 'orders', {
+      spec: {
+        subscriber: {
+          ref: { apiVersion: 'serving.knative.dev/v1beta1', kind: 'Service', name: 'display' },
+        },
+        delivery: {
+          deadLetterSink: {
+            ref: { apiVersion: 'v1', kind: 'Service', name: 'dlq', namespace: 'errors' },
+          },
+        },
+      },
+    });
+
+    expect(
+      makeDestinationEdges(
+        [trigger],
+        indexReferenceTargets([
+          { resourceClass: knativeService, items: [display] },
+          { resourceClass: kubernetesService, items: [sameNamedKubernetesService, dlq] },
+        ]),
+        item => [
+          { relationship: 'trigger-subscriber', ref: item.spec.subscriber.ref },
+          {
+            relationship: 'trigger-dead-letter-sink',
+            ref: item.spec.delivery.deadLetterSink.ref,
+            label: 'dead letter sink',
+          },
+        ]
+      )
+    ).toEqual([
+      {
+        id: 'trigger-subscriber:trigger-orders:service-display',
+        source: 'trigger-orders',
+        target: 'service-display',
+      },
+      {
+        id: 'trigger-dead-letter-sink:trigger-orders:service-dlq',
+        source: 'trigger-orders',
+        target: 'service-dlq',
+        label: 'dead letter sink',
+      },
+    ]);
+  });
+
+  it('draws no edge for a URI destination, a missing object or another cluster', () => {
+    const display = resource('Service', 'display', { cluster: 'production' });
+    const source = resource('PingSource', 'beat', {
+      spec: { sink: { uri: 'https://example.com/events' } },
+    });
+    const otherClusterSink = resource('PingSource', 'other', {
+      spec: { sink: { ref: { apiVersion: 'v1', kind: 'Service', name: 'display' } } },
+    });
+    const missingSink = resource('PingSource', 'missing', {
+      spec: { sink: { ref: { apiVersion: 'v1', kind: 'Service', name: 'does-not-exist' } } },
+    });
+
+    expect(
+      makeDestinationEdges(
+        [source, otherClusterSink, missingSink],
+        indexReferenceTargets([{ resourceClass: kubernetesService, items: [display] }]),
+        item => [{ relationship: 'source-sink', ref: item.spec.sink.ref }]
+      )
+    ).toEqual([]);
+  });
+
+  it('links a resource to its owner only when the owner is one of the given owners', () => {
+    expect(
+      makeOwnerEdgesFrom(
+        [
+          owned('Deployment', 'apiserversource-events', 'ApiServerSource', 'events'),
+          owned('Deployment', 'display-00001-deployment', 'Revision', 'display-00001'),
+          resource('Deployment', 'standalone'),
+        ],
+        [resource('ApiServerSource', 'events')],
+        'source-deployment'
+      )
+    ).toEqual([
+      {
+        id: 'source-deployment:apiserversource-events:deployment-apiserversource-events',
+        source: 'apiserversource-events',
+        target: 'deployment-apiserversource-events',
+      },
+    ]);
+  });
+
+  it("links a resource to its owner's owner, leaving out the owner in between", () => {
+    const brokerChannel = owned('InMemoryChannel', 'default-kne-trigger', 'Broker', 'default');
+    const userChannel = resource('InMemoryChannel', 'orders');
+
+    expect(
+      makeIndirectOwnerEdges(
+        [
+          owned(
+            'Service',
+            'default-kne-trigger-kn-channel',
+            'InMemoryChannel',
+            'default-kne-trigger'
+          ),
+          owned('Service', 'orders-kn-channel', 'InMemoryChannel', 'orders'),
+        ],
+        [brokerChannel, userChannel],
+        'broker-channel-service'
+      )
+    ).toEqual([
+      {
+        id: 'broker-channel-service:broker-default:service-default-kne-trigger-kn-channel',
+        source: 'broker-default',
+        target: 'service-default-kne-trigger-kn-channel',
+      },
+    ]);
+  });
+
+  it('draws no edge for a reference without an API version', () => {
+    const display = resource('Service', 'display');
+    const source = resource('PingSource', 'beat', {
+      spec: { sink: { ref: { kind: 'Service', name: 'display' } } },
+    });
+
+    expect(
+      makeDestinationEdges(
+        [source],
+        indexReferenceTargets([{ resourceClass: kubernetesService, items: [display] }]),
+        item => [{ relationship: 'source-sink', ref: item.spec.sink.ref }]
+      )
+    ).toEqual([]);
+  });
+
+  it('links the object a resource references to the resource, in the direction events flow', () => {
+    const defaultBroker = resource('Broker', 'default');
+    const orders = resource('KafkaChannel', 'orders');
+    const trigger = resource('Trigger', 'catch-all', { spec: { broker: 'default' } });
+    const subscription = resource('Subscription', 'to-display', {
+      spec: {
+        channel: { apiVersion: 'messaging.knative.dev/v1', kind: 'KafkaChannel', name: 'orders' },
+      },
+    });
+    const danglingSubscription = resource('Subscription', 'dangling', {
+      spec: {
+        channel: { apiVersion: 'messaging.knative.dev/v1', kind: 'Channel', name: 'orders' },
+      },
+    });
+
+    expect(
+      makeReferrerEdges(
+        [trigger],
+        indexReferenceTargets([{ resourceClass: broker, items: [defaultBroker] }]),
+        'broker-trigger',
+        item => ({ ...broker, name: item.spec.broker })
+      )
+    ).toEqual([
+      {
+        id: 'broker-trigger:broker-default:trigger-catch-all',
+        source: 'broker-default',
+        target: 'trigger-catch-all',
+      },
+    ]);
+    expect(
+      makeReferrerEdges(
+        [subscription, danglingSubscription],
+        indexReferenceTargets([{ resourceClass: kafkaChannel, items: [orders] }]),
+        'channel-subscription',
+        item => item.spec.channel
+      )
+    ).toEqual([
+      {
+        id: 'channel-subscription:kafkachannel-orders:subscription-to-display',
+        source: 'kafkachannel-orders',
+        target: 'subscription-to-display',
+      },
+    ]);
   });
 });
