@@ -145,28 +145,52 @@ export function ConditionsTable({ conditions }: ConditionsTableProps) {
   );
 }
 
+export function SecretNameLink({
+  name,
+  namespace,
+  cluster,
+}: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
+  if (!name) {
+    return null;
+  }
+
+  if (!namespace) {
+    return <>{name}</>;
+  }
+
+  return (
+    <Link
+      routeName={K8s.ResourceClasses.Secret.kind}
+      params={{ name, namespace }}
+      activeCluster={cluster}
+    >
+      {name}
+    </Link>
+  );
+}
+
 interface SecretKeySelectorProps {
   selector: SecretKeySelector;
   namespace?: string;
+  cluster?: string;
 }
 
-export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySelectorProps) {
+export function SecretKeySelectorComponent({
+  selector,
+  namespace,
+  cluster,
+}: SecretKeySelectorProps) {
   const { t } = useTranslation();
   return (
     <NameValueTable
       rows={[
         {
           name: t('Name'),
-          value: namespace ? (
-            <Link
-              routeName={K8s.ResourceClasses.Secret.kind}
-              params={{ name: selector.name, namespace }}
-            >
-              {selector.name}
-            </Link>
-          ) : (
-            selector.name
-          ),
+          value: <SecretNameLink name={selector.name} namespace={namespace} cluster={cluster} />,
         },
         {
           name: t('Key'),
@@ -180,9 +204,14 @@ export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySel
 interface ACMEChallengeSolverProps {
   solver: ACMEChallengeSolver;
   namespace?: string;
+  cluster?: string;
 }
 
-export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChallengeSolverProps) {
+export function ACMEChallengeSolverComponent({
+  solver,
+  namespace,
+  cluster,
+}: ACMEChallengeSolverProps) {
   const { t } = useTranslation();
   const cloudflareGetter = (item: any) => {
     const thisItem = item?.cloudflare;
@@ -204,7 +233,11 @@ export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChalleng
       rows.push({
         name: t('API Key Secret'),
         value: (
-          <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} namespace={namespace} />
+          <SecretKeySelectorComponent
+            selector={thisItem.apiKeySecretRef}
+            namespace={namespace}
+            cluster={cluster}
+          />
         ),
       });
     }
@@ -213,7 +246,11 @@ export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChalleng
       rows.push({
         name: t('API Token Secret'),
         value: (
-          <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} namespace={namespace} />
+          <SecretKeySelectorComponent
+            selector={thisItem.apiTokenSecretRef}
+            namespace={namespace}
+            cluster={cluster}
+          />
         ),
       });
     }
