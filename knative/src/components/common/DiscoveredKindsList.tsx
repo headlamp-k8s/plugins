@@ -27,7 +27,11 @@ import { useSelectedNamespaces } from '../../hooks/useSelectedNamespaces';
 import { CustomResourceDefinition } from '../../resources/k8s/customResourceDefinition';
 import { getKnativeCrdName } from '../../resources/knative';
 import type { KnativeResourceClass } from '../../resources/knative/customResourceLinks';
-import { getCrdKindInfo } from '../../resources/knative/eventingData';
+import {
+  getClustersWithoutCrds,
+  getCrdKindInfo,
+  hasEveryClusterAnswered,
+} from '../../resources/knative/eventingData';
 import type { DiscoveredKindFamily } from '../../resources/knative/kindClass';
 import { NotInstalledBanner } from './NotInstalledBanner';
 
@@ -202,21 +206,17 @@ function DiscoveredKindsTable<
   const {
     items: crds,
     errors,
-    isLoading,
+    clusterResults,
   } = CustomResourceDefinition.useList({
     clusters,
     labelSelector: `${props.family.labelKey}=true`,
   });
 
-  if (isLoading) {
+  if (!hasEveryClusterAnswered(clusters, clusterResults, errors)) {
     return <ResourceListView title={props.title} id={props.id} data={null} columns={['name']} />;
   }
 
-  const clustersWithoutCrds = clusters.filter(
-    cluster =>
-      !crds?.some(crd => crd.cluster === cluster) &&
-      errors?.some(error => !error.cluster || error.cluster === cluster)
-  );
+  const clustersWithoutCrds = getClustersWithoutCrds(clusters, crds, errors);
 
   return (
     <KindRows

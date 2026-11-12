@@ -92,29 +92,46 @@ events.
 ## Resource Map
 
 Application owners and Serving troubleshooters use Headlamp's Map to see how a Service expands
-into routing, revision, autoscaling, and Kubernetes resources. Select a cluster and choose **Map**
+into routing, revision, autoscaling, and Kubernetes resources, and event-driven application owners
+use it to follow events from their Sources to their subscribers. Select a cluster and choose **Map**
 in the main Headlamp sidebar; for a cluster named `development`, the URL is
 `/c/development/map`.
 
-The Map source selector at the top of the page contains a **Knative** group with two sections:
+The Map source selector at the top of the page contains a **Knative** group with four sections:
 
 | Source section | Shown when Map opens | Resources | Example question it answers |
 |---|---|---|---|
 | Serving API | Yes | Services, Configurations, Revisions, Routes, Domain Mappings, Cluster Domain Claims | Which Configuration created `checkout-00004`, and which Route sends traffic to it? |
 | Serving Internals | No | Images, Pod Autoscalers, Metrics, KIngresses, Serverless Services, Certificates | Which autoscaler, scrape target, and networking resources back `checkout-00004`? |
+| Eventing | Yes | Brokers, Triggers, Channels, Channel Implementations, Subscriptions, Sources | Which Triggers deliver the events `heartbeat` sends to the `default` Broker, and where do they go? |
+| Eventing Internals | No | Broker Channels, Trigger Subscriptions | Which channel does the `default` Broker use, and which Subscription delivers a Trigger's events? |
 
 To investigate controller-generated resources, open the source selector, expand **Knative**, and
 enable **Serving Internals** or an individual resource type. Route-to-Revision edges show the
 resolved traffic percentage and tag, for example `100%` or `0% (candidate)`. Selecting a node
 opens its Ready condition and the same identifying fields used in the corresponding list view.
 
+Eventing edges follow the events: from a Source to its sink, from a Broker to its Triggers, from a
+Channel to the channel implementation behind it and from a channel to its Subscriptions, and from
+each Trigger or Subscription to its subscriber and reply. An edge to a dead letter sink is labelled
+`dead letter sink`. A subscriber or sink given only as a URI, or one that names a missing object,
+has no edge. The channel a Broker creates and the Subscriptions its Triggers create are in
+**Eventing Internals**, which is off when the Map opens. The Map draws these channel and Source
+kinds wherever they are installed: InMemoryChannel, KafkaChannel and NatsJetStreamChannel;
+ApiServerSource, ContainerSource, IntegrationSource, KafkaSource, PingSource and SinkBinding. Other
+kinds, such as a RabbitmqSource, are listed in the Sources and Channel Implementations views but not
+drawn on the Map. When a list fails, for example because the user may not list Triggers, the Map
+shows a node that says what could not be listed, with the reason in its details; when the channel or
+Source CustomResourceDefinitions cannot be listed, a warning node says that only Knative's own kinds
+are shown. These nodes belong to no namespace, so the Map hides them while a namespace is selected.
+
 Knative nodes also connect to Headlamp's standard Kubernetes Map sources when those sources are
 enabled:
 
 | Headlamp source | Knative relationship shown |
 |---|---|
-| Workloads | Revision and Pod Autoscaler to Deployment; Serverless Service to Deployment |
-| Network | Route-owned Services; KIngress backends; Metric scrape targets; Serverless Service public and private Services |
+| Workloads | Revision and Pod Autoscaler to Deployment; Serverless Service to Deployment; Source to the Deployment it runs |
+| Network | Route-owned Services; KIngress backends; Metric scrape targets; Serverless Service public and private Services; Eventing subscribers, sinks and dead letter sinks that are Kubernetes Services; channel, or the Broker whose channel it is, to the channel's Service |
 | Security | Image to its Service Account, using `default` when the Image does not specify one |
 | Configuration | KIngress and Certificate to referenced Secrets |
 
