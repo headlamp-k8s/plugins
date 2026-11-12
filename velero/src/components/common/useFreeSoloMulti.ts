@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { commitPendingValue } from './freeSolo';
+import { commitPendingValue, normalizeFreeSoloValues } from './freeSolo';
 
 /**
  * Multi-value free-solo state that still includes text left in the input
@@ -11,9 +11,10 @@ export function useFreeSoloMulti() {
   const pendingRef = useRef('');
 
   const setValue = (next: string[]) => {
-    valueRef.current = next;
+    const normalized = normalizeFreeSoloValues(next);
+    valueRef.current = normalized;
     pendingRef.current = '';
-    setValueState(next);
+    setValueState(normalized);
   };
 
   const onInputChange = (text: string, reason: string) => {
