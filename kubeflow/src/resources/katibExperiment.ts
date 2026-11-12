@@ -16,6 +16,7 @@
 
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { KubeflowResourceCondition } from './common';
+import type { KatibMetric, KatibMetricStrategy } from './katibMetric';
 
 /**
  * Katib Experiment Objective configuration.
@@ -30,6 +31,8 @@ export interface KatibObjective {
   additionalMetricNames?: string[];
   /** The target value for the objective metric. */
   goal?: number;
+  /** Which observed value (min, max or latest) Katib uses for each metric. */
+  metricStrategies?: KatibMetricStrategy[];
 }
 
 export interface KatibAlgorithm {
@@ -109,10 +112,7 @@ export interface KatibExperimentSpec {
 }
 
 export interface KatibObservation {
-  metrics?: Array<{
-    name?: string;
-    value?: string;
-  }>;
+  metrics?: KatibMetric[];
   [key: string]: unknown;
 }
 

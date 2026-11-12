@@ -8,6 +8,7 @@ import {
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
+import { getKatibMetricValue } from '../../resources/katibMetric';
 import { KatibTrialClass } from '../../resources/katibTrial';
 import { KubeflowJsonViewerAction } from '../common/KubeflowJsonViewerAction';
 import { launchKatibTrialLogs } from '../common/KubeflowLogsViewer';
@@ -84,7 +85,7 @@ export function KatibTrialsDetail(props: { namespace?: string; name?: string }) 
                         <NameValueTable
                           rows={metrics.map(metric => ({
                             name: metric.name ?? t('metric'),
-                            value: metric.value ?? '-',
+                            value: getKatibMetricValue(metric, item.spec.objective) || '-',
                           }))}
                         />
                       </SectionBox>

@@ -1,5 +1,6 @@
 import { KubeflowResourceCondition } from '../../resources/common';
 import type { KatibExperimentClass, KatibParameterSpec } from '../../resources/katibExperiment';
+import { getKatibMetricValue } from '../../resources/katibMetric';
 import type { KatibTrialClass } from '../../resources/katibTrial';
 import type { KubeflowStatusBadgeInfo } from './KubeflowStatusBadge';
 
@@ -88,7 +89,7 @@ export function getKatibTrialMetricValue(
   }
 
   const metric = trial.status.observation?.metrics?.find(item => item.name === metricName);
-  return metric?.value ?? '-';
+  return getKatibMetricValue(metric, trial.spec.objective) || '-';
 }
 
 /**

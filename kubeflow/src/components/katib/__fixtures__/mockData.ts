@@ -54,7 +54,7 @@ export const mockKatibExperiment: KatibExperiment = {
         { name: 'num-layers', value: '3' },
       ],
       observation: {
-        metrics: [{ name: 'Validation-accuracy', value: '0.98' }],
+        metrics: [{ name: 'Validation-accuracy', min: '0.91', max: '0.98', latest: '0.97' }],
       },
     },
     currentTrialCount: 12,
@@ -168,7 +168,7 @@ export const mockKatibTrial: KatibTrial = {
       },
     ],
     observation: {
-      metrics: [{ name: 'Validation-accuracy', value: '0.975' }],
+      metrics: [{ name: 'Validation-accuracy', min: '0.89', max: '0.975', latest: '0.972' }],
     },
     startTime: '2025-01-01T10:05:05Z',
     completionTime: '2025-01-01T10:15:00Z',
