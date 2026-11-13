@@ -261,7 +261,13 @@ export function KedaScalerMetricsChart(props: KedaScalerMetricsChartProps) {
                           ml: 1,
                         }}
                       >
-                        ({t('{{count}} metrics', { count: group.series.length })})
+                        (
+                        {t('{{count}} metrics', {
+                          count: group.series.length,
+                          defaultValue_one: '{{count}} metric',
+                          defaultValue_other: '{{count}} metrics',
+                        })}
+                        )
                       </Box>
                     </Box>
                   </MenuItem>
