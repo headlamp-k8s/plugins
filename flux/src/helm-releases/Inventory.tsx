@@ -2,6 +2,7 @@ import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { Typography } from '@mui/material';
 import { Base64 } from 'js-base64';
 import React from 'react';
 import Table from '../common/Table';
@@ -22,6 +23,7 @@ import { PluralName } from '../helpers/pluralName';
 export function HelmInventory(props: Readonly<{ name: string; namespace: string }>) {
   const { name: chartName, namespace } = props;
   const [resources, setResources] = React.useState([]);
+  const [error, setError] = React.useState<string | null>(null);
   const { t } = useTranslation();
 
   // Fetch the secrets for the helm chart
@@ -36,9 +38,20 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
   // - for each template get the resource kind and put it in a list
   // Finally fetch the resources for each kind, using labelselector for the chart
   React.useEffect(() => {
-    if (secrets?.length > 0) {
-      const secret = getLatestSecret(secrets);
-      const releaseData = secret.data.release;
+    // Ignore the result of a run once `secrets` changes or the component unmounts.
+    let cancelled = false;
+    setError(null);
+
+    const secret = secrets?.length > 0 ? getLatestSecret(secrets) : null;
+    if (!secret) {
+      return;
+    }
+
+    (async () => {
+      const releaseData = secret.data?.release;
+      if (!releaseData) {
+        throw new Error('Helm release secret has no release data');
+      }
       const b64dk8s = Base64.decode(releaseData);
       const b64dhelm = Buffer.from(b64dk8s, 'base64');
       const cs = new DecompressionStream('gzip');
@@ -46,36 +59,48 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
       writer.write(b64dhelm);
       writer.close();
 
-      new Response(cs.readable)
-        .arrayBuffer()
-        .then(function (arrayBuffer) {
-          return new TextDecoder().decode(arrayBuffer);
-        })
-        .then(data => {
-          const helmData = JSON.parse(data);
-          const resourceKinds = helmData.chart.templates.map(template =>
-            parseHelmTemplate(template)
-          );
-          const filteredResourceKinds = [];
-          for (const resourceKind of resourceKinds) {
-            if (
-              resourceKind.kind &&
-              resourceKind.apiVersion &&
-              !filteredResourceKinds.find(
-                item =>
-                  item.kind === resourceKind.kind && item.apiVersion === resourceKind.apiVersion
-              )
-            ) {
-              filteredResourceKinds.push(resourceKind);
-            }
-          }
+      const arrayBuffer = await new Response(cs.readable).arrayBuffer();
+      const helmData = JSON.parse(new TextDecoder().decode(arrayBuffer));
+      const resourceKinds = (helmData.chart?.templates ?? []).map(template =>
+        parseHelmTemplate(template)
+      );
+      const filteredResourceKinds = [];
+      for (const resourceKind of resourceKinds) {
+        if (
+          resourceKind.kind &&
+          resourceKind.apiVersion &&
+          !filteredResourceKinds.find(
+            item => item.kind === resourceKind.kind && item.apiVersion === resourceKind.apiVersion
+          )
+        ) {
+          filteredResourceKinds.push(resourceKind);
+        }
+      }
 
-          fetchResources(filteredResourceKinds, chartName, namespace).then(data => {
-            setResources(data);
-          });
-        });
-    }
+      const data = await fetchResources(filteredResourceKinds, chartName, namespace);
+      if (!cancelled) {
+        setResources(data);
+      }
+    })().catch(e => {
+      if (!cancelled) {
+        console.error('Failed to load the Helm release inventory:', e);
+        setResources([]);
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [secrets]);
+
+  if (error) {
+    return (
+      <Typography color="error">
+        {t('Failed to load the Helm release inventory: {{error}}', { error })}
+      </Typography>
+    );
+  }
 
   return (
     <Table
@@ -141,16 +166,16 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
  * The secret with the highest version number is returned.
  *
  * @param secrets - An array of secret objects, each containing metadata with a version label.
- * @returns The secret object with the highest version number, or null if no secrets are provided.
+ * @returns The secret object with the highest version number, or null if no secret has a valid numeric version label.
  */
-function getLatestSecret(secrets) {
+export function getLatestSecret(secrets) {
   let latestSecret = null;
   let latestVersion = -1;
 
   for (const secret of secrets) {
-    const version = parseInt(secret.metadata.labels.version, 10);
+    const version = parseInt(secret.metadata?.labels?.version, 10);
 
-    if (version > latestVersion) {
+    if (!Number.isNaN(version) && version > latestVersion) {
       latestSecret = secret;
       latestVersion = version;
     }
