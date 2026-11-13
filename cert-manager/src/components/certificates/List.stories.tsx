@@ -6,6 +6,7 @@ import {
 import { Box } from '@mui/material';
 import { Meta, StoryFn } from '@storybook/react';
 import { NotInstalledBanner } from '../common/CommonComponents';
+import { ExpiresIn } from './ExpiresIn';
 
 // Mock certificate data structure for stories
 interface MockCertificate {
@@ -76,7 +77,7 @@ export function PureCertificatesList({
           {
             label: 'Expires In (Not After)',
             getter: (item: MockCertificate) =>
-              item.status?.notAfter ? <DateLabel date={item.status.notAfter} format="mini" /> : '-',
+              item.status?.notAfter ? <ExpiresIn notAfter={item.status.notAfter} /> : '-',
           },
           {
             label: 'Age',
