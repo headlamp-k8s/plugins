@@ -1,6 +1,7 @@
 /**
  * Velero plugin entry point — Phase 1 coverage panels, Phase 2 Schedules/Backups/
- * Restores, Phase 3 BSL/VSL/BackupRepository + CSI datamover detail sections.
+ * Restores, Phase 3 BSL/VSL/BackupRepository + CSI datamover detail sections,
+ * Phase 4 create/pause actions, Phase 5 overview dashboard.
  */
 import {
   registerDetailsViewSectionsProcessor,
@@ -24,6 +25,7 @@ import BackupDetail from './components/backups/Detail';
 import BackupList from './components/backups/List';
 import BslDetail from './components/bsl/Detail';
 import BslList from './components/bsl/List';
+import VeleroDashboard from './components/dashboard/Dashboard';
 import RestoreDetail from './components/restores/Detail';
 import RestoreList from './components/restores/List';
 import ScheduleDetail from './components/schedules/Detail';
@@ -38,14 +40,21 @@ import { registerVeleroIcon, veleroIconName } from './veleroIcon';
 registerPluginSettings(PLUGIN_NAME, Settings, true);
 registerVeleroIcon();
 
-// ---- Phase 2 + 3: sidebar + routes ----
+// ---- Phase 2–5: sidebar + routes ----
 
 registerSidebarEntry({
   parent: null,
   name: 'velero',
   label: 'Velero',
   icon: veleroIconName,
-  url: veleroRoutePaths.schedulesList,
+  url: veleroRoutePaths.dashboard,
+});
+
+registerSidebarEntry({
+  parent: 'velero',
+  name: 'velero-overview',
+  label: 'Overview',
+  url: veleroRoutePaths.dashboard,
 });
 
 registerSidebarEntry({
@@ -88,6 +97,14 @@ registerSidebarEntry({
   name: 'velero-backuprepositories',
   label: 'Backup Repositories',
   url: veleroRoutePaths.backupRepositoriesList,
+});
+
+registerRoute({
+  path: veleroRoutePaths.dashboard,
+  sidebar: 'velero-overview',
+  name: veleroRouteNames.dashboard,
+  exact: true,
+  component: () => <VeleroDashboard />,
 });
 
 registerRoute({

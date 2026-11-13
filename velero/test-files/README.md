@@ -8,6 +8,7 @@ kubectl apply -f plugins/velero/test-files/matching-cases.yaml
 kubectl apply -f plugins/velero/test-files/web-label-only-schedule.yaml
 kubectl apply -f plugins/velero/test-files/sample-backups.yaml
 kubectl apply -f plugins/velero/test-files/sample-restores.yaml
+kubectl apply -f plugins/velero/test-files/phase4-create-actions.yaml
 ```
 
 Then enable the plugin in Headlamp and verify:
@@ -16,6 +17,11 @@ Then enable the plugin in Headlamp and verify:
 2. Phase 2 sidebar **Velero → Schedules / Backups / Restores**
 3. Schedule “Last backup” links when Backup fixtures are present
 4. Restore rows with Backup source (and Schedule source when only `spec.scheduleName` is set)
+5. Phase 4 write path (also use `phase4-create-actions.yaml`):
+   - **Create Backup / Restore / Schedule** buttons on the list pages
+   - Schedule detail **Pause** on `phase4-demo-hourly`, **Unpause** on `phase4-demo-paused`
+   - Create Restore form lists `phase4-demo-backup`
+   - Namespace fields accept typed values when Namespace list is empty / denied
 
 ## Automated tests
 
