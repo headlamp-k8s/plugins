@@ -222,7 +222,7 @@ describe('ApplicationList', () => {
     const links = screen.getAllByRole('link', { name: 'Open in PipeCD' });
     expect(links).toHaveLength(3);
     expect(links[0].getAttribute('href')).toBe(
-      'https://pipecd.example.com/applications/app-k8s-001'
+      'https://pipecd.example.com/applications/app-k8s-001?project=myproject'
     );
     expect(links[0].getAttribute('target')).toBe('_blank');
   });

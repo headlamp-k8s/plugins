@@ -80,6 +80,8 @@
   "rollback": "rollback",
   "retried {{times}}×": "retried {{times}}×",
   "No logs available for this stage.": "No logs available for this stage.",
+  "Loading logs…": "Loading logs…",
+  "Failed to load logs: {{error}}": "Failed to load logs: {{error}}",
   "Pending": "Pending",
   "Planned": "Planned",
   "Running": "Running",

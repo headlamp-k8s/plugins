@@ -26,7 +26,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { isConfigured, listApplications, loadConfig, PipeCDApiError } from '../api/pipecd';
 import type { Application, ApplicationKind } from '../types/pipecd';
 import { formatTimestamp, relativeTime } from '../utils/time';
-import { pluginURL } from '../utils/url';
+import { consoleURL, pluginURL } from '../utils/url';
 import { KindBadge, useKindLabels } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
 import { SyncStatusLabel } from './SyncStatusLabel';
@@ -363,7 +363,7 @@ export function ApplicationList(): JSX.Element {
                   <Button
                     size="small"
                     variant="text"
-                    href={`${config.baseURL}/applications/${app.id}`}
+                    href={consoleURL(config.baseURL, `/applications/${app.id}`, app.projectId)}
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{ whiteSpace: 'nowrap' }}

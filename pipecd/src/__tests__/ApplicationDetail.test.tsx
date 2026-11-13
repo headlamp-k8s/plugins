@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import type { RouteComponentProps } from 'react-router-dom';
 import { MemoryRouter, Route } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as pipecdApi from '../api/pipecd';
@@ -48,14 +49,23 @@ function setupConfigured(): void {
   pipecdApi.saveConfig({ baseURL: 'https://pipecd.example.com', apiKey: 'test-key-xyz' });
 }
 
-function renderDetail(id = 'app-k8s-001'): void {
+/** Renders the page and returns a function that moves the route to another id. */
+function renderDetail(id = 'app-k8s-001'): (nextId: string) => void {
+  let history: RouteComponentProps['history'] | undefined;
   render(
     <MemoryRouter initialEntries={[`/pipecd/applications/${id}`]}>
       <Route path="/pipecd/applications/:id">
         <ApplicationDetail />
       </Route>
+      <Route
+        render={props => {
+          history = props.history;
+          return null;
+        }}
+      />
     </MemoryRouter>
   );
+  return nextId => act(() => history!.push(`/pipecd/applications/${nextId}`));
 }
 
 describe('ApplicationDetail', () => {
@@ -159,5 +169,39 @@ describe('ApplicationDetail', () => {
 
     const back = await screen.findByRole('link', { name: /Back to applications/i });
     expect(back.getAttribute('href')).toBe('/pipecd/applications');
+  });
+
+  it('opens the application in PipeCD with its project', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({ deployments: [], cursor: '' });
+
+    renderDetail();
+
+    const link = await screen.findByRole('link', { name: 'Open in PipeCD' });
+    expect(link.getAttribute('href')).toBe(
+      'https://pipecd.example.com/applications/app-k8s-001?project=myproject'
+    );
+  });
+
+  it('does not show the previous application when the next one fails to load', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockImplementation(async (_config, id) => {
+      if (id === 'app-k8s-001') return appKubernetesSynced;
+      throw new Error('application not found');
+    });
+    vi.mocked(pipecdApi.listDeployments).mockResolvedValue({
+      deployments: [deploymentCompleted],
+      cursor: '',
+    });
+
+    const navigate = renderDetail('app-k8s-001');
+    await screen.findByText('frontend-prod');
+
+    navigate('app-missing');
+
+    await screen.findByText(/Failed to load application/i);
+    expect(screen.queryByText('frontend-prod')).toBeNull();
+    expect(screen.queryByText('feat: add dark mode support')).toBeNull();
   });
 });

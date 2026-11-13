@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import type { RouteComponentProps } from 'react-router-dom';
 import { MemoryRouter, Route } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as pipecdApi from '../api/pipecd';
 import { DeploymentDetail } from '../components/DeploymentDetail';
+import type { Deployment } from '../types/pipecd';
 import { deploymentCompleted, stageLogsCompleted } from './fixtures';
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
@@ -47,20 +49,40 @@ function setupConfigured(): void {
   pipecdApi.saveConfig({ baseURL: 'https://pipecd.example.com', apiKey: 'test-key-xyz' });
 }
 
-function renderDetail(id = 'deploy-001'): void {
+/** Renders the page and returns a function that moves the route to another id. */
+function renderDetail(id = 'deploy-001'): (nextId: string) => void {
+  let history: RouteComponentProps['history'] | undefined;
   render(
     <MemoryRouter initialEntries={[`/pipecd/deployments/${id}`]}>
       <Route path="/pipecd/deployments/:id">
         <DeploymentDetail />
       </Route>
+      <Route
+        render={props => {
+          history = props.history;
+          return null;
+        }}
+      />
     </MemoryRouter>
   );
+  return nextId => act(() => history!.push(`/pipecd/deployments/${nextId}`));
 }
 
 /** The fixture reuses the commit message as the summary, so anchor on the heading. */
 function findHeading(): Promise<HTMLElement> {
   return screen.findByRole('heading', { name: 'feat: add dark mode support' });
 }
+
+/** The same deployment, caught while its sync stage is still running. */
+const deploymentRunning: Deployment = {
+  ...deploymentCompleted,
+  status: 'DEPLOYMENT_RUNNING',
+  statusReason: '',
+  completedAt: 0,
+  stages: deploymentCompleted.stages.map(stage =>
+    stage.id === 'stage-k8s-sync' ? { ...stage, status: 'STAGE_RUNNING', completedAt: 0 } : stage
+  ),
+};
 
 function mockSuccess(): void {
   vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
@@ -188,6 +210,8 @@ describe('DeploymentDetail', () => {
     fireEvent.click(screen.getByText('K8S_SYNC'));
 
     expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
+    // The failure is reported, so it does not look like a stage with no logs.
+    expect(screen.getByText('Failed to load logs: logs pruned')).toBeTruthy();
     expect(screen.queryByText(/Failed to load deployment/i)).toBeNull();
   });
 
@@ -222,5 +246,168 @@ describe('DeploymentDetail', () => {
 
     const back = await screen.findByRole('link', { name: /Back to application/i });
     expect(back.getAttribute('href')).toBe('/pipecd/applications/app-k8s-001');
+  });
+
+  it('opens the deployment in PipeCD with its project', async () => {
+    setupConfigured();
+    mockSuccess();
+
+    renderDetail();
+
+    const link = await screen.findByRole('link', { name: 'Open in PipeCD' });
+    expect(link.getAttribute('href')).toBe(
+      'https://pipecd.example.com/deployments/deploy-001?project=myproject'
+    );
+  });
+
+  it('shows the deployment while its logs are still loading', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs).mockReturnValue(new Promise(() => {}));
+
+    renderDetail();
+
+    expect(await findHeading()).toBeTruthy();
+    expect(screen.getByText('K8S_SYNC')).toBeTruthy();
+
+    // An opened stage says the logs are loading, not that there are none.
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    expect(await screen.findByText('Loading logs…')).toBeTruthy();
+    expect(screen.queryByText(/No logs available/i)).toBeNull();
+  });
+
+  it('fetches the deployment and logs again when a stage of a running deployment is opened', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment)
+      .mockResolvedValueOnce(deploymentRunning)
+      .mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockResolvedValueOnce({ stageLogs: {} })
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByText('Running').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText('Applying manifests...')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+    expect(pipecdApi.getDeployment).toHaveBeenCalledTimes(2);
+    // The stage status is refreshed with its logs, so they agree.
+    await waitFor(() => expect(screen.queryByText('Running')).toBeNull());
+  });
+
+  it('does not fetch again for a finished deployment whose stage has no logs', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: {} });
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+    expect(pipecdApi.getDeployment).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fetch the logs again for a stage whose logs are complete', async () => {
+    setupConfigured();
+    mockSuccess();
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText('Applying manifests...')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the logs it has when fetching them again fails', async () => {
+    setupConfigured();
+    const partial = {
+      'stage-k8s-sync': { ...stageLogsCompleted['stage-k8s-sync'], completed: false },
+    };
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockResolvedValueOnce({ stageLogs: partial })
+      .mockRejectedValue(new Error('network down'));
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText('Failed to load logs: network down')).toBeTruthy();
+    expect(screen.getByText('Applying manifests...')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not send a second log request while one is still loading', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentRunning);
+    vi.mocked(pipecdApi.listStageLogs).mockReturnValue(new Promise(() => {}));
+
+    renderDetail();
+
+    await findHeading();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    fireEvent.click(screen.getByText('WAIT_APPROVAL'));
+
+    expect(await screen.findByText('Loading logs…')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops logs that arrive for the previous deployment', async () => {
+    setupConfigured();
+    let resolveFirst: (value: { stageLogs: typeof stageLogsCompleted }) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockReturnValueOnce(new Promise(resolve => (resolveFirst = resolve)))
+      .mockResolvedValue({ stageLogs: {} });
+
+    const navigate = renderDetail('deploy-001');
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    navigate('deploy-002');
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2));
+    await act(async () => resolveFirst({ stageLogs: stageLogsCompleted }));
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
+    expect(screen.queryByText('Applying manifests...')).toBeNull();
+  });
+
+  it('does not show the previous deployment when the next one fails to load', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockImplementation(async (_config, id) => {
+      if (id === 'deploy-001') return deploymentCompleted;
+      throw new Error('deployment not found');
+    });
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    const navigate = renderDetail('deploy-001');
+    await findHeading();
+
+    navigate('deploy-missing');
+
+    await screen.findByText(/Failed to load deployment/i);
+    expect(screen.queryByRole('heading', { name: 'feat: add dark mode support' })).toBeNull();
+    expect(screen.queryByText('K8S_SYNC')).toBeNull();
   });
 });
