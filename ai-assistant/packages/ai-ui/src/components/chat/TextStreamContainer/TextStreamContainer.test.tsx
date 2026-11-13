@@ -972,3 +972,21 @@ it('default editor reports edited content as a successful save', async () => {
   expect(onSuccess).toHaveBeenCalledWith({ content: 'kind: Service' });
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });
+
+it('hides messages flagged with isModelOnly from rendering', () => {
+  const historyWithModelOnly: ConversationMessage[] = [
+    { role: 'user', content: 'What are the logs?' },
+    { role: 'tool', content: 'model only log tail', isModelOnly: true },
+  ];
+  render(
+    <TextStreamContainer
+      history={historyWithModelOnly}
+      isLoading={false}
+      apiError={null}
+      ContentRendererSlot={Renderer}
+      EditorDialogSlot={Editor}
+    />
+  );
+  expect(screen.queryByText('model only log tail')).toBeNull();
+  expect(screen.getByText('What are the logs?')).toBeTruthy();
+});
