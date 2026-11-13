@@ -67,9 +67,12 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
         new Response(cs.readable).arrayBuffer(),
       ]);
       const helmData = JSON.parse(new TextDecoder().decode(arrayBuffer));
-      const resourceKinds = (helmData.chart?.templates ?? []).map(template =>
-        parseHelmTemplate(template)
-      );
+      // An explicitly empty templates array is valid; a missing one means a malformed payload.
+      const templates = helmData?.chart?.templates;
+      if (!Array.isArray(templates)) {
+        throw new Error('Helm release data has no chart templates');
+      }
+      const resourceKinds = templates.map(template => parseHelmTemplate(template));
       const filteredResourceKinds = [];
       for (const resourceKind of resourceKinds) {
         if (
@@ -83,6 +86,10 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
         }
       }
 
+      // Don't start API requests for a run that was already superseded or unmounted.
+      if (cancelled) {
+        return;
+      }
       const data = await fetchResources(filteredResourceKinds, chartName, namespace);
       if (!cancelled) {
         setResources(data);
