@@ -7,21 +7,22 @@ switching to the PipeCD console.
 
 ## Current state
 
-The plugin adds a PipeCD section to the sidebar with two entries. Settings
-works. Applications is still a placeholder.
+The plugin adds a PipeCD section to the sidebar with Applications and Settings.
+
+The Applications page lists your applications with their sync status, platform,
+last synced time and Git repository. You can search by name or repository, and
+filter by platform.
+
+Click an application to open its detail page, with its Git path, piped, labels
+and recent deployments. Click a deployment to see its pipeline stages, and open
+a stage to read its logs. A rollback stage only appears once it has run.
 
 The Settings page stores the PipeCD server URL and API key, and can test the
 connection to your control plane. It is read-only, and the settings live in the
 browser: only the server URL is persisted in local storage. The API key is kept
 in memory for the current page lifetime.
 
-Coming in later changes:
-
-- Applications list with sync status, platform and Git repository
-- Application detail with recent deployments
-- Deployment detail with pipeline stages
-- Logs for each pipeline stage
-- A sync button
+Everything is read-only. A sync button is coming in a later change.
 
 ## Before you start
 

@@ -39,7 +39,7 @@ export function NotConfigured(): JSX.Element {
           </Button>
           <Button
             variant="outlined"
-            href="https://pipecd.dev/docs/user-guide/managing-apikey/"
+            href="https://pipecd.dev/docs/user-guide/command-line-tool/"
             target="_blank"
             rel="noopener noreferrer"
           >
