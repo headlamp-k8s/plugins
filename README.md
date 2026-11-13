@@ -24,6 +24,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [kompose](./kompose) | Translates docker-compose manifests to Kubernetes's. | Runs kompose in a job in the cluster for now. | [@joaquimrocha](https://github.com/joaquimrocha) |
 | [kro](./kro) | A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances. | Alpha. | [@danbruno101](https://github.com/danbruno101) |
 | [kyverno](./kyverno) | A UI for viewing and managing Kyverno policies and reports. | | [@joaquimrocha](https://github.com/joaquimrocha), [@itvi-1234](https://github.com/itvi-1234) |
+| [loki](./loki) | Read-only historical log search through a configured Loki gateway. | Experimental; live-cluster verification pending. | |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
