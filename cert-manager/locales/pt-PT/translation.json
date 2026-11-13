@@ -105,6 +105,8 @@
   "Role ID": "",
   "Secret Ref": "",
   "Role": "",
+  "Service Account": "",
+  "Audiences": "",
   "Mount Path": "",
   "Self Signed": "",
   "Zone": "",
