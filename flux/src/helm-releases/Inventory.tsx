@@ -2,6 +2,7 @@ import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { DateLabel, Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import { Typography } from '@mui/material';
 import { Base64 } from 'js-base64';
 import React from 'react';
 import Table from '../common/Table';
@@ -22,6 +23,7 @@ import { PluralName } from '../helpers/pluralName';
 export function HelmInventory(props: Readonly<{ name: string; namespace: string }>) {
   const { name: chartName, namespace } = props;
   const [resources, setResources] = React.useState([]);
+  const [error, setError] = React.useState<string | null>(null);
   const { t } = useTranslation();
 
   // Fetch the secrets for the helm chart
@@ -36,46 +38,84 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
   // - for each template get the resource kind and put it in a list
   // Finally fetch the resources for each kind, using labelselector for the chart
   React.useEffect(() => {
-    if (secrets?.length > 0) {
-      const secret = getLatestSecret(secrets);
-      const releaseData = secret.data.release;
+    // Ignore the result of a run once `secrets` changes or the component unmounts.
+    let cancelled = false;
+    setError(null);
+
+    const secret = secrets?.length > 0 ? getLatestSecret(secrets) : null;
+    if (!secret) {
+      // No usable release secret: don't keep showing a previous inventory.
+      setResources([]);
+      return;
+    }
+
+    (async () => {
+      const releaseData = secret.data?.release;
+      if (!releaseData) {
+        throw new Error('Helm release secret has no release data');
+      }
       const b64dk8s = Base64.decode(releaseData);
       const b64dhelm = Buffer.from(b64dk8s, 'base64');
       const cs = new DecompressionStream('gzip');
       const writer = cs.writable.getWriter();
-      writer.write(b64dhelm);
-      writer.close();
 
-      new Response(cs.readable)
-        .arrayBuffer()
-        .then(function (arrayBuffer) {
-          return new TextDecoder().decode(arrayBuffer);
-        })
-        .then(data => {
-          const helmData = JSON.parse(data);
-          const resourceKinds = helmData.chart.templates.map(template =>
-            parseHelmTemplate(template)
-          );
-          const filteredResourceKinds = [];
-          for (const resourceKind of resourceKinds) {
-            if (
-              resourceKind.kind &&
-              resourceKind.apiVersion &&
-              !filteredResourceKinds.find(
-                item =>
-                  item.kind === resourceKind.kind && item.apiVersion === resourceKind.apiVersion
-              )
-            ) {
-              filteredResourceKinds.push(resourceKind);
-            }
-          }
+      // Await the writer operations together with the read so that a rejection from any of
+      // them (e.g. corrupt gzip data) reaches the error handler instead of going unhandled.
+      const [, , arrayBuffer] = await Promise.all([
+        writer.write(b64dhelm),
+        writer.close(),
+        new Response(cs.readable).arrayBuffer(),
+      ]);
+      const helmData = JSON.parse(new TextDecoder().decode(arrayBuffer));
+      // An explicitly empty templates array is valid; a missing one means a malformed payload.
+      const templates = helmData?.chart?.templates;
+      if (!Array.isArray(templates)) {
+        throw new Error('Helm release data has no chart templates');
+      }
+      const resourceKinds = templates.map(template => parseHelmTemplate(template));
+      const filteredResourceKinds = [];
+      for (const resourceKind of resourceKinds) {
+        if (
+          resourceKind.kind &&
+          resourceKind.apiVersion &&
+          !filteredResourceKinds.find(
+            item => item.kind === resourceKind.kind && item.apiVersion === resourceKind.apiVersion
+          )
+        ) {
+          filteredResourceKinds.push(resourceKind);
+        }
+      }
 
-          fetchResources(filteredResourceKinds, chartName, namespace).then(data => {
-            setResources(data);
-          });
-        });
-    }
+      // Don't start API requests for a run that was already superseded or unmounted.
+      if (cancelled) {
+        return;
+      }
+      const data = await fetchResources(filteredResourceKinds, chartName, namespace);
+      if (!cancelled) {
+        setResources(data);
+      }
+    })().catch(e => {
+      if (!cancelled) {
+        console.error('Failed to load the Helm release inventory:', e);
+        setResources([]);
+        // Some failures (e.g. a corrupt gzip stream) have an empty message, which would be falsy
+        // and hide the error, so always fall back to a non-empty text.
+        setError(e?.message || String(e) || 'Unknown error');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [secrets]);
+
+  if (error) {
+    return (
+      <Typography color="error">
+        {t('Failed to load the Helm release inventory: {{error}}', { error })}
+      </Typography>
+    );
+  }
 
   return (
     <Table
@@ -141,16 +181,16 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
  * The secret with the highest version number is returned.
  *
  * @param secrets - An array of secret objects, each containing metadata with a version label.
- * @returns The secret object with the highest version number, or null if no secrets are provided.
+ * @returns The secret object with the highest version number, or null if no secret has a valid numeric version label.
  */
-function getLatestSecret(secrets) {
+export function getLatestSecret(secrets) {
   let latestSecret = null;
   let latestVersion = -1;
 
   for (const secret of secrets) {
-    const version = parseInt(secret.metadata.labels.version, 10);
+    const version = parseInt(secret.metadata?.labels?.version, 10);
 
-    if (version > latestVersion) {
+    if (!Number.isNaN(version) && version > latestVersion) {
       latestSecret = secret;
       latestVersion = version;
     }
@@ -211,7 +251,8 @@ function parseHelmTemplate(template): {
  * Fetches Kubernetes resources associated with a Helm release using the specified resource kinds, chart name, and namespace.
  * Constructs API requests for each resource kind, appending a label selector for the Helm chart name and namespace.
  * Adds metadata including kind, API version, and group name to each resource for further processing.
- * Logs a message if no resources of a kind are found or an error occurs.
+ * Logs a message if no resources of a kind are found (404). Any other request failure is
+ * re-thrown so that the caller can report it.
  *
  * @param {Array<{ kind: string, apiVersion: string, hasNamespace: boolean }>} resourceKinds - Array of resource kind objects containing kind, apiVersion, and hasNamespace properties.
  * @param {string} chartName - The name of the Helm chart.
@@ -257,10 +298,10 @@ async function fetchResources(
     } catch (error) {
       if (error.status === 404) {
         console.log(`No ${pluralName} found for chart ${chartName}`);
-      } else {
-        console.error(error);
+        return [];
       }
-      return [];
+      // Other failures (403, 5xx, network) must not look like an empty inventory.
+      throw error;
     }
   });
 
