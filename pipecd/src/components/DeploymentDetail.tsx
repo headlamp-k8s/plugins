@@ -35,13 +35,15 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { getDeployment, isConfigured, listStageLogs, loadConfig } from '../api/pipecd';
 import type { Deployment, DeploymentStatus, PipelineStage, StageLog } from '../types/pipecd';
+import type { AlertSeverity } from '../utils/alert';
+import { alertTextSx } from '../utils/alert';
 import { duration, formatTimestamp } from '../utils/time';
 import { triggeredBy } from '../utils/trigger';
-import { pluginURL } from '../utils/url';
+import { consoleURL, pluginURL } from '../utils/url';
 import { DeploymentStatusLabel } from './DeploymentStatusLabel';
 import { KindBadge } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
@@ -50,7 +52,7 @@ import { StageStatusLabel } from './StageStatusLabel';
 
 const EMPTY = '—';
 
-const STATUS_SEVERITY: Record<DeploymentStatus, 'success' | 'info' | 'warning' | 'error'> = {
+const STATUS_SEVERITY: Record<DeploymentStatus, AlertSeverity> = {
   DEPLOYMENT_PENDING: 'info',
   DEPLOYMENT_PLANNED: 'info',
   DEPLOYMENT_RUNNING: 'info',
@@ -59,6 +61,12 @@ const STATUS_SEVERITY: Record<DeploymentStatus, 'success' | 'info' | 'warning' |
   DEPLOYMENT_FAILURE: 'error',
   DEPLOYMENT_CANCELLED: 'warning',
 };
+
+const FINISHED: ReadonlySet<DeploymentStatus> = new Set([
+  'DEPLOYMENT_SUCCESS',
+  'DEPLOYMENT_FAILURE',
+  'DEPLOYMENT_CANCELLED',
+]);
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -101,45 +109,97 @@ export function DeploymentDetail(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [expandedStage, setExpandedStage] = useState<string | false>(false);
 
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+  // Only the newest request may update the page. The id changing, or the page
+  // closing, bumps it too, so replies for an old deployment are dropped.
+  const latestRequest = useRef(0);
+
+  /**
+   * Fetches the stage logs, and with `refresh` the deployment again too, so a
+   * stage's status matches its logs. Logs are best-effort: the deployment still
+   * renders when the piped has not reported them yet, or has pruned them.
+   */
+  function fetchDetails(deploymentId: string, refresh: boolean): void {
+    const request = ++latestRequest.current;
+    const isLatest = () => request === latestRequest.current;
+    setLogsLoading(true);
+
+    if (refresh) {
+      getDeployment(config, deploymentId)
+        .then(result => {
+          if (isLatest()) setDeployment(result);
+        })
+        // The deployment already on screen stays; only its logs are reported.
+        .catch(() => undefined);
+    }
+
+    listStageLogs(config, deploymentId)
+      .then(logs => {
+        if (!isLatest()) return;
+        setStageLogs(logs.stageLogs);
+        setLogsError(null);
+      })
+      .catch(err => {
+        // Keep any logs already shown, and say why newer ones are missing.
+        if (isLatest()) setLogsError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (isLatest()) setLogsLoading(false);
+      });
+  }
+
   useEffect(() => {
     if (!isConfigured(config) || !id) {
       setLoading(false);
       return;
     }
 
-    const controller = new AbortController();
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // Drop the previous deployment, so a failed fetch for a new id cannot show
+    // it again under the new URL.
+    setDeployment(null);
+    setStageLogs({});
+    setLogsLoading(false);
+    setLogsError(null);
+    setExpandedStage(false);
 
     getDeployment(config, id)
-      .then(async result => {
+      .then(result => {
         if (cancelled) return;
         setDeployment(result);
-
-        // Logs are best-effort: the deployment still renders when the piped has
-        // not reported them yet, or has already pruned them.
-        try {
-          const logs = await listStageLogs(config, id);
-          if (!cancelled) setStageLogs(logs.stageLogs);
-        } catch {
-          if (!cancelled) setStageLogs({});
-        }
+        // Show the deployment now; the logs only matter once a stage is opened.
+        setLoading(false);
+        fetchDetails(id, false);
       })
       .catch(err => {
-        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
 
     return () => {
       cancelled = true;
-      controller.abort();
+      // Drop replies still on their way for this id.
+      latestRequest.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, config.baseURL, config.apiKey]);
+
+  function handleStageChange(stageId: string, isExpanded: boolean): void {
+    setExpandedStage(isExpanded ? stageId : false);
+    if (!isExpanded || !id || !deployment || logsLoading) return;
+    // The first fetch is a snapshot. While the deployment runs, a stage may
+    // have more logs than that, so opening it fetches the deployment and logs
+    // again. Once the deployment has finished, no more logs will come, unless
+    // the last fetch failed or caught a log the piped was still writing.
+    const log = stageLogs[stageId];
+    if (!FINISHED.has(deployment.status) || logsError || (log && !log.completed)) {
+      fetchDetails(id, true);
+    }
+  }
 
   if (!isConfigured(config)) {
     return <NotConfigured />;
@@ -203,7 +263,11 @@ export function DeploymentDetail(): JSX.Element {
             <Button
               size="small"
               variant="outlined"
-              href={`${config.baseURL}/deployments/${deployment.id}`}
+              href={consoleURL(
+                config.baseURL,
+                `/deployments/${deployment.id}`,
+                deployment.projectId
+              )}
               target="_blank"
               rel="noopener noreferrer"
               sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
@@ -215,13 +279,7 @@ export function DeploymentDetail(): JSX.Element {
           {deployment.statusReason && (
             <Alert
               severity={STATUS_SEVERITY[deployment.status] ?? 'info'}
-              sx={{
-                mb: 2,
-                // MUI dims alert text in dark mode; tint it by severity at full strength.
-                '& .MuiAlert-message': {
-                  color: `${STATUS_SEVERITY[deployment.status] ?? 'info'}.light`,
-                },
-              }}
+              sx={[{ mb: 2 }, alertTextSx(STATUS_SEVERITY[deployment.status] ?? 'info')]}
             >
               {deployment.statusReason}
             </Alert>
@@ -285,7 +343,7 @@ export function DeploymentDetail(): JSX.Element {
               <Accordion
                 key={stage.id}
                 expanded={expandedStage === stage.id}
-                onChange={(_event, isExpanded) => setExpandedStage(isExpanded ? stage.id : false)}
+                onChange={(_event, isExpanded) => handleStageChange(stage.id, isExpanded)}
                 disableGutters
                 // Stage logs can run to thousands of lines, so only mount the
                 // stage that is actually open.
@@ -328,11 +386,22 @@ export function DeploymentDetail(): JSX.Element {
                 </AccordionSummary>
                 <AccordionDetails>
                   {stage.statusReason && (
-                    <Alert severity="warning" sx={{ mb: 1.5 }}>
+                    <Alert severity="warning" sx={[{ mb: 1.5 }, alertTextSx('warning')]}>
                       {stage.statusReason}
                     </Alert>
                   )}
-                  <StageLogs log={stageLogs[stage.id]} />
+                  {logsError && !logsLoading && (
+                    <Alert severity="error" sx={[{ mb: 1.5 }, alertTextSx('error')]}>
+                      {t('Failed to load logs: {{error}}', { error: logsError })}
+                    </Alert>
+                  )}
+                  {logsLoading && !stageLogs[stage.id] ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {t('Loading logs…')}
+                    </Typography>
+                  ) : (
+                    <StageLogs log={stageLogs[stage.id]} />
+                  )}
                 </AccordionDetails>
               </Accordion>
             ))

@@ -36,9 +36,11 @@ import React, { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { getApplication, isConfigured, listDeployments, loadConfig } from '../api/pipecd';
 import type { Application, Deployment, SyncStatus } from '../types/pipecd';
+import type { AlertSeverity } from '../utils/alert';
+import { alertTextSx } from '../utils/alert';
 import { duration, formatTimestamp, relativeTime } from '../utils/time';
 import { triggeredBy } from '../utils/trigger';
-import { pluginURL } from '../utils/url';
+import { consoleURL, pluginURL } from '../utils/url';
 import { lastSyncedAt } from './ApplicationList';
 import { DeploymentStatusLabel } from './DeploymentStatusLabel';
 import { KindBadge } from './KindBadge';
@@ -47,7 +49,7 @@ import { SyncStatusLabel } from './SyncStatusLabel';
 
 const DEPLOYMENT_PAGE_SIZE = 20;
 
-const SYNC_SEVERITY: Record<SyncStatus, 'success' | 'info' | 'warning' | 'error'> = {
+const SYNC_SEVERITY: Record<SyncStatus, AlertSeverity> = {
   UNKNOWN: 'info',
   SYNCED: 'success',
   DEPLOYING: 'info',
@@ -86,6 +88,10 @@ export function ApplicationDetail(): JSX.Element {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // Drop the previous application, so a failed fetch for a new id cannot
+    // show it again under the new URL.
+    setApp(null);
+    setDeployments([]);
 
     Promise.all([
       getApplication(config, id),
@@ -173,7 +179,7 @@ export function ApplicationDetail(): JSX.Element {
               <Button
                 size="small"
                 variant="outlined"
-                href={`${config.baseURL}/applications/${app.id}`}
+                href={consoleURL(config.baseURL, `/applications/${app.id}`, app.projectId)}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{ whiteSpace: 'nowrap' }}
@@ -186,13 +192,10 @@ export function ApplicationDetail(): JSX.Element {
           {app.syncState?.shortReason && (
             <Alert
               severity={SYNC_SEVERITY[app.syncState.status ?? 'UNKNOWN'] ?? 'info'}
-              sx={{
-                mb: 2,
-                // MUI dims alert text in dark mode; tint it by severity at full strength.
-                '& .MuiAlert-message': {
-                  color: `${SYNC_SEVERITY[app.syncState.status ?? 'UNKNOWN'] ?? 'info'}.light`,
-                },
-              }}
+              sx={[
+                { mb: 2 },
+                alertTextSx(SYNC_SEVERITY[app.syncState.status ?? 'UNKNOWN'] ?? 'info'),
+              ]}
             >
               {app.syncState.shortReason}
             </Alert>

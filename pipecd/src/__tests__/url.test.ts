@@ -16,7 +16,7 @@
 
 import * as headlampUtils from '@kinvolk/headlamp-plugin/lib/Utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { pluginURL } from '../utils/url';
+import { consoleURL, pluginURL } from '../utils/url';
 
 vi.mock('@kinvolk/headlamp-plugin/lib/Utils', async importOriginal => {
   const original = await importOriginal<typeof import('@kinvolk/headlamp-plugin/lib/Utils')>();
@@ -40,5 +40,31 @@ describe('pluginURL', () => {
     vi.mocked(headlampUtils.getCluster).mockReturnValue(null);
 
     expect(pluginURL('/pipecd/applications')).toBe('/pipecd/applications');
+  });
+});
+
+describe('consoleURL', () => {
+  it('adds the project so the console logs in to the right one', () => {
+    expect(consoleURL('https://pipecd.example.com', '/applications/app-1', 'dev')).toBe(
+      'https://pipecd.example.com/applications/app-1?project=dev'
+    );
+  });
+
+  it('encodes the project id', () => {
+    expect(consoleURL('https://pipecd.example.com', '/deployments/d-1', 'a b&c')).toBe(
+      'https://pipecd.example.com/deployments/d-1?project=a+b%26c'
+    );
+  });
+
+  it('keeps a path prefix and query that are already in the base URL', () => {
+    expect(consoleURL('https://example.com/pipecd?tenant=a', '/applications/app-1', 'dev')).toBe(
+      'https://example.com/pipecd/applications/app-1?tenant=a&project=dev'
+    );
+  });
+
+  it('leaves the query out when there is no project id', () => {
+    expect(consoleURL('https://pipecd.example.com', '/applications/app-1', '')).toBe(
+      'https://pipecd.example.com/applications/app-1'
+    );
   });
 });
