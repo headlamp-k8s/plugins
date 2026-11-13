@@ -175,3 +175,21 @@ export interface StageLog {
 export interface ListStageLogsResponse {
   stageLogs: Record<string, StageLog>;
 }
+
+export type CommandStatus =
+  | 'COMMAND_NOT_HANDLED_YET'
+  | 'COMMAND_SUCCEEDED'
+  | 'COMMAND_FAILED'
+  | 'COMMAND_TIMEOUT';
+
+export interface Command {
+  id: string;
+  applicationId: string;
+  deploymentId: string;
+  status: CommandStatus;
+  handledAt: number;
+  createdAt: number;
+}
+
+/** Matches model.SyncStrategy in PipeCD's protobuf definitions. */
+export type SyncStrategyName = 'AUTO' | 'QUICK_SYNC' | 'PIPELINE';
