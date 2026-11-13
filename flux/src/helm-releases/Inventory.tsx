@@ -98,7 +98,9 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
       if (!cancelled) {
         console.error('Failed to load the Helm release inventory:', e);
         setResources([]);
-        setError(e instanceof Error ? e.message : String(e));
+        // Some failures (e.g. a corrupt gzip stream) have an empty message, which would be falsy
+        // and hide the error, so always fall back to a non-empty text.
+        setError(e?.message || String(e) || 'Unknown error');
       }
     });
 
