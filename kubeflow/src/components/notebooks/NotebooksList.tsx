@@ -1,6 +1,10 @@
 import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { LightTooltip, ResourceListView } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  CreateResourceButton,
+  LightTooltip,
+  ResourceListView,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Box, Chip, ListItemIcon, ListItemText, MenuItem } from '@mui/material';
 import { NotebookClass } from '../../resources/notebook';
 import { launchNotebookLogs } from '../common/KubeflowLogsViewer';
@@ -8,6 +12,7 @@ import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
 import { getNotebookStatus, getNotebookType } from '../common/notebookUtils';
 import { SectionPage } from '../common/SectionPage';
+import { NotebookCreateButton } from './NotebookCreateDialog';
 
 export function NotebooksList() {
   const { t } = useTranslation();
@@ -17,6 +22,13 @@ export function NotebooksList() {
       <ResourceListView
         title={t('Notebook Servers')}
         resourceClass={NotebookClass}
+        headerProps={{
+          // The form covers the common settings; the YAML editor stays for everything else.
+          titleSideActions: [
+            <NotebookCreateButton key="create-form" />,
+            <CreateResourceButton key="create-yaml" resourceClass={NotebookClass} />,
+          ],
+        }}
         enableRowActions
         actions={[
           {
