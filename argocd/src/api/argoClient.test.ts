@@ -249,6 +249,25 @@ describe('argoClient', () => {
     );
   });
 
+  it('sends sync and refresh to the given cluster', async () => {
+    await syncApplication('guestbook', 'argocd', undefined, 'cluster-b');
+    await refreshApplication('guestbook', 'argocd', 'normal', 'cluster-b');
+
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+    for (const [, params] of mockRequest.mock.calls) {
+      expect(params).toEqual(expect.objectContaining({ method: 'PATCH', cluster: 'cluster-b' }));
+    }
+  });
+
+  it('leaves the cluster to the current one when none is given', async () => {
+    await syncApplication('guestbook', 'argocd');
+    await refreshApplication('guestbook', 'argocd');
+
+    for (const [, params] of mockRequest.mock.calls) {
+      expect(params).not.toHaveProperty('cluster');
+    }
+  });
+
   it('throws a user-friendly RBAC error on 403 Error', async () => {
     mockRequest.mockRejectedValueOnce(new Error('403 Forbidden'));
 

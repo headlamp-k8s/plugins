@@ -28,6 +28,15 @@ import { useArgoOperationMap } from '../../hooks/useArgoOperation';
 import { ArgoApplication } from '../../resources/application';
 import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './statusHelpers';
 
+// The list can show Applications from several clusters, so patch each one in its own cluster.
+function syncInCluster(name: string, namespace: string, cluster?: string) {
+  return syncApplication(name, namespace, undefined, cluster);
+}
+
+function refreshInCluster(name: string, namespace: string, cluster?: string) {
+  return refreshApplication(name, namespace, 'normal', cluster);
+}
+
 /**
  * Renders a table of all Argo CD Application resources in the current cluster.
  *
@@ -39,8 +48,8 @@ import { getHealthIcon, getHealthStatus, getSyncIcon, getSyncStatus } from './st
  * @returns The Application list view React element.
  */
 export default function ApplicationList() {
-  const sync = useArgoOperationMap(syncApplication, 'Sync');
-  const refresh = useArgoOperationMap(refreshApplication, 'Refresh');
+  const sync = useArgoOperationMap(syncInCluster, 'Sync');
+  const refresh = useArgoOperationMap(refreshInCluster, 'Refresh');
 
   return (
     <ResourceListView
@@ -51,14 +60,15 @@ export default function ApplicationList() {
           id: 'argocd-sync',
           action: ({ item }: { item: ArgoApplication }) => {
             const { name, namespace } = item.metadata;
-            const isLoadingSync = sync.isLoading(name, namespace);
-            const isLoadingAny = isLoadingSync || refresh.isLoading(name, namespace);
+            const { cluster } = item;
+            const isLoadingSync = sync.isLoading(name, namespace, cluster);
+            const isLoadingAny = isLoadingSync || refresh.isLoading(name, namespace, cluster);
             return (
               <AuthVisible item={item} authVerb="patch">
                 <ActionButton
                   description={isLoadingSync ? 'Syncing...' : 'Sync'}
                   icon={isLoadingSync ? 'mdi:loading' : 'mdi:sync'}
-                  onClick={() => sync.execute(name, namespace)}
+                  onClick={() => sync.execute(name, namespace, cluster)}
                   iconButtonProps={{ disabled: isLoadingAny }}
                 />
               </AuthVisible>
@@ -69,14 +79,15 @@ export default function ApplicationList() {
           id: 'argocd-refresh',
           action: ({ item }: { item: ArgoApplication }) => {
             const { name, namespace } = item.metadata;
-            const isLoadingRefresh = refresh.isLoading(name, namespace);
-            const isLoadingAny = isLoadingRefresh || sync.isLoading(name, namespace);
+            const { cluster } = item;
+            const isLoadingRefresh = refresh.isLoading(name, namespace, cluster);
+            const isLoadingAny = isLoadingRefresh || sync.isLoading(name, namespace, cluster);
             return (
               <AuthVisible item={item} authVerb="patch">
                 <ActionButton
                   description={isLoadingRefresh ? 'Refreshing...' : 'Refresh'}
                   icon={isLoadingRefresh ? 'mdi:loading' : 'mdi:refresh'}
-                  onClick={() => refresh.execute(name, namespace)}
+                  onClick={() => refresh.execute(name, namespace, cluster)}
                   iconButtonProps={{ disabled: isLoadingAny }}
                 />
               </AuthVisible>
