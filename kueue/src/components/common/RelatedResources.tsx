@@ -7,10 +7,13 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
+import { ClusterQueue } from '../../resources/clusterQueue';
+import { renderFlavorNominalQuota } from '../../resources/clusterQueueFormatters';
 import { LocalQueue } from '../../resources/localQueue';
 import { Workload } from '../../resources/workload';
 import { getWorkloadBlocker } from '../../resources/workloadFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { renderCohortLink } from './KueueResourceLinks';
 
 interface RelatedLocalQueuesSectionProps {
   clusterQueueName: string;
@@ -98,6 +101,57 @@ export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueu
           {
             label: 'Status',
             getter: (localQueue: LocalQueue) => localQueue.statusDisplay,
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
+/** List the ClusterQueues that get quota from a ResourceFlavor. */
+export function FlavorClusterQueuesSection({ flavorName }: { flavorName: string }) {
+  const [clusterQueues, error] = ClusterQueue.useList();
+
+  const flavorClusterQueues = useMemo(
+    () =>
+      (clusterQueues || []).filter(clusterQueue =>
+        clusterQueue.referencedFlavorNames.includes(flavorName)
+      ),
+    [clusterQueues, flavorName]
+  );
+
+  if (error) {
+    return renderLoadError('ClusterQueues', 'ClusterQueues');
+  }
+
+  if (!clusterQueues) {
+    return <Loader title="Loading ClusterQueues..." />;
+  }
+
+  return (
+    <SectionBox title="ClusterQueues">
+      <SimpleTable
+        data={flavorClusterQueues}
+        emptyMessage="No ClusterQueue uses this ResourceFlavor."
+        columns={[
+          {
+            label: 'Name',
+            getter: (clusterQueue: ClusterQueue) => (
+              <Link kubeObject={clusterQueue}>{clusterQueue.metadata.name}</Link>
+            ),
+          },
+          {
+            label: 'Nominal Quota',
+            getter: (clusterQueue: ClusterQueue) =>
+              renderFlavorNominalQuota(clusterQueue.resourceGroups, flavorName),
+          },
+          {
+            label: 'Cohort',
+            getter: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
+          },
+          {
+            label: 'Status',
+            getter: (clusterQueue: ClusterQueue) => clusterQueue.statusDisplay,
           },
         ]}
       />
