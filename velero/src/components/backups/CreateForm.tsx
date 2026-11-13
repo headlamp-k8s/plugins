@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import FreeSoloMulti from '../common/FreeSoloMulti';
 import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
 import {
@@ -20,6 +20,7 @@ import {
   type BackupCreateInput,
   type FsBackupChoice,
   fsBackupChoiceToSpec,
+  isUnavailableStorageLocation,
 } from './createTypes';
 
 /** Create Backup form — adapted from reasonerjt prototype; namespace comes from parent. */
@@ -41,15 +42,16 @@ export default function BackupCreateForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Drop a location the user picked if it disappears. Never invent one.
-  useEffect(() => {
-    setStorageLocation(prev => (!prev || storageLocations.includes(prev) ? prev : ''));
-  }, [storageLocations]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Name is required');
+      return;
+    }
+    if (isUnavailableStorageLocation(storageLocation, storageLocations)) {
+      setError(
+        'The selected storage location is no longer available. Choose another location or Velero default.'
+      );
       return;
     }
     if (!/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(name.trim())) {
@@ -126,6 +128,9 @@ export default function BackupCreateForm({
                 label="Backup Storage Location"
               >
                 <MenuItem value="">Velero default</MenuItem>
+                {isUnavailableStorageLocation(storageLocation, storageLocations) && (
+                  <MenuItem value={storageLocation}>{storageLocation} (unavailable)</MenuItem>
+                )}
                 {storageLocations.map(loc => (
                   <MenuItem key={loc} value={loc}>
                     {loc}

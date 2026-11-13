@@ -16,16 +16,30 @@ describe('restorableBackupNames', () => {
 });
 
 describe('nextBackupSelection', () => {
-  test('uses the first backup only when nothing is selected yet', () => {
-    expect(nextBackupSelection('', ['ok', 'other'])).toBe('ok');
+  test('uses the first backup only for the initial empty selection', () => {
+    expect(nextBackupSelection('', ['ok', 'other'], true)).toEqual({
+      next: 'ok',
+      allowInitial: false,
+    });
   });
 
   test('keeps a selection that is still available, including a typed name when the list is empty', () => {
-    expect(nextBackupSelection('ok', ['ok', 'other'])).toBe('ok');
-    expect(nextBackupSelection('typed', [])).toBe('typed');
+    expect(nextBackupSelection('ok', ['ok', 'other'], false)).toEqual({
+      next: 'ok',
+      allowInitial: false,
+    });
+    expect(nextBackupSelection('typed', [], true)).toEqual({
+      next: 'typed',
+      allowInitial: false,
+    });
   });
 
-  test('clears a selection that disappeared instead of substituting another backup', () => {
-    expect(nextBackupSelection('gone', ['ok', 'other'])).toBe('');
+  test('clears a missing backup and does not replace it on the next update', () => {
+    const cleared = nextBackupSelection('gone', ['ok', 'other'], false);
+    expect(cleared).toEqual({ next: '', allowInitial: false });
+    expect(nextBackupSelection(cleared.next, ['ok', 'other'], cleared.allowInitial)).toEqual({
+      next: '',
+      allowInitial: false,
+    });
   });
 });

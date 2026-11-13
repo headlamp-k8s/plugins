@@ -31,6 +31,7 @@ export default function RestoreCreateForm({
 }: RestoreCreateFormProps) {
   const [name, setName] = useState('');
   const [backupName, setBackupName] = useState(defaultBackupName);
+  const [allowInitialBackup, setAllowInitialBackup] = useState(defaultBackupName === '');
   const includedNamespaces = useFreeSoloMulti();
   const excludedNamespaces = useFreeSoloMulti();
   const [restorePVs, setRestorePVs] = useState(true);
@@ -38,8 +39,17 @@ export default function RestoreCreateForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setBackupName(prev => nextBackupSelection(prev, backups));
-  }, [backups]);
+    const result = nextBackupSelection(backupName, backups, allowInitialBackup);
+    if (backupName && !result.next) {
+      setError('The selected backup is no longer available. Choose another source.');
+    }
+    if (result.next !== backupName) {
+      setBackupName(result.next);
+    }
+    if (result.allowInitial !== allowInitialBackup) {
+      setAllowInitialBackup(result.allowInitial);
+    }
+  }, [allowInitialBackup, backupName, backups]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
