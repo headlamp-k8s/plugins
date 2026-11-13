@@ -18,9 +18,11 @@ import { describe, expect, it } from 'vitest';
 import { knativeMapSourceConfig } from './mapSourceConfig';
 
 describe('Knative map source configuration', () => {
-  it('enables the Serving API overview and keeps generated internals opt-in', () => {
+  it('enables the Serving API overview and Eventing, and keeps generated internals opt-in', () => {
     expect(knativeMapSourceConfig.groups.servingApi.isEnabledByDefault).toBe(true);
     expect(knativeMapSourceConfig.groups.servingInternals.isEnabledByDefault).toBe(false);
+    expect(knativeMapSourceConfig.groups.eventing.isEnabledByDefault).toBe(true);
+    expect(knativeMapSourceConfig.groups.eventingInternals.isEnabledByDefault).toBe(false);
   });
 
   it('defines the expected groups and sources', () => {
@@ -56,6 +58,31 @@ describe('Knative map source configuration', () => {
         label: 'Serverless Services',
       },
       certificate: { id: 'knative-certificate', label: 'Certificates' },
+    });
+
+    expect(knativeMapSourceConfig.groups.eventing).toMatchObject({
+      id: 'knative-eventing',
+      label: 'Eventing',
+    });
+    expect(knativeMapSourceConfig.groups.eventing.sources).toEqual({
+      broker: { id: 'knative-broker', label: 'Brokers' },
+      trigger: { id: 'knative-trigger', label: 'Triggers' },
+      channel: { id: 'knative-channel', label: 'Channels' },
+      channelImplementation: {
+        id: 'knative-channel-implementation',
+        label: 'Channel Implementations',
+      },
+      subscription: { id: 'knative-subscription', label: 'Subscriptions' },
+      source: { id: 'knative-source', label: 'Sources' },
+    });
+
+    expect(knativeMapSourceConfig.groups.eventingInternals).toMatchObject({
+      id: 'knative-eventing-internals',
+      label: 'Eventing Internals',
+    });
+    expect(knativeMapSourceConfig.groups.eventingInternals.sources).toEqual({
+      brokerChannel: { id: 'knative-broker-channel', label: 'Broker Channels' },
+      triggerSubscription: { id: 'knative-trigger-subscription', label: 'Trigger Subscriptions' },
     });
   });
 

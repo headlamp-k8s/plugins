@@ -16,6 +16,7 @@
 
 import { DetailsViewDefaultHeaderActions } from '@kinvolk/headlamp-plugin/lib';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KnativeChannelImplementation } from './resources/knative';
 
 // Only controller-owned generated resources are read-only. The controller may be another
 // Knative internal resource or a core resource such as Namespace. Service, Revision,
@@ -31,6 +32,10 @@ const READ_ONLY_KNATIVE_GVKS = new Set([
   'networking.internal.knative.dev/v1alpha1/Certificate',
   'messaging.knative.dev/v1/Channel',
   'messaging.knative.dev/v1/Subscription',
+  'messaging.knative.dev/v1/InMemoryChannel',
+  'messaging.knative.dev/v1/KafkaChannel',
+  'messaging.knative.dev/v1beta1/KafkaChannel',
+  'messaging.knative.dev/v1alpha1/NatsJetStreamChannel',
   'sources.knative.dev/v1/ContainerSource',
   'sources.knative.dev/v1/SinkBinding',
 ]);
@@ -39,17 +44,18 @@ const READ_ONLY_KNATIVE_GVKS = new Set([
  * Returns whether a resource is one of the generated Knative kinds that this plugin protects.
  *
  * Matching uses the complete API version and kind so a similarly named resource from another API
- * group is not affected. A managing owner reference is also required: an unowned object remains
- * editable because it was not established as controller-generated.
+ * group is not affected; a channel implementation the plugin shows, of any kind, also matches. A
+ * managing owner reference is also required: an unowned object remains editable because it was
+ * not established as controller-generated.
  */
 function isReadOnlyKnativeResource(resource: KubeObject | null): boolean {
   if (!resource) return false;
 
   const apiVersion = resource.jsonData.apiVersion;
   const kind = resource.jsonData.kind;
-  const isReadOnlyKind = Boolean(
-    apiVersion && kind && READ_ONLY_KNATIVE_GVKS.has(`${apiVersion}/${kind}`)
-  );
+  const isReadOnlyKind =
+    resource instanceof KnativeChannelImplementation ||
+    Boolean(apiVersion && kind && READ_ONLY_KNATIVE_GVKS.has(`${apiVersion}/${kind}`));
   const hasControllerOwner = resource.jsonData.metadata?.ownerReferences?.some(
     owner => owner.controller
   );
@@ -65,8 +71,8 @@ function isReadOnlyKnativeResource(resource: KubeObject | null): boolean {
  * ClusterDomainClaims, unowned resources, and resources from other API groups retain the original
  * action array unchanged.
  *
- * @param resource Resource whose detail-page actions are being assembled.
- * @param actions Header actions supplied by Headlamp and other plugins.
+ * @param resource - Resource whose detail-page actions are being assembled.
+ * @param actions - Header actions supplied by Headlamp and other plugins.
  * @returns The original array for an actionable resource, or a filtered array for a generated one.
  */
 export function filterReadOnlyKnativeHeaderActions<T extends { id: string }>(

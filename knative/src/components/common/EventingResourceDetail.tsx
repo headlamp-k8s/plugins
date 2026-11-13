@@ -52,7 +52,7 @@ export function EventingResourceDetail<
     section: ReactNode;
   }[];
 }) {
-  const { name, namespace } = useParams<{ namespace: string; name: string }>();
+  const { name, namespace } = useParams<{ namespace?: string; name: string }>();
   const cluster = K8s.useCluster();
   const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(
     'eventing',

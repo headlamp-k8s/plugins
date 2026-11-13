@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
+import type { ApiError } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/ApiError';
+import type { QueryListResponse } from '@kinvolk/headlamp-plugin/lib/k8s/api/v2/hooks';
+import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 import { parse } from 'yaml';
 import {
+  findKnownKind,
   formatDestination,
   formatTriggerFilter,
   getBrokerClass,
+  getClustersWithoutCrds,
+  getCrdKindInfo,
   getPreferredApiVersion,
-  getSourceKindInfo,
   getTriggerBroker,
+  hasEveryClusterAnswered,
+  isClusterError,
 } from './eventingData';
 import type { KnativeTrigger } from './trigger';
 
@@ -74,14 +81,14 @@ describe('Knative Eventing resource data', () => {
       },
     };
 
-    expect(getSourceKindInfo(crd)).toEqual({
+    expect(getCrdKindInfo(crd)).toEqual({
       kind: 'PingSource',
       apiName: 'pingsources',
       apiVersion: 'sources.knative.dev/v1',
       isNamespaced: true,
     });
     expect(
-      getSourceKindInfo({
+      getCrdKindInfo({
         ...crd,
         spec: {
           ...crd.spec,
@@ -214,5 +221,238 @@ describe('formatTriggerFilter', () => {
     expect(
       parse(formatTriggerFilter({ broker: 'default', subscriber: { uri: '/sink' }, filters })!)
     ).toEqual({ filters });
+  });
+});
+
+/**
+ * Builds a KafkaChannel CRD that serves the given versions.
+ *
+ * @param versions - The served versions; the first is the stored one.
+ * @returns The CRD.
+ */
+function kafkaChannelCrd(versions: string[]): KubeCRD {
+  return {
+    apiVersion: 'apiextensions.k8s.io/v1',
+    kind: 'CustomResourceDefinition',
+    metadata: { name: 'kafkachannels.messaging.knative.dev', uid: 'uid-1', creationTimestamp: '' },
+    spec: {
+      group: 'messaging.knative.dev',
+      version: versions[0],
+      names: {
+        plural: 'kafkachannels',
+        singular: 'kafkachannel',
+        kind: 'KafkaChannel',
+        listKind: 'KafkaChannelList',
+      },
+      scope: 'Namespaced',
+      versions: versions.map((name, index) => ({
+        name,
+        served: true,
+        storage: index === 0,
+        additionalPrinterColumns: [],
+      })),
+    },
+  };
+}
+
+const kafkaChannel = {
+  kind: 'KafkaChannel',
+  apiName: 'kafkachannels',
+  apiVersion: 'messaging.knative.dev/v1',
+  isNamespaced: true,
+};
+
+const inMemoryChannel = {
+  kind: 'InMemoryChannel',
+  apiName: 'inmemorychannels',
+  apiVersion: 'messaging.knative.dev/v1',
+  isNamespaced: true,
+};
+
+describe('getClustersWithoutCrds', () => {
+  it('finds the clusters with no CRD found and an error for that cluster', () => {
+    expect(
+      getClustersWithoutCrds(
+        ['a', 'b', 'c'],
+        [{ cluster: 'a' }],
+        [{ cluster: 'a' }, { cluster: 'b' }]
+      )
+    ).toEqual(['b']);
+  });
+
+  it('counts an error that names no cluster against every cluster with no CRD', () => {
+    expect(getClustersWithoutCrds(['a', 'b'], [{ cluster: 'a' }], [{}])).toEqual(['b']);
+  });
+
+  it('finds none when nothing failed', () => {
+    expect(getClustersWithoutCrds(['a', 'b'], [], null)).toEqual([]);
+  });
+});
+
+describe('isClusterError', () => {
+  it("counts an error as a cluster's when it names that cluster or names none", () => {
+    expect(isClusterError({ cluster: 'a' }, 'a')).toBe(true);
+    expect(isClusterError({}, 'a')).toBe(true);
+    expect(isClusterError({ cluster: 'b' }, 'a')).toBe(false);
+  });
+});
+
+describe('hasEveryClusterAnswered', () => {
+  const answered: QueryListResponse<unknown, unknown, ApiError> = {
+    data: null,
+    error: null,
+    errors: null,
+    items: [],
+    isError: false,
+    isFetching: false,
+    isLoading: false,
+    isSuccess: true,
+    status: 'success',
+  };
+
+  it('waits for a cluster with neither a result nor an error of its own', () => {
+    expect(hasEveryClusterAnswered(['a', 'b'], { a: answered }, [{ cluster: 'a' }])).toBe(false);
+  });
+
+  it('counts a result or an error as an answer', () => {
+    expect(hasEveryClusterAnswered(['a', 'b'], { a: answered }, [{ cluster: 'b' }])).toBe(true);
+  });
+
+  it('counts an error that names no cluster as the answer of every cluster', () => {
+    expect(hasEveryClusterAnswered(['a', 'b'], {}, [{}])).toBe(true);
+  });
+});
+
+describe('findKnownKind', () => {
+  it('lists a kind at the version its CRD stores, in the clusters where it is installed', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1beta1', 'v1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v1beta1', 'v1']) },
+        ],
+        [],
+        [inMemoryChannel]
+      )
+    ).toEqual({
+      info: { ...kafkaChannel, apiVersion: 'messaging.knative.dev/v1beta1' },
+      clusters: ['a', 'b'],
+      clustersLeftOut: [],
+    });
+  });
+
+  it('lists a kind that is not installed nowhere', () => {
+    expect(findKnownKind(kafkaChannel, [], ['c'], [inMemoryChannel])).toEqual({
+      info: kafkaChannel,
+      clusters: [],
+      clustersLeftOut: [],
+    });
+  });
+
+  it("still lists Knative's own kinds in the clusters whose CRDs could not be listed", () => {
+    expect(findKnownKind(inMemoryChannel, [], ['c'], [inMemoryChannel])).toEqual({
+      info: inMemoryChannel,
+      clusters: ['c'],
+      clustersLeftOut: [],
+    });
+  });
+
+  it('does not list a kind whose CRD serves no version', () => {
+    const crd = kafkaChannelCrd(['v1beta1']);
+    crd.spec.versions[0].served = false;
+
+    expect(findKnownKind(kafkaChannel, [{ cluster: 'a', jsonData: crd }], [], [])).toEqual({
+      info: kafkaChannel,
+      clusters: [],
+      clustersLeftOut: [],
+    });
+  });
+
+  it('lists a kind at a version every cluster with its CRD serves', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1', 'v1beta1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v1beta1']) },
+        ],
+        [],
+        []
+      )
+    ).toEqual({
+      info: { ...kafkaChannel, apiVersion: 'messaging.knative.dev/v1beta1' },
+      clusters: ['a', 'b'],
+      clustersLeftOut: [],
+    });
+  });
+
+  it('lists a kind at a shared version that no cluster prefers', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1', 'v1beta1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v2', 'v1beta1']) },
+        ],
+        [],
+        []
+      )
+    ).toEqual({
+      info: { ...kafkaChannel, apiVersion: 'messaging.knative.dev/v1beta1' },
+      clusters: ['a', 'b'],
+      clustersLeftOut: [],
+    });
+  });
+
+  it('lists a kind at the newest of several shared versions', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1', 'v1alpha1', 'v1beta1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v2', 'v1alpha1', 'v1beta1']) },
+        ],
+        [],
+        []
+      ).info.apiVersion
+    ).toBe('messaging.knative.dev/v1beta1');
+  });
+
+  it('lists a kind at the version the most clusters serve, and names the clusters left out', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v2', 'v1beta1']) },
+          { cluster: 'c', jsonData: kafkaChannelCrd(['v1beta1']) },
+        ],
+        [],
+        []
+      )
+    ).toEqual({
+      info: { ...kafkaChannel, apiVersion: 'messaging.knative.dev/v1beta1' },
+      clusters: ['b', 'c'],
+      clustersLeftOut: ['a'],
+    });
+  });
+
+  it('lists a kind at the newest version when the clusters share none', () => {
+    expect(
+      findKnownKind(
+        kafkaChannel,
+        [
+          { cluster: 'a', jsonData: kafkaChannelCrd(['v1']) },
+          { cluster: 'b', jsonData: kafkaChannelCrd(['v2']) },
+        ],
+        [],
+        []
+      )
+    ).toEqual({
+      info: { ...kafkaChannel, apiVersion: 'messaging.knative.dev/v2' },
+      clusters: ['b'],
+      clustersLeftOut: ['a'],
+    });
   });
 });

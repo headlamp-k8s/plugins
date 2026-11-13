@@ -25,12 +25,17 @@ import {
   registerSidebarEntryFilter,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrokerDetail } from './components/brokers/Detail';
+import {
+  CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  ChannelImplementationDetail,
+} from './components/channelimplementations/Detail';
 import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
+import { SOURCE_DETAILS_PATH, SourceDetail } from './components/sources/Detail';
 import { SubscriptionDetail } from './components/subscriptions/Detail';
 import { TriggerDetail } from './components/triggers/Detail';
 import { isKnativeComponentInstalled } from './isKnativeInstalled';
@@ -38,10 +43,13 @@ import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
+import { queryClient } from './queryClient';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 import {
   KnativeBroker,
   KnativeChannel,
+  KnativeChannelImplementation,
+  KnativeSource,
   KnativeSubscription,
   KnativeTrigger,
 } from './resources/knative';
@@ -51,8 +59,6 @@ registerKnativeIcon();
 registerDetailsViewHeaderActionsProcessor((resource, actions) =>
   filterReadOnlyKnativeHeaderActions(resource, actions)
 );
-
-const queryClient = new QueryClient();
 
 function withQueryClient(Component: React.ComponentType) {
   return React.memo(function WithQueryClient() {
@@ -135,6 +141,20 @@ registerRoute({
 });
 
 registerRoute({
+  path: CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  sidebar: 'knative-channel-implementations',
+  name: KnativeChannelImplementation.detailsRoute,
+  component: withQueryClient(ChannelImplementationDetail),
+});
+
+registerRoute({
+  path: SOURCE_DETAILS_PATH,
+  sidebar: 'knative-sources',
+  name: KnativeSource.detailsRoute,
+  component: withQueryClient(SourceDetail),
+});
+
+registerRoute({
   path: '/knative/subscriptions/:namespace/:name',
   sidebar: 'knative-subscriptions',
   name: KnativeSubscription.detailsRoute,
@@ -169,6 +189,15 @@ const knativeKindIconKinds = [
   'eventing.knative.dev/Trigger',
   'messaging.knative.dev/Channel',
   'messaging.knative.dev/Subscription',
+  'messaging.knative.dev/InMemoryChannel',
+  'messaging.knative.dev/KafkaChannel',
+  'messaging.knative.dev/NatsJetStreamChannel',
+  'sources.knative.dev/ApiServerSource',
+  'sources.knative.dev/ContainerSource',
+  'sources.knative.dev/PingSource',
+  'sources.knative.dev/SinkBinding',
+  'sources.knative.dev/IntegrationSource',
+  'sources.knative.dev/KafkaSource',
 ];
 
 knativeKindIconKinds.forEach(kind => {

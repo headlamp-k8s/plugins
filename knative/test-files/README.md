@@ -158,10 +158,44 @@ longer, as with `setup.sh`.
 | Subscription `orders-to-display` | A Ready Subscription from `orders` to the `event-display` Service that sends replies to the `default` Broker                                    | The Subscriptions view links the Channel, the `Service/event-display` subscriber, and the `Broker/default` reply; its page shows the resolved subscriber and reply URIs |
 | Subscription `missing-channel`   | A Subscription whose Channel does not exist                                                                                                     | Ready is `Unknown` with the reason `ChannelReferenceFailed`                                                                                                             |
 | Subscriptions `default-…`        | Subscriptions the Broker creates for each Trigger whose subscriber resolves                                                                     | The Owner column links the Trigger, and the Channel is the Broker's own `InMemoryChannel`                                                                               |
-| PingSource `heartbeat`           | A Ready PingSource that sends an event to the `default` Broker every minute                                                                     | The Sources view shows the `PingSource` kind and links the `Broker/default` sink                                                                                        |
-| ApiServerSource `k8s-events`     | A Ready ApiServerSource that sends the namespace's Kubernetes events to the `event-display` Service, through the `event-watcher` ServiceAccount | The Sources view shows the `ApiServerSource` kind and links the `Service/event-display` sink                                                                            |
+| PingSource `heartbeat`           | A Ready PingSource that sends an event to the `default` Broker every minute                                                                     | The Sources view shows the `PingSource` kind and links the `Broker/default` sink; its page shows the `dev.knative.sources.ping` event type                              |
+| ApiServerSource `k8s-events`     | A Ready ApiServerSource that sends the namespace's Kubernetes events to the `event-display` Service, through the `event-watcher` ServiceAccount | The Sources view shows the `ApiServerSource` kind and links the `Service/event-display` sink; its page lists its three event types                                      |
 | SinkBinding `bind-heartbeat`     | A Ready SinkBinding whose sink is an absolute URI                                                                                               | The sink is shown as the URI, without a link                                                                                                                            |
 | PingSource `missing-sink`        | A PingSource whose sink Service does not exist                                                                                                  | Ready is `False` with the reason `NotFound`                                                                                                                             |
+
+### Channel implementations
+
+The KafkaChannel and NatsJetStreamChannel fixtures need the Eventing fixtures first. The script
+installs a single-node NATS JetStream server and a single-node Kafka broker for development only,
+the NatsJetStreamChannel and KafkaChannel releases that match Knative Eventing 1.23, and then
+`04-channel-implementations.yaml`:
+
+```bash
+./test-files/setup-channel-implementations.sh
+```
+
+Set `NATS_CHANNEL_RELEASE` or `KAFKA_CHANNEL_RELEASE` to use other release tags.
+
+| Resource                                            | State it produces                                                                            | What to verify in Headlamp                                                                                                         |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| KafkaChannel `orders-kafka`                         | A Ready KafkaChannel with three partitions, retries and the `event-display` dead letter sink | The Channel Implementations view shows `KafkaChannel`; its page shows the retries, the dead letter sink and the partitions as YAML |
+| NatsJetStreamChannel `orders-nats`                  | A Ready NatsJetStreamChannel with stream and consumer settings and four retries              | Its page shows the retries, and the `stream` and `consumerConfigTemplate` settings as YAML                                         |
+| Channel `payments-kafka`                            | A Ready Channel backed by a KafkaChannel                                                     | Its page links the backing `KafkaChannel/payments-kafka`, whose Owner is the Channel and whose page has no Edit or Delete          |
+| Subscriptions `kafka-to-display`, `nats-to-display` | Ready Subscriptions from the KafkaChannel and the NatsJetStreamChannel to `event-display`    | The Subscriptions view links each channel to its channel implementation page, which lists the Subscription as Ready                |
+
+On the Map, select the `knative-eventing-test` namespace with the Knative **Eventing** source
+enabled: `heartbeat` connects to the `default` Broker and the Broker to its Triggers, `catch-all`
+and `order-created` connect to `event-display`, the Channel `orders` to its InMemoryChannel and to
+`orders-to-display`, and `orders-kafka` to `event-display` as its dead letter sink.
+`uri-subscriber` sends to a URI and `dangling-subscriber` to a missing Service, so neither has a
+subscriber edge.
+
+On Knative Eventing 1.24 or later with the `delivery-backoff-max` feature enabled, add
+`backoffMax: PT2S` to the `delivery` of `orders-nats`, as in the NatsJetStreamChannel
+documentation's retry example: its page then also shows Backoff Max `PT2S`.
+
+Cleanup removes these fixtures with the `knative-eventing-test` namespace; NATS, Kafka and their
+channel controllers stay installed.
 
 ## Remove the fixtures
 

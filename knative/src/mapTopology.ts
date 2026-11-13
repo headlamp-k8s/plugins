@@ -20,6 +20,7 @@ import type {
 } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import type { Traffic } from './resources/knative';
+import type { KReference } from './resources/knative/common';
 import { findReadyCondition, getFirstOwner } from './resources/knative/resourceData';
 
 /**
@@ -228,6 +229,220 @@ export function makeOwnerEdges(
         source: owner.uid,
         target: childUid,
       };
+    })
+  );
+}
+
+/**
+ * Tells whether a resource was created by an object of a class: whether its controlling owner, or
+ * its first owner, is of that class, such as a channel that a Broker created.
+ *
+ * @param resource - The resource.
+ * @param ownerClass - The class of the owner.
+ * @returns Whether the resource's owner is of that class.
+ */
+export function isOwnedBy(resource: TopologyResource, ownerClass: ResourceClassIdentity): boolean {
+  const owner = getFirstOwner(resource.metadata);
+  return !!owner && matchesRef(owner, ownerFilterFor(ownerClass));
+}
+
+/**
+ * Builds owner-reference edges from some owners only, such as from Sources to the Deployments they
+ * run.
+ *
+ * @param resources - The resources, such as Deployments.
+ * @param owners - The owners to build edges from, such as Sources.
+ * @param relationship - The kind of relationship, which becomes part of each edge's ID.
+ * @returns One edge for each resource whose owner is one of `owners`.
+ */
+export function makeOwnerEdgesFrom(
+  resources: ResourceList,
+  owners: TopologyResource[],
+  relationship: string
+): GraphEdge[] {
+  const ownerUids = new Set(owners.map(resourceUid));
+  return makeOwnerEdges(
+    resources?.filter(resource => ownerUids.has(getFirstOwner(resource.metadata)?.uid)),
+    relationship
+  );
+}
+
+/**
+ * Builds edges to resources from the owner of their owner, leaving out the owner in between, such
+ * as from a Broker to the Service of the channel that the Broker created.
+ *
+ * @param resources - The resources, such as Services.
+ * @param owners - The owners in between, such as the channels that Brokers created.
+ * @param relationship - The kind of relationship, which becomes part of each edge's ID.
+ * @returns One edge for each resource whose owner is one of `owners` and has an owner itself.
+ */
+export function makeIndirectOwnerEdges(
+  resources: ResourceList,
+  owners: TopologyResource[],
+  relationship: string
+): GraphEdge[] {
+  const ownerOfOwner = new Map(
+    owners.flatMap((owner): [string, string][] => {
+      const uid = resourceUid(owner);
+      const ownerUid = getFirstOwner(owner.metadata)?.uid;
+      return uid && ownerUid ? [[uid, ownerUid]] : [];
+    })
+  );
+  return deduplicateEdges(
+    (resources ?? []).map(resource => {
+      const ownerUid = getFirstOwner(resource.metadata)?.uid;
+      const source = ownerUid && ownerOfOwner.get(ownerUid);
+      const target = resourceUid(resource);
+      return source && target
+        ? { id: `${relationship}:${source}:${target}`, source, target }
+        : null;
+    })
+  );
+}
+
+/** The objects a reference can point to, with the class that gives their API group and kind. */
+export type ReferenceTargets = {
+  /** The class of the objects. */
+  resourceClass: ResourceClassIdentity;
+  /** The objects, or null while they load. */
+  items: ResourceList;
+}[];
+
+/** The objects references can point to, by their reference key. */
+export type ReferenceIndex = ReadonlyMap<string, TopologyResource>;
+
+/** An object a resource sends events to, and how the edge to it is named. */
+export type DestinationReference = {
+  /** The kind of relationship, which keeps edges of different kinds to one object apart. */
+  relationship: string;
+  /** The object the events go to; a destination given only as a URI has none. */
+  ref?: KReference;
+  /** The edge's label, such as `dead letter sink`. */
+  label?: string;
+};
+
+/**
+ * Builds the lookup key of a referenced object: its cluster, API group, kind, namespace and name.
+ *
+ * @param cluster - Cluster of the object.
+ * @param apiVersion - API version of the object; only its group is used.
+ * @param kind - Kind of the object.
+ * @param namespace - Namespace of the object.
+ * @param name - Name of the object.
+ * @returns The key.
+ */
+function referenceKey(
+  cluster: string,
+  apiVersion: string,
+  kind: string,
+  namespace: string,
+  name: string
+): string {
+  const group = apiVersion.includes('/') ? apiVersion.split('/')[0] : '';
+  return `${cluster}|${group}|${kind}|${namespace}|${name}`;
+}
+
+/**
+ * Indexes the objects that references can point to, so that edges to them can be found.
+ *
+ * @param targets - The objects, by class.
+ * @returns The objects by their reference key.
+ */
+export function indexReferenceTargets(targets: ReferenceTargets): ReferenceIndex {
+  const index = new Map<string, TopologyResource>();
+  targets.forEach(({ resourceClass, items }) => {
+    const apiVersion = Array.isArray(resourceClass.apiVersion)
+      ? resourceClass.apiVersion[0]
+      : resourceClass.apiVersion;
+    items?.forEach(item => {
+      const name = item.metadata.name;
+      if (!name) return;
+      index.set(
+        referenceKey(
+          resourceCluster(item),
+          apiVersion,
+          resourceClass.kind,
+          resourceNamespace(item),
+          name
+        ),
+        item
+      );
+    });
+  });
+  return index;
+}
+
+/**
+ * Finds the object a reference points to, in the referring object's cluster.
+ *
+ * @param index - The objects references can point to.
+ * @param holder - The object that holds the reference.
+ * @param ref - The reference.
+ * @returns The object, or undefined when the reference names none of the indexed objects or
+ * has no API version, which a cluster without Knative's webhook accepts.
+ */
+function findReferenceTarget(
+  index: ReferenceIndex,
+  holder: TopologyResource,
+  ref: KReference | undefined
+): TopologyResource | undefined {
+  if (!ref?.apiVersion || !ref.kind || !ref.name) return undefined;
+  return index.get(
+    referenceKey(
+      resourceCluster(holder),
+      ref.apiVersion,
+      ref.kind,
+      ref.namespace || resourceNamespace(holder),
+      ref.name
+    )
+  );
+}
+
+/**
+ * Builds edges from each resource to the objects it sends events to, such as a Source to its sink
+ * or a Trigger to its subscriber and dead letter sink. A destination given only as a URI, or one
+ * whose object is not loaded, has no edge.
+ *
+ * @param resources - The resources.
+ * @param index - The objects the destinations can point to.
+ * @param getDestinations - Reads a resource's destinations.
+ * @returns One edge per destination found.
+ */
+export function makeDestinationEdges<T extends TopologyResource>(
+  resources: T[] | null | undefined,
+  index: ReferenceIndex,
+  getDestinations: (resource: T) => DestinationReference[]
+): GraphEdge[] {
+  return deduplicateEdges(
+    (resources ?? []).flatMap(resource =>
+      getDestinations(resource).map(({ relationship, ref, label }) => {
+        const target = findReferenceTarget(index, resource, ref);
+        return target ? edge(resource, target, relationship, label) : null;
+      })
+    )
+  );
+}
+
+/**
+ * Builds edges from the object each resource references to the resource, in the direction events
+ * flow, such as from a Broker to its Trigger or from a channel to its Subscription.
+ *
+ * @param resources - The resources.
+ * @param index - The objects the references can point to.
+ * @param relationship - The kind of relationship, which becomes part of each edge's ID.
+ * @param getReference - Reads a resource's reference.
+ * @returns One edge per reference found.
+ */
+export function makeReferrerEdges<T extends TopologyResource>(
+  resources: T[] | null | undefined,
+  index: ReferenceIndex,
+  relationship: string,
+  getReference: (resource: T) => KReference | undefined
+): GraphEdge[] {
+  return deduplicateEdges(
+    (resources ?? []).map(resource => {
+      const target = findReferenceTarget(index, resource, getReference(resource));
+      return target ? edge(target, resource, relationship) : null;
     })
   );
 }

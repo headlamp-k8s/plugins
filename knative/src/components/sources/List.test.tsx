@@ -64,6 +64,7 @@ const context = vi.hoisted(() => ({
   clusters: ['cluster-a'],
   namespaces: undefined as string[] | undefined,
   crds: { items: null, errors: null, isLoading: true } as ListResult,
+  crdPendingClusters: [] as string[],
   sources: {} as Record<string, ListResult>,
   crdListOptions: [] as unknown[],
   sourceListOptions: [] as { kind: string; options: unknown }[],
@@ -99,9 +100,18 @@ vi.mock('../../hooks/useSelectedNamespaces', () => ({
 
 vi.mock('../../resources/k8s/customResourceDefinition', () => ({
   CustomResourceDefinition: {
-    useList: (options: unknown) => {
+    useList: (options: { clusters: string[] }) => {
       context.crdListOptions.push(options);
-      return context.crds;
+      const answered = options.clusters.filter(
+        cluster =>
+          context.crds.items !== null &&
+          !context.crdPendingClusters.includes(cluster) &&
+          !context.crds.errors?.some(error => error.cluster === cluster)
+      );
+      return {
+        ...context.crds,
+        clusterResults: Object.fromEntries(answered.map(cluster => [cluster, {}])),
+      };
     },
   },
 }));
@@ -112,20 +122,27 @@ vi.mock('../../resources/knative', async () => ({
       '../../resources/knative/customResourceLinks'
     )
   ).getKnativeCrdName,
-  SOURCE_CRD_LABEL_SELECTOR: 'duck.knative.dev/source=true',
-  getKnativeSourceClass: (info: { kind: string }) => ({
-    kind: info.kind,
-    useList: (options: unknown): ListResult => {
-      React.useRef(options);
-      context.sourceListOptions.push({ kind: info.kind, options });
-      const list = context.sources[info.kind] ?? { items: [], errors: null, isLoading: false };
-      return {
-        items: list.items && [...list.items],
-        errors: list.errors && [...list.errors],
-        isLoading: list.isLoading,
-      };
-    },
-  }),
+  SOURCE_FAMILY: {
+    labelKey: 'duck.knative.dev/source',
+    fallbackKinds: (
+      await vi.importActual<typeof import('../../resources/knative/eventingData')>(
+        '../../resources/knative/eventingData'
+      )
+    ).KNATIVE_SOURCE_KINDS,
+    getKindClass: (info: { kind: string }) => ({
+      kind: info.kind,
+      useList: (options: unknown): ListResult => {
+        React.useRef(options);
+        context.sourceListOptions.push({ kind: info.kind, options });
+        const list = context.sources[info.kind] ?? { items: [], errors: null, isLoading: false };
+        return {
+          items: list.items && [...list.items],
+          errors: list.errors && [...list.errors],
+          isLoading: list.isLoading,
+        };
+      },
+    }),
+  },
 }));
 
 vi.mock('../common/DestinationLink', () => ({
@@ -138,7 +155,9 @@ vi.mock('../common/DestinationLink', () => ({
 
 vi.mock('../common/ResourceListCells', () => ({ getReadinessColumns: () => [] }));
 
-import { getSourceKinds, SourcesList } from './List';
+import { SOURCE_FAMILY } from '../../resources/knative';
+import { getDiscoveredKinds } from '../common/DiscoveredKindsList';
+import { SourcesList } from './List';
 
 /**
  * Builds a Source CRD as `CustomResourceDefinition.useList` returns it.
@@ -207,6 +226,7 @@ describe('SourcesList', () => {
     context.installed = true;
     context.banners.length = 0;
     context.clusters = ['cluster-a'];
+    context.crdPendingClusters = [];
     context.namespaces = undefined;
     context.crds = {
       items: [
@@ -249,6 +269,15 @@ describe('SourcesList', () => {
     expect(context.sourceListOptions).toEqual([]);
   });
 
+  it('waits for the Source kinds of every cluster, even when the list says it has loaded', () => {
+    context.clusters = ['cluster-a', 'cluster-b'];
+    context.crdPendingClusters = ['cluster-b'];
+    renderSourcesList();
+
+    expect(lastView()?.data).toBeNull();
+    expect(context.sourceListOptions).toEqual([]);
+  });
+
   it('waits until every kind has been listed', () => {
     context.sources.PingSource = { items: [], errors: null, isLoading: true };
     renderSourcesList();
@@ -282,8 +311,8 @@ describe('SourcesList', () => {
     const { container } = renderSourcesList();
 
     expect(container.textContent).toBe(
-      "The Source CustomResourceDefinitions could not be listed, so only Knative's own kinds of " +
-        'Source are shown.'
+      "The Source CustomResourceDefinitions could not be listed, so only Knative's own kinds are " +
+        'shown.'
     );
     expect([...new Set(context.sourceListOptions.map(call => call.kind))].sort()).toEqual([
       'ApiServerSource',
@@ -306,7 +335,7 @@ describe('SourcesList', () => {
 
     expect(container.textContent).toBe(
       'The Source CustomResourceDefinitions could not be listed in cluster-b, so only ' +
-        "Knative's own kinds of Source are shown."
+        "Knative's own kinds are shown."
     );
   });
 
@@ -370,41 +399,60 @@ describe('SourcesList', () => {
   });
 });
 
-describe('getSourceKinds', () => {
+/**
+ * Finds the kinds of Source in the given CRDs, as the Sources list does.
+ *
+ * @param crds - The Source CRDs, each with its cluster.
+ * @param clustersWithoutCrds - The clusters whose CRDs could not be listed.
+ * @param excludedCrds - Names of CRDs to leave out.
+ * @returns The keys of the kinds found.
+ */
+function kindKeys(
+  crds: ReturnType<typeof sourceCrd>[],
+  clustersWithoutCrds: string[] = [],
+  excludedCrds?: string[]
+): string[] {
+  return getDiscoveredKinds(crds, clustersWithoutCrds, { ...SOURCE_FAMILY, excludedCrds }).map(
+    kind => kind.key
+  );
+}
+
+describe('getDiscoveredKinds', () => {
   it('orders the kinds by cluster and CRD name', () => {
-    const kinds = getSourceKinds(
-      [
+    expect(
+      kindKeys([
         sourceCrd('pingsources', 'PingSource', { cluster: 'cluster-b' }),
         sourceCrd('sinkbindings', 'SinkBinding'),
         sourceCrd('apiserversources', 'ApiServerSource'),
-      ],
-      []
-    );
-
-    expect(kinds.map(kind => kind.key)).toEqual([
+      ])
+    ).toEqual([
       'cluster-a/apiserversources.sources.knative.dev',
       'cluster-a/sinkbindings.sources.knative.dev',
       'cluster-b/pingsources.sources.knative.dev',
     ]);
-    expect(kinds.map(kind => kind.cluster)).toEqual(['cluster-a', 'cluster-a', 'cluster-b']);
   });
 
   it('leaves out a CRD that serves no version', () => {
-    const kinds = getSourceKinds(
-      [
+    expect(
+      kindKeys([
         sourceCrd('pingsources', 'PingSource'),
         sourceCrd('oldsources', 'OldSource', { served: false }),
-      ],
-      []
-    );
-
-    expect(kinds.map(kind => kind.key)).toEqual(['cluster-a/pingsources.sources.knative.dev']);
+      ])
+    ).toEqual(['cluster-a/pingsources.sources.knative.dev']);
   });
 
-  it("adds Knative's own kinds in a cluster whose Source CRDs could not be listed", () => {
-    const kinds = getSourceKinds([sourceCrd('pingsources', 'PingSource')], ['cluster-b']);
+  it('leaves out the CRDs it is told to', () => {
+    expect(
+      kindKeys(
+        [sourceCrd('pingsources', 'PingSource'), sourceCrd('sinkbindings', 'SinkBinding')],
+        [],
+        ['sinkbindings.sources.knative.dev']
+      )
+    ).toEqual(['cluster-a/pingsources.sources.knative.dev']);
+  });
 
-    expect(kinds.map(kind => kind.key)).toEqual([
+  it("adds Knative's own kinds in a cluster whose CRDs could not be listed", () => {
+    expect(kindKeys([sourceCrd('pingsources', 'PingSource')], ['cluster-b'])).toEqual([
       'cluster-a/pingsources.sources.knative.dev',
       'cluster-b/apiserversources.sources.knative.dev',
       'cluster-b/containersources.sources.knative.dev',
