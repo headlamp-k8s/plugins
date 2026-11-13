@@ -44,6 +44,8 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
 
     const secret = secrets?.length > 0 ? getLatestSecret(secrets) : null;
     if (!secret) {
+      // No usable release secret: don't keep showing a previous inventory.
+      setResources([]);
       return;
     }
 
@@ -56,10 +58,14 @@ export function HelmInventory(props: Readonly<{ name: string; namespace: string 
       const b64dhelm = Buffer.from(b64dk8s, 'base64');
       const cs = new DecompressionStream('gzip');
       const writer = cs.writable.getWriter();
-      writer.write(b64dhelm);
-      writer.close();
 
-      const arrayBuffer = await new Response(cs.readable).arrayBuffer();
+      // Await the writer operations together with the read so that a rejection from any of
+      // them (e.g. corrupt gzip data) reaches the error handler instead of going unhandled.
+      const [, , arrayBuffer] = await Promise.all([
+        writer.write(b64dhelm),
+        writer.close(),
+        new Response(cs.readable).arrayBuffer(),
+      ]);
       const helmData = JSON.parse(new TextDecoder().decode(arrayBuffer));
       const resourceKinds = (helmData.chart?.templates ?? []).map(template =>
         parseHelmTemplate(template)
@@ -236,7 +242,8 @@ function parseHelmTemplate(template): {
  * Fetches Kubernetes resources associated with a Helm release using the specified resource kinds, chart name, and namespace.
  * Constructs API requests for each resource kind, appending a label selector for the Helm chart name and namespace.
  * Adds metadata including kind, API version, and group name to each resource for further processing.
- * Logs a message if no resources of a kind are found or an error occurs.
+ * Logs a message if no resources of a kind are found (404). Any other request failure is
+ * re-thrown so that the caller can report it.
  *
  * @param {Array<{ kind: string, apiVersion: string, hasNamespace: boolean }>} resourceKinds - Array of resource kind objects containing kind, apiVersion, and hasNamespace properties.
  * @param {string} chartName - The name of the Helm chart.
@@ -282,10 +289,10 @@ async function fetchResources(
     } catch (error) {
       if (error.status === 404) {
         console.log(`No ${pluralName} found for chart ${chartName}`);
-      } else {
-        console.error(error);
+        return [];
       }
-      return [];
+      // Other failures (403, 5xx, network) must not look like an empty inventory.
+      throw error;
     }
   });
 
