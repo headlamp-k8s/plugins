@@ -13,10 +13,13 @@ export interface ScaledObjectFallback {
   replicas: number;
 }
 
+/** An HPA scaling policy limits change by a number of pods or a percentage of replicas. */
+export type HPAScalingPolicyType = 'Pods' | 'Percent';
+
 export interface HPABehaviorScalingRules {
   stabilizationWindowSeconds?: number;
   policies?: Array<{
-    type: string;
+    type: HPAScalingPolicyType;
     value: number;
     periodSeconds: number;
   }>;
