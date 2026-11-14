@@ -1,5 +1,7 @@
 import type { AdmissionCheckParametersReference } from './admissionCheck';
 import type { KueueCondition } from './clusterQueue';
+import type { AdmissionChecksStrategyLike } from './clusterQueueFormatters';
+import type { AdmissionCheckState } from './workload';
 
 /** Minimal AdmissionCheck condition shape needed to summarize its readiness. */
 export type AdmissionCheckConditionLike = Pick<
@@ -33,4 +35,25 @@ export function renderAdmissionCheckStatus(activeCondition?: AdmissionCheckCondi
   }
 
   return 'Unknown';
+}
+
+/** Find the rule that adds an AdmissionCheck to a ClusterQueue, if any. */
+export function findAdmissionCheckRule(
+  strategy: AdmissionChecksStrategyLike | undefined,
+  checkName: string
+) {
+  return strategy?.admissionChecks?.find(check => check.name === checkName);
+}
+
+/** Render the flavors an AdmissionCheck runs on; no flavors means all of them. */
+export function renderAdmissionCheckFlavors(onFlavors?: string[]) {
+  return onFlavors?.length ? onFlavors.join(', ') : 'All flavors';
+}
+
+/** Find a Workload's state for an AdmissionCheck when that check is not Ready yet. */
+export function findUnreadyAdmissionCheckState(
+  admissionChecks: AdmissionCheckState[] = [],
+  checkName: string
+) {
+  return admissionChecks.find(check => check.name === checkName && check.state !== 'Ready');
 }
