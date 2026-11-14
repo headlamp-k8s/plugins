@@ -19,6 +19,7 @@ import {
   renderOwnerReferences,
   renderPodSetRequests,
   renderPodSetsSummary,
+  renderPodSetUpdates,
   renderPriority,
   renderPriorityClassName,
   renderQueueName,
@@ -47,6 +48,13 @@ describe('Workload formatters', () => {
     expect(renderBoolean(false)).toBe('No');
     expect(renderBoolean(null)).toBe('-');
     expect(renderBoolean(undefined)).toBe('-');
+  });
+
+  it('formats admission check pod set updates', () => {
+    expect(renderPodSetUpdates()).toBe('-');
+    expect(
+      renderPodSetUpdates([{ name: 'main', labels: { role: 'worker' } }, { name: 'sidecar' }])
+    ).toBe('main: labels role=worker | sidecar: -');
   });
 
   it('formats common Workload list values', () => {
