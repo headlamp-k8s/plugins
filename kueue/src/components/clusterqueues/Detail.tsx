@@ -92,7 +92,9 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-'
+                  ? '-'
+                  : renderResourceFlavorLink(row.flavor, clusterQueue.cluster),
             },
             {
               label: 'Resource',
@@ -118,7 +120,12 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Build a table section for ClusterQueue status flavor reservations or usage. */
-function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
+function getFlavorUsageSection(
+  title: string,
+  id: string,
+  flavorUsage?: FlavorUsage[],
+  cluster?: string
+) {
   const rows = getFlavorUsageRows(flavorUsage);
 
   if (rows.length === 0) {
@@ -135,7 +142,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
             {
               label: 'ResourceFlavor',
               getter: (row: FlavorUsageRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor, cluster),
             },
             {
               label: 'Resource',
@@ -173,7 +180,8 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
+              getter: (row: AdmissionCheckRow) =>
+                renderAdmissionCheckLink(row.name, clusterQueue.cluster),
             },
             {
               label: 'ResourceFlavors',
@@ -183,7 +191,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     {row.flavors.map((flavor, index) => (
                       <span key={flavor}>
                         {index > 0 ? ', ' : ''}
-                        {renderResourceFlavorLink(flavor)}
+                        {renderResourceFlavorLink(flavor, clusterQueue.cluster)}
                       </span>
                     ))}
                   </>
@@ -211,21 +219,28 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Detail view for a cluster-scoped Kueue ClusterQueue resource. */
-export default function ClusterQueueDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function ClusterQueueDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
 
   return (
-    <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
+    <KueueAdminResourceAccess
+      resourceClass={ClusterQueue}
+      resourceLabel="ClusterQueues"
+      verb="get"
+      cluster={cluster}
+    >
       <DetailsGrid
         resourceType={ClusterQueue}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={clusterQueue =>
           clusterQueue
             ? [
                 {
                   name: 'Cohort',
-                  value: renderCohortLink(clusterQueue.spec.cohortName),
+                  value: renderCohortLink(clusterQueue.spec.cohortName, clusterQueue.cluster),
                 },
                 {
                   name: 'Queueing Strategy',
@@ -291,23 +306,31 @@ export default function ClusterQueueDetail() {
                 getFlavorUsageSection(
                   'Flavor Reservations',
                   'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
+                  clusterQueue.status.flavorsReservation,
+                  clusterQueue.cluster
                 ),
                 getFlavorUsageSection(
                   'Flavor Usage',
                   'flavor-usage',
-                  clusterQueue.status.flavorsUsage
+                  clusterQueue.status.flavorsUsage,
+                  clusterQueue.cluster
                 ),
                 {
                   id: 'related-local-queues',
                   section: (
-                    <RelatedLocalQueuesSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedLocalQueuesSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
                 {
                   id: 'related-workloads',
                   section: (
-                    <RelatedWorkloadsSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedWorkloadsSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
               ].filter(Boolean)

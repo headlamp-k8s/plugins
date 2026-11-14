@@ -308,7 +308,8 @@ function getAdmissionChecksSection(workload: Workload) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
+              getter: (row: AdmissionCheckRow) =>
+                renderAdmissionCheckLink(row.name, workload.cluster),
             },
             {
               label: 'State',
@@ -570,7 +571,7 @@ export function getBlockerSection(workload: Workload) {
       name: 'Blocking admission checks',
       value: blocker.pendingAdmissionChecks.map(check => (
         <div key={check.name}>
-          {renderAdmissionCheckLink(check.name)}: {check.state || 'Pending'}
+          {renderAdmissionCheckLink(check.name, workload.cluster)}: {check.state || 'Pending'}
           {check.message ? ` (${check.message})` : ''}
         </div>
       )),
@@ -606,19 +607,26 @@ function getConditionsSection(workload: Workload) {
   };
 }
 
-export default function WorkloadDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function WorkloadDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={Workload}
       resourceLabel="Workloads"
       verb="get"
+      cluster={cluster}
       accessDescription="Kueue Workloads are namespaced user workload resources."
     >
       <DetailsGrid
         resourceType={Workload}
         name={name}
+        cluster={cluster}
         namespace={namespace}
         withEvents
         extraInfo={workload =>
@@ -626,7 +634,11 @@ export default function WorkloadDetail() {
             ? [
                 {
                   name: 'Queue',
-                  value: renderLocalQueueLink(workload.queueName, workload.metadata.namespace),
+                  value: renderLocalQueueLink(
+                    workload.queueName,
+                    workload.metadata.namespace,
+                    workload.cluster
+                  ),
                 },
                 {
                   name: 'Priority',
@@ -644,7 +656,8 @@ export default function WorkloadDetail() {
                   name: 'Owner References',
                   value: renderOwnerReferenceLinks(
                     workload.metadata.ownerReferences,
-                    workload.metadata.namespace
+                    workload.metadata.namespace,
+                    workload.cluster
                   ),
                 },
                 {
@@ -669,7 +682,7 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Assigned ClusterQueue',
-                  value: renderClusterQueueLink(workload.admissionClusterQueue),
+                  value: renderClusterQueueLink(workload.admissionClusterQueue, workload.cluster),
                 },
                 {
                   name: 'Assigned ResourceFlavors',

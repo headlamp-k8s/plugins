@@ -14,12 +14,14 @@ import { kueueRouteNames } from '../../utils/kueueRoutes';
 
 interface RelatedLocalQueuesSectionProps {
   clusterQueueName: string;
+  cluster?: string;
 }
 
 interface RelatedWorkloadsSectionProps {
   clusterQueueName?: string;
   localQueueName?: string;
   namespace?: string;
+  cluster?: string;
 }
 
 function getRelatedClusterQueueWorkloads(
@@ -55,8 +57,11 @@ function renderLoadError(title: string, resourceLabel: string) {
 }
 
 /** List the LocalQueues backed by a ClusterQueue. */
-export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueuesSectionProps) {
-  const [localQueues, error] = LocalQueue.useList();
+export function RelatedLocalQueuesSection({
+  clusterQueueName,
+  cluster,
+}: RelatedLocalQueuesSectionProps) {
+  const [localQueues, error] = LocalQueue.useList({ cluster });
 
   const relatedLocalQueues = useMemo(
     () =>
@@ -110,21 +115,29 @@ export function RelatedWorkloadsSection({
   clusterQueueName,
   localQueueName,
   namespace,
+  cluster,
 }: RelatedWorkloadsSectionProps) {
   if (localQueueName) {
     return (
-      <RelatedLocalQueueWorkloadsSection localQueueName={localQueueName} namespace={namespace} />
+      <RelatedLocalQueueWorkloadsSection
+        localQueueName={localQueueName}
+        namespace={namespace}
+        cluster={cluster}
+      />
     );
   }
 
-  return <RelatedClusterQueueWorkloadsSection clusterQueueName={clusterQueueName} />;
+  return (
+    <RelatedClusterQueueWorkloadsSection clusterQueueName={clusterQueueName} cluster={cluster} />
+  );
 }
 
 function RelatedClusterQueueWorkloadsSection({
   clusterQueueName,
-}: Pick<RelatedWorkloadsSectionProps, 'clusterQueueName'>) {
-  const [localQueues, localQueuesError] = LocalQueue.useList();
-  const [workloads, workloadsError] = Workload.useList();
+  cluster,
+}: Pick<RelatedWorkloadsSectionProps, 'clusterQueueName' | 'cluster'>) {
+  const [localQueues, localQueuesError] = LocalQueue.useList({ cluster });
+  const [workloads, workloadsError] = Workload.useList({ cluster });
 
   const relatedWorkloads = useMemo(() => {
     if (!workloads) {
@@ -161,8 +174,9 @@ function RelatedClusterQueueWorkloadsSection({
 function RelatedLocalQueueWorkloadsSection({
   localQueueName,
   namespace,
-}: Pick<RelatedWorkloadsSectionProps, 'localQueueName' | 'namespace'>) {
-  const [workloads, workloadsError] = Workload.useList(namespace ? { namespace } : undefined);
+  cluster,
+}: Pick<RelatedWorkloadsSectionProps, 'localQueueName' | 'namespace' | 'cluster'>) {
+  const [workloads, workloadsError] = Workload.useList({ namespace, cluster });
 
   const relatedWorkloads = useMemo(() => {
     if (!workloads) {
@@ -233,6 +247,7 @@ function RelatedWorkloadsTable({
                 <Link
                   routeName={kueueRouteNames.localQueueDetail}
                   params={{ namespace: workloadNamespace, name: workload.queueName }}
+                  activeCluster={workload.cluster}
                 >
                   {workload.queueName}
                 </Link>

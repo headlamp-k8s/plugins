@@ -3,18 +3,21 @@ import { useParams } from 'react-router-dom';
 import { ResourceFlavor } from '../../resources/resourceFlavor';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 
-export default function ResourceFlavorDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function ResourceFlavorDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={ResourceFlavor}
       resourceLabel="ResourceFlavors"
       verb="get"
+      cluster={cluster}
     >
       <DetailsGrid
         resourceType={ResourceFlavor}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={resourceFlavor =>
           resourceFlavor
