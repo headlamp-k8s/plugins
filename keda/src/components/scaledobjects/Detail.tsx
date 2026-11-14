@@ -20,6 +20,7 @@ import {
   PauseScalingAction,
   ResumeScalingAction,
 } from '../common/ScalingActions';
+import { formatHPAPolicyValue } from './hpaPolicy';
 
 export function ScaledObjectDetail(props: { namespace?: string; name?: string }) {
   const { t } = useTranslation();
@@ -268,7 +269,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                           { name: t('Type'), value: policy.type },
                                                           {
                                                             name: t('Value'),
-                                                            value: `${policy.value}%`,
+                                                            value: formatHPAPolicyValue(policy),
                                                           },
                                                           {
                                                             name: t('Period'),
@@ -318,7 +319,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                                           { name: t('Type'), value: policy.type },
                                                           {
                                                             name: t('Value'),
-                                                            value: `${policy.value}%`,
+                                                            value: formatHPAPolicyValue(policy),
                                                           },
                                                           {
                                                             name: t('Period'),
