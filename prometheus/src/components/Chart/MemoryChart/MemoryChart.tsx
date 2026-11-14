@@ -4,7 +4,7 @@ import { blue } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import { formatBytes } from '../../../util';
-import Chart from '../Chart/Chart';
+import Chart, { ChartProps } from '../Chart/Chart';
 import { CustomTooltipFormatBytes } from '../common';
 
 /**
@@ -16,6 +16,7 @@ import { CustomTooltipFormatBytes } from '../common';
  * @property {boolean} autoRefresh - Whether to automatically refresh the chart data
  */
 interface MemoryChartProps {
+  referenceLines?: ChartProps['referenceLines'];
   query: string;
   prometheusPrefix: string;
   interval: string;
