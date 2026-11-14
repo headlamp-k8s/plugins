@@ -1,8 +1,9 @@
 import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
+import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -10,7 +11,8 @@ import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
-import ToggleButton from '@mui/material/ToggleButton';
+import { useTheme } from '@mui/material/styles';
+import ToggleButton, { ToggleButtonProps } from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
@@ -19,12 +21,14 @@ import {
   getPrometheusPrefix,
   getPrometheusResolution,
   getPrometheusSubPath,
+  PLUGIN_NAME,
 } from '../../../util';
 import { PrometheusNotFoundBanner } from '../common';
 import { CPUChart } from '../CPUChart/CPUChart';
 import { FilesystemChart } from '../FilesystemChart/FilesystemChart';
 import { MemoryChart } from '../MemoryChart/MemoryChart';
 import { NetworkChart } from '../NetworkChart/NetworkChart';
+import { useRevisionMarkers } from './useRevisionMarkers';
 
 /**
  * Props for the GenericMetricsChart component
@@ -37,6 +41,7 @@ import { NetworkChart } from '../NetworkChart/NetworkChart';
  * @property {string} filesystemWriteQuery - The Prometheus query to fetch filesystem write metrics
  */
 interface GenericMetricsChartProps {
+  resource?: KubeObject;
   cpuQuery: string;
   memoryQuery: string;
   networkRxQuery: string;
@@ -46,7 +51,8 @@ interface GenericMetricsChartProps {
 }
 
 export function GenericMetricsChart(props: GenericMetricsChartProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(PLUGIN_NAME);
+  const theme = useTheme();
 
   enum prometheusState {
     UNKNOWN,
@@ -60,7 +66,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
   const [state, setState] = useState<prometheusState>(prometheusState.LOADING);
   const [prometheusPrefix, setPrometheusPrefix] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean>(false);
-  const cluster = useCluster();
+  const cluster = K8s.useCluster();
   const configStore = getConfigStore();
   const useClusterConfig = configStore.useConfig();
   const clusterConfig = useClusterConfig();
@@ -91,8 +97,11 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
     })();
   }, [clusterConfig, cluster]);
 
-  const handleChartVariantChange = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setChartVariant(event.currentTarget.value);
+  const handleChartVariantChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    value: string | null
+  ) => {
+    if (value !== null) setChartVariant(value);
   };
 
   const interval = getPrometheusInterval(cluster);
@@ -101,6 +110,27 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
 
   const [timespan, setTimespan] = useState(interval ?? '1h');
   const [resolution, setResolution] = useState(graphResolution ?? 'medium');
+  const revisionMarkers = useRevisionMarkers(
+    props.resource,
+    isVisible && state === prometheusState.INSTALLED
+  );
+  const referenceLines = revisionMarkers.enabled
+    ? revisionMarkers.markers.map(marker => ({
+        x: marker.timestamp,
+        label: t('r{{ revision }}', { revision: marker.revision }),
+        tooltip: [
+          t('Revision {{ revision }}', { revision: marker.revision }),
+          t('Created: {{ timestamp }}', {
+            timestamp: new Date(marker.timestamp * 1000).toLocaleString(undefined, {
+              timeZoneName: 'short',
+            }),
+          }),
+          t('Markers show retained revision object creation times, not rollout completion.'),
+        ].join('\n'),
+        stroke: theme.palette.info.main,
+        strokeDasharray: '3 3',
+      }))
+    : undefined;
 
   if (!isVisible) {
     return null;
@@ -110,7 +140,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
     <SectionBox>
       <Paper variant="outlined" sx={{ p: 1 }}>
         {state === prometheusState.INSTALLED && (
-          <Box display="flex" gap={1} justifyContent="flex-end" mb={2}>
+          <Box display="flex" flexWrap="wrap" gap={1} justifyContent="flex-end" mb={2}>
             <Button
               variant="outlined"
               size="small"
@@ -122,6 +152,9 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             >
               {refresh ? t('Pause') : t('Resume')}
             </Button>
+            {revisionMarkers.status === 'loading' && (
+              <Loader noContainer size={16} title={t('Loading revision markers...')} />
+            )}
             <ToggleButtonGroup
               onChange={handleChartVariantChange}
               size="small"
@@ -168,7 +201,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
                 inputProps={{ 'aria-label': t('Resolution') }}
                 variant="outlined"
                 size="small"
-                name="Time"
+                name="Resolution"
                 value={resolution}
                 onChange={e => setResolution(e.target.value)}
               >
@@ -188,6 +221,22 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             </Box>
           </Box>
         )}
+        {revisionMarkers.enabled && (
+          <>
+            {revisionMarkers.status === 'error' && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {t('Could not load revision markers: {{ error }}', {
+                  error: revisionMarkers.error,
+                })}
+              </Alert>
+            )}
+            {revisionMarkers.status === 'loaded' && revisionMarkers.markers.length === 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {t('No retained revisions are available.')}
+              </Alert>
+            )}
+          </>
+        )}
         {state === prometheusState.INSTALLED ? (
           <Box
             style={{
@@ -196,6 +245,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
           >
             {chartVariant === 'cpu' && (
               <CPUChart
+                referenceLines={referenceLines}
                 query={props.cpuQuery}
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
@@ -206,6 +256,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             )}
             {chartVariant === 'memory' && (
               <MemoryChart
+                referenceLines={referenceLines}
                 query={props.memoryQuery}
                 autoRefresh={refresh}
                 prometheusPrefix={prometheusPrefix}
@@ -216,6 +267,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             )}
             {chartVariant === 'network' && (
               <NetworkChart
+                referenceLines={referenceLines}
                 rxQuery={props.networkRxQuery}
                 txQuery={props.networkTxQuery}
                 autoRefresh={refresh}
@@ -227,6 +279,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             )}
             {chartVariant === 'filesystem' && (
               <FilesystemChart
+                referenceLines={referenceLines}
                 readQuery={props.filesystemReadQuery}
                 writeQuery={props.filesystemWriteQuery}
                 autoRefresh={refresh}
@@ -257,13 +310,19 @@ export function CustomToggleButton({
   label,
   icon,
   value,
+  ...buttonProps
 }: {
   label: string;
   icon: string;
   value: string;
-}) {
+} & Omit<ToggleButtonProps, 'value' | 'children'>) {
   return (
-    <ToggleButton size="small" value={value} sx={{ textTransform: 'none', gap: 0.5, fontSize: 14 }}>
+    <ToggleButton
+      {...buttonProps}
+      size="small"
+      value={value}
+      sx={{ textTransform: 'none', gap: 0.5, fontSize: 14 }}
+    >
       <Icon icon={icon} width="18px" />
       {label}
     </ToggleButton>

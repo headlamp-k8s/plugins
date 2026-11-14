@@ -1,7 +1,8 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
-import { useEffect, useState } from 'react';
+import MuiTooltip from '@mui/material/Tooltip';
+import { SVGProps, useCallback, useEffect, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -53,6 +54,7 @@ export interface ChartProps {
     label: string;
     stroke: string;
     strokeDasharray?: string;
+    tooltip?: string;
   }>;
   fetchMetrics: (query: object) => Promise<any>;
   interval: string;
@@ -69,6 +71,63 @@ export interface ChartProps {
   subPath?: string;
 }
 
+type MarkerCoordinates = Pick<
+  SVGProps<SVGLineElement>,
+  'stroke' | 'strokeWidth' | 'strokeDasharray' | 'strokeOpacity' | 'clipPath'
+> & { x1: number; y1: number; x2: number; y2: number };
+
+function RevisionMarkerShape({
+  x1,
+  y1,
+  x2,
+  y2,
+  stroke,
+  strokeWidth,
+  strokeDasharray,
+  strokeOpacity,
+  clipPath,
+  label,
+  tooltip,
+  markerId,
+  onOpen,
+  onClose,
+}: MarkerCoordinates & {
+  label: string;
+  tooltip: string;
+  markerId: string;
+  onOpen: (id: string) => void;
+  onClose: (id: string) => void;
+}) {
+  const position = { x1, y1, x2, y2, clipPath };
+  useEffect(() => () => onClose(markerId), [markerId, onClose]);
+  return (
+    <MuiTooltip
+      title={tooltip}
+      describeChild
+      arrow
+      followCursor
+      onOpen={() => onOpen(markerId)}
+      onClose={() => onClose(markerId)}
+      componentsProps={{ tooltip: { sx: { whiteSpace: 'pre-line' } } }}
+    >
+      <g tabIndex={0} role="img" aria-label={label} style={{ cursor: 'help' }}>
+        <line {...position} stroke="transparent" strokeWidth={12} pointerEvents="stroke" />
+        <line
+          {...position}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          strokeOpacity={strokeOpacity}
+          pointerEvents="none"
+        />
+        <text x={x1 - 4} y={Math.min(y1, y2) + 14} fill={stroke} fontSize={12} textAnchor="end">
+          {label}
+        </text>
+      </g>
+    </MuiTooltip>
+  );
+}
+
 export default function Chart(props: ChartProps) {
   const { t } = useTranslation();
 
@@ -82,6 +141,12 @@ export default function Chart(props: ChartProps) {
   const [metrics, setMetrics] = useState<Array<any>>([]);
   const [state, setState] = useState<ChartState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeReferenceTooltip, setActiveReferenceTooltip] = useState<string>();
+  const openReferenceTooltip = useCallback((id: string) => setActiveReferenceTooltip(id), []);
+  const closeReferenceTooltip = useCallback(
+    (id: string) => setActiveReferenceTooltip(current => (current === id ? undefined : current)),
+    []
+  );
   const theme = useTheme();
 
   const fetchMetricsData = async (
@@ -236,9 +301,12 @@ export default function Chart(props: ChartProps) {
         />
         <YAxis fontSize={14} stroke={theme.palette.chartStyles.labelColor} {...yAxisProps} />
         {props.CustomTooltip === undefined ? (
-          <Tooltip />
+          <Tooltip active={activeReferenceTooltip ? false : undefined} />
         ) : (
-          <Tooltip content={props.CustomTooltip} />
+          <Tooltip
+            active={activeReferenceTooltip ? false : undefined}
+            content={props.CustomTooltip}
+          />
         )}
         <Legend />
         <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} vertical={false} />
@@ -259,20 +327,48 @@ export default function Chart(props: ChartProps) {
             animationDuration={props.autoRefresh ? 0 : 400} // Disable animation when refreshing
           />
         ))}
-        {props.referenceLines?.map(line => (
-          <ReferenceLine
-            key={line.label}
-            x={line.x}
-            y={line.y}
-            stroke="#999"
-            strokeDasharray={line.strokeDasharray || '15 15'}
-            label={{
-              value: line.label,
-              fontSize: 15,
-              fill: line.stroke,
-            }}
-          />
-        ))}
+        {props.referenceLines
+          ?.filter(
+            line => line.x === undefined || (line.x >= fromTimestamp && line.x <= toTimestamp)
+          )
+          .map(line => {
+            const tooltip = line.tooltip;
+            const markerId = `${line.label}:${line.x ?? line.y}`;
+            return (
+              <ReferenceLine
+                key={markerId}
+                x={line.x}
+                y={line.y}
+                stroke={line.stroke ?? '#999'}
+                ifOverflow="discard"
+                strokeDasharray={line.strokeDasharray || '15 15'}
+                shape={
+                  tooltip
+                    ? (coordinates: MarkerCoordinates) => (
+                        <RevisionMarkerShape
+                          {...coordinates}
+                          label={line.label}
+                          tooltip={tooltip}
+                          markerId={markerId}
+                          onOpen={openReferenceTooltip}
+                          onClose={closeReferenceTooltip}
+                        />
+                      )
+                    : undefined
+                }
+                label={
+                  tooltip
+                    ? undefined
+                    : {
+                        value: line.label,
+                        fontSize: 15,
+                        fill: line.stroke,
+                        position: line.x === undefined ? undefined : 'insideTopLeft',
+                      }
+                }
+              />
+            );
+          })}
       </AreaChart>
     );
   } else if (state === ChartState.LOADING) {

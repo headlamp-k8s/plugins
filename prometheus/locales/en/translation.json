@@ -150,5 +150,12 @@
   "Default Resolution": "Default Resolution",
   "Select Cluster": "Select Cluster",
   "Hide Prometheus metrics": "Hide Prometheus metrics",
-  "Show Prometheus metrics": "Show Prometheus metrics"
+  "Show Prometheus metrics": "Show Prometheus metrics",
+  "r{{ revision }}": "r{{ revision }}",
+  "Revision {{ revision }}": "Revision {{ revision }}",
+  "Created: {{ timestamp }}": "Created: {{ timestamp }}",
+  "Markers show retained revision object creation times, not rollout completion.": "Markers show retained revision object creation times, not rollout completion.",
+  "Loading revision markers...": "Loading revision markers...",
+  "Could not load revision markers: {{ error }}": "Could not load revision markers: {{ error }}",
+  "No retained revisions are available.": "No retained revisions are available."
 }
