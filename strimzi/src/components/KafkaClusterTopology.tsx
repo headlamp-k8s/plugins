@@ -17,6 +17,7 @@ import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
 import { hexToRgba } from '../utils/topologyColors';
+import { topologyRequestPaths } from '../utils/topologyRequests';
 
 interface TopologyProps {
   kafka: KafkaInterface;
@@ -593,15 +594,20 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
 
   // Fetch node pools, pod sets, and pods
   React.useEffect(() => {
-    const clusterName = kafka.metadata.name;
-    const namespace = kafka.metadata.namespace;
+    // Ignore answers that arrive after the cluster or API versions changed, so an
+    // older request can't replace the topology of the cluster now being shown.
+    let cancelled = false;
+    const paths = topologyRequestPaths(
+      kafka.metadata.namespace,
+      kafka.metadata.name,
+      kafkaVersion,
+      coreVersion
+    );
 
     Promise.all([
-      ApiProxy.request(`/apis/kafka.strimzi.io/${kafkaVersion}/kafkanodepools`),
-      ApiProxy.request(`/apis/core.strimzi.io/${coreVersion}/strimzipodsets`),
-      ApiProxy.request(
-        `/api/v1/namespaces/${namespace}/pods?labelSelector=strimzi.io/cluster=${clusterName}`
-      ),
+      ApiProxy.request(paths.nodePools),
+      ApiProxy.request(paths.podSets),
+      ApiProxy.request(paths.pods),
     ])
       .then(
         ([nodePoolData, podSetData, podData]: [
@@ -609,21 +615,12 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
           { items?: StrimziPodSet[] },
           { items?: Pod[] }
         ]) => {
+          if (cancelled) return;
           if (nodePoolData?.items) {
-            const pools = nodePoolData.items.filter(
-              (pool: KafkaNodePool) =>
-                pool.metadata.labels?.['strimzi.io/cluster'] === clusterName &&
-                pool.metadata.namespace === namespace
-            );
-            setNodePools(pools);
+            setNodePools(nodePoolData.items);
           }
           if (podSetData?.items) {
-            const sets = podSetData.items.filter(
-              (set: StrimziPodSet) =>
-                set.metadata.labels?.['strimzi.io/cluster'] === clusterName &&
-                set.metadata.namespace === namespace
-            );
-            setPodSets(sets);
+            setPodSets(podSetData.items);
           }
           if (podData?.items) {
             setPods(podData.items);
@@ -632,9 +629,14 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         }
       )
       .catch((err) => {
+        if (cancelled) return;
         console.error('Failed to fetch Kafka topology data:', err);
         setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [kafka.metadata.name, kafka.metadata.namespace, kafkaVersion, coreVersion]);
 
   // Generate topology nodes
