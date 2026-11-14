@@ -71,24 +71,32 @@ export function useArgoOperation<Args extends unknown[]>(
   return { execute, isLoading };
 }
 
+function operationKey(name: string, namespace: string, cluster?: string) {
+  return `${cluster ?? ''}/${namespace}/${name}`;
+}
+
 /**
  * Hook for per-app Argo CD operations with independent loading states.
  * Used by the Application list view where multiple apps can be operated on concurrently.
+ * The list can show apps from several clusters, so each operation takes the app's cluster.
  */
-export function useArgoOperationMap(operationFn: OperationFn, operationLabel: string) {
+export function useArgoOperationMap(
+  operationFn: OperationFn<[cluster?: string]>,
+  operationLabel: string
+) {
   const { enqueueSnackbar } = useSnackbar();
   const [loadingKeys, setLoadingKeys] = useState<Record<string, boolean>>({});
   const inFlightKeys = useRef<Set<string>>(new Set());
 
   const execute = useCallback(
-    async (name: string, namespace: string) => {
-      const key = `${namespace}/${name}`;
+    async (name: string, namespace: string, cluster?: string) => {
+      const key = operationKey(name, namespace, cluster);
       if (loadingKeys[key]) return;
       if (inFlightKeys.current.has(key)) return;
       inFlightKeys.current.add(key);
       setLoadingKeys(prev => ({ ...prev, [key]: true }));
       try {
-        await operationFn(name, namespace);
+        await operationFn(name, namespace, cluster);
         enqueueSnackbar(`${operationLabel} triggered for ${name}`, { variant: 'success' });
       } catch (error) {
         enqueueSnackbar(
@@ -108,7 +116,8 @@ export function useArgoOperationMap(operationFn: OperationFn, operationLabel: st
   );
 
   const isLoading = useCallback(
-    (name: string, namespace: string) => !!loadingKeys[`${namespace}/${name}`],
+    (name: string, namespace: string, cluster?: string) =>
+      !!loadingKeys[operationKey(name, namespace, cluster)],
     [loadingKeys]
   );
 
