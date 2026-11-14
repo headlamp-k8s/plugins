@@ -25,6 +25,7 @@ export default function LocalQueueDetail() {
       resourceClass={LocalQueue}
       resourceLabel="LocalQueues"
       verb="get"
+      namespace={namespace}
       accessDescription="Kueue LocalQueues are namespaced user queue resources."
     >
       <DetailsGrid
