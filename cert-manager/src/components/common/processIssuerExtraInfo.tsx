@@ -165,12 +165,27 @@ export function processIssuerExtraInfo(
                             { name: t('Role'), value: spec.vault.auth.kubernetes.role },
                             {
                               name: t('Secret Ref'),
-                              value: (
+                              value: spec.vault.auth.kubernetes.secretRef && (
                                 <SecretKeySelectorComponent
                                   selector={spec.vault.auth.kubernetes.secretRef}
                                   namespace={namespace}
                                 />
                               ),
+                            },
+                            {
+                              name: t('Service Account'),
+                              value: spec.vault.auth.kubernetes.serviceAccountRef?.name,
+                              hide: !spec.vault.auth.kubernetes.serviceAccountRef,
+                            },
+                            {
+                              name: t('Audiences'),
+                              value: (
+                                <StringArray
+                                  items={spec.vault.auth.kubernetes.serviceAccountRef?.audiences}
+                                />
+                              ),
+                              hide: !spec.vault.auth.kubernetes.serviceAccountRef?.audiences
+                                ?.length,
                             },
                             { name: t('Mount Path'), value: spec.vault.auth.kubernetes.mountPath },
                           ]}
