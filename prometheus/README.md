@@ -11,6 +11,8 @@ On PersistentVolumeClaim details, use the disk chart's **Timespan** and **Resolu
 selectors to override the cluster's defaults for the current view. These choices do not
 change plugin settings and reset when switching clusters. **Pause** and **Resume**
 control automatic refresh independently of the selected range and resolution.
+Changing either selector starts a fresh chart session, so late responses from
+the previous selection cannot replace the currently selected range's data.
 
 ## Enabling Charts
 

@@ -195,6 +195,7 @@ function ClusterDiskMetricsChart(props: DiskMetricsChartProps & { cluster: strin
           }}
         >
           <DiskChart
+            key={JSON.stringify([timespan, resolution])}
             usageQuery={props.usageQuery}
             capacityQuery={props.capacityQuery}
             interval={timespan}

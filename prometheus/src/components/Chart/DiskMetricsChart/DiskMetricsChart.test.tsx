@@ -144,10 +144,77 @@ describe('DiskMetricsChart', () => {
     expect(Number(requests().at(-1)?.searchParams.get('end')) % 86400).toBe(0);
   });
 
+  it.each([
+    ['Timespan', '30 minutes'],
+    ['Resolution', '10s'],
+  ])('ignores late responses after changing %s', async (control, option) => {
+    let releaseOld: () => void;
+    const oldRequest = new Promise<void>(resolve => {
+      releaseOld = resolve;
+    });
+    vi.mocked(ApiProxy.request).mockImplementation(async path => {
+      const params = new URL(String(path), 'http://localhost').searchParams;
+      const from = Number(params.get('start'));
+      const to = Number(params.get('end'));
+      const oldSelection = to - from === 21600 && params.get('step') === '28';
+      if (oldSelection) await oldRequest;
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          data: {
+            result: oldSelection
+              ? [
+                  {
+                    metric: {},
+                    values: [
+                      [from, '1073741824'],
+                      [to, '2147483648'],
+                    ],
+                  },
+                ]
+              : [],
+          },
+        }),
+        { status: 200 }
+      );
+    });
+    renderChart();
+    await screen.findByRole('combobox', { name: control });
+    await waitFor(() =>
+      expect(requests().some(url => url.searchParams.get('step') === '28')).toBe(true)
+    );
+    await selectOption(control, option);
+    expect(await screen.findByText('No Data')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    await act(async () => releaseOld!());
+    await waitFor(() =>
+      expect(
+        requests().some(
+          url =>
+            url.searchParams.get('step') === '28' &&
+            url.searchParams.get('query') === 'disk_capacity'
+        )
+      ).toBe(true)
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText('No Data')).toBeVisible();
+    expect(document.querySelector('.recharts-surface')).toBeNull();
+    expect(screen.getByRole('combobox', { name: control })).toHaveTextContent(option);
+  });
+
   it('pauses and resumes automatic requests', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     renderChart();
     await expectQueryRange(21600, 28);
-    vi.useFakeTimers();
+    await screen.findByText('No Data');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(ApiProxy.request).mockClear();
+    await act(async () => vi.advanceTimersByTimeAsync(10000));
+    await expectQueryRange(21600, 28);
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     const pausedCount = requests().length;
     await act(async () => vi.advanceTimersByTimeAsync(20000));
@@ -177,11 +244,20 @@ describe('DiskMetricsChart', () => {
     );
     await expectQueryRange(10800, 14);
     await selectOption('Timespan', '30 minutes');
+    await expectQueryRange(1800, 2);
+    await screen.findByText('No Data');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(ApiProxy.request).mockClear();
     act(() =>
       configStore.set({
         ...defaultConfig,
         alpha: { ...defaultConfig.alpha, defaultTimespan: '12h' },
       })
+    );
+    expect(await screen.findByRole('combobox', { name: 'Timespan' })).toHaveTextContent(
+      '30 minutes'
     );
     await expectQueryRange(1800, 2);
   });
