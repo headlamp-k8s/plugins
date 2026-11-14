@@ -150,5 +150,12 @@
   "Select Cluster": "",
   "Hide Prometheus metrics": "",
   "Show Prometheus metrics": "",
-  "{{count}} metrics_one": ""
+  "{{count}} metrics_one": "",
+  "r{{ revision }}": "",
+  "Revision {{ revision }}": "",
+  "Created: {{ timestamp }}": "",
+  "Markers show retained revision object creation times, not rollout completion.": "",
+  "Loading revision markers...": "",
+  "Could not load revision markers: {{ error }}": "",
+  "No retained revisions are available.": ""
 }
