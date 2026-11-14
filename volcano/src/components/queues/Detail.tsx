@@ -421,6 +421,7 @@ function getChildQueuesSection(queue: VolcanoQueue, queues: VolcanoQueue[] | nul
                 <Link
                   routeName={volcanoRouteNames.queueDetail}
                   params={{ name: childQueue.getName() }}
+                  activeCluster={childQueue.cluster}
                 >
                   {childQueue.getName()}
                 </Link>
@@ -488,7 +489,11 @@ export default function QueueDetail(props: { name?: string; cluster?: string }) 
           {
             name: 'Parent Queue',
             value: queue.spec.parent ? (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: queue.spec.parent }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: queue.spec.parent }}
+                activeCluster={queue.cluster}
+              >
                 {queue.spec.parent}
               </Link>
             ) : (

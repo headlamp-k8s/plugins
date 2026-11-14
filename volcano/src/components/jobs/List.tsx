@@ -31,7 +31,11 @@ export default function JobList() {
             label: 'Queue',
             getValue: (job: VolcanoJob) => job.queue,
             render: (job: VolcanoJob) => (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: job.queue }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: job.queue }}
+                activeCluster={job.cluster}
+              >
                 {job.queue}
               </Link>
             ),

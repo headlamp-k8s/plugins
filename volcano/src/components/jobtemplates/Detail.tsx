@@ -202,6 +202,7 @@ function getReferencedBySection(
                     namespace: row.jobFlow.metadata.namespace,
                     name: row.jobFlow.metadata.name,
                   }}
+                  activeCluster={row.jobFlow.cluster}
                 >
                   {row.jobFlow.metadata.name}
                 </Link>
@@ -280,7 +281,11 @@ function getGeneratedJobsSection(
 
                 const [namespace, name] = label.split('.', 2);
                 return namespace && name ? (
-                  <Link routeName={volcanoRouteNames.jobFlowDetail} params={{ namespace, name }}>
+                  <Link
+                    routeName={volcanoRouteNames.jobFlowDetail}
+                    params={{ namespace, name }}
+                    activeCluster={row.job?.cluster}
+                  >
                     {name}
                   </Link>
                 ) : (
@@ -367,6 +372,7 @@ export default function JobTemplateDetail() {
                     <Link
                       routeName={volcanoRouteNames.queueDetail}
                       params={{ name: jobTemplate.queue }}
+                      activeCluster={jobTemplate.cluster}
                     >
                       {jobTemplate.queue}
                     </Link>

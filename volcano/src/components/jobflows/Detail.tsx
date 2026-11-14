@@ -100,7 +100,7 @@ function renderEmptySection(title: string, message: string) {
   };
 }
 
-function renderJobTemplateLinks(templateNames?: string[], namespace?: string) {
+function renderJobTemplateLinks(templateNames?: string[], namespace?: string, cluster?: string) {
   if (!templateNames?.length || !namespace) {
     return '-';
   }
@@ -113,6 +113,7 @@ function renderJobTemplateLinks(templateNames?: string[], namespace?: string) {
           <Link
             routeName={volcanoRouteNames.jobTemplateDetail}
             params={{ namespace, name: templateName }}
+            activeCluster={cluster}
           >
             {templateName}
           </Link>
@@ -151,6 +152,7 @@ function getFlowsSection(jobFlow: VolcanoJobFlow) {
                 <Link
                   routeName={volcanoRouteNames.jobTemplateDetail}
                   params={{ namespace: jobFlow.metadata.namespace, name: summary.flow.name }}
+                  activeCluster={jobFlow.cluster}
                 >
                   {summary.flow.name}
                 </Link>
@@ -168,6 +170,7 @@ function getFlowsSection(jobFlow: VolcanoJobFlow) {
                       namespace: jobFlow.metadata.namespace,
                       name: summary.generatedJobName,
                     }}
+                    activeCluster={jobFlow.cluster}
                   >
                     {summary.generatedJobName}
                   </Link>
@@ -184,13 +187,21 @@ function getFlowsSection(jobFlow: VolcanoJobFlow) {
             {
               label: 'Depends On',
               getter: summary =>
-                renderJobTemplateLinks(summary.flow.dependsOn?.targets, jobFlow.metadata.namespace),
+                renderJobTemplateLinks(
+                  summary.flow.dependsOn?.targets,
+                  jobFlow.metadata.namespace,
+                  jobFlow.cluster
+                ),
             },
             {
               label: 'Unmet Dependencies',
               getter: summary =>
                 summary.unmetDependencies.length
-                  ? renderJobTemplateLinks(summary.unmetDependencies, jobFlow.metadata.namespace)
+                  ? renderJobTemplateLinks(
+                      summary.unmetDependencies,
+                      jobFlow.metadata.namespace,
+                      jobFlow.cluster
+                    )
                   : '-',
             },
             {
@@ -270,6 +281,7 @@ function getGeneratedJobsSection(jobFlow: VolcanoJobFlow) {
                   <Link
                     routeName={volcanoRouteNames.jobDetail}
                     params={{ namespace: jobFlow.metadata.namespace, name: jobStatus.name }}
+                    activeCluster={jobFlow.cluster}
                   >
                     {jobStatus.name}
                   </Link>
@@ -342,6 +354,7 @@ function getConditionsSection(jobFlow: VolcanoJobFlow) {
                   <Link
                     routeName={volcanoRouteNames.jobDetail}
                     params={{ namespace: jobFlow.metadata.namespace, name: jobName }}
+                    activeCluster={jobFlow.cluster}
                   >
                     {jobName}
                   </Link>

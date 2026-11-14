@@ -175,7 +175,11 @@ export default function PodGroupDetail(props: {
           {
             name: 'Queue',
             value: (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: podGroup.queue }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: podGroup.queue }}
+                activeCluster={podGroup.cluster}
+              >
                 {podGroup.queue}
               </Link>
             ),

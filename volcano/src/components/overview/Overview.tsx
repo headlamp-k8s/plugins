@@ -30,6 +30,7 @@ function getAttentionLink(row: AttentionRow) {
       <Link
         routeName={volcanoRouteNames.jobDetail}
         params={{ namespace: row.namespace, name: row.name }}
+        activeCluster={row.resource.cluster}
       >
         {row.name}
       </Link>
@@ -41,6 +42,7 @@ function getAttentionLink(row: AttentionRow) {
       <Link
         routeName={volcanoRouteNames.podGroupDetail}
         params={{ namespace: row.namespace, name: row.name }}
+        activeCluster={row.resource.cluster}
       >
         {row.name}
       </Link>
@@ -48,7 +50,11 @@ function getAttentionLink(row: AttentionRow) {
   }
 
   return (
-    <Link routeName={volcanoRouteNames.queueDetail} params={{ name: row.name }}>
+    <Link
+      routeName={volcanoRouteNames.queueDetail}
+      params={{ name: row.name }}
+      activeCluster={row.resource.cluster}
+    >
       {row.name}
     </Link>
   );
@@ -57,7 +63,11 @@ function getAttentionLink(row: AttentionRow) {
 function getAttentionQueue(row: AttentionRow) {
   if (row.type === 'Job' || row.type === 'PodGroup') {
     return (
-      <Link routeName={volcanoRouteNames.queueDetail} params={{ name: row.resource.queue }}>
+      <Link
+        routeName={volcanoRouteNames.queueDetail}
+        params={{ name: row.resource.queue }}
+        activeCluster={row.resource.cluster}
+      >
         {row.resource.queue}
       </Link>
     );
@@ -243,6 +253,7 @@ export default function Overview() {
                       <Link
                         routeName={volcanoRouteNames.jobDetail}
                         params={{ namespace: job.getNamespace(), name: job.getName() }}
+                        activeCluster={job.cluster}
                       >
                         {job.getName()}
                       </Link>
@@ -257,7 +268,11 @@ export default function Overview() {
                   {
                     label: 'Queue',
                     getter: (job: VolcanoJob) => (
-                      <Link routeName={volcanoRouteNames.queueDetail} params={{ name: job.queue }}>
+                      <Link
+                        routeName={volcanoRouteNames.queueDetail}
+                        params={{ name: job.queue }}
+                        activeCluster={job.cluster}
+                      >
                         {job.queue}
                       </Link>
                     ),
@@ -302,6 +317,7 @@ export default function Overview() {
                       <Link
                         routeName={volcanoRouteNames.podGroupDetail}
                         params={{ namespace: podGroup.getNamespace(), name: podGroup.getName() }}
+                        activeCluster={podGroup.cluster}
                       >
                         {podGroup.getName()}
                       </Link>
@@ -314,6 +330,7 @@ export default function Overview() {
                       <Link
                         routeName={volcanoRouteNames.queueDetail}
                         params={{ name: podGroup.queue }}
+                        activeCluster={podGroup.cluster}
                       >
                         {podGroup.queue}
                       </Link>

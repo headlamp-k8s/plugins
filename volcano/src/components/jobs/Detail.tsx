@@ -386,7 +386,11 @@ export default function JobDetail(props: { namespace?: string; name?: string; cl
           {
             name: 'Queue',
             value: (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: job.queue }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: job.queue }}
+                activeCluster={job.cluster}
+              >
                 {job.queue}
               </Link>
             ),
@@ -398,6 +402,7 @@ export default function JobDetail(props: { namespace?: string; name?: string; cl
                 <Link
                   routeName={volcanoRouteNames.podGroupDetail}
                   params={{ namespace: podGroupNamespace, name: relatedPodGroup.metadata.name }}
+                  activeCluster={job.cluster}
                 >
                   {relatedPodGroup.metadata.name}
                 </Link>
