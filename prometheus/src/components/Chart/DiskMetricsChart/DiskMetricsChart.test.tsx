@@ -312,6 +312,77 @@ describe('DiskMetricsChart', () => {
     );
   });
 
+  it('ignores stale discovery after the same cluster switches to an explicit address', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    configStore.set({
+      ...defaultConfig,
+      alpha: { ...defaultConfig.alpha, autoDetect: true, address: '' },
+    });
+    const oldPod = {
+      kind: 'PodList',
+      items: [
+        {
+          metadata: { name: 'prometheus-old', namespace: 'legacy-monitoring' },
+          spec: {
+            containers: [
+              {
+                name: 'prometheus',
+                image: 'prom/prometheus',
+                ports: [{ containerPort: 9090, protocol: 'TCP' }],
+              },
+            ],
+          },
+        },
+      ],
+    };
+    let releaseDiscovery!: (value: typeof oldPod) => void;
+    const pendingDiscovery = new Promise<typeof oldPod>(resolve => {
+      releaseDiscovery = resolve;
+    });
+    vi.mocked(ApiProxy.request).mockImplementation(async path => {
+      const url = new URL(String(path), 'http://localhost');
+      if (url.pathname === '/api/v1/pods') return pendingDiscovery;
+      return new Response(JSON.stringify({ status: 'success', data: { result: [] } }), {
+        status: 200,
+      });
+    });
+    renderChart();
+    await waitFor(() =>
+      expect(ApiProxy.request).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/pods?'),
+        expect.objectContaining({ method: 'GET' })
+      )
+    );
+    expect(requests()).toHaveLength(0);
+    act(() => configStore.set(defaultConfig));
+    await expectQueryRange(21600, 28);
+    await screen.findByText('No Data');
+    await act(async () => releaseDiscovery(oldPod));
+    await waitFor(() =>
+      expect(
+        requests().some(
+          url =>
+            url.searchParams.get('query') === 'up' &&
+            url.pathname.includes('/legacy-monitoring/pods/prometheus-old:9090/')
+        )
+      ).toBe(true)
+    );
+    vi.mocked(ApiProxy.request).mockClear();
+    await act(async () => vi.advanceTimersByTimeAsync(10000));
+    await expectQueryRange(21600, 28);
+    const freshDiskRequests = requests().filter(url =>
+      ['disk_usage', 'disk_capacity'].includes(url.searchParams.get('query') ?? '')
+    );
+    expect(freshDiskRequests.length).toBeGreaterThanOrEqual(2);
+    for (const url of freshDiskRequests) {
+      expect(url.pathname).toBe(
+        '/api/v1/namespaces/monitoring/services/prometheus:9090/proxy/metrics/api/v1/query_range'
+      );
+    }
+    expect(state.cluster).toBe('alpha');
+    expect(configStore.get()).toEqual(defaultConfig);
+  });
+
   it('keeps controls usable when a metrics query fails', async () => {
     vi.mocked(ApiProxy.request).mockImplementation(
       async () => new Response(null, { status: 503, statusText: 'Service Unavailable' })
