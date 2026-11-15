@@ -3,8 +3,9 @@
 Apply `kubectl apply -f evaluation.yaml`, wait for all three Deployments in
 `logging` to become ready, then `kubectl apply -f emitter.yaml`.
 This intentionally uses emptyDir: restarting Loki can lose history. Do not
-deploy it as a production log archive. Only the collector receives ingestion
-privileges; the gateway serves one read-only query endpoint.
+deploy it as a production log archive. The gateway exposes only a read-only query
+endpoint, but the underlying Loki Service is unauthenticated and has no network
+isolation in this fixture; other in-cluster clients can also ingest logs.
 
 Configure the plugin: logging / loki-gateway / 80, cluster value evaluation-a.
 Search default namespace, Pod historical-emitter, last 15 minutes.
