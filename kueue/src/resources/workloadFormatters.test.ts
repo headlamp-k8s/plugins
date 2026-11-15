@@ -22,6 +22,7 @@ import {
   renderPriority,
   renderPriorityClassName,
   renderQueueName,
+  renderQueuePosition,
   renderReclaimablePodsSummary,
   renderRequeueState,
   renderResourceList,
@@ -691,6 +692,36 @@ describe('Workload formatters', () => {
           now
         ).steps[2].state
       ).toBe('deactivated');
+    });
+  });
+
+  describe('renderQueuePosition', () => {
+    const items = [
+      {
+        metadata: { name: 'head', namespace: 'team-a' },
+        positionInClusterQueue: 0,
+        positionInLocalQueue: 0,
+      },
+      {
+        metadata: { name: 'tail', namespace: 'team-a' },
+        positionInClusterQueue: 2,
+        positionInLocalQueue: 1,
+      },
+    ];
+
+    it('reports one-based positions in both queues', () => {
+      expect(renderQueuePosition(items, 'head', 'team-a')).toBe(
+        '1 in its LocalQueue, 1 in its ClusterQueue'
+      );
+      expect(renderQueuePosition(items, 'tail', 'team-a')).toBe(
+        '2 in its LocalQueue, 3 in its ClusterQueue'
+      );
+    });
+
+    it('returns null when the Workload is not listed', () => {
+      expect(renderQueuePosition(items, 'tail', 'team-b')).toBeNull();
+      expect(renderQueuePosition(items, 'missing', 'team-a')).toBeNull();
+      expect(renderQueuePosition(undefined, 'head', 'team-a')).toBeNull();
     });
   });
 });
