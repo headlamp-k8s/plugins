@@ -53,6 +53,46 @@ it('renders denial separately and makes one request for a submitted query', asyn
   expect(request).toHaveBeenCalledTimes(1);
 });
 
+function enterAbsoluteRange(start: string, end: string) {
+  fireEvent.change(screen.getByLabelText(/Exact namespace/), { target: { value: 'shop' } });
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Time range' }));
+  fireEvent.click(screen.getByRole('option', { name: 'Absolute range (UTC)' }));
+  fireEvent.change(screen.getByLabelText('Start (ISO 8601 with timezone)'), {
+    target: { value: start },
+  });
+  fireEvent.change(screen.getByLabelText('End (ISO 8601 with timezone)'), {
+    target: { value: end },
+  });
+}
+
+it.each([
+  ['2026-02-30T10:00:00Z', '2026-03-02T11:00:00Z'],
+  ['2026-03-02T09:00:00Z', '2026-02-30T11:00:00Z'],
+])('rejects invalid calendar dates before querying (%s to %s)', async (start, end) => {
+  request.mockResolvedValue({ status: 'success', data: { resultType: 'streams', result: [] } });
+  render(<HistoricalSearch cluster="a" />);
+  enterAbsoluteRange(start, end);
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  await screen.findByText(/valid ISO 8601 timestamp/);
+  expect(request).not.toHaveBeenCalled();
+});
+
+it('queries valid leap-day timestamps with timezone offsets without changing the instant', async () => {
+  request.mockResolvedValue({ status: 'success', data: { resultType: 'streams', result: [] } });
+  render(<HistoricalSearch cluster="a" />);
+  enterAbsoluteRange('2024-02-29T23:30:00-05:00', '2024-03-01T05:30:00Z');
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  await screen.findByText(/No matching retained logs/);
+  expect(request).toHaveBeenCalledTimes(1);
+  const params = new URLSearchParams(request.mock.calls[0][0].split('?')[1]);
+  expect(params.get('start')).toBe(
+    String(BigInt(Date.parse('2024-03-01T04:30:00Z')) * BigInt(1000000))
+  );
+  expect(params.get('end')).toBe(
+    String(BigInt(Date.parse('2024-03-01T05:30:00Z')) * BigInt(1000000))
+  );
+});
+
 it('renders a bounded prefix and loads older entries with one expanded request', async () => {
   request.mockImplementation(async path => {
     const limit = Number(new URLSearchParams(path.split('?')[1]).get('limit'));

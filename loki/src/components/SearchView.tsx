@@ -17,6 +17,7 @@ import {
   errorMessage,
   INITIAL_LIMIT,
   MAX_LIMIT,
+  parseAbsoluteTimestamp,
   Search,
   searchLogs,
   timestampLabel,
@@ -121,8 +122,9 @@ export function HistoricalSearch({ cluster }: { cluster: string }) {
             pod,
             container,
             text,
-            start: range === 'absolute' ? Date.parse(start) : now - Number(range) * 60000,
-            end: range === 'absolute' ? Date.parse(end) : now,
+            start:
+              range === 'absolute' ? parseAbsoluteTimestamp(start) : now - Number(range) * 60000,
+            end: range === 'absolute' ? parseAbsoluteTimestamp(end) : now,
           };
       const nextLimit = test ? 1 : older ? Math.min(MAX_LIMIT, limit * 2) : INITIAL_LIMIT;
       const result = await searchLogs(

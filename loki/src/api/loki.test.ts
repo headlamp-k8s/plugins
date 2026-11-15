@@ -3,6 +3,7 @@ import {
   defaults,
   errorMessage,
   MAX_LIMIT,
+  parseAbsoluteTimestamp,
   parseResponse,
   query,
   requestPath,
@@ -16,6 +17,40 @@ const response = (values: string[][]) => ({
   status: 'success',
   data: { resultType: 'streams', result: [{ stream: { namespace: 'shop' }, values }] },
 });
+
+describe('Absolute timestamps', () => {
+  it.each([
+    '2026-02-30T10:00:00Z',
+    '2026-02-29T10:00:00Z',
+    '1900-02-29T10:00:00Z',
+    '2026-04-31T10:00:00+05:30',
+    '2026-02-30T23:30:00-05:00',
+    '2026-00-10T10:00:00Z',
+    '2026-13-10T10:00:00Z',
+    '2026-03-00T10:00:00Z',
+    '2026-03-01T24:00:00Z',
+    '2026-03-01T10:60:00Z',
+    '2026-03-01T10:00:60Z',
+    '2026-03-01T10:00:00+24:00',
+    '2026-03-01T10:00:00+05:60',
+    '2026-03-01T10:00:00',
+    'not a timestamp',
+  ])('rejects invalid timestamp %s', value => {
+    expect(() => parseAbsoluteTimestamp(value)).toThrow(/valid ISO 8601 timestamp/);
+  });
+
+  it.each([
+    ['2024-02-29T10:00:00Z', '2024-02-29T10:00:00.000Z'],
+    ['2000-02-29T10:00:00Z', '2000-02-29T10:00:00.000Z'],
+    ['2024-02-29T23:30:00-05:00', '2024-03-01T04:30:00.000Z'],
+    ['2024-03-01T00:30:00+05:30', '2024-02-29T19:00:00.000Z'],
+    ['2026-03-01T10:00Z', '2026-03-01T10:00:00.000Z'],
+    ['2026-03-01T10:00:00.123Z', '2026-03-01T10:00:00.123Z'],
+  ])('preserves the instant of %s', (value, expected) => {
+    expect(new Date(parseAbsoluteTimestamp(value)).toISOString()).toBe(expected);
+  });
+});
+
 describe('Loki query contract', () => {
   it('escapes literal LogQL values without accepting raw queries', () => {
     expect(query(config, { ...input, text: '" | json', pod: 'a"b' })).toBe(

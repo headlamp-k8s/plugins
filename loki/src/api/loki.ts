@@ -30,6 +30,38 @@ export interface Search {
   start: number;
   end: number;
 }
+
+export function parseAbsoluteTimestamp(value: string): number {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/.exec(
+      value
+    );
+  const invalid = () =>
+    new Error('Enter a valid ISO 8601 timestamp with a real calendar date and timezone.');
+  if (!match) throw invalid();
+  const [, year, month, day, hour, minute, second = '0'] = match;
+  const y = Number(year);
+  const m = Number(month);
+  const leapYear = y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // Validate the written date before applying its timezone offset: Date.parse
+  // normalizes dates such as February 30 instead of rejecting them.
+  if (
+    m < 1 ||
+    m > 12 ||
+    Number(day) < 1 ||
+    Number(day) > daysInMonth[m - 1] ||
+    Number(hour) > 23 ||
+    Number(minute) > 59 ||
+    Number(second) > 59
+  ) {
+    throw invalid();
+  }
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) throw invalid();
+  return timestamp;
+}
+
 export interface Entry {
   timestamp: string;
   line: string;
