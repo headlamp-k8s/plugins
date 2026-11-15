@@ -12,7 +12,8 @@ const UNIT_NS: Record<string, bigint> = {
 /** Largest time.Duration Go can store, in nanoseconds. */
 const MAX_NS = BigInt('9223372036854775807');
 
-const PART = /^(\d+)(?:\.(\d+))?(ns|us|µs|μs|ms|s|m|h)/;
+/** Digits may sit on either side of a decimal, but a part still needs one digit. */
+const PART = /^(\d*)(?:\.(\d*))?(ns|us|µs|μs|ms|s|m|h)/;
 
 /**
  * True when `value` is a non-negative Go duration, including `0` and `720h0m0s`.
@@ -34,9 +35,13 @@ export function isGoDuration(value: string): boolean {
     if (!match) {
       return false;
     }
+    const whole = match[1];
     const fraction = match[2] ?? '';
+    if (!whole && !fraction) {
+      return false;
+    }
     const unitNs = UNIT_NS[match[3]];
-    const magnitude = BigInt(match[1] + fraction);
+    const magnitude = BigInt(whole + fraction);
     const scale = BigInt(10) ** BigInt(fraction.length);
     const part = (magnitude * unitNs) / scale;
     if (total > MAX_NS - part) {
