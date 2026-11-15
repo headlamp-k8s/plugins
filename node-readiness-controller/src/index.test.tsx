@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { nrcRoutePaths, nrcSidebarNames } from './utils/routes';
+import { nrcRouteNames, nrcRoutePaths, nrcSidebarNames } from './utils/routes';
 
 const { recordedRoutes, recordedSidebarEntries } = vi.hoisted(() => ({
   recordedRoutes: [] as any[],
@@ -15,6 +15,10 @@ vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
   makeCustomResourceClass: vi.fn().mockReturnValue(class MockCRD {}),
 }));
 
+vi.mock('./LandingPage', () => ({
+  default: () => null,
+}));
+
 vi.mock('./components/rules', () => ({
   RuleDetails: () => null,
   RuleList: () => null,
@@ -24,18 +28,24 @@ vi.mock('./components/rules', () => ({
 import './index';
 
 describe('node-readiness-controller plugin registration', () => {
-  it('should register the list and details routes', () => {
+  it('should register landing, list, and details routes', () => {
     expect(recordedRoutes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          path: nrcRoutePaths.overview,
+          name: nrcRouteNames.overview,
+          sidebar: nrcSidebarNames.overview,
+          exact: true,
+        }),
+        expect.objectContaining({
           path: nrcRoutePaths.rulesList,
-          name: 'Readiness Rules',
+          name: nrcRouteNames.rulesList,
           sidebar: nrcSidebarNames.rulesList,
           exact: true,
         }),
         expect.objectContaining({
           path: nrcRoutePaths.ruleDetail,
-          name: 'nrc-rule-details',
+          name: nrcRouteNames.ruleDetail,
           sidebar: nrcSidebarNames.rulesList,
           exact: true,
         }),
@@ -43,14 +53,20 @@ describe('node-readiness-controller plugin registration', () => {
     );
   });
 
-  it('should register both sidebar entries', () => {
+  it('should register all sidebar entries', () => {
     expect(recordedSidebarEntries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: nrcSidebarNames.root,
           label: 'Node Readiness',
           icon: 'mdi:shield-check',
-          url: nrcRoutePaths.rulesList,
+          url: nrcRoutePaths.overview,
+        }),
+        expect.objectContaining({
+          parent: nrcSidebarNames.root,
+          name: nrcSidebarNames.overview,
+          label: 'Overview',
+          url: nrcRoutePaths.overview,
         }),
         expect.objectContaining({
           parent: nrcSidebarNames.root,

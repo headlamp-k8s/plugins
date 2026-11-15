@@ -12,6 +12,7 @@ This directory contains sample `NodeReadinessRule` custom resource manifests des
 | [`04-evaluation-error-rule.yaml`](./04-evaluation-error-rule.yaml)               | Evaluation errors             | Controller encountered timeout/error evaluating node; `status.failedNodes` populated; evaluation errors chip displayed.                    |
 | [`05-pending-rule.yaml`](./05-pending-rule.yaml)                                 | Pending / Unreconciled        | Newly submitted rule without controller status; verifies graceful handling of uninitialized status and zero-count states without crashing. |
 | [`06-multicondition-fallback-rule.yaml`](./06-multicondition-fallback-rule.yaml) | Multi-condition with fallback | `conditionPolicy: allOf`; multiple condition evaluations with fallback `defaultStatus: "False"` tested in Conditions table.                |
+| [`07-attention-multi-issue-rule.yaml`](./07-attention-multi-issue-rule.yaml)     | Multiple attention conditions | Combines evaluation errors (`failedNodes`), active taint (`Present`), and out-of-sync spec (`observedGen < gen`) on a single card.         |
 
 ## Quickstart Testing
 
@@ -77,7 +78,7 @@ kubectl apply -f test-files/
 - **Linux / macOS (bash):**
 
   ```bash
-  for file in test-files/0[1-4,6]*.yaml; do
+  for file in test-files/0[1-4,6-7]*.yaml; do
     kubectl replace --subresource=status -f "$file"
   done
   ```
@@ -91,6 +92,20 @@ kubectl apply -f test-files/
   ```
 
 _(Note: `05-pending-rule.yaml` is intentionally omitted from status seeding to test how Headlamp displays an unreconciled rule with zero status)._
+
+#### Testing Out-of-Sync Spec ("Pending Rule Sync")
+
+In Kubernetes, `metadata.generation` is server-managed and initializes to `1` upon initial resource creation. To simulate an out-of-sync specification while controller reconciliation is paused, toggle dry-run mode on and then off so the fixture continues to display active taints:
+
+```bash
+# Advance metadata.generation from 1 to 2:
+kubectl patch nodereadinessrule 07-attention-multi-issue-rule --type=merge -p '{"spec":{"dryRun":true}}'
+
+# Restore live mode and advance metadata.generation to 3:
+kubectl patch nodereadinessrule 07-attention-multi-issue-rule --type=merge -p '{"spec":{"dryRun":false}}'
+```
+
+This creates a generation delta (`metadata.generation: 3` vs `status.observedGeneration: 1`) to visually verify the "Spec modified (pending sync)" indicator alongside evaluation errors and active taints in Headlamp.
 
 #### Optional: Testing Live Enforcement on Opted-In Test Nodes
 

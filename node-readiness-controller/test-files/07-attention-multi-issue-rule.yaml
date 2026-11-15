@@ -1,0 +1,37 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 07-attention-multi-issue-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: multi-issue-attention-display
+spec:
+  enforcementMode: continuous
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/NetworkWarming
+    value: pending
+    effect: NoSchedule
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/role: worker
+  conditions:
+    - type: network.k8s.io/CniPluginReady
+      requiredStatus: 'True'
+      defaultStatus: 'Unknown'
+status:
+  observedGeneration: 1
+  failedNodes:
+    - nodeName: worker-node-03
+      reason: CniPluginTimeout
+      lastEvaluationTime: '2026-11-02T10:00:00Z'
+  nodeEvaluations:
+    - nodeName: worker-node-02
+      taintStatus: Present
+      lastEvaluationTime: '2026-11-02T10:00:00Z'
+      conditionResults:
+        - type: network.k8s.io/CniPluginReady
+          requiredStatus: 'True'
+          currentStatus: 'False'
+          defaultStatus: 'Unknown'
