@@ -21,6 +21,28 @@ describe('isLogRequest', () => {
   it('returns false for /logs paths', () => {
     expect(isLogRequest('/api/v1/namespaces/default/pods/my-pod/logs')).toBe(false);
   });
+
+  it.each([
+    '/api/v1/pods/log',
+    '/api/v1/namespaces/default/pods/log',
+    '/api/v1/nodes/log',
+    '/api/v1/namespaces/log',
+    '/apis/example.com/v1/namespaces/default/log',
+    '/api/v1/pods?continue=token/log',
+    '/api/v1/pods?continue=token/log?details',
+    '/api/v1/pods?continue=token/log&limit=10',
+    '/api/v1/pods#notes/log',
+  ])('does not classify %s as a log endpoint', url => {
+    expect(isLogRequest(url)).toBe(false);
+  });
+
+  it.each([
+    '/api/v1/pods/my.pod/log?container=app',
+    '/api/v1/namespaces/default/pods/log/log?container=app',
+    'https://cluster.test/api/v1/namespaces/default/pods/my.pod/log?container=app#details',
+  ])('classifies the log subresource of %s', url => {
+    expect(isLogRequest(url)).toBe(true);
+  });
 });
 
 describe('isSpecificResourceRequestHelper', () => {
@@ -40,5 +62,86 @@ describe('isSpecificResourceRequestHelper', () => {
     expect(
       isSpecificResourceRequestHelper('/apis/apps/v1/namespaces/default/deployments/my-deploy')
     ).toBe(true);
+  });
+
+  it('treats trailing-slash list endpoints as lists', () => {
+    expect(isSpecificResourceRequestHelper('/apis/apps/v1/deployments/')).toBe(false);
+  });
+
+  it.each([
+    '/api',
+    '/api/v1',
+    '/apis',
+    '/apis/apps',
+    '/apis/apps/v1',
+    '/api/v1/namespaces/default/pods',
+    '/api/v1/namespaces/default/pods/',
+    '/apis/apps/v1/namespaces/default/deployments',
+    '/apis/example.com/v1/namespaces/default/status',
+  ])('does not classify %s as a specific resource', url => {
+    expect(isSpecificResourceRequestHelper(url)).toBe(false);
+  });
+
+  it.each([
+    '/api/v1/pods/nginx',
+    '/api/v1/pods/my.pod',
+    '/api/v1/nodes/worker',
+    '/api/v1/nodes/worker.example.com',
+    '/api/v1/namespaces/default',
+    '/api/v1/namespaces/default/status',
+    '/api/v1/namespaces/default/finalize',
+    '/api/v1/namespaces/default/pods/nginx',
+    '/api/v1/namespaces/default/pods/my.pod',
+    '/api/v1/namespaces/default/pods/my.pod/status',
+    '/api/v1/namespaces/default/pods/nginx/status',
+    '/api/v1/namespaces/default/configmaps/app.properties',
+    '/api/v1/namespaces/default/configmaps/namespaces',
+    '/api/v1/namespaces/namespaces/pods/nginx',
+    '/apis/apps/v1/namespaces/default/deployments/web/scale',
+    '/apis/apiextensions.k8s.io/v1/customresourcedefinitions/widgets.example.com',
+    '/apis/rbac.authorization.k8s.io/v1/clusterroles/system:discovery',
+    '/apis/rbac.authorization.k8s.io/v1/clusterroles/system%3Adiscovery',
+    '/apis/rbac.authorization.k8s.io/v1/namespaces/default/roles/system:leader-locking',
+    '/apis/example.com/v1/widgets/namespaces',
+  ])('classifies %s as a specific resource', url => {
+    expect(isSpecificResourceRequestHelper(url)).toBe(true);
+  });
+
+  it.each([
+    ['/api/v1/namespaces/default/pods/nginx?watch=false#details', true],
+    ['https://cluster.test/api/v1/namespaces/default/pods/my-pod?watch=false', true],
+    ['https://cluster.test/api/v1/namespaces/default/pods/my.pod?watch=false#details', true],
+    [
+      'https://cluster.test/apis/rbac.authorization.k8s.io/v1/clusterroles/system:discovery?watch=false',
+      true,
+    ],
+    ['https://cluster.test/api/v1/namespaces/default/status?watch=false', true],
+    ['https://cluster.test/api/v1/namespaces/default/pods/?watch=false#details', false],
+    ['https://cluster.test/apis/apps/v1/deployments?limit=10', false],
+    ['https://cluster.test/api/v1/nodes?fieldSelector=metadata.name=worker.example.com', false],
+  ])('classifies the pathname of %s', (url, expected) => {
+    expect(isSpecificResourceRequestHelper(url)).toBe(expected);
+  });
+
+  it('classifies resource paths without validating resource names', () => {
+    expect(isSpecificResourceRequestHelper('/api/v1/namespaces/default/pods/invalid!')).toBe(true);
+  });
+
+  it('surfaces malformed absolute URLs to the request setup error handler', () => {
+    expect(() => isSpecificResourceRequestHelper('http://[')).toThrow(TypeError);
+  });
+
+  it('handles long paths ending in a specific resource', () => {
+    const url = `/api/v1/${'segment/'.repeat(10_000)}pods/my-pod`;
+    const start = performance.now();
+    expect(isSpecificResourceRequestHelper(url)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it('checks adversarial URLs in linear time', () => {
+    const url = `${'/api/'.repeat(50_000)}!`;
+    const start = performance.now();
+    isSpecificResourceRequestHelper(url);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 });

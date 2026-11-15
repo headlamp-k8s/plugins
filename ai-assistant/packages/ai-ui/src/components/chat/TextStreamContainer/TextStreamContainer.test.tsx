@@ -1,7 +1,12 @@
 import type { ConversationMessage } from '@headlamp-k8s/ai-common/conversation/types';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { runAxe } from '../../../testing/runAxe';
+import ProactiveDiagnosisSection from '../../assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection';
+import {
+  baseDiagnosisArgs,
+  createDiagnosis,
+} from '../../assistant/ProactiveDiagnosisSection/ProactiveDiagnosisSection.stories';
 import TextStreamContainer, {
   type ContentRendererSlotProps,
   type EditorDialogSlotProps,
@@ -82,6 +87,100 @@ function renderStream(overrides: Partial<TextStreamContainerProps> = {}): TextSt
   return props;
 }
 
+it.each([
+  { clusters: ['chat-cluster'], expected: 'chat-cluster' },
+  { clusters: ['cluster-a', 'cluster-b'], expected: null },
+])('carries response-scoped YAML targets: $clusters', ({ clusters, expected }) => {
+  const onYamlAction = vi.fn();
+  renderStream({
+    history: [
+      { role: 'user', content: 'Suggest a manifest for these resources.' },
+      ...clusters.map((cluster, index) => ({
+        role: 'tool',
+        content: '{}',
+        toolCallId: `call-${index}`,
+        cluster,
+      })),
+      { role: 'assistant', content: 'Suggested manifest.' },
+    ],
+    onYamlAction,
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, expected);
+});
+
+it('keeps an older manifest bound to its own request rather than the latest cluster', () => {
+  const onYamlAction = vi.fn();
+  renderStream({
+    history: [
+      { role: 'user', content: 'Inspect cluster A.' },
+      { role: 'tool', content: '{}', toolCallId: 'a', cluster: 'cluster-a' },
+      { role: 'assistant', content: 'Manifest for A.' },
+      { role: 'user', content: 'Now inspect cluster B.' },
+      { role: 'tool', content: '{}', toolCallId: 'b', cluster: 'cluster-b' },
+      { role: 'assistant', content: 'Manifest for B.' },
+    ],
+    onYamlAction,
+  });
+  const buttons = screen.getAllByRole('button', { name: 'Open YAML' });
+  fireEvent.click(buttons[0]);
+  fireEvent.click(buttons[1]);
+  expect(onYamlAction).toHaveBeenNthCalledWith(
+    1,
+    'kind: Pod',
+    'Apply Pod',
+    'Pod',
+    false,
+    'cluster-a'
+  );
+  expect(onYamlAction).toHaveBeenNthCalledWith(
+    2,
+    'kind: Pod',
+    'Apply Pod',
+    'Pod',
+    false,
+    'cluster-b'
+  );
+});
+
+it('preserves the target for a host editor slot without an external YAML action', () => {
+  function TargetEditor({ open, targetCluster }: EditorDialogSlotProps) {
+    return open ? <div role="dialog">{targetCluster}</div> : null;
+  }
+  renderStream({
+    history: [
+      { role: 'user', content: 'Inspect the workload.' },
+      { role: 'tool', content: '{}', toolCallId: 'target', cluster: 'chat-cluster' },
+      { role: 'assistant', content: 'Manifest.' },
+    ],
+    EditorDialogSlot: TargetEditor,
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(screen.getByRole('dialog').textContent).toBe('chat-cluster');
+});
+
+it('keeps each YAML callback stable while using the latest host handler', () => {
+  const callbacks: Array<ContentRendererSlotProps['onYamlDetected']> = [];
+  function StableRenderer(props: ContentRendererSlotProps) {
+    callbacks.push(props.onYamlDetected);
+    return <Renderer {...props} />;
+  }
+  const history: ConversationMessage[] = [
+    { role: 'user', content: 'Inspect the workload.' },
+    { role: 'tool', content: '{}', toolCallId: 'target', cluster: 'chat-cluster' },
+    { role: 'assistant', content: 'Manifest.' },
+  ];
+  const first = vi.fn();
+  const latest = vi.fn();
+  const props = { history, isLoading: false, apiError: null, ContentRendererSlot: StableRenderer };
+  const { rerender } = render(<TextStreamContainer {...props} onYamlAction={first} />);
+  rerender(<TextStreamContainer {...props} onYamlAction={latest} />);
+  expect(callbacks.at(-1)).toBe(callbacks[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
+  expect(first).not.toHaveBeenCalled();
+  expect(latest).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, 'chat-cluster');
+});
+
 it('renders Storybook conversation semantics and passes axe', async () => {
   render(
     <main>
@@ -99,6 +198,123 @@ it('renders Storybook conversation semantics and passes axe', async () => {
   expect(screen.getByText('AI Assistant')).toBeTruthy();
   expect(screen.getByText('How do I list pods?')).toBeTruthy();
   await expect(runAxe()).resolves.toEqual([]);
+});
+
+it('contains overscroll within the conversation log', () => {
+  renderStream();
+
+  expect(
+    getComputedStyle(screen.getByRole('log', { name: 'Conversation messages' })).overscrollBehavior
+  ).toBe('contain');
+});
+
+it('places host diagnosis content inside the conversation scroll area', () => {
+  renderStream({ beforeMessages: <section aria-label="AI diagnoses">Diagnosis result</section> });
+
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  expect(log.contains(screen.getByRole('region', { name: 'AI diagnoses' }))).toBe(true);
+  expect(log.textContent).toContain('How do I list pods?');
+});
+
+it('shows a mutation error once while retaining its separately recorded tool provenance', () => {
+  const content = 'Mutation was forbidden.';
+  renderStream({
+    history: [
+      { role: 'user', content: 'Apply the change.' },
+      {
+        role: 'tool',
+        cluster: 'cluster-b',
+        content,
+        error: true,
+        alreadyDisplayed: true,
+      },
+      { role: 'assistant', content, error: true },
+    ],
+  });
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
+  expect(screen.getAllByText(content)).toHaveLength(1);
+});
+
+it.each([
+  { name: 'greeting', history: [{ role: 'assistant', content: 'Welcome back.' }] },
+  { name: 'existing conversation', history: basicHistory },
+] satisfies Array<{ name: string; history: ConversationMessage[] }>)(
+  'preserves diagnosis navigation through pending and later $name history scrolling',
+  ({ history }) => {
+    vi.useFakeTimers();
+    const onScrollComplete = vi.fn();
+    const diagnosisProps = {
+      ...baseDiagnosisArgs,
+      diagnoses: [createDiagnosis({ diagnosis: 'A cached diagnosis answer.' })],
+      onScrollComplete,
+    };
+    const props = { isLoading: true, apiError: null, ContentRendererSlot: Renderer };
+    const { rerender } = render(
+      <TextStreamContainer
+        {...props}
+        history={history}
+        beforeMessages={
+          <ProactiveDiagnosisSection {...diagnosisProps} scrollToEventUid="event-1" />
+        }
+      />
+    );
+    const log = screen.getByRole('log', { name: 'Conversation messages' });
+    const header = screen.getByRole('button', { name: /^Pod\// });
+    const scrollIntoView = vi.fn();
+    const scrollTo = vi.fn((options: { top: number }) => {
+      log.scrollTop = options.top;
+    });
+    Object.defineProperties(log, {
+      scrollHeight: { configurable: true, value: 2000 },
+      clientHeight: { configurable: true, value: 200 },
+      scrollTop: { configurable: true, writable: true, value: 0 },
+      scrollTo: { configurable: true, value: scrollTo },
+      getBoundingClientRect: { value: () => new DOMRect(0, 0, 500, 200) },
+    });
+    for (const message of log.querySelectorAll('[data-message-index]')) {
+      Object.defineProperty(message, 'getBoundingClientRect', {
+        value: () => new DOMRect(0, 1800, 500, 80),
+      });
+    }
+    // An already-visible header causes no scroll event.
+    Object.defineProperty(header, 'scrollIntoView', { value: scrollIntoView });
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(onScrollComplete).toHaveBeenCalledOnce();
+    expect(scrollIntoView).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(header);
+    expect(log.scrollTop).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    rerender(
+      <TextStreamContainer
+        {...props}
+        history={[...history, { role: 'assistant', content: 'A later streamed update.' }]}
+        beforeMessages={<ProactiveDiagnosisSection {...diagnosisProps} scrollToEventUid={null} />}
+      />
+    );
+    act(() => vi.advanceTimersByTime(150));
+    expect(log.scrollTop).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(header);
+    expect(screen.getByRole('button', { name: /scroll to bottom/i })).toBeTruthy();
+  }
+);
+
+it('supports Home and End in the focused scroll area without intercepting child controls', () => {
+  renderStream();
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn();
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  fireEvent.keyDown(log, { key: 'Home' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+  fireEvent.keyDown(log, { key: 'End' });
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 1000, behavior: 'smooth' });
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Open YAML' }), { key: 'Home' });
+  expect(scrollTo).toHaveBeenCalledTimes(2);
 });
 
 it('filters hidden messages and extracts validated tool follow-up text', () => {
@@ -120,6 +336,45 @@ it('filters hidden messages and extracts validated tool follow-up text', () => {
   expect(screen.getByText('follow-up ready')).toBeTruthy();
   expect(screen.getByText(/shouldProcessFollowUp/)).toBeTruthy();
   expect(screen.getByText(/LOGS_BUTTON/)).toBeTruthy();
+});
+
+it.each(['Home', 'End'] as const)('%s sets follow mode for later streamed history updates', key => {
+  vi.useFakeTimers();
+  const props = { isLoading: true, apiError: null, ContentRendererSlot: Renderer };
+  const { rerender } = render(<TextStreamContainer {...props} history={basicHistory} />);
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  const scrollTo = vi.fn((options: { top: number }) => {
+    log.scrollTop = Math.min(800, options.top);
+  });
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 200 },
+    scrollTop: { configurable: true, writable: true, value: 800 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  if (key === 'End') {
+    vi.advanceTimersByTime(500);
+    log.scrollTop = 0;
+    fireEvent.scroll(log);
+    scrollTo.mockClear();
+  }
+  fireEvent.keyDown(log, { key });
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(1);
+  scrollTo.mockClear();
+  rerender(
+    <TextStreamContainer
+      {...props}
+      history={[...basicHistory, { role: 'assistant', content: 'streamed update' }]}
+    />
+  );
+  vi.advanceTimersByTime(150);
+  expect(scrollTo).toHaveBeenCalledTimes(key === 'Home' ? 0 : 1);
+  if (key === 'Home') {
+    expect(screen.getByRole('button', { name: /scroll to bottom/i })).toBeTruthy();
+  } else {
+    expect(screen.queryByRole('button', { name: /scroll to bottom/i })).toBeNull();
+  }
 });
 
 it('shows and clears content-filter guidance as history changes', () => {
@@ -184,7 +439,7 @@ it('opens the editor or delegates YAML actions and forwards operation callbacks'
     />
   );
   fireEvent.click(screen.getByRole('button', { name: 'Open YAML' }));
-  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false);
+  expect(onYamlAction).toHaveBeenCalledWith('kind: Pod', 'Apply Pod', 'Pod', false, undefined);
   expect(screen.queryByRole('dialog', { name: 'YAML editor' })).toBeNull();
 });
 
@@ -431,17 +686,20 @@ it('forwards prompt width to content renderers', () => {
 
 it('shows and operates the scroll-to-bottom control when the user scrolls away', async () => {
   vi.useFakeTimers();
+  const scrollTo = vi.fn();
   renderStream();
   const log = screen.getByRole('log', { name: 'Conversation messages' });
   Object.defineProperties(log, {
     scrollHeight: { configurable: true, value: 1000 },
     clientHeight: { configurable: true, value: 200 },
     scrollTop: { configurable: true, writable: true, value: 0 },
+    scrollTo: { configurable: true, value: scrollTo },
   });
   fireEvent.scroll(log);
   const button = screen.getByRole('button', { name: 'scroll to bottom' });
   fireEvent.click(button);
   expect(screen.queryByRole('button', { name: 'scroll to bottom' })).toBeNull();
+  expect(scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' });
   vi.runOnlyPendingTimers();
 });
 
@@ -533,32 +791,59 @@ it('keeps following a tall append when the user was previously at the bottom', (
 
 it('recognizes a new user message when conversations have equal user counts', () => {
   vi.useFakeTimers();
-  const scrollIntoView = vi.fn();
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: scrollIntoView,
-  });
+  const scrollTo = vi.fn();
   const props = {
     isLoading: false,
     apiError: null,
     ContentRendererSlot: Renderer,
   };
-  const { rerender } = render(
+  const { container, rerender } = render(
     <TextStreamContainer
       {...props}
       history={[{ role: 'user', content: 'first conversation', requestId: 'first' }]}
     />
   );
+  const log = screen.getByRole('log', { name: 'Conversation messages' });
+  Object.defineProperties(log, {
+    scrollHeight: { configurable: true, value: 1000 },
+    clientHeight: { configurable: true, value: 200 },
+    scrollTop: { configurable: true, writable: true, value: 100 },
+    scrollTo: { configurable: true, value: scrollTo },
+  });
+  log.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 300,
+    height: 200,
+    top: 0,
+    right: 300,
+    bottom: 200,
+    left: 0,
+    toJSON: () => ({}),
+  });
   vi.runOnlyPendingTimers();
-  scrollIntoView.mockClear();
+  scrollTo.mockClear();
   rerender(
     <TextStreamContainer
       {...props}
       history={[{ role: 'user', content: 'second conversation', requestId: 'second' }]}
     />
   );
+  const userMessage = container.querySelector('[data-message-index="0"]');
+  if (!(userMessage instanceof HTMLElement)) throw new Error('User message was not rendered');
+  userMessage.getBoundingClientRect = () => ({
+    x: 0,
+    y: 20,
+    width: 300,
+    height: 80,
+    top: 20,
+    right: 300,
+    bottom: 100,
+    left: 0,
+    toJSON: () => ({}),
+  });
   vi.runOnlyPendingTimers();
-  expect(scrollIntoView).toHaveBeenCalled();
+  expect(scrollTo).toHaveBeenCalledWith({ top: 120, behavior: 'smooth' });
 });
 
 it('ignores programmatic scroll events while following streamed appends', () => {

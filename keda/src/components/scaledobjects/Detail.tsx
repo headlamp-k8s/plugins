@@ -9,6 +9,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import Deployment from '@kinvolk/headlamp-plugin/lib/k8s/deployment';
 import StatefulSet from '@kinvolk/headlamp-plugin/lib/k8s/statefulSet';
+import { Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { ScaledObject, ScalingModifierMetricType } from '../../resources/scaledobject';
 import { KedaInstallCheck, TriggersSection } from '../common/CommonComponents';
@@ -239,7 +240,9 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                     {item.spec.advanced.horizontalPodAutoscalerConfig.behavior
                                       .scaleDown && (
                                       <>
-                                        <h4>{t('Scale Down')}</h4>
+                                        <Typography component="h3" variant="h6">
+                                          {t('Scale Down')}
+                                        </Typography>
                                         <NameValueTable
                                           rows={[
                                             {
@@ -287,7 +290,9 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                                     {item.spec.advanced.horizontalPodAutoscalerConfig.behavior
                                       .scaleUp && (
                                       <>
-                                        <h4>{t('Scale Up')}</h4>
+                                        <Typography component="h3" variant="h6">
+                                          {t('Scale Up')}
+                                        </Typography>
                                         <NameValueTable
                                           rows={[
                                             {

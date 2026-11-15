@@ -1,0 +1,14 @@
+apiVersion: kyverno.io/v2
+kind: ClusterCleanupPolicy
+metadata:
+  name: cleanup-demo-cluster-configmaps
+spec:
+  match:
+    any:
+      - resources:
+          kinds:
+            - ConfigMap
+          selector:
+            matchLabels:
+              kyverno-demo-cleanup: "true"
+  schedule: "0 0 * * *"

@@ -13,13 +13,13 @@ spec:
         - cpu
         - memory
       flavors:
-        - name: default
+        - name: default-flavor
           resources:
             - name: cpu
               nominalQuota: "8"
             - name: memory
               nominalQuota: 32Gi
-        - name: spot
+        - name: spot-flavor
           resources:
             - name: cpu
               nominalQuota: "16"

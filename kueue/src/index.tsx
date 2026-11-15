@@ -1,18 +1,51 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import { Icon } from '@iconify/react';
+import {
+  registerDetailsViewSection,
+  registerKindIcon,
+  registerMapSource,
+  registerResourceTableColumnsProcessor,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import AdmissionCheckDetail from './components/admissionchecks/Detail';
+import AdmissionCheckList from './components/admissionchecks/List';
 import ClusterQueueDetail from './components/clusterqueues/Detail';
 import ClusterQueueList from './components/clusterqueues/List';
+import CohortDetail from './components/cohorts/Detail';
+import CohortList from './components/cohorts/List';
+import { processJobsTableColumns } from './components/jobs/kueueJobColumns';
+import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
+import KueueOverview from './components/overview/Overview';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
+import WorkloadDetail from './components/workloads/Detail';
+import WorkloadList from './components/workloads/List';
+import { kueueIconName, kueueMapSource } from './map/kueueMapSource';
+import { kueueApiGroup } from './utils/kueueApi';
 import { kueueRouteNames, kueueRoutePaths } from './utils/kueueRoutes';
 
 registerSidebarEntry({
   parent: null,
   name: 'kueue',
   label: 'Kueue',
-  icon: 'mdi:queue-first-in-last-out',
-  url: kueueRoutePaths.clusterQueuesList,
+  icon: kueueIconName,
+  url: kueueRoutePaths.overview,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-overview',
+  label: 'Overview',
+  url: kueueRoutePaths.overview,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-admissionchecks',
+  label: 'AdmissionChecks',
+  url: kueueRoutePaths.admissionChecksList,
 });
 
 registerSidebarEntry({
@@ -20,6 +53,13 @@ registerSidebarEntry({
   name: 'kueue-clusterqueues',
   label: 'ClusterQueues',
   url: kueueRoutePaths.clusterQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-cohorts',
+  label: 'Cohorts',
+  url: kueueRoutePaths.cohortsList,
 });
 
 registerSidebarEntry({
@@ -36,6 +76,37 @@ registerSidebarEntry({
   url: kueueRoutePaths.resourceFlavorsList,
 });
 
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-workloads',
+  label: 'Workloads',
+  url: kueueRoutePaths.workloadsList,
+});
+
+registerRoute({
+  path: kueueRoutePaths.overview,
+  sidebar: 'kueue-overview',
+  name: kueueRouteNames.overview,
+  exact: true,
+  component: () => <KueueOverview />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionChecksList,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionChecksList,
+  exact: true,
+  component: () => <AdmissionCheckList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.admissionCheckDetail,
+  sidebar: 'kueue-admissionchecks',
+  name: kueueRouteNames.admissionCheckDetail,
+  exact: true,
+  component: () => <AdmissionCheckDetail />,
+});
+
 registerRoute({
   path: kueueRoutePaths.clusterQueuesList,
   sidebar: 'kueue-clusterqueues',
@@ -50,6 +121,22 @@ registerRoute({
   name: kueueRouteNames.clusterQueueDetail,
   exact: true,
   component: () => <ClusterQueueDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortsList,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortsList,
+  exact: true,
+  component: () => <CohortList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.cohortDetail,
+  sidebar: 'kueue-cohorts',
+  name: kueueRouteNames.cohortDetail,
+  exact: true,
+  component: () => <CohortDetail />,
 });
 
 registerRoute({
@@ -83,3 +170,34 @@ registerRoute({
   exact: true,
   component: () => <ResourceFlavorDetail />,
 });
+
+registerRoute({
+  path: kueueRoutePaths.workloadsList,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadsList,
+  exact: true,
+  component: () => <WorkloadList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.workloadDetail,
+  sidebar: 'kueue-workloads',
+  name: kueueRouteNames.workloadDetail,
+  exact: true,
+  component: () => <WorkloadDetail />,
+});
+
+registerDetailsViewSection(KueueJobSection);
+registerResourceTableColumnsProcessor({
+  id: 'kueue-jobs-columns',
+  processor: processJobsTableColumns,
+});
+
+registerMapSource(kueueMapSource);
+['Workload', 'LocalQueue', 'ClusterQueue', 'Cohort', 'ResourceFlavor'].forEach(kind =>
+  registerKindIcon(
+    kind,
+    { icon: <Icon icon={kueueIconName} width="70%" height="70%" /> },
+    kueueApiGroup
+  )
+);

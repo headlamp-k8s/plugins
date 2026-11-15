@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/plugin-catalog",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "A catalog for Headlamp plugins",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -62,6 +62,7 @@
   },
   "overrides": {
     "typescript": "5.6.2",
-    "ws": "8.21.0"
+    "ws": "8.21.0",
+    "vitest": "^3.2.6"
   }
 }

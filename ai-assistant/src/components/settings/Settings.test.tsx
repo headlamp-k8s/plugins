@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
+import type { ParsedSkill } from '@headlamp-k8s/ai-common/skills/parseSkill';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 const skillManagerMock = vi.hoisted(() => ({
   constructorArgs: [] as unknown[][],
   loadedConfigs: [] as unknown[],
+  invalidations: 0,
+  skills: [] as ParsedSkill[],
 }));
 
 vi.mock('@headlamp-k8s/ai-common/skills/config', async () => {
@@ -43,16 +46,39 @@ vi.mock('@headlamp-k8s/ai-common/skills/SkillManager', () => ({
     constructor(...args: unknown[]) {
       skillManagerMock.constructorArgs.push(args);
     }
-    invalidateCache() {}
+    invalidateCache() {
+      skillManagerMock.invalidations += 1;
+    }
+    setSkillCache() {}
     async loadAllSkillsWithErrors(config: unknown) {
       skillManagerMock.loadedConfigs.push(config);
-      return { skills: [], errors: [] };
+      return { skills: skillManagerMock.skills, errors: [] };
     }
   },
 }));
 
 // Capture the props passed to SettingsPage so we can assert on them.
 const capturedProps: Record<string, unknown>[] = [];
+vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
+  SectionBox: ({ children, title }: { children: React.ReactNode; title: React.ReactNode }) => (
+    <section>
+      {title}
+      {children}
+    </section>
+  ),
+  SectionHeader: ({
+    title,
+    headerStyle = 'main',
+  }: {
+    title: React.ReactNode;
+    headerStyle?: 'main' | 'subsection' | 'normal' | 'label';
+  }) =>
+    React.createElement(
+      { main: 'h1', subsection: 'h2', normal: 'h3', label: 'h4' }[headerStyle],
+      null,
+      title
+    ),
+}));
 vi.mock('@headlamp-k8s/ai-ui/components/settings/SettingsPage', () => ({
   SettingsPage: (props: Record<string, unknown>) => {
     capturedProps.push(props);
@@ -66,7 +92,7 @@ vi.mock('@headlamp-k8s/ai-ui/testing/testMode', () => ({
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   Headlamp: { isRunningAsApp: () => false },
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => key, i18n: {} }),
 }));
 
 vi.mock('../../pluginState', () => ({
@@ -78,10 +104,128 @@ vi.mock('../../pluginState', () => ({
   usePluginConfig: () => ({ testMode: true }),
 }));
 
-import { render } from '@testing-library/react';
-import Settings from './Settings';
+import { render, screen } from '@testing-library/react';
+import Settings, { SettingsRows, SettingsSection } from './Settings';
 
 describe('Settings', () => {
+  it('displays verified companion guidance and includes its byte count', async () => {
+    capturedProps.length = 0;
+    skillManagerMock.skills.push({
+      metadata: { name: 'gadget', description: 'Guide' },
+      content: 'Entry point',
+      contentSizeBytes: 11,
+      source: 'https://github.com/example/repo@v1.0.0/SKILL.md',
+      references: [
+        { path: 'references/install.md', content: 'Ask before installing.', contentSizeBytes: 22 },
+      ],
+    });
+    try {
+      render(React.createElement(Settings));
+      const loadSkills = capturedProps[0].loadSkills as () => Promise<
+        { content: string; contentSizeBytes: number }[]
+      >;
+      const [skill] = await loadSkills();
+      expect(skill.content).toContain('## Reference: references/install.md');
+      expect(skill.content).toContain('Ask before installing.');
+      expect(skill.contentSizeBytes).toBe(new TextEncoder().encode(skill.content).byteLength);
+    } finally {
+      skillManagerMock.skills.length = 0;
+    }
+  });
+
+  it('uses flexible descriptive rows rather than a fixed native label column', () => {
+    render(
+      <SettingsRows
+        rows={[{ name: 'Readable helper text', value: <button>Toggle setting</button> }]}
+      />
+    );
+    const label = screen.getByText('Readable helper text');
+    const row = label.parentElement;
+    expect(row && getComputedStyle(row).gridTemplateColumns).toBe('minmax(0, 1fr) auto');
+    expect(screen.getByRole('button', { name: 'Toggle setting' })).toBeTruthy();
+  });
+
+  it('keeps native section actions beside the heading in a wrapping header', () => {
+    render(
+      <SettingsSection title="Layout preview" actions={<button>Add configuration</button>}>
+        <p>Section content</p>
+      </SettingsSection>
+    );
+    const heading = screen.getByRole('heading', { name: 'Layout preview' });
+    const header = heading.parentElement?.parentElement;
+    expect(header?.contains(screen.getByRole('button', { name: 'Add configuration' }))).toBe(true);
+    expect(header && getComputedStyle(header).flexWrap).toBe('wrap');
+    expect(screen.getByText('Section content')).toBeTruthy();
+  });
+
+  it('keeps parent sections above their level-three subsection headings', () => {
+    render(
+      <SettingsSection title="Skills">
+        <h3>Suggested Skill Repositories</h3>
+        <h3>Custom GitHub Repository Sources</h3>
+      </SettingsSection>
+    );
+    expect(screen.getByRole('heading', { name: 'Skills', level: 2 })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Suggested Skill Repositories', level: 3 })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Custom GitHub Repository Sources', level: 3 })
+    ).toBeTruthy();
+  });
+
+  it('injects native sections and descriptive settings rows', () => {
+    capturedProps.length = 0;
+    render(React.createElement(Settings));
+    expect(capturedProps[0].SectionWrapper).toBeTypeOf('function');
+    expect(capturedProps[0].SettingsTable).toBeTypeOf('function');
+    expect(capturedProps[0].SettingsTable).toBe(SettingsRows);
+  });
+
+  it('logs when GitHub and Azure CLI auto-detection is available', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.stubGlobal('pluginRunCommand', vi.fn());
+    try {
+      render(React.createElement(Settings));
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs when GitHub and Azure CLI auto-detection is unavailable', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('logs when auto-detection is hidden outside app mode', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(React.createElement(Settings));
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('renders without crashing (guards against missing Holmes constant imports)', () => {
     capturedProps.length = 0;
     expect(() => render(React.createElement(Settings))).not.toThrow();
@@ -119,16 +263,38 @@ describe('Settings', () => {
     expect(capturedProps[0].proactiveDiagnosisEnabled).toBe(false);
   });
 
+  it('omits the Holmes settings section on AKS Desktop', () => {
+    capturedProps.length = 0;
+    window.desktopApi = {
+      registerAKSCluster: () => undefined,
+    } as unknown as typeof window.desktopApi;
+    try {
+      render(React.createElement(Settings));
+      expect(capturedProps[0].onHolmesConfigChange).toBeUndefined();
+    } finally {
+      delete window.desktopApi;
+    }
+  });
+
   it('loads one exact source identity without configuring ZIP extraction', async () => {
     capturedProps.length = 0;
     skillManagerMock.constructorArgs.length = 0;
     skillManagerMock.loadedConfigs.length = 0;
+    skillManagerMock.invalidations = 0;
     render(React.createElement(Settings));
     const loadSkills = capturedProps[0].loadSkills as (
       onProgress?: unknown,
-      sourceIdentity?: string
+      sourceIdentity?: string,
+      forceReload?: boolean
     ) => Promise<unknown[]>;
     await loadSkills(undefined, JSON.stringify(['git', 'https://github.com/example/repo', 'two']));
+    expect(skillManagerMock.invalidations).toBe(0);
+    await loadSkills(
+      undefined,
+      JSON.stringify(['git', 'https://github.com/example/repo', 'two']),
+      true
+    );
+    expect(skillManagerMock.invalidations).toBe(1);
     expect(skillManagerMock.constructorArgs[0]).toHaveLength(2);
     expect(skillManagerMock.loadedConfigs[0]).toEqual(
       expect.objectContaining({

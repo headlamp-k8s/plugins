@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { KUBERNETES_DOCS_SOURCE } from './documentationSources';
 import type { ParsedSkill } from './parseSkill';
 import { isValidGitUrl, SkillSource } from './SkillLoader';
 
@@ -59,6 +60,23 @@ function positiveNumberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+const isForwardSlash = (char: string): boolean => char === '/';
+const isPathSeparator = (char: string): boolean => char === '/' || char === '\\';
+
+/** Character scan avoids the backtracking cost of anchored `+` separator regexes. */
+function trimTrailing(value: string, isSeparator: (char: string) => boolean): string {
+  let end = value.length;
+  while (end > 0 && isSeparator(value[end - 1])) end -= 1;
+  return value.slice(0, end);
+}
+
+/** Character scan avoids the backtracking cost of anchored `+` separator regexes. */
+function trimLeading(value: string, isSeparator: (char: string) => boolean): string {
+  let start = 0;
+  while (start < value.length && isSeparator(value[start])) start += 1;
+  return value.slice(start);
+}
+
 /**
  * Normalizes a filesystem path or Git URL used as a skill source location.
  *
@@ -71,20 +89,24 @@ export function normalizeSkillSourceUrl(value: string, type: SkillSource['type']
   if (type === 'git') {
     try {
       const parsed = new URL(trimmed);
-      const pathname = parsed.pathname.replace(/\/+$/, '').replace(/\.git$/i, '');
+      const pathname = trimTrailing(parsed.pathname, isForwardSlash).replace(/\.git$/i, '');
       return `${parsed.origin}${pathname}`;
     } catch {
-      return trimmed.replace(/\/+$/, '').replace(/\.git$/i, '');
+      return trimTrailing(trimmed, isForwardSlash).replace(/\.git$/i, '');
     }
   }
   return trimmed === '/' || /^[A-Za-z]:[\\/]?$/.test(trimmed)
     ? trimmed
-    : trimmed.replace(/[\\/]+$/, '');
+    : trimTrailing(trimmed, isPathSeparator);
 }
 
 /** @returns Canonical optional Git subdirectory without surrounding separators. */
 export function normalizeSkillSourcePath(value: string | undefined): string | undefined {
-  const normalized = value?.trim().replace(/^[\\/]+|[\\/]+$/g, '');
+  const trimmed = value?.trim();
+  const normalized =
+    trimmed === undefined
+      ? undefined
+      : trimLeading(trimTrailing(trimmed, isPathSeparator), isPathSeparator);
   return normalized || undefined;
 }
 
@@ -130,6 +152,9 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
     return { type: 'local', url, enabled: value.enabled };
   }
   if (value.sha256 !== undefined && typeof value.sha256 !== 'string') return null;
+  if (value.includeReferences !== undefined && typeof value.includeReferences !== 'boolean') {
+    return null;
+  }
   const sha256 = typeof value.sha256 === 'string' ? value.sha256.trim().toLowerCase() : '';
   if (sha256 && !/^[a-fA-F0-9]{64}$/.test(sha256)) return null;
   const ref = typeof value.ref === 'string' ? value.ref.trim() : '';
@@ -141,6 +166,9 @@ export function normalizeSkillSource(value: unknown): SkillSource | null {
     ...(ref ? { ref } : {}),
     ...(path ? { path } : {}),
     ...(sha256 ? { sha256 } : {}),
+    ...(typeof value.includeReferences === 'boolean'
+      ? { includeReferences: value.includeReferences }
+      : {}),
   };
 }
 
@@ -155,17 +183,34 @@ export function getSkillsConfig(data: unknown): SkillsConfig {
     return { ...DEFAULT_SKILLS_CONFIG };
   }
   const storedConfig = data.skills;
-  const seenSources = new Set<string>();
-  const sources = Array.isArray(storedConfig.sources)
+  const normalizedSources = Array.isArray(storedConfig.sources)
     ? storedConfig.sources.flatMap(value => {
         const source = normalizeSkillSource(value);
-        if (!source) return [];
-        const identity = getSkillSourceIdentity(source);
-        if (seenSources.has(identity)) return [];
-        seenSources.add(identity);
-        return [source];
+        return source ? [source] : [];
       })
     : [];
+  const conceptsIdentity = getSkillSourceIdentity({ type: 'git', ...KUBERNETES_DOCS_SOURCE });
+  const hasConceptsSource = normalizedSources.some(
+    source => getSkillSourceIdentity(source) === conceptsIdentity
+  );
+  const seenSources = new Set<string>();
+  const sources = normalizedSources.flatMap(source => {
+    const isLegacyKubernetesDocs =
+      source.type === 'git' &&
+      source.url === KUBERNETES_DOCS_SOURCE.url &&
+      source.path === 'content/en/docs' &&
+      source.ref === KUBERNETES_DOCS_SOURCE.ref &&
+      !source.sha256;
+    // An explicitly configured destination takes precedence over the old suggestion.
+    if (isLegacyKubernetesDocs && hasConceptsSource) return [];
+    const migratedSource = isLegacyKubernetesDocs
+      ? { ...source, path: KUBERNETES_DOCS_SOURCE.path }
+      : source;
+    const identity = getSkillSourceIdentity(migratedSource);
+    if (seenSources.has(identity)) return [];
+    seenSources.add(identity);
+    return [migratedSource];
+  });
   return {
     sources,
     disabledSkills: Array.isArray(storedConfig.disabledSkills)

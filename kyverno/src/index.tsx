@@ -16,6 +16,7 @@
 
 import {
   registerAppBarAction,
+  registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -23,6 +24,10 @@ import {
   DeletingPolicyList,
   GeneratingPolicyList,
   MutatingPolicyList,
+  NamespacedDeletingPolicyList,
+  NamespacedGeneratingPolicyList,
+  NamespacedMutatingPolicyList,
+  NamespacedValidatingPolicyList,
   ValidatingPolicyList,
 } from './components/CELPolicyList';
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
@@ -31,23 +36,21 @@ import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { Dashboard } from './components/Dashboard';
-import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import {
+  ImageValidatingPolicyList,
+  NamespacedImageValidatingPolicyList,
+} from './components/ImageValidatingPolicyList';
 import { KyvernoReportList } from './components/KyvernoReportList';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
+import { Settings } from './components/Settings';
 import { ViolationsView } from './components/ViolationsView';
 import { registerKyvernoIcon } from './kyvernoIcon';
-import {
-  AdmissionReport,
-  BackgroundScanReport,
-  ClusterAdmissionReport,
-  ClusterBackgroundScanReport,
-  ClusterEphemeralReport,
-  EphemeralReport,
-} from './resources/kyvernoReports';
+import { ClusterEphemeralReport, EphemeralReport } from './resources/kyvernoReports';
 
 registerKyvernoIcon();
+registerPluginSettings('@headlamp-k8s/kyverno', Settings, true);
 
 interface KyvernoPageOptions {
   /** Sidebar entry id; also reused as the route name. */
@@ -68,6 +71,11 @@ interface KyvernoPageOptions {
   component: () => JSX.Element;
   /** Required Kyverno CRD group — wraps the component in CRDGuard. */
   requires?: CRDGroup;
+  /** Specific policies.kyverno.io/v1 resource name additionally required (see CRDGuard). */
+  requiresResource?: string;
+  /** Kind label and minimum version interpolated into CRDGuard's own translated message. */
+  requiresResourceLabel?: string;
+  requiresResourceVersion?: string;
 }
 
 // Centralises the sidebar + route pair that every Kyverno page needs so each
@@ -83,10 +91,22 @@ export function registerKyvernoPage({
   icon,
   component,
   requires,
+  requiresResource,
+  requiresResourceLabel,
+  requiresResourceVersion,
 }: KyvernoPageOptions) {
   registerSidebarEntry({ name, url: url ?? path, parent, label, icon });
   const wrapped = requires
-    ? () => <CRDGuard requires={requires}>{component()}</CRDGuard>
+    ? () => (
+        <CRDGuard
+          requires={requires}
+          requiresResource={requiresResource}
+          requiresResourceLabel={requiresResourceLabel}
+          requiresResourceVersion={requiresResourceVersion}
+        >
+          {component()}
+        </CRDGuard>
+      )
     : component;
   registerRoute({ path, sidebar: name, name, exact, component: wrapped });
 }
@@ -182,6 +202,66 @@ registerKyvernoPage({
 });
 
 registerKyvernoPage({
+  name: 'NamespacedValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Validating Policies',
+  path: '/kyverno/namespacedvalidatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedvalidatingpolicies',
+  requiresResourceLabel: 'NamespacedValidatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedMutatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Mutating Policies',
+  path: '/kyverno/namespacedmutatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedmutatingpolicies',
+  requiresResourceLabel: 'NamespacedMutatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedMutatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedGeneratingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Generating Policies',
+  path: '/kyverno/namespacedgeneratingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedgeneratingpolicies',
+  requiresResourceLabel: 'NamespacedGeneratingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedGeneratingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedDeletingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Deleting Policies',
+  path: '/kyverno/namespaceddeletingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespaceddeletingpolicies',
+  requiresResourceLabel: 'NamespacedDeletingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedDeletingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedImageValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Image Validating Policies',
+  path: '/kyverno/namespacedimagevalidatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedimagevalidatingpolicies',
+  requiresResourceLabel: 'NamespacedImageValidatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedImageValidatingPolicyList />,
+});
+
+registerKyvernoPage({
   name: 'ClusterCleanupPolicies',
   parent: 'KyvernoPolicies',
   label: 'Cluster Cleanup Policies',
@@ -223,66 +303,6 @@ registerKyvernoPage({
   path: '/kyverno/clusterpolicyreports',
   requires: 'reports',
   component: () => <ClusterPolicyReportList />,
-});
-
-registerKyvernoPage({
-  name: 'AdmissionReports',
-  parent: 'KyvernoReports',
-  label: 'Admission Reports',
-  path: '/kyverno/admissionreports',
-  requires: 'kyvernoV2Reports',
-  component: () => (
-    <KyvernoReportList
-      titleKey="Admission Reports"
-      resourceClass={AdmissionReport}
-      activityIdPrefix="kyverno-admrpt"
-    />
-  ),
-});
-
-registerKyvernoPage({
-  name: 'ClusterAdmissionReports',
-  parent: 'KyvernoReports',
-  label: 'Cluster Admission Reports',
-  path: '/kyverno/clusteradmissionreports',
-  requires: 'kyvernoV2Reports',
-  component: () => (
-    <KyvernoReportList
-      titleKey="Cluster Admission Reports"
-      resourceClass={ClusterAdmissionReport}
-      activityIdPrefix="kyverno-cadmrpt"
-    />
-  ),
-});
-
-registerKyvernoPage({
-  name: 'BackgroundScanReports',
-  parent: 'KyvernoReports',
-  label: 'Background Scan Reports',
-  path: '/kyverno/backgroundscanreports',
-  requires: 'kyvernoV2Reports',
-  component: () => (
-    <KyvernoReportList
-      titleKey="Background Scan Reports"
-      resourceClass={BackgroundScanReport}
-      activityIdPrefix="kyverno-bgscan"
-    />
-  ),
-});
-
-registerKyvernoPage({
-  name: 'ClusterBackgroundScanReports',
-  parent: 'KyvernoReports',
-  label: 'Cluster Background Scan Reports',
-  path: '/kyverno/clusterbackgroundscanreports',
-  requires: 'kyvernoV2Reports',
-  component: () => (
-    <KyvernoReportList
-      titleKey="Cluster Background Scan Reports"
-      resourceClass={ClusterBackgroundScanReport}
-      activityIdPrefix="kyverno-cbgscan"
-    />
-  ),
 });
 
 registerKyvernoPage({

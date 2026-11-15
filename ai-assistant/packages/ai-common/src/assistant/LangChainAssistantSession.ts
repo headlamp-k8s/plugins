@@ -24,12 +24,14 @@ import { extractTextContent, processToolContent } from '../conversation/content'
 import {
   findLastAssistantWithTools,
   getLastAssistantMessage,
+  getMessageTargetCluster,
   hasToolResponses,
   sanitizeToolAlignment,
   validateToolCallAlignment,
 } from '../conversation/history';
 import { convertPromptsToMessages } from '../conversation/langchain/messages';
 import type { ConversationMessage } from '../conversation/types';
+import type { ToolClient } from '../mcp/client/ToolClient';
 import { MCPArgumentProcessor } from '../mcp/tools/ArgumentProcessor';
 import type { MCPToolSchema, UserContext } from '../mcp/tools/types';
 import { buildSystemPrompt, buildToolResponseSystemPrompt } from '../prompts/buildSystemPrompt';
@@ -46,6 +48,7 @@ import { ProviderSettings } from '../providers/savedConfigs';
 import { redactSecrets } from '../security/redactSecrets';
 import { DEFAULT_SKILLS_CONFIG, SkillsConfig } from '../skills/config';
 import { SkillManager } from '../skills/SkillManager';
+import { trimTrailingSlashes } from '../text/trimSlashes';
 import {
   inlineToolApprovalManager,
   ToolConfirmationEvent,
@@ -216,6 +219,9 @@ export default class LangChainAssistantSession extends AssistantSession {
    *     }),
    *   });
    *   ```
+   * @param options.mcpClient - Inject the host MCP bridge so discovered MCP
+   *   tools are bound to the model. Without it the manager falls back to a
+   *   no-op client and only built-in tools are available.
    */
   constructor(
     providerId: string,
@@ -224,6 +230,8 @@ export default class LangChainAssistantSession extends AssistantSession {
     options?: {
       /** Optional replacement tool runtime for tests, CLI, or demos. */
       toolManager?: LangChainToolRuntime;
+      /** Host MCP bridge used to discover and execute MCP tools. */
+      mcpClient?: ToolClient;
     }
   ) {
     super();
@@ -233,7 +241,9 @@ export default class LangChainAssistantSession extends AssistantSession {
       'AI Assistant: Initializing with enabled tools:',
       enabledToolIds || 'all tools enabled'
     );
-    this.toolManager = options?.toolManager ?? new LangChainToolManager({ enabledToolIds });
+    this.toolManager =
+      options?.toolManager ??
+      new LangChainToolManager({ enabledToolIds, mcpClient: options?.mcpClient });
     this.model = this.createModel(providerId, config);
 
     // Initialize prompt template and output parser
@@ -523,7 +533,7 @@ export default class LangChainAssistantSession extends AssistantSession {
       return url.origin;
     } catch {
       // If URL parsing fails, fall back to stripping trailing slashes
-      return endpoint.replace(/\/+$/, '');
+      return trimTrailingSlashes(endpoint);
     }
   }
 
@@ -639,10 +649,15 @@ export default class LangChainAssistantSession extends AssistantSession {
    *
    * @param toolName - Built-in or MCP tool name.
    * @param isMCPTool - Whether MCP-specific fallback wording should be used.
+   * @param catalogDescription - Optional description from the MCP server manifest.
    * @returns Human-readable tool description.
    */
-  private getToolDescription(toolName: string, isMCPTool: boolean): string {
-    return getToolDescription(toolName, isMCPTool);
+  private getToolDescription(
+    toolName: string,
+    isMCPTool: boolean,
+    catalogDescription?: string
+  ): string {
+    return getToolDescription(toolName, isMCPTool, catalogDescription);
   }
 
   /**
@@ -1171,13 +1186,16 @@ export default class LangChainAssistantSession extends AssistantSession {
       // Prepare tools with enhanced arguments (using same pattern as regular tool execution)
       const toolsForApproval = await Promise.all(
         recommendedTools.map(async tool => {
-          const isMCPTool = !isBuiltInTool(tool.name);
+          const toolName = tool.name;
+          const mcpTools = this.toolManager.getMCPTools();
+          const mcpToolEntry = mcpTools.find(m => m.name === toolName);
+          const isMCPTool = Boolean(mcpToolEntry);
           let processedArguments = tool.arguments || {};
 
           // Use AI to enhance arguments for MCP tools (same as regular flow)
           if (isMCPTool) {
             try {
-              const toolSchema = await MCPArgumentProcessor.getToolSchema(tool.name);
+              const toolSchema = await MCPArgumentProcessor.getToolSchema(toolName);
               if (toolSchema) {
                 // Build user context from current conversation
                 const userContext = this.buildUserContext();
@@ -1187,7 +1205,7 @@ export default class LangChainAssistantSession extends AssistantSession {
 
                 // Use AI to intelligently prepare arguments
                 processedArguments = await this.enhanceArgumentsWithAI(
-                  tool.name,
+                  toolName,
                   toolSchema,
                   userContext,
                   processedArguments
@@ -1201,15 +1219,15 @@ export default class LangChainAssistantSession extends AssistantSession {
                 };
               }
             } catch (error) {
-              console.warn(`Failed to enhance arguments for ${tool.name}:`, error);
+              console.warn(`Failed to enhance arguments for ${toolName}:`, error);
               // Fall back to original arguments
             }
           }
 
           return {
-            id: `orchestrated-${tool.name}-${Date.now()}`,
-            name: tool.name,
-            description: tool.description,
+            id: `orchestrated-${toolName}-${Date.now()}`,
+            name: toolName,
+            description: this.getToolDescription(toolName, isMCPTool, mcpToolEntry?.description),
             arguments: processedArguments,
             type: (isMCPTool ? 'mcp' : 'regular') as ToolCall['type'],
             priority: tool.priority,
@@ -1358,6 +1376,7 @@ export default class LangChainAssistantSession extends AssistantSession {
     userMessage: string,
     toolResults: Record<string, ToolResult>
   ): Promise<ConversationMessage> {
+    const targetCluster = getMessageTargetCluster(this.history);
     try {
       // Use the UNBOUND model to force text output, not more tool calls
       const model = this.model;
@@ -1406,6 +1425,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: this.extractTextContent(response.content),
+        ...(targetCluster !== undefined && { targetCluster }),
       };
 
       this.history.push(assistantPrompt);
@@ -1415,6 +1435,7 @@ Please analyze this data and provide a specific, detailed response that directly
 
       const fallbackPrompt: ConversationMessage = {
         role: 'assistant',
+        ...(targetCluster !== undefined && { targetCluster }),
         content: `I executed the requested tools and gathered information. There was an error generating a comprehensive summary, but here are the raw results:\n\n${Object.entries(
           toolResults
         )
@@ -1512,7 +1533,8 @@ Please analyze this data and provide a specific, detailed response that directly
       toolCalls.map(async tc => {
         const toolName = tc.function.name;
         const mcpTools = this.toolManager.getMCPTools();
-        const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+        const mcpToolEntry = mcpTools.find(tool => tool.name === toolName);
+        const isMCPTool = Boolean(mcpToolEntry);
         let processedArguments = parseSerializedToolArguments(tc.function.arguments);
 
         // Use AI to enhance arguments for MCP tools
@@ -1550,7 +1572,7 @@ Please analyze this data and provide a specific, detailed response that directly
         return {
           id: tc.id,
           name: toolName,
-          description: this.getToolDescription(toolName, isMCPTool),
+          description: this.getToolDescription(toolName, isMCPTool, mcpToolEntry?.description),
           arguments: processedArguments,
           type: isMCPTool ? 'mcp' : 'regular',
         };
@@ -1673,7 +1695,8 @@ Please analyze this data and provide a specific, detailed response that directly
       enabledToolCalls.map(async tc => {
         const toolName = tc.function.name;
         const mcpTools = this.toolManager.getMCPTools();
-        const isMCPTool = mcpTools.some(tool => tool.name === toolName);
+        const mcpToolEntry = mcpTools.find(tool => tool.name === toolName);
+        const isMCPTool = Boolean(mcpToolEntry);
         let processedArguments = parseSerializedToolArguments(tc.function.arguments);
 
         // Use AI to enhance arguments for MCP tools
@@ -1705,7 +1728,7 @@ Please analyze this data and provide a specific, detailed response that directly
         return {
           id: tc.id,
           name: toolName,
-          description: this.getToolDescription(toolName, isMCPTool),
+          description: this.getToolDescription(toolName, isMCPTool, mcpToolEntry?.description),
           arguments: processedArguments,
           type: isMCPTool ? 'mcp' : 'regular',
         };
@@ -2016,6 +2039,7 @@ Please analyze this data and provide a specific, detailed response that directly
       return getLastAssistantMessage(this.history);
     }
 
+    const targetCluster = getMessageTargetCluster(this.history);
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
 
@@ -2032,7 +2056,7 @@ Please analyze this data and provide a specific, detailed response that directly
         systemPrompt: this.createToolResponseSystemPrompt(), // Use specialized prompt for tool responses
       });
 
-      return this.handleToolResponseResult(response);
+      return this.handleToolResponseResult(response, targetCluster);
     } catch (error) {
       return this.handleToolResponseError(error);
     }
@@ -2056,6 +2080,7 @@ Please analyze this data and provide a specific, detailed response that directly
       return lastMessage;
     }
 
+    const targetCluster = getMessageTargetCluster(this.history);
     // Validate tool call/response alignment
     this.validateToolCallAlignment();
 
@@ -2089,6 +2114,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: fullContent,
+        ...(targetCluster !== undefined && { targetCluster }),
       };
 
       this.history.push(assistantPrompt);
@@ -2240,7 +2266,8 @@ Please analyze this data and provide a specific, detailed response that directly
    * @returns Corrected, formatted-output, fallback, or standard assistant message.
    */
   private async handleToolResponseResult(
-    response: ModelToolResponse
+    response: ModelToolResponse,
+    targetCluster?: string | null
   ): Promise<ConversationMessage> {
     // Analyze and potentially correct kubectl suggestions
     const correctedResponse = await this.analyzeAndCorrectResponse(response);
@@ -2260,6 +2287,7 @@ Please analyze this data and provide a specific, detailed response that directly
         if (isMCPFormattedOutput(singleResponse.content)) {
           const assistantPrompt: ConversationMessage = {
             role: 'assistant',
+            ...(targetCluster !== undefined && { targetCluster }),
             content: singleResponse.content,
             toolCalls: [],
           };
@@ -2280,6 +2308,7 @@ Please analyze this data and provide a specific, detailed response that directly
       const assistantPrompt: ConversationMessage = {
         role: 'assistant',
         content: fallbackContent.trim(),
+        ...(targetCluster !== undefined && { targetCluster }),
         toolCalls: [], // Don't include additional tool calls
       };
 
@@ -2296,6 +2325,7 @@ Please analyze this data and provide a specific, detailed response that directly
     const assistantPrompt: ConversationMessage = {
       role: 'assistant',
       content: extractedContent,
+      ...(targetCluster !== undefined && { targetCluster }),
       toolCalls: correctedResponse.tool_calls?.length
         ? mapCorrectedResponseToolCalls(correctedResponse.tool_calls)
         : [],

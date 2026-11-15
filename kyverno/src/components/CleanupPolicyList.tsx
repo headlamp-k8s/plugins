@@ -18,11 +18,13 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip } from '@mui/material';
 import { CleanupPolicy, ClusterCleanupPolicy } from '../resources/cleanupPolicy';
+import { tableRemountKey } from './common';
 
 export function CleanupPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cleanup Policies')}
       resourceClass={CleanupPolicy}
       columns={[
@@ -62,9 +64,10 @@ export function CleanupPolicyList() {
 }
 
 export function ClusterCleanupPolicyList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cluster Cleanup Policies')}
       resourceClass={ClusterCleanupPolicy}
       columns={[

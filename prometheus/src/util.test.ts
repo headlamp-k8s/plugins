@@ -1,4 +1,4 @@
-import { getTimeRangeAndStepSize, supportsPrometheusMetrics } from './util';
+import { getTimeRangeAndStepSize, isArgoCDApplication, supportsPrometheusMetrics } from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -106,6 +106,19 @@ describe('getTimeRangeAndStepSize', () => {
 
 describe('supportsPrometheusMetrics', () => {
   test.each([
+    ['Workflow', 'tinkerbell.org/v1alpha1'],
+    ['Machine', 'bmc.tinkerbell.org/v1alpha1'],
+    ['Job', 'bmc.tinkerbell.org/v1alpha1'],
+    ['Task', 'bmc.tinkerbell.org/v1alpha1'],
+  ])('supports Tinkerbell %s in %s', (kind, apiVersion) => {
+    expect(supportsPrometheusMetrics({ kind, apiVersion })).toBe(true);
+  });
+
+  test.each(['Hardware', 'Template', 'WorkflowRuleSet'])('does not invent metrics for %s', kind => {
+    expect(supportsPrometheusMetrics({ kind, apiVersion: 'tinkerbell.org/v1alpha1' })).toBe(false);
+  });
+
+  test.each([
     ['supports Pods', { kind: 'Pod', jsonData: { kind: 'Pod', apiVersion: 'v1' } }, true],
     [
       'supports Kubernetes Jobs',
@@ -138,9 +151,43 @@ describe('supportsPrometheusMetrics', () => {
       false,
     ],
     ['rejects Queues without apiVersion', { kind: 'Queue', jsonData: { kind: 'Queue' } }, false],
+    [
+      'supports Argo CD Applications when the chart UI is available',
+      {
+        kind: 'Application',
+        jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
+      },
+      true,
+    ],
+    [
+      'rejects non-Argo Applications with the same kind',
+      { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
     expect(supportsPrometheusMetrics(resource)).toBe(expected);
+  });
+});
+
+describe('isArgoCDApplication', () => {
+  test.each([
+    [
+      'recognizes the Argo CD Application CRD',
+      {
+        kind: 'Application',
+        jsonData: { kind: 'Application', apiVersion: 'argoproj.io/v1alpha1' },
+      },
+      true,
+    ],
+    [
+      'rejects another Application kind',
+      { kind: 'Application', jsonData: { kind: 'Application', apiVersion: 'example.com/v1' } },
+      false,
+    ],
+    ['rejects an Application without an API version', { kind: 'Application' }, false],
+  ])('%s', (_, resource, expected) => {
+    expect(isArgoCDApplication(resource)).toBe(expected);
   });
 });

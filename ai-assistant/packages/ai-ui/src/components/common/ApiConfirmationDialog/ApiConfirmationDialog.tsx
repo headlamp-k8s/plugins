@@ -95,6 +95,8 @@ export interface ApiConfirmationDialogProps {
   method: string;
   url: string;
   body?: string;
+  /** Cluster the request will target; shown so destructive actions reveal their scope. */
+  cluster?: string;
   onConfirm: (editedBody?: string, resourceInfo?: string) => void;
   isLoading?: boolean;
   /** Completed API result retained for host API compatibility; confirmation flows do not render it. */
@@ -117,6 +119,7 @@ export default function ApiConfirmationDialog({
   method,
   url,
   body,
+  cluster,
   onConfirm,
   isLoading = false,
   error,
@@ -160,6 +163,12 @@ export default function ApiConfirmationDialog({
 
   if (!url || !method || !open || normalizedMethod === 'GET') return null;
 
+  const clusterInfo = cluster ? (
+    <Typography variant="body2" component="div" sx={{ mb: 2 }}>
+      <strong>{t('Cluster:')}</strong> {cluster}
+    </Typography>
+  ) : null;
+
   if (normalizedMethod === 'DELETE') {
     return (
       <ConfirmDialogSlot
@@ -175,6 +184,7 @@ export default function ApiConfirmationDialog({
         description={
           <Box>
             {error && <Typography color="error.main">{error}</Typography>}
+            {clusterInfo}
             <Typography variant="body1" sx={{ mb: 2 }}>
               {resourceInfo?.namespace
                 ? t(
@@ -238,11 +248,20 @@ export default function ApiConfirmationDialog({
         description={
           <Box>
             {error && <Typography color="error.main">{error}</Typography>}
+            {clusterInfo}
             <Typography variant="body1" sx={{ mb: 2 }}>
               {t('The following patch will be applied to the resource:')}
             </Typography>
-            <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <pre>{processedBody.content}</pre>
+            <Box
+              sx={{
+                p: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                overflowX: 'auto',
+              }}
+            >
+              <pre style={{ margin: 0 }}>{processedBody.content}</pre>
             </Box>
             <Typography variant="body2" sx={{ mt: 2 }}>
               {t(
@@ -268,7 +287,7 @@ export default function ApiConfirmationDialog({
         onConfirm(editedBody, serializedResourceInfo);
         onClose();
       }}
-      title={getTitle()}
+      title={cluster ? `${getTitle()} (${t('Cluster:')} ${cluster})` : getTitle()}
       disabled={isLoading}
     />
   );

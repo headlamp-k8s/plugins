@@ -15,3 +15,14 @@
  */
 
 /// <reference types="@kinvolk/headlamp-plugin" />
+
+import type { SxProps, Theme } from '@mui/material/styles';
+
+// Headlamp 0.44 exposes these public sidebar fields. The currently published
+// plugin SDK types predate them, so augment the SDK until its declarations catch up.
+declare module '@kinvolk/headlamp-plugin/lib/components/Sidebar/sidebarSlice' {
+  interface SidebarEntry {
+    entryType?: 'link' | 'subheader';
+    sx?: SxProps<Theme>;
+  }
+}

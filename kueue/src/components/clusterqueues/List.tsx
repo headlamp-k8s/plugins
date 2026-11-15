@@ -1,6 +1,7 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderCohortLink } from '../common/KueueResourceLinks';
 
 export default function ClusterQueueList() {
   return (
@@ -18,6 +19,7 @@ export default function ClusterQueueList() {
             id: 'cohort',
             label: 'Cohort',
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.cohortName,
+            render: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
           },
           {
             id: 'queueingStrategy',

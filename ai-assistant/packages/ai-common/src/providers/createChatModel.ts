@@ -21,6 +21,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatOllama } from '@langchain/ollama';
 import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
+import { trimTrailingSlashes } from '../text/trimSlashes';
 import { GH_CLI_AUTH_SENTINEL } from './detectProvider';
 import { createFixtureChatModel } from './langchain/testing/FixtureChatModel';
 
@@ -39,6 +40,73 @@ export type SupportedProviderId =
   | 'copilot'
   | 'local'
   | 'mock-testing-model';
+
+/**
+ * Copilot model families served only through the OpenAI Responses API.
+ *
+ * Each entry is matched as a lowercase prefix of the model ID, so `gpt-5.6`
+ * covers `gpt-5.6-sol`, `gpt-5.6-luna`, and `gpt-5.6-terra`. Refresh the list
+ * from `https://api.githubcopilot.com/models`: any chat model whose
+ * `supported_endpoints` omits `/chat/completions` belongs here.
+ */
+const COPILOT_RESPONSES_ONLY_FAMILIES: readonly string[] = [
+  'gpt-5.3-codex',
+  'gpt-5.4-mini',
+  'gpt-5.5',
+  'gpt-5.6',
+  'gpt-6',
+  'grok-',
+  'mai-',
+];
+
+/**
+ * Removes an optional vendor prefix from a Copilot model identifier.
+ *
+ * @param model - Model identifier, optionally prefixed (e.g. `openai/gpt-4o`).
+ * @returns The bare model identifier expected by the Copilot API.
+ */
+function stripCopilotModelPrefix(model: string): string {
+  return model.includes('/') ? model.split('/').pop()! : model;
+}
+
+/**
+ * Returns whether a GitHub Copilot model is only available through the
+ * OpenAI-compatible Responses API.
+ *
+ * These models reject `/chat/completions` with HTTP 400
+ * `unsupported_api_for_model`. LangChain does not derive the endpoint from the
+ * model ID, so select `/responses` explicitly while leaving models that still
+ * accept chat completions on their existing endpoint.
+ *
+ * @param model - Copilot model identifier, with or without a vendor prefix.
+ * @returns Whether LangChain must use the Responses API.
+ */
+export function copilotModelRequiresResponsesApi(model: string): boolean {
+  const id = stripCopilotModelPrefix(model).toLowerCase();
+  return COPILOT_RESPONSES_ONLY_FAMILIES.some(family => id.startsWith(family));
+}
+
+/**
+ * Removes an `/openai/...` path from an Azure endpoint.
+ *
+ * Matches `endpoint.replace(/\/openai\/.*$/, '')` in linear time; that regex is
+ * quadratic on repeated `/openai/` text.
+ *
+ * @param endpoint - Azure OpenAI endpoint.
+ * @returns The endpoint without its `/openai/...` path.
+ */
+function stripAzureOpenAIPath(endpoint: string): string {
+  // `.` doesn't match line terminators, so only the last line can match.
+  const lastLineStart =
+    Math.max(
+      endpoint.lastIndexOf('\n'),
+      endpoint.lastIndexOf('\r'),
+      endpoint.lastIndexOf('\u2028'),
+      endpoint.lastIndexOf('\u2029')
+    ) + 1;
+  const pathStart = endpoint.indexOf('/openai/', lastLineStart);
+  return pathStart === -1 ? endpoint : endpoint.slice(0, pathStart);
+}
 
 /**
  * Creates a LangChain `BaseChatModel` from a provider ID and configuration map.
@@ -79,13 +147,19 @@ export function createChatModel(
     switch (providerId) {
       case 'openai':
         if (!c.apiKey) throw new Error('API key is required for OpenAI');
-        return new ChatOpenAI({ apiKey: c.apiKey, model: c.model, verbose });
+        return new ChatOpenAI({
+          apiKey: c.apiKey,
+          model: c.model,
+          // GPT-6 tool calling with the default reasoning settings requires Responses.
+          useResponsesApi: c.model.toLowerCase().startsWith('gpt-6'),
+          verbose,
+        });
 
       case 'azure':
         if (!c.apiKey || !c.endpoint || !c.deploymentName)
           throw new Error('Incomplete Azure OpenAI configuration');
         return new AzureChatOpenAI({
-          azureOpenAIEndpoint: c.endpoint.replace(/\/+$/, '').replace(/\/openai\/.*$/, ''),
+          azureOpenAIEndpoint: stripAzureOpenAIPath(trimTrailingSlashes(c.endpoint)),
           azureOpenAIApiKey: c.apiKey,
           azureOpenAIApiDeploymentName: c.deploymentName,
           azureOpenAIApiVersion: '2025-04-01-preview',
@@ -112,7 +186,7 @@ export function createChatModel(
       case 'vllm': {
         if (!c.baseUrl) throw new Error('Base URL is required for vLLM');
         if (!c.model) throw new Error('Model is required for vLLM');
-        let url = c.baseUrl.replace(/\/+$/, '');
+        let url = trimTrailingSlashes(c.baseUrl);
         if (!url.endsWith('/v1')) url = `${url}/v1`;
         return new ChatOpenAI({
           apiKey: c.apiKey || 'sk-noop',
@@ -129,11 +203,11 @@ export function createChatModel(
             'Copilot token must be resolved before creating the model. ' +
               'Replace GH_CLI_AUTH_SENTINEL with the real token from `gh auth token`.'
           );
-        // Strip optional "provider/" prefix (e.g. "openai/gpt-4o" → "gpt-4o")
-        const model = c.model.includes('/') ? c.model.split('/').pop()! : c.model;
+        const model = stripCopilotModelPrefix(c.model);
         return new ChatOpenAI({
           apiKey: c.apiKey,
           model,
+          useResponsesApi: copilotModelRequiresResponsesApi(model),
           verbose,
           configuration: { baseURL: 'https://api.githubcopilot.com' },
         });

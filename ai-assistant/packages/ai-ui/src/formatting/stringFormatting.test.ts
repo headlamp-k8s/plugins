@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatString } from './stringFormatting';
+import { formatString, toSafeFileName } from './stringFormatting';
 
 describe('formatString', () => {
   it('replaces a basic placeholder', () => {
@@ -36,5 +36,24 @@ describe('formatString', () => {
 
   it('preserves placeholders for explicit undefined and zero-padded indices', () => {
     expect(formatString('{0} {00} {01}', undefined, 'one')).toBe('{0} {00} {01}');
+  });
+});
+
+describe('toSafeFileName', () => {
+  it.each([
+    ['my pod', 'my-pod'],
+    ['--a//b--', 'a-b'],
+    ['ns/pod.v1_x', 'ns-pod.v1_x'],
+    ['///', 'fallback'],
+    ['', 'fallback'],
+  ])('converts %j to %j', (name, expected) => {
+    expect(toSafeFileName(name, 'fallback')).toBe(expected);
+  });
+
+  it('trims long dash runs in linear time', () => {
+    const name = `a${'-'.repeat(100_000)}a`;
+    const start = performance.now();
+    expect(toSafeFileName(name, 'fallback')).toBe(name);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 });

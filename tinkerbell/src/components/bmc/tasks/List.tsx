@@ -4,7 +4,21 @@ import {
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { BmcTask } from '../../../resources/bmcTask';
+import { activeConditionType } from '../../../resources/common';
 import { fallback, renderStatus } from '../../common/listHelpers';
+
+/**
+ * Gets the BMC operation name from the task data key.
+ *
+ * @param item - BMC Task resource to inspect.
+ * @returns First task data key, or a fallback field if present.
+ */
+function getTaskOperation(item: BmcTask): string {
+  const task = item.spec?.task;
+  const taskKey = task ? Object.keys(task)[0] : undefined;
+
+  return fallback(taskKey ?? task?.type ?? task?.action);
+}
 
 /**
  * Renders the Tinkerbell BMC Task list view.
@@ -16,18 +30,14 @@ export function BmcTaskList() {
     {
       id: 'operation',
       label: 'Operation',
-      getValue: item => fallback(item.spec?.task?.type ?? item.spec?.task?.action),
-    },
-    {
-      id: 'connection',
-      label: 'Connection',
-      getValue: item => fallback(item.spec?.connection ? 'Configured' : undefined),
+      getValue: item => getTaskOperation(item),
     },
     {
       id: 'status',
       label: 'Status',
-      getValue: item => fallback(item.status?.conditions?.at(-1)?.type),
-      render: item => renderStatus(item.status?.conditions?.at(-1)?.type),
+      gridTemplate: 'max-content',
+      getValue: item => fallback(activeConditionType(item.status?.conditions)),
+      render: item => renderStatus(activeConditionType(item.status?.conditions)),
     },
     {
       id: 'started',

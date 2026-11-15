@@ -54,6 +54,8 @@ export interface DeveloperOptionsConfig {
 
 /** Props for the {@link DeveloperSettings} component. */
 export interface DeveloperSettingsProps {
+  /** Whether to render a disclosure when not already inside an advanced section. */
+  collapsible?: boolean;
   /** Current developer options configuration. */
   devOptions: DeveloperOptionsConfig;
   /** Callback when any developer option changes. */
@@ -148,6 +150,7 @@ export function removeMockModelProvider(
  * @returns Developer option controls.
  */
 export function DeveloperSettings({
+  collapsible = true,
   devOptions,
   onDevOptionsChange,
   savedConfigs,
@@ -224,27 +227,33 @@ export function DeveloperSettings({
 
   return (
     <Box>
-      <ButtonBase
-        aria-controls="developer-options-content"
-        aria-expanded={expanded}
-        onClick={() => setExpanded(current => !current)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          width: '100%',
-        }}
-      >
-        <Typography variant="h6" component="span">
+      {collapsible ? (
+        <ButtonBase
+          aria-controls="developer-options-content"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(current => !current)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            width: '100%',
+          }}
+        >
+          <Typography variant="h6" component="span">
+            {t('Developer Options')}
+          </Typography>
+          <Box component="span" aria-hidden="true" sx={{ ml: 1 }}>
+            {expanded ? '▼' : '▶'}
+          </Box>
+        </ButtonBase>
+      ) : (
+        <Typography variant="h6" component="h3">
           {t('Developer Options')}
         </Typography>
-        <Box component="span" aria-hidden="true" sx={{ ml: 1 }}>
-          {expanded ? '▼' : '▶'}
-        </Box>
-      </ButtonBase>
+      )}
 
-      <Collapse id="developer-options-content" in={expanded}>
-        <Box sx={{ ml: 2, mt: 1 }}>
+      <Collapse id="developer-options-content" in={!collapsible || expanded}>
+        <Box sx={{ ml: collapsible ? 2 : 0, mt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {t(
               'Enable fake implementations for testing, demos, and development without real API keys or network access.'

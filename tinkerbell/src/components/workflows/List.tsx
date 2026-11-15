@@ -3,30 +3,9 @@ import {
   ResourceListView,
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { normalizeState } from '../../resources/common';
 import { Workflow, WorkflowTaskStatus } from '../../resources/workflow';
-import { booleanLabel, countLabel, fallback, renderStatus } from '../common/listHelpers';
-
-/**
- * Gets a user-facing workflow state from the current v0.23.0 status shape.
- *
- * @param item - Workflow resource to inspect.
- * @returns Normalized workflow state.
- */
-function getWorkflowState(item: Workflow): string {
-  return normalizeState(item.status?.state ?? item.status?.currentState?.state);
-}
-
-/**
- * Gets the best currently relevant action name for a workflow.
- *
- * @param item - Workflow resource to inspect.
- * @returns Current action, latest action, or fallback.
- */
-function getCurrentAction(item: Workflow): string {
-  const actions = item.status?.tasks?.flatMap(task => task.actions ?? []) ?? [];
-  return fallback(item.status?.currentState?.actionName ?? actions.at(-1)?.name);
-}
+import { fallback, renderStatus } from '../common/listHelpers';
+import { getCurrentAction, getCurrentTask, getWorkflowState } from './helpers';
 
 /**
  * Gets a task count label using workflow status tasks.
@@ -35,7 +14,7 @@ function getCurrentAction(item: Workflow): string {
  * @returns Count label for workflow tasks.
  */
 function getTaskCount(tasks: WorkflowTaskStatus[] | undefined) {
-  return countLabel(tasks?.length, 'task');
+  return fallback(tasks?.length);
 }
 
 /**
@@ -64,14 +43,14 @@ export function WorkflowList() {
       getValue: item => fallback(item.spec?.templateRef),
     },
     {
-      id: 'disabled',
-      label: 'Disabled',
-      getValue: item => booleanLabel(item.spec?.disabled),
-    },
-    {
       id: 'tasks',
       label: 'Tasks',
       getValue: item => getTaskCount(item.status?.tasks),
+    },
+    {
+      id: 'currentTask',
+      label: 'Current Task',
+      getValue: item => getCurrentTask(item),
     },
     {
       id: 'lastAction',

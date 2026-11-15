@@ -140,8 +140,8 @@ export interface WorkflowStatus {
   /** Task execution status for this workflow. */
   tasks?: WorkflowTaskStatus[];
 
-  /** Template rendering status details. */
-  templateRendering?: Record<string, any>;
+  /** Template rendering status or details. */
+  templateRendering?: string | Record<string, any>;
 }
 
 /** Kubernetes object shape for a Tinkerbell Workflow resource. */

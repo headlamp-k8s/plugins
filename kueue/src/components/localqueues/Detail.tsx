@@ -98,6 +98,12 @@ function renderClusterQueueLink(localQueue: LocalQueue) {
     </Link>
   );
 }
+import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { useParams } from 'react-router-dom';
+import { LocalQueue } from '../../resources/localQueue';
+import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { renderClusterQueueLink } from '../common/KueueResourceLinks';
+import { RelatedWorkloadsSection } from '../common/RelatedResources';
 
 /** Build the standard Headlamp conditions section for LocalQueue status. */
 function getConditionsSection(localQueue: LocalQueue) {
@@ -111,19 +117,26 @@ function getConditionsSection(localQueue: LocalQueue) {
   };
 }
 
-export default function LocalQueueDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function LocalQueueDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={LocalQueue}
       resourceLabel="LocalQueues"
       verb="get"
+      cluster={cluster}
       accessDescription="Kueue LocalQueues are namespaced user queue resources."
     >
       <DetailsGrid
         resourceType={LocalQueue}
         name={name}
+        cluster={cluster}
         namespace={namespace}
         withEvents
         extraInfo={localQueue =>
@@ -131,7 +144,7 @@ export default function LocalQueueDetail() {
             ? [
                 {
                   name: 'ClusterQueue',
-                  value: renderClusterQueueLink(localQueue),
+                  value: renderClusterQueueLink(localQueue.clusterQueueName, localQueue.cluster),
                 },
                 {
                   name: 'Stop Policy',
@@ -174,6 +187,16 @@ export default function LocalQueueDetail() {
                   'flavor-usage',
                   localQueue.status.flavorsUsage
                 ),
+                {
+                  id: 'related-workloads',
+                  section: (
+                    <RelatedWorkloadsSection
+                      namespace={localQueue.metadata.namespace}
+                      localQueueName={localQueue.metadata.name}
+                      cluster={localQueue.cluster}
+                    />
+                  ),
+                },
               ].filter(Boolean)
             : []
         }

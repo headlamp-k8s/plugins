@@ -34,11 +34,11 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   },
 }));
 
-import { refreshApplication, syncApplication } from './argoClient';
+import { refreshApplication, rollbackApplication, syncApplication } from './argoClient';
 
 describe('argoClient', () => {
   beforeEach(() => {
-    mockRequest.mockReset().mockResolvedValue({});
+    mockRequest.mockReset().mockResolvedValue({ metadata: { resourceVersion: '42' } });
   });
 
   it('syncApplication sends a merge-patch with .operation.sync', async () => {
@@ -73,6 +73,148 @@ describe('argoClient', () => {
         }),
       })
     );
+  });
+
+  it('rollbackApplication sends a complete single-source history snapshot', async () => {
+    await rollbackApplication(
+      'guestbook',
+      'argocd',
+      {
+        id: 4,
+        revision: 'abc123def456',
+        deployedAt: '2025-01-01T00:00:00Z',
+        source: {
+          repoURL: 'https://github.com/example/apps.git',
+          targetRevision: 'main',
+          path: 'guestbook',
+          helm: { valueFiles: ['values-production.yaml'] },
+        },
+      },
+      ['CreateNamespace=true']
+    );
+
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      '/apis/argoproj.io/v1alpha1/namespaces/argocd/applications/guestbook',
+      expect.objectContaining({
+        headers: { 'Content-Type': 'application/json-patch+json' },
+        body: JSON.stringify([
+          { op: 'test', path: '/metadata/resourceVersion', value: '42' },
+          {
+            op: 'add',
+            path: '/operation',
+            value: {
+              initiatedBy: { username: 'headlamp' },
+              sync: {
+                revision: 'abc123def456',
+                source: {
+                  repoURL: 'https://github.com/example/apps.git',
+                  targetRevision: 'main',
+                  path: 'guestbook',
+                  helm: { valueFiles: ['values-production.yaml'] },
+                },
+                dryRun: false,
+                prune: false,
+                syncOptions: ['CreateNamespace=true'],
+                syncStrategy: { apply: {} },
+              },
+            },
+          },
+        ]),
+      })
+    );
+
+    const requestOptions = mockRequest.mock.calls[1][1];
+    expect(JSON.stringify(requestOptions.body)).not.toContain('spec');
+  });
+
+  it('rollbackApplication sends aligned multi-source revisions and snapshots', async () => {
+    const sources = [
+      { repoURL: 'https://github.com/example/apps.git', path: 'guestbook' },
+      { repoURL: 'https://github.com/example/values.git', ref: 'values' },
+    ];
+
+    await rollbackApplication('guestbook', 'argocd', {
+      id: 3,
+      revisions: ['app-revision', 'values-revision'],
+      sources,
+      deployedAt: '2025-01-01T00:00:00Z',
+    });
+
+    const requestOptions = mockRequest.mock.calls[1][1];
+    const patch = JSON.parse(requestOptions.body);
+    expect(patch[1].value.sync).toEqual({
+      revisions: ['app-revision', 'values-revision'],
+      sources,
+      dryRun: false,
+      prune: false,
+      syncOptions: [],
+      syncStrategy: { apply: {} },
+    });
+    expect(JSON.stringify(patch)).not.toContain('spec');
+  });
+
+  it('rejects incomplete rollback history before sending a patch', async () => {
+    await expect(
+      rollbackApplication('guestbook', 'argocd', {
+        id: 2,
+        revisions: ['only-one-revision'],
+        sources: [
+          { repoURL: 'https://github.com/example/apps.git' },
+          { repoURL: 'https://github.com/example/values.git' },
+        ],
+        deployedAt: '2025-01-01T00:00:00Z',
+      })
+    ).rejects.toThrow(/multi-source history entry is incomplete/);
+
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+
+  it('uses the existing RBAC error handling for rollback', async () => {
+    mockRequest
+      .mockResolvedValueOnce({ metadata: { resourceVersion: '42' } })
+      .mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+
+    await expect(
+      rollbackApplication('guestbook', 'argocd', {
+        id: 1,
+        revision: 'abc123',
+        source: { repoURL: 'https://github.com/example/apps.git' },
+        deployedAt: '2025-01-01T00:00:00Z',
+      })
+    ).rejects.toThrow(/Permission denied.*RBAC.*"argocd" namespace/);
+  });
+
+  it('refuses rollback when an operation is already in progress', async () => {
+    mockRequest.mockResolvedValueOnce({
+      metadata: { resourceVersion: '42' },
+      operation: { sync: {} },
+    });
+
+    await expect(
+      rollbackApplication('guestbook', 'argocd', {
+        id: 1,
+        revision: 'abc123',
+        source: { repoURL: 'https://github.com/example/apps.git' },
+        deployedAt: '2025-01-01T00:00:00Z',
+      })
+    ).rejects.toThrow(/operation is already in progress/);
+
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a stale Application conflict during rollback', async () => {
+    mockRequest
+      .mockResolvedValueOnce({ metadata: { resourceVersion: '42' } })
+      .mockRejectedValueOnce({ status: 409, message: 'Conflict' });
+
+    await expect(
+      rollbackApplication('guestbook', 'argocd', {
+        id: 1,
+        revision: 'abc123',
+        source: { repoURL: 'https://github.com/example/apps.git' },
+        deployedAt: '2025-01-01T00:00:00Z',
+      })
+    ).rejects.toThrow(/Application changed/);
   });
 
   it('refreshApplication sends a merge-patch with the refresh annotation', async () => {

@@ -22,18 +22,24 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
-import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Chip, Stack, Typography } from '@mui/material';
 import React, { useMemo } from 'react';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../config/ingress';
+import {
+  formatIngressClass,
+  INGRESS_CLASS_GATEWAY_API,
+  readIngressClass,
+} from '../../config/ingress';
 import { useAuthorization } from '../../hooks/useAuthorization';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeDomainMapping, KService } from '../../resources/knative';
+import { findReadyCondition } from '../../resources/knative/resourceData';
 import { getSafeUrl } from '../../utils/url';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
-import { ReadyStatusLabel } from '../common/ReadyStatusLabel';
+import { ExternalUrl, ReadyCell } from '../common/ResourceListCells';
+import { useCanRestartKService } from './detail/hooks/useCanRestartKService';
 import { useKServiceActions } from './detail/hooks/useKServiceActions';
+import { KServiceRestartProvider } from './detail/restart/KServiceRestartProvider';
 
 type IngressClassWithCluster = {
   cluster: string;
@@ -94,26 +100,6 @@ function getRevisionShort(svc: KService, revisionName: string | undefined): stri
   return revisionName;
 }
 
-function getReadyCondition(
-  svc: KService
-): { status: string; reason?: string; message?: string } | null {
-  const conditions = svc.status?.conditions;
-  if (!conditions) {
-    return null;
-  }
-
-  const readyCondition = conditions.find(c => c.type === 'Ready');
-  if (!readyCondition) {
-    return null;
-  }
-
-  return {
-    status: readyCondition.status || 'Unknown',
-    reason: readyCondition.reason,
-    message: readyCondition.message,
-  };
-}
-
 function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string[]>): string[] {
   const ns = svc.metadata.namespace || 'default';
   const name = svc.metadata.name;
@@ -124,11 +110,8 @@ function getServiceUrls(svc: KService, domainByServiceKey: Record<string, string
     return urls;
   }
 
-  if (svc.url) {
-    return [svc.url];
-  }
-
-  return [];
+  const serviceUrl = getSafeUrl(svc.url);
+  return serviceUrl ? [serviceUrl] : [];
 }
 
 type KServiceRowActionsProps = {
@@ -136,6 +119,13 @@ type KServiceRowActionsProps = {
   closeMenu?: () => void;
 };
 
+/**
+ * Shows the Redeploy Latest Revision and Restart items of a Knative Service's row menu, each only
+ * to users who are allowed to use it.
+ *
+ * @param props - The Knative Service, and `closeMenu`, which closes the row menu after an action.
+ * @returns The menu items.
+ */
 function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
   const { acting, handleRedeploy, handleRestart } = useKServiceActions(kservice, {
     onDone: () => {
@@ -156,12 +146,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
     cluster,
   });
 
-  const canDeletePods = useAuthorization({
-    item: Pod,
-    authVerb: 'delete',
-    namespace,
-    cluster,
-  });
+  const canRestart = useCanRestartKService(namespace, cluster);
 
   return (
     <>
@@ -174,7 +159,7 @@ function KServiceRowActions({ kservice, closeMenu }: KServiceRowActionsProps) {
           iconButtonProps={{ disabled }}
         />
       )}
-      {canDeletePods.allowed === true && (
+      {canRestart.allowed === true && (
         <ActionButton
           description="Restart"
           buttonStyle="menu"
@@ -209,13 +194,12 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
     const domainMap: Record<string, string[]> = {};
     if (!domainMappingsData) return domainMap;
     for (const dm of domainMappingsData) {
-      const refName = dm.spec.ref.name;
+      const refName = dm.spec?.ref?.name;
       if (!refName) continue;
-      const svcNs = dm.spec.ref.namespace || dm.metadata.namespace!;
+      const svcNs = dm.spec?.ref?.namespace || dm.metadata?.namespace || '';
       const key = `${dm.cluster}/${svcNs}/${refName}`;
-      const isReady = dm.status?.conditions?.find(c => c.type === 'Ready')?.status === 'True';
-      const url = dm.status?.url || dm.status?.address?.url;
-      if (isReady && url) {
+      const url = getSafeUrl(dm.readyUrl);
+      if (url) {
         if (!domainMap[key]) domainMap[key] = [];
         if (!domainMap[key].includes(url)) domainMap[key].push(url);
       }
@@ -234,14 +218,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       const cm = configMaps.find(
         item => item.cluster === cluster && item.metadata.name === 'config-network'
       );
-      const raw =
-        cm && cm.data && typeof cm.data['ingress.class'] === 'string'
-          ? cm.data['ingress.class']
-          : null;
-      const trimmed = raw?.trim();
       result.push({
         cluster,
-        ingressClass: trimmed && trimmed !== '' ? trimmed : null,
+        ingressClass: readIngressClass(cm?.data).value,
       });
     });
 
@@ -347,21 +326,9 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           if (urls.length > 0) {
             return (
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                {urls.map(u => (
-                  <a key={u} href={u} target="_blank" rel="noreferrer">
-                    {u}
-                  </a>
+                {urls.map(url => (
+                  <ExternalUrl key={url} url={url} />
                 ))}
-              </Stack>
-            );
-          }
-
-          if (svc.status?.url) {
-            return (
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <a href={svc.status.url} target="_blank" rel="noreferrer">
-                  {svc.status.url}
-                </a>
               </Stack>
             );
           }
@@ -375,7 +342,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
       },
       {
         id: 'latestCreated',
-        label: 'LatestCreated',
+        label: 'Latest Created',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestCreatedRevisionName;
@@ -393,15 +360,23 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
       {
         id: 'latestReady',
-        label: 'LatestReady',
+        label: 'Latest Ready',
         gridTemplate: 'min-content',
         getValue: svc => {
           const revisionName = svc.status?.latestReadyRevisionName;
@@ -419,9 +394,17 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
           const shortName = getRevisionShort(svc, revisionName);
           return (
-            <Typography variant="body2" title={revisionName}>
+            <Link
+              routeName="revisionDetails"
+              params={{
+                namespace: svc.metadata.namespace || 'default',
+                name: revisionName,
+              }}
+              activeCluster={svc.cluster}
+              title={revisionName}
+            >
               {shortName}
-            </Typography>
+            </Link>
           );
         },
       },
@@ -435,36 +418,16 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
           { label: 'False', value: 'False' },
           { label: 'Unknown', value: 'Unknown' },
         ],
-        getValue: svc => {
-          const readyCondition = getReadyCondition(svc);
-          return readyCondition?.status || 'Unknown';
-        },
-        render: svc => {
-          const readyCondition = getReadyCondition(svc);
-          let status: 'True' | 'False' | 'Unknown' = 'Unknown';
-          if (readyCondition?.status === 'True') status = 'True';
-          else if (readyCondition?.status === 'False') status = 'False';
-
-          return (
-            <ReadyStatusLabel
-              status={status}
-              reason={readyCondition?.reason}
-              message={readyCondition?.message}
-            />
-          );
-        },
+        getValue: svc => findReadyCondition(svc.status)?.status || 'Unknown',
+        render: svc => <ReadyCell condition={findReadyCondition(svc.status)} />,
       },
       {
         id: 'reason',
         label: 'Reason',
         gridTemplate: '2fr',
-        getValue: svc => {
-          const readyCondition = getReadyCondition(svc);
-          return readyCondition?.reason?.toLowerCase() || '';
-        },
+        getValue: svc => findReadyCondition(svc.status)?.reason?.toLowerCase() || '',
         render: svc => {
-          const readyCondition = getReadyCondition(svc);
-          const reason = readyCondition?.reason;
+          const reason = findReadyCondition(svc.status)?.reason;
 
           if (!reason) {
             return (
@@ -600,7 +563,7 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
   return (
     <ResourceListView
-      title="KServices"
+      title="Services"
       headerProps={headerProps}
       resourceClass={KService}
       columns={columns}
@@ -613,10 +576,12 @@ function KServicesListContents({ clusters }: KServicesListContentsProps) {
 
 export function KServicesList() {
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   return isKnativeInstalled ? (
-    <KServicesListContents clusters={clusters} />
+    <KServiceRestartProvider>
+      <KServicesListContents clusters={clusters} />
+    </KServiceRestartProvider>
   ) : (
     <NotInstalledBanner isLoading={isKnativeCheckLoading} />
   );

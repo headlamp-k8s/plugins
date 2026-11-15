@@ -143,8 +143,10 @@ it('reloads skills and reports completion', async () => {
   const onLoadComplete = vi.fn();
   renderDialog({ loadSkills, onLoadComplete });
   await screen.findAllByText('1 skill · 9.4 KB');
+  expect(loadSkills).toHaveBeenNthCalledWith(1, expect.any(Function), false);
   fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
   await waitFor(() => expect(loadSkills).toHaveBeenCalledTimes(2));
+  expect(loadSkills).toHaveBeenNthCalledWith(2, expect.any(Function), true);
   expect(onLoadComplete).toHaveBeenLastCalledWith({ count: 1 });
 });
 

@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
 import { ClusterPolicyReport } from '../resources/policyReport';
-import { SummaryChips } from './common';
+import { SummaryChips, tableRemountKey } from './common';
 import { ReportViewer } from './ReportViewer';
 
 function openClusterReportActivity(item: ClusterPolicyReport) {
@@ -33,15 +33,16 @@ function openClusterReportActivity(item: ClusterPolicyReport) {
 }
 
 export function ClusterPolicyReportList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Cluster Policy Reports')}
       resourceClass={ClusterPolicyReport}
       columns={[
         {
           id: 'name',
-          label: 'Name',
+          label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
             <MuiLink

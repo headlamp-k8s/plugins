@@ -1,0 +1,12 @@
+# Mock Argo CD configuration for local plugin UI testing only.
+#
+# The reserved .invalid domain cannot resolve on the public internet. Replace
+# this value with your real Argo CD URL when manually testing navigation.
+# Do not apply this mock ConfigMap over an existing Argo CD installation.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: https://argocd.example.invalid/argo-cd

@@ -4,6 +4,7 @@
   "description": "Browser-only AI UI code for Headlamp",
   "type": "module",
   "exports": {
+    "./AiUiI18nProvider": "./src/AiUiI18nProvider.tsx",
     "./components/agent/AgentThinkingSteps": "./src/components/agent/AgentThinkingSteps/AgentThinkingSteps.tsx",
     "./components/appbar/AIAssistantToggle": "./src/components/appbar/AIAssistantToggle/AIAssistantToggle.tsx",
     "./components/assistant/AgentThinkingBlock": "./src/components/assistant/AgentThinkingBlock/AgentThinkingBlock.tsx",
@@ -46,6 +47,7 @@
     "./diagnosis/ProactiveDiagnosisManager": "./src/diagnosis/ProactiveDiagnosisManager.ts",
     "./diagnosis/diagnosisHelpers": "./src/diagnosis/diagnosisHelpers.ts",
     "./icons/iconBundles": "./src/icons/iconBundles.ts",
+    "./icons/aiAssistantIcon": "./src/icons/aiAssistantIcon.ts",
     "./providers/modelProviders": "./src/providers/modelProviders.ts",
     "./formatting/stringFormatting": "./src/formatting/stringFormatting.ts",
     "./formatting/logFormatting": "./src/formatting/logFormatting.ts",
@@ -53,6 +55,7 @@
     "./parsing/urlParsing": "./src/parsing/urlParsing.ts",
     "./parsing/yamlParser": "./src/parsing/yamlParser.ts",
     "./mcp/electron-client": "./src/mcp/electron-client.ts",
+    "./mcp/host": "./src/mcp/host.ts",
     "./types/electron": "./src/types/electron.d.ts",
     "./testing/i18nTestSetup": "./src/testing/i18nTestSetup.ts",
     "./i18n": "./src/i18n.ts"
@@ -125,11 +128,11 @@
   },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.6.0",
-    "@vitest/coverage-v8": "4.1.8",
+    "@vitest/coverage-v8": "4.1.12",
     "axe-core": "^4.12.1",
     "eslint": "^8.57.1",
     "prettier": "^2.8.8",
     "typescript": "^5.6.2",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.12"
   }
 }

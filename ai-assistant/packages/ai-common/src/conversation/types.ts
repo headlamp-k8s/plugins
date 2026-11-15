@@ -39,6 +39,10 @@ export interface ConversationMessage {
   toolCalls?: unknown[];
   /** Identifier of the tool call this message belongs to. */
   toolCallId?: string;
+  /** Actual Kubernetes request cluster associated with a tool result. */
+  cluster?: string;
+  /** Host-captured YAML target on an assistant response; null means multiple request clusters. */
+  targetCluster?: string | null;
   /** Optional display name for the message author. */
   name?: string;
   /** Whether the message represents an error state. */
@@ -47,7 +51,7 @@ export interface ConversationMessage {
   success?: boolean;
   /** Whether the message was blocked by a content filter. */
   contentFilterError?: boolean;
-  /** Whether the message has already been rendered to the user. */
+  /** Whether this message is already represented by another visible entry. */
   alreadyDisplayed?: boolean;
   /** Whether the message is for UI display only and should not reach the LLM. */
   isDisplayOnly?: boolean;

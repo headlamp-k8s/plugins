@@ -1,0 +1,42 @@
+version: 0.1.0-alpha
+name: headlamp_velero
+displayName: Velero
+createdAt: "2026-11-08T00:00:00Z"
+description: A read-only Headlamp UI for Velero backup coverage, schedules, backups, restores, storage locations, and volume data movement.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/velero
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - velero
+  - backup
+  - restore
+screenshots:
+  - title: Deployment backup coverage
+    url: https://github.com/user-attachments/assets/92d1fce7-6ba0-4bc8-bdc9-d940c6ff3129
+  - title: Velero Schedule details
+    url: https://github.com/user-attachments/assets/42809139-925a-40d1-899c-16c62af39117
+  - title: Backup Storage Location details
+    url: https://github.com/user-attachments/assets/2e6ef7fb-964e-46d0-9788-47f80669ad74
+changes:
+  - kind: added
+    description: "Show backup coverage on Deployment, StatefulSet, PVC, and Namespace detail pages."
+  - kind: added
+    description: "Match schedules using namespace, resource, and label filters, and show cron, estimated next run, and latest backup status."
+  - kind: added
+    description: "Add Velero Schedule, Backup, and Restore list and detail pages."
+  - kind: added
+    description: "Add Backup Storage Location, Volume Snapshot Location, and Backup Repository pages."
+  - kind: added
+    description: "Show related PodVolumeBackup and DataUpload tables on Backup details, and PodVolumeRestore and DataDownload tables on Restore details."
+  - kind: added
+    description: "Provide a configurable Velero namespace, read-only RBAC guidance, and an empty state when Velero is not installed."
+  - kind: added
+    description: "Include coverage, schedule timing, query, storage, and datamover regression tests and existing Storybook coverage stories."
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/velero-0.1.0-alpha/headlamp-k8s-velero-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:8e20b22d686b45eaa11978c5b702820af287f6795f7b23a40b95ede85c46298e
+  headlamp/plugin/version-compat: ">=0.23"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

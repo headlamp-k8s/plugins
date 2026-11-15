@@ -52,6 +52,31 @@ export interface TinkerbellCondition {
 }
 
 /**
+ * Returns the type of the condition a resource is currently reporting.
+ *
+ * A condition carries a type and a status, and only the pair means anything:
+ * `{ type: "Failed", status: "False" }` says the job has not failed. Reading the
+ * type on its own inverts that, so this skips every condition whose status is not
+ * `True`.
+ *
+ * Where several conditions are true at once the last one wins, which matches the
+ * order a controller appends them.
+ *
+ * @param conditions - Conditions reported by a Tinkerbell or BMC resource.
+ * @returns The type of the last condition whose status is `True`, or undefined
+ *   when the resource is not asserting any condition.
+ */
+export function activeConditionType(conditions?: TinkerbellCondition[]): string | undefined {
+  if (!conditions?.length) {
+    return undefined;
+  }
+
+  const active = conditions.filter(condition => condition.status === 'True');
+
+  return active.length ? active[active.length - 1].type : undefined;
+}
+
+/**
  * Base interface for Tinkerbell custom resources.
  */
 export interface TinkerbellResource extends KubeObjectInterface {

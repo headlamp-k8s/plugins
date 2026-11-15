@@ -15,6 +15,7 @@
  */
 
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { interpretCleanupReadiness } from './cleanupReadiness';
 import { PolicyCondition } from './kyvernoPolicy';
 
 export interface CleanupPolicySpec {
@@ -60,7 +61,11 @@ abstract class CleanupPolicyBase extends KubeObject<CleanupPolicyInterface> {
   }
 
   get ready(): boolean {
-    return this.status?.conditions?.some(c => c.type === 'Ready' && c.status === 'True') ?? false;
+    return interpretCleanupReadiness(this.status?.conditions).ready;
+  }
+
+  get readyUnknown(): boolean {
+    return interpretCleanupReadiness(this.status?.conditions).readyUnknown;
   }
 }
 

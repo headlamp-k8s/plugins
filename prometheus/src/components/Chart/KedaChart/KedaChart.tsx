@@ -52,13 +52,14 @@ export interface BaseSeriesInfo {
 
 export function extractSeriesInfo<T extends BaseSeriesInfo>(
   response: PrometheusResponse,
-  metricExtractor: (metric: any) => Omit<T, keyof BaseSeriesInfo>
+  metricExtractor: (metric: any) => Omit<T, keyof BaseSeriesInfo>,
+  unknownInstance: string
 ): T[] {
   const results = response?.data?.result || [];
 
   return results.map((result, index) => {
     const resultMetric = result.metric || {};
-    const instance = resultMetric.instance || 'Unknown Instance';
+    const instance = resultMetric.instance || unknownInstance;
 
     let startTime: Date;
     let endTime: Date;
@@ -179,6 +180,7 @@ export function KedaChart(props: KedaChartProps) {
             </Button>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Timespan') }}
                 variant="outlined"
                 size="small"
                 name="Time"
@@ -203,6 +205,7 @@ export function KedaChart(props: KedaChartProps) {
             </Box>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Resolution') }}
                 variant="outlined"
                 size="small"
                 name="Time"

@@ -23,6 +23,20 @@ describe('toUserFriendlyError', () => {
     expect(toUserFriendlyError(new Error('403 forbidden'))).toContain('Access denied');
   });
 
+  it('keeps the provider explanation for an access failure', () => {
+    const result = toUserFriendlyError(
+      new Error('403 Access denied due to Virtual Network/Firewall rules.')
+    );
+    expect(result).toContain('Access denied. You may not have permission for this operation.');
+    expect(result).toContain('Virtual Network/Firewall rules');
+  });
+
+  it('does not repeat an explanation that only restates the status', () => {
+    expect(toUserFriendlyError(new Error('401 Unauthorized'))).toBe(
+      'Authentication error. Please check your credentials.'
+    );
+  });
+
   it('maps 404 to not found', () => {
     expect(toUserFriendlyError(new Error('not found'))).toContain('not found');
   });

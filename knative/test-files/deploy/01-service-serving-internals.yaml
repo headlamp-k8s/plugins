@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: serving-internals-service
+  namespace: knative-map-test
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: serving-internals-service
+  namespace: knative-map-test
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: '1'
+        autoscaling.knative.dev/max-scale: '3'
+        autoscaling.knative.dev/target: '2'
+    spec:
+      serviceAccountName: serving-internals-service
+      containerConcurrency: 2
+      containers:
+        - image: gcr.io/knative-samples/helloworld-go
+          env:
+            - name: TARGET
+              value: 'serving-internals'

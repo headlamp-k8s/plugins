@@ -1,5 +1,4 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Button, Grid, Link, Paper, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useHistory } from 'react-router-dom';
@@ -32,7 +31,7 @@ const DismissButton = styled(Button)(({ theme }) => ({
  */
 export function PrometheusNotFoundBanner() {
   const { t } = useTranslation();
-  const cluster = useCluster();
+  const cluster = K8s.useCluster();
   const history = useHistory();
 
   return (
@@ -52,6 +51,8 @@ export function PrometheusNotFoundBanner() {
       <Grid item>
         <Typography>
           <Link
+            component="button"
+            type="button"
             onClick={() => history.push(`/settings/plugins/${encodeURIComponent(PLUGIN_NAME)}`)}
           >
             {t('Configure Prometheus plugin.')}
@@ -60,7 +61,7 @@ export function PrometheusNotFoundBanner() {
       </Grid>
       <Grid item>
         <Typography>
-          <Link href={learnMoreLink} target="_blank">
+          <Link href={learnMoreLink} target="_blank" rel="noopener noreferrer">
             {t('Learn more about enabling advanced charts.')}
           </Link>
         </Typography>

@@ -32,7 +32,8 @@
     ]
   },
   "overrides": {
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "vitest": "^3.2.6"
   },
   "dependencies": {
     "notistack": "^3.0.1"

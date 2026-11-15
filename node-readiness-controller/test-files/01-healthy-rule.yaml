@@ -1,0 +1,41 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 01-healthy-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: healthy-all-ready
+spec:
+  enforcementMode: bootstrap-only
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/NetworkReady
+    value: pending
+    effect: NoSchedule
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/role: worker
+  conditions:
+    - type: network.kubernetes.io/CNIReady
+      requiredStatus: 'True'
+status:
+  observedGeneration: 1
+  appliedNodes:
+    - worker-node-01
+    - worker-node-02
+  nodeEvaluations:
+    - nodeName: worker-node-01
+      taintStatus: Absent
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: network.kubernetes.io/CNIReady
+          requiredStatus: 'True'
+          currentStatus: 'True'
+    - nodeName: worker-node-02
+      taintStatus: Absent
+      lastEvaluationTime: '2026-10-14T10:00:00Z'
+      conditionResults:
+        - type: network.kubernetes.io/CNIReady
+          requiredStatus: 'True'
+          currentStatus: 'True'

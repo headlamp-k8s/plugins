@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, SectionFilterHeader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
@@ -7,6 +8,7 @@ import Table from '../common/Table';
 import { NameLink, useNamespaces } from '../helpers';
 
 export function HelmReleases() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = HelmRelease.useList({ namespace: useNamespaces() });
 
@@ -15,13 +17,13 @@ export function HelmReleases() {
   }
 
   return (
-    <SectionBox title={<SectionFilterHeader title="Helm Releases" />}>
+    <SectionBox title={<SectionFilterHeader title={t('Helm Releases')} />}>
       <Table
         data={resources}
         // @ts-ignore -- TODO Update the sorting param
         defaultSortingColumn={2}
         columns={[
-          NameLink(HelmRelease),
+          NameLink(HelmRelease, t),
           'namespace',
           'status',
           'source',

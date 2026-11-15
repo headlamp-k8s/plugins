@@ -17,10 +17,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SKILLS_CONFIG, SkillsConfig } from './config';
 import { getSkillIdentity } from './config';
+import { getSkillContentSizeBytes, type ParsedSkill } from './parseSkill';
 import type { EmbeddingSkillRouter } from './routing/EmbeddingSkillRouter';
 import { DEFAULT_ROUTER_CONFIG } from './routing/KeywordSkillRouter';
 import { SkillFileSystem } from './SkillLoader';
-import { SkillManager } from './SkillManager';
+import { type SkillCache, SkillManager } from './SkillManager';
 
 /** Creates a mock filesystem for testing. */
 function createMockFs(files: Record<string, string | 'DIR'>): SkillFileSystem {
@@ -64,6 +65,111 @@ description: Second skill
 Content for skill two`;
 
 describe('SkillManager', () => {
+  it('keeps sibling playbooks when only Linux is enabled or selected by routing', async () => {
+    const linux =
+      '---\nname: linux\ndescription: Linux troubleshooting\n---\nRead `../kubernetes/references/domain.md`.';
+    const fetchFiles = vi.fn(
+      async () =>
+        new Map([
+          ['linux/SKILL.md', linux],
+          [
+            'kubernetes/SKILL.md',
+            '---\nname: kubernetes\ndescription: Kubernetes troubleshooting\n---\nCluster guidance.',
+          ],
+          ['kubernetes/references/domain.md', 'Shared diagnostic playbook.'],
+        ])
+    );
+    const remoteConfig: SkillsConfig = {
+      ...DEFAULT_SKILLS_CONFIG,
+      sources: [
+        {
+          type: 'git',
+          url: 'https://github.com/owner/repo',
+          ref: 'v1.0.0',
+          enabled: true,
+          includeReferences: true,
+        },
+      ],
+    };
+    const manager = new SkillManager(createMockFs({}), { fetchFiles });
+    const skills = await manager.loadAllSkills(remoteConfig);
+    const linuxSkill = skills.find(skill => skill.metadata.name === 'linux')!;
+    const kubernetesSkill = skills.find(skill => skill.metadata.name === 'kubernetes')!;
+    const linuxOnly = {
+      ...remoteConfig,
+      disabledSkills: [getSkillIdentity(kubernetesSkill)],
+    };
+    expect(await manager.getRoutedSkillsPromptText('Linux', linuxOnly)).toContain(
+      'Shared diagnostic playbook.'
+    );
+    const size = getSkillContentSizeBytes(linuxSkill);
+    const routerConfig = { ...DEFAULT_ROUTER_CONFIG, maxSkills: 1, maxTotalBytes: size };
+    const prompt = await manager.getRoutedSkillsPromptText('Linux', remoteConfig, routerConfig);
+    expect(prompt).toContain('Shared diagnostic playbook.');
+    expect(prompt).not.toContain('Cluster guidance.');
+    expect(
+      await manager.getRoutedSkillsPromptText('Linux', remoteConfig, {
+        ...routerConfig,
+        maxTotalBytes: size - 1,
+      })
+    ).toBe('');
+  });
+
+  it('separates reference-enabled caches and retains companions across managers', async () => {
+    const fetchFiles = vi.fn(
+      async () =>
+        new Map([
+          ['SKILL.md', SKILL_1],
+          ['references/install.md', 'Ask before installing the privileged DaemonSet.'],
+        ])
+    );
+    const entries = new Map<string, ParsedSkill[]>();
+    const cache: SkillCache = {
+      get: async key => structuredClone(entries.get(key) ?? null),
+      set: async (key, skills) => {
+        entries.set(key, structuredClone(skills));
+      },
+    };
+    const remoteConfig: SkillsConfig = {
+      ...DEFAULT_SKILLS_CONFIG,
+      sources: [
+        { type: 'git', url: 'https://github.com/owner/repo', ref: 'v1.0.0', enabled: true },
+      ],
+    };
+    const first = new SkillManager(createMockFs({}), { fetchFiles });
+    first.setSkillCache(cache);
+    const [withoutReferences] = await first.loadAllSkills(remoteConfig);
+    expect(withoutReferences.references).toBeUndefined();
+    entries.set(
+      JSON.stringify({
+        type: 'git',
+        url: 'https://github.com/owner/repo',
+        ref: 'v1.0.0',
+        path: '',
+        sha256: '',
+        includeReferences: true,
+        maxSkillSizeBytes: remoteConfig.maxSkillSizeBytes,
+      }),
+      [{ ...withoutReferences, references: [] }]
+    );
+    const withReferences: SkillsConfig = {
+      ...remoteConfig,
+      sources: remoteConfig.sources.map(source => ({ ...source, includeReferences: true })),
+    };
+    const [skill] = await first.loadAllSkills(withReferences);
+    expect(skill.references).toHaveLength(1);
+    const second = new SkillManager(createMockFs({}), { fetchFiles });
+    second.setSkillCache(cache);
+    expect((await second.loadAllSkills(withReferences))[0].references).toEqual(skill.references);
+    expect(fetchFiles).toHaveBeenCalledTimes(2);
+    expect(await second.getRoutedSkillsPromptText('install', withReferences)).toContain(
+      'Ask before installing the privileged DaemonSet.'
+    );
+    expect(second.getSkillsSummary(withReferences).totalSizeBytes).toBe(
+      getSkillContentSizeBytes(skill)
+    );
+  });
+
   let manager: SkillManager;
   let config: SkillsConfig;
 
@@ -105,6 +211,30 @@ describe('SkillManager', () => {
       const skills1 = await manager.loadAllSkills(config);
       const skills2 = await manager.loadAllSkills(config);
       expect(skills1).toEqual(skills2);
+    });
+
+    it('ignores persistent cache failures during loads and explicit reloads', async () => {
+      const fetchFiles = vi.fn(
+        async () => new Map([['SKILL.md', '---\nname: remote\ndescription: Remote\n---\nContent']])
+      );
+      const cache: SkillCache = {
+        get: vi.fn().mockRejectedValue(new Error('cache read failed')),
+        set: vi.fn().mockRejectedValue(new Error('cache write failed')),
+        delete: vi.fn().mockRejectedValue(new Error('cache delete failed')),
+      };
+      const remoteConfig: SkillsConfig = {
+        ...DEFAULT_SKILLS_CONFIG,
+        sources: [{ type: 'git', url: 'https://github.com/owner/repo', ref: 'v1', enabled: true }],
+      };
+      const cachedManager = new SkillManager(createMockFs({}), { fetchFiles });
+      cachedManager.setSkillCache(cache);
+
+      await expect(cachedManager.loadAllSkills(remoteConfig)).resolves.toHaveLength(1);
+      await expect(cachedManager.loadAllSkills(remoteConfig, true)).resolves.toHaveLength(1);
+      expect(fetchFiles).toHaveBeenCalledTimes(2);
+      expect(cache.get).toHaveBeenCalledTimes(1);
+      expect(cache.delete).toHaveBeenCalledTimes(1);
+      expect(cache.set).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -180,12 +310,32 @@ describe('SkillManager', () => {
 
   describe('invalidateCache', () => {
     it('should force reload on next call', async () => {
-      await manager.loadAllSkills(config);
-      manager.invalidateCache();
+      const fs = createMockFs({
+        '/skills': 'DIR',
+        '/skills/SKILL.md': SKILL_1,
+        '/other-skills': 'DIR',
+        '/other-skills/SKILL.md': SKILL_2,
+      });
+      const readFile = vi.spyOn(fs, 'readFile');
+      const cachedManager = new SkillManager(fs);
+      const entries = new Map<string, ParsedSkill[]>();
+      const persistentCache: SkillCache = {
+        get: async key => entries.get(key) ?? null,
+        set: async (key, skills) => {
+          entries.set(key, skills);
+        },
+        delete: async key => {
+          entries.delete(key);
+        },
+      };
+      cachedManager.setSkillCache(persistentCache);
+      await cachedManager.loadAllSkills(config);
+      expect(readFile).toHaveBeenCalledTimes(2);
+      cachedManager.invalidateCache();
 
-      // After invalidation, skills should still load correctly
-      const skills = await manager.loadAllSkills(config);
+      const skills = await cachedManager.loadAllSkills(config);
       expect(skills).toHaveLength(2);
+      expect(readFile).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -328,12 +478,83 @@ describe('SkillManager', () => {
       expect(result2.errors).toHaveLength(0); // Cached — no loading, no errors
     });
 
+    it('does not report persistent cache failures as source errors', async () => {
+      const fetchFiles = vi.fn(
+        async () => new Map([['SKILL.md', '---\nname: remote\ndescription: Remote\n---\nContent']])
+      );
+      const cache: SkillCache = {
+        get: vi.fn().mockRejectedValue(new Error('cache read failed')),
+        set: vi.fn().mockRejectedValue(new Error('cache write failed')),
+        delete: vi.fn().mockRejectedValue(new Error('cache delete failed')),
+      };
+      const remoteConfig: SkillsConfig = {
+        ...DEFAULT_SKILLS_CONFIG,
+        sources: [{ type: 'git', url: 'https://github.com/owner/repo', ref: 'v1', enabled: true }],
+      };
+      const cachedManager = new SkillManager(createMockFs({}), { fetchFiles });
+      cachedManager.setSkillCache(cache);
+
+      const first = await cachedManager.loadAllSkillsWithErrors(remoteConfig);
+      const reloaded = await cachedManager.loadAllSkillsWithErrors(remoteConfig, undefined, true);
+
+      expect(first).toMatchObject({ skills: [expect.any(Object)], errors: [] });
+      expect(reloaded).toMatchObject({ skills: [expect.any(Object)], errors: [] });
+      expect(fetchFiles).toHaveBeenCalledTimes(2);
+    });
+
     it('should reload after invalidateCache', async () => {
       await manager.loadAllSkillsWithErrors(config);
       manager.invalidateCache();
       const { skills, errors } = await manager.loadAllSkillsWithErrors(config);
       expect(skills).toHaveLength(2);
       expect(errors).toHaveLength(0);
+    });
+
+    it('shares downloaded skills across managers and bypasses them on explicit reload', async () => {
+      const fetchFiles = vi.fn(
+        async () => new Map([['SKILL.md', '---\nname: remote\ndescription: Remote\n---\nContent']])
+      );
+      const entries = new Map<string, ParsedSkill[]>();
+      const sharedCache: SkillCache = {
+        get: async key => entries.get(key) ?? null,
+        set: async (key, skills) => {
+          entries.set(key, skills);
+        },
+        delete: async key => {
+          entries.delete(key);
+        },
+      };
+      const remoteConfig: SkillsConfig = {
+        ...DEFAULT_SKILLS_CONFIG,
+        sources: [
+          {
+            type: 'git',
+            url: 'https://github.com/owner/repo',
+            ref: 'v1.0.0',
+            enabled: true,
+          },
+        ],
+      };
+      const firstManager = new SkillManager(createMockFs({}), { fetchFiles });
+      const secondManager = new SkillManager(createMockFs({}), { fetchFiles });
+      firstManager.setSkillCache(sharedCache);
+      secondManager.setSkillCache(sharedCache);
+
+      await firstManager.loadAllSkillsWithErrors(remoteConfig);
+      await secondManager.loadAllSkillsWithErrors(remoteConfig);
+      expect(fetchFiles).toHaveBeenCalledTimes(1);
+
+      await secondManager.loadAllSkillsWithErrors(remoteConfig, undefined, true);
+      expect(fetchFiles).toHaveBeenCalledTimes(2);
+
+      const limitedManager = new SkillManager(createMockFs({}), { fetchFiles });
+      limitedManager.setSkillCache(sharedCache);
+      const limited = await limitedManager.loadAllSkillsWithErrors({
+        ...remoteConfig,
+        maxSkillSizeBytes: 1,
+      });
+      expect(fetchFiles).toHaveBeenCalledTimes(3);
+      expect(limited.skills).toEqual([]);
     });
   });
 

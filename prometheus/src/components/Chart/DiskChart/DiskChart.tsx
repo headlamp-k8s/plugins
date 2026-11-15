@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { useTheme } from '@mui/material';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
@@ -25,6 +26,7 @@ interface DiskChartProps {
 }
 
 export function DiskChart(props: DiskChartProps) {
+  const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.interval);
   const theme = useTheme();
 
@@ -33,14 +35,14 @@ export function DiskChart(props: DiskChartProps) {
       plots={[
         {
           query: props.usageQuery,
-          name: 'usage',
+          name: t('usage'),
           strokeColor: '#CDC300',
           fillColor: '#FFF178',
           dataProcessor: dataProcessor,
         },
         {
           query: props.capacityQuery,
-          name: 'capacity',
+          name: t('capacity'),
           strokeColor: '#006B58',
           fillColor: '#98F6DC',
           dataProcessor: dataProcessor,

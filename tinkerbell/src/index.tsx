@@ -16,6 +16,7 @@
 import { addIcon, Icon } from '@iconify/react';
 import {
   registerKindIcon,
+  registerMapSource,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -35,6 +36,7 @@ import { WorkflowRuleSetDetail } from './components/workflowrulesets/Detail';
 import { WorkflowRuleSetList } from './components/workflowrulesets/List';
 import { WorkflowDetail } from './components/workflows/Detail';
 import { WorkflowList } from './components/workflows/List';
+import { tinkerbellSource } from './mapView';
 import { BmcJob } from './resources/bmcJob';
 import { BmcMachine } from './resources/bmcMachine';
 import { BmcTask } from './resources/bmcTask';
@@ -49,6 +51,8 @@ addIcon('simple-icons:tinkerbell', {
   width: 24,
   height: 24,
 });
+
+registerMapSource(tinkerbellSource);
 
 registerSidebarEntry({
   parent: null,

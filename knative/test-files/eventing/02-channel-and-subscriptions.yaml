@@ -1,0 +1,39 @@
+apiVersion: messaging.knative.dev/v1
+kind: Channel
+metadata:
+  name: orders
+  namespace: knative-eventing-test
+---
+apiVersion: messaging.knative.dev/v1
+kind: Subscription
+metadata:
+  name: orders-to-display
+  namespace: knative-eventing-test
+spec:
+  channel:
+    apiVersion: messaging.knative.dev/v1
+    kind: Channel
+    name: orders
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: event-display
+  reply:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+---
+apiVersion: messaging.knative.dev/v1
+kind: Subscription
+metadata:
+  name: missing-channel
+  namespace: knative-eventing-test
+spec:
+  channel:
+    apiVersion: messaging.knative.dev/v1
+    kind: Channel
+    name: does-not-exist
+  subscriber:
+    uri: https://example.com/events

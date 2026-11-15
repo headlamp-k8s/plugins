@@ -65,6 +65,32 @@ export interface ParsedSkill {
   contentSizeBytes: number;
   /** Absolute path or URL where this skill was loaded from. */
   source: string;
+  /** Verified companion documents, individually bounded by the per-file limit. */
+  references?: {
+    /** Path relative to the owning SKILL.md. */
+    path: string;
+    /** Markdown guidance. */
+    content: string;
+    /** UTF-8 size of this reference's content. */
+    contentSizeBytes: number;
+  }[];
+}
+
+/** Returns the skill and its verified references for display or prompt injection. */
+export function getSkillContent(skill: ParsedSkill): string {
+  return [
+    skill.content,
+    ...(skill.references ?? []).map(
+      reference => `## Reference: ${reference.path}\n\n${reference.content}`
+    ),
+  ].join('\n\n');
+}
+
+/** Counts reference content and headings against the same total prompt budget. */
+export function getSkillContentSizeBytes(skill: ParsedSkill): number {
+  return skill.references?.length
+    ? new TextEncoder().encode(getSkillContent(skill)).byteLength
+    : skill.contentSizeBytes;
 }
 
 /** Maximum allowed content size per skill in bytes (default: 50KB). */
@@ -121,10 +147,36 @@ interface SimpleYamlObject {
   [key: string]: SimpleYamlValue;
 }
 
+/** Folds a stripped YAML block scalar, preserving paragraphs and more-indented lines. */
+function foldScalarLines(lines: string[]): string {
+  const firstLine = lines.find(line => line.trim() !== '');
+  if (!firstLine) return '';
+  const indent = firstLine.length - firstLine.trimStart().length;
+  let folded = '';
+  let previousIndex = -1;
+  let previousLine = '';
+  for (let index = 0; index < lines.length; index++) {
+    if (!lines[index].trim()) continue;
+    const line = lines[index].slice(indent);
+    const emptyLines = index - previousIndex - 1;
+    if (previousIndex === -1) {
+      folded += '\n'.repeat(emptyLines);
+    } else if (line.startsWith(' ') || previousLine.startsWith(' ')) {
+      folded += '\n'.repeat(emptyLines + 1);
+    } else {
+      folded += emptyLines > 0 ? '\n'.repeat(emptyLines) : ' ';
+    }
+    folded += line;
+    previousIndex = index;
+    previousLine = line;
+  }
+  return folded;
+}
+
 /**
  * Parses the supported subset of YAML used by skill front matter.
  *
- * Supports flat scalar pairs, inline and block arrays, and one level of
+ * Supports flat scalar pairs, folded stripped scalars (`>-`), inline and block arrays, and one level of
  * nested objects without requiring a full YAML library.
  *
  * @param lines - YAML lines without the front-matter delimiters.
@@ -156,7 +208,8 @@ export function parseSimpleYaml(lines: string[]): SimpleYamlObject {
     blockArray = null;
   }
 
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     if (line.trim() === '' || line.trim().startsWith('#')) continue;
 
     const indent = line.length - line.trimStart().length;
@@ -195,6 +248,16 @@ export function parseSimpleYaml(lines: string[]): SimpleYamlObject {
       parentKey = key;
       nested = {};
       blockArray = null;
+    } else if (value === '>-') {
+      const scalarLines: string[] = [];
+      while (lineIndex + 1 < lines.length) {
+        const nextLine = lines[lineIndex + 1];
+        const nextIndent = nextLine.length - nextLine.trimStart().length;
+        if (nextLine.trim() !== '' && nextIndent <= indent) break;
+        scalarLines.push(nextLine);
+        lineIndex++;
+      }
+      result[key] = foldScalarLines(scalarLines);
     } else if (value.startsWith('[') && value.endsWith(']')) {
       // Inline array: [a, b, c]
       result[key] = value
@@ -319,6 +382,45 @@ export function parseSkillFile(
 }
 
 /**
+ * Parses a generic Markdown skill or a titled documentation page.
+ *
+ * Explicit skill metadata remains strict. Documentation uses its title as
+ * metadata and must have a nonempty body within the same per-skill byte limit.
+ */
+export function parseMarkdownFile(
+  raw: string,
+  source: string,
+  maxSizeBytes: number = DEFAULT_MAX_SKILL_SIZE_BYTES
+): ParsedSkill {
+  const [frontMatter, content] = parseFrontMatter(raw);
+  if (
+    frontMatter.name !== undefined ||
+    typeof frontMatter.title !== 'string' ||
+    !frontMatter.title.trim()
+  ) {
+    return parseSkillFile(raw, source, maxSizeBytes);
+  }
+
+  const title = frontMatter.title.trim();
+  if (!content) {
+    throw new Error(`Documentation file ${source} has no content`);
+  }
+  const contentSizeBytes = new TextEncoder().encode(content).length;
+  if (contentSizeBytes > maxSizeBytes) {
+    throw new Error(
+      `Documentation '${title}' content is ${contentSizeBytes} bytes, ` +
+        `exceeding the ${maxSizeBytes} byte limit`
+    );
+  }
+  return {
+    metadata: { name: title, description: `Documentation: ${title}` },
+    content,
+    contentSizeBytes,
+    source,
+  };
+}
+
+/**
  * Parses a GitHub Copilot instructions file (`.instructions.md` or `copilot-instructions.md`).
  *
  * These files may have optional YAML front-matter with `applyTo` glob patterns.
@@ -417,15 +519,16 @@ export function formatSkillsForPrompt(
   const included: string[] = [];
 
   for (const skill of skills) {
-    if (totalBytes + skill.contentSizeBytes > maxTotalBytes) {
+    const contentSizeBytes = getSkillContentSizeBytes(skill);
+    if (totalBytes + contentSizeBytes > maxTotalBytes) {
       console.warn(
         `Skill '${skill.metadata.name}' skipped: would exceed total prompt budget ` +
-          `(${totalBytes + skill.contentSizeBytes} > ${maxTotalBytes} bytes)`
+          `(${totalBytes + contentSizeBytes} > ${maxTotalBytes} bytes)`
       );
       continue;
     }
 
-    totalBytes += skill.contentSizeBytes;
+    totalBytes += contentSizeBytes;
 
     const attrs = [
       `name="${escapeAttr(skill.metadata.name)}"`,
@@ -433,7 +536,7 @@ export function formatSkillsForPrompt(
       ...(skill.metadata.version ? [`version="${escapeAttr(skill.metadata.version)}"`] : []),
     ].join(' ');
 
-    included.push(`<skill ${attrs}>\n${skill.content}\n</skill>`);
+    included.push(`<skill ${attrs}>\n${getSkillContent(skill)}\n</skill>`);
   }
 
   if (included.length === 0) return '';

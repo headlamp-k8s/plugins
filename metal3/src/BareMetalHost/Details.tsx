@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Kubernetes Authors
+ * Copyright 2026 The Kubernetes Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,23 @@
  */
 
 import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Link,
+  NameValueTable,
+  SectionBox,
+  SimpleTable,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
 import { CRDGuard } from '../common/CRDGuard';
 import { bareMetalHostClass } from './List';
+
+/** Bytes as a short size string, terabytes when large, gigabytes otherwise. */
+function formatBytes(bytes?: number): string {
+  if (!bytes) {
+    return '-';
+  }
+  return bytes >= 1e12 ? `${(bytes / 1e12).toFixed(1)} TB` : `${Math.round(bytes / 1e9)} GB`;
+}
 
 /**
  * Detail view for a single BareMetalHost.
@@ -101,6 +114,68 @@ export function BareMetalHostDetail(props: { name?: string; namespace?: string }
             },
           ]
         }
+        extraSections={(item: any) => {
+          const hw = item?.jsonData?.status?.hardware;
+          if (!hw) {
+            return [];
+          }
+          const cpu = hw.cpu ?? {};
+          const vendor = hw.systemVendor;
+          return [
+            <SectionBox title="Hardware" key="metal3-hardware">
+              <NameValueTable
+                rows={[
+                  {
+                    name: 'CPU',
+                    value: cpu.model
+                      ? `${cpu.model} (${cpu.count ?? '?'} cores, ${cpu.arch ?? '?'})`
+                      : '-',
+                  },
+                  {
+                    name: 'Memory',
+                    value: hw.ramMebibytes ? `${Math.round(hw.ramMebibytes / 1024)} GiB` : '-',
+                  },
+                  {
+                    name: 'System',
+                    value: vendor
+                      ? `${vendor.manufacturer ?? ''} ${vendor.productName ?? ''}`.trim() || '-'
+                      : '-',
+                  },
+                ]}
+              />
+            </SectionBox>,
+            hw.storage?.length ? (
+              <SectionBox title="Storage" key="metal3-storage">
+                <SimpleTable
+                  columns={[
+                    { label: 'Disk', getter: (d: any) => d.name || '-' },
+                    { label: 'Model', getter: (d: any) => d.model || '-' },
+                    { label: 'Size', getter: (d: any) => formatBytes(d.sizeBytes) },
+                    { label: 'Type', getter: (d: any) => (d.rotational ? 'HDD' : 'SSD') },
+                  ]}
+                  data={hw.storage}
+                />
+              </SectionBox>
+            ) : null,
+            hw.nics?.length ? (
+              <SectionBox title="Network" key="metal3-network">
+                <SimpleTable
+                  columns={[
+                    { label: 'NIC', getter: (n: any) => n.name || '-' },
+                    { label: 'MAC', getter: (n: any) => n.mac || '-' },
+                    { label: 'IP', getter: (n: any) => n.ip || '-' },
+                    {
+                      label: 'Speed',
+                      getter: (n: any) => (n.speedGbps ? `${n.speedGbps} Gbps` : '-'),
+                    },
+                    { label: 'PXE', getter: (n: any) => (n.pxe ? 'Yes' : 'No') },
+                  ]}
+                  data={hw.nics}
+                />
+              </SectionBox>
+            ) : null,
+          ].filter(Boolean);
+        }}
       />
     </CRDGuard>
   );

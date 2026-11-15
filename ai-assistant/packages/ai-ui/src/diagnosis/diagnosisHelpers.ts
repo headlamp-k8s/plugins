@@ -12,30 +12,41 @@ import type { DiagnosisResult, DiagnosisThinkingStep } from './ProactiveDiagnosi
 /* ── Status helpers ──────────────────────────────────────────────── */
 
 /**
- * Returns a status emoji for a diagnosis result.
- *
- * - ⏳ — actively loading
- * - ⬜ — queued / pending
- * - ❌ — failed with an error
- * - ✅ — completed successfully
+ * Returns a themeable status icon for analysis, not the workload's health.
  */
 export function getStatusIcon(d: DiagnosisResult): string {
-  if (d.loading) return '⏳';
-  if (d.pending) return '⬜';
-  if (d.error) return '❌';
-  return '✅';
+  if (d.loading) return 'mdi:progress-clock';
+  if (d.pending) return 'mdi:clock-outline';
+  if (d.error) return 'mdi:alert-circle-outline';
+  return 'mdi:check-circle-outline';
 }
 
 /**
  * Returns a human-readable status label for a diagnosis result.
  *
- * Possible values: `"Diagnosing…"`, `"Queued"`, `"Failed"`, `"Completed"`.
+ * Possible values: `"Diagnosing…"`, `"Queued"`, `"Failed"`, `"Analysis ready"`.
  */
 export function getStatusLabel(d: DiagnosisResult): string {
   if (d.loading) return 'Diagnosing…';
   if (d.pending) return 'Queued';
   if (d.error) return 'Failed';
-  return 'Completed';
+  return 'Analysis ready';
+}
+
+/** First prose line of the answer; code and activity are kept in the details. */
+export function getDiagnosisSummary(d: DiagnosisResult): string {
+  if (d.error) return d.error;
+  const { answer } = splitDiagnosisContent(d.diagnosis);
+  let inCode = false;
+  for (const line of answer.split('\n')) {
+    const text = line.trim();
+    if (text.startsWith('```')) {
+      inCode = !inCode;
+      continue;
+    }
+    if (!inCode && text && !text.startsWith('#')) return text.replace(/[*`]/g, '');
+  }
+  return d.event.message;
 }
 
 /* ── Step display helpers ───────────────────────────────────────── */

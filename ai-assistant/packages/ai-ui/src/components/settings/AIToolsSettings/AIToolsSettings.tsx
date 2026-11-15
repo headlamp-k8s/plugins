@@ -6,9 +6,14 @@
  * own tool list.
  */
 
-import { Box, FormControlLabel, Switch, Typography } from '@mui/material';
+import { Box, Switch, Typography } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  DefaultSectionWrapper,
+  DefaultSettingsTable,
+  type DefaultSettingsTableProps,
+} from '../../defaults/DefaultSlots/DefaultSlots';
 
 /** Describes a single AI tool that can be enabled or disabled. */
 export interface ToolInfo {
@@ -30,29 +35,8 @@ export interface AIToolsSettingsProps {
   onToolToggle: (toolId: string) => void;
   /** Optional wrapper component for layout. Falls back to a simple Box with title. */
   SectionWrapper?: React.ComponentType<{ title: string; children: React.ReactNode }>;
-}
-
-/**
- * Standalone MUI section used when the host does not provide a wrapper.
- *
- * @param props - Section title and content.
- * @returns Titled settings section.
- */
-function DefaultToolsSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
-        {title}
-      </Typography>
-      {children}
-    </Box>
-  );
+  /** Optional host settings table for aligned labels and controls. */
+  SettingsTable?: React.ComponentType<DefaultSettingsTableProps>;
 }
 
 /**
@@ -68,7 +52,8 @@ export function AIToolsSettings({
   tools,
   isToolEnabled,
   onToolToggle,
-  SectionWrapper = DefaultToolsSection,
+  SectionWrapper = DefaultSectionWrapper,
+  SettingsTable = DefaultSettingsTable,
 }: AIToolsSettingsProps): React.ReactElement {
   const { t } = useTranslation();
   return (
@@ -79,32 +64,30 @@ export function AIToolsSettings({
             {t('No AI tools available.')}
           </Typography>
         ) : (
-          tools.map(tool => (
-            <Box key={tool.id} sx={{ display: 'flex', alignItems: 'center', mb: 2, ml: 2 }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={isToolEnabled(tool.id)}
-                    onChange={() => onToolToggle(tool.id)}
-                    color="primary"
-                    inputProps={{
-                      'aria-label': t('Enable or disable {{toolName}}', {
-                        toolName: tool.name,
-                      }),
-                    }}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body1">{tool.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {tool.description}
-                    </Typography>
-                  </Box>
-                }
-              />
-            </Box>
-          ))
+          <SettingsTable
+            rows={tools.map(tool => ({
+              name: (
+                <Box>
+                  <Typography variant="body1">{tool.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tool.description}
+                  </Typography>
+                </Box>
+              ),
+              value: (
+                <Switch
+                  checked={isToolEnabled(tool.id)}
+                  onChange={() => onToolToggle(tool.id)}
+                  color="primary"
+                  inputProps={{
+                    'aria-label': t('Enable or disable {{toolName}}', {
+                      toolName: tool.name,
+                    }),
+                  }}
+                />
+              ),
+            }))}
+          />
         )}
       </Box>
     </SectionWrapper>

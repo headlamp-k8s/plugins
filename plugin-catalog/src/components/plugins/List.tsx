@@ -1,25 +1,26 @@
-import { ConfigStore, PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { PluginManager, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ConfirmDialog, SectionHeader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Pagination, TextField } from '@mui/material';
+import { Alert, Box, Pagination, TextField } from '@mui/material';
 import { Typography } from '@mui/material';
 import { Switch } from '@mui/material';
 import { FormControlLabel } from '@mui/material';
-import { isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import semver from 'semver';
+import { isAksOptimizedPlugin, useCatalogMode } from '../../aks';
+import { configStore, PluginCatalogConfig, usePluginCatalogConfig } from '../../config';
+import { getExternalProxyEndpoint } from './externalProxy';
+import { fetchAllPages } from './pagination';
 import { PluginCard } from './PluginCard';
 
 const PAGE_SIZE = 60; // Maximum allowed by the API
 const ARTIFACTHUB_HEADLAMP_PLUGIN_KIND = '21';
 const ORGANIZATION_NAME = 'headlamp';
 
-type conf = {
-  displayOnlyOfficialPlugins: boolean;
-  displayOnlyVerifiedPlugins: boolean;
+type PluginSearchResult = {
+  packages: PluginPackage[];
+  total?: number;
 };
-
-const configStore = new ConfigStore<conf>('@headlamp-k8s/plugin-catalog');
 
 export interface PluginPackage {
   package_id: string;
@@ -52,7 +53,12 @@ export interface PluginPackage {
   isUpdateAvailable?: boolean;
 }
 
-async function fetchPlugins(offset: number, org?: string) {
+async function fetchPlugins(
+  offset: number,
+  config: PluginCatalogConfig,
+  aksMode: boolean,
+  org?: string
+): Promise<PluginSearchResult> {
   const url = 'https://artifacthub.io/api/v1/packages/search';
 
   const params: Record<string, string> = {
@@ -63,8 +69,7 @@ async function fetchPlugins(offset: number, org?: string) {
 
   if (org) {
     params.org = org;
-  } else {
-    const config = configStore.get();
+  } else if (!aksMode) {
     const onlyOfficialPlugins = config?.displayOnlyOfficialPlugins ?? true;
     const onlyVerifiedPlugins = config?.displayOnlyVerifiedPlugins ?? true;
 
@@ -75,7 +80,7 @@ async function fetchPlugins(offset: number, org?: string) {
   const queryString = new URLSearchParams(params).toString();
   const finalUrl = `${url}?${queryString}`;
 
-  const response = await fetch(`http://localhost:4466/externalproxy`, {
+  const response = await fetch(getExternalProxyEndpoint(), {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -85,40 +90,35 @@ async function fetchPlugins(offset: number, org?: string) {
 
   if (response.ok) {
     const data = await response.json();
-    return { packages: data.packages, total: data?.metadata?.total ?? 0 };
+    const total = data?.metadata?.total;
+
+    return {
+      packages: data.packages,
+      total: Number.isFinite(total) && total > 0 ? total : undefined,
+    };
   } else {
     throw new Error('Request failed');
   }
 }
 
-async function fetchAllPlugins() {
-  let allPlugins: PluginPackage[] = [];
-  let offset = 0;
-  let total = Infinity;
-
-  while (offset < total) {
-    const { packages, total: newTotal } = await fetchPlugins(offset);
-    allPlugins = [...allPlugins, ...packages];
-    total = newTotal;
-    offset += PAGE_SIZE;
-
-    if (packages.length < PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return allPlugins;
+async function fetchAllPlugins(config: PluginCatalogConfig, aksMode: boolean) {
+  return fetchAllPages(offset => fetchPlugins(offset, config, aksMode), PAGE_SIZE);
 }
 
-async function fetchOrgPlugins(org: string) {
-  const { packages } = await fetchPlugins(0, org);
+async function fetchOrgPlugins(org: string, config: PluginCatalogConfig, aksMode: boolean) {
+  if (aksMode) {
+    return fetchAllPages(offset => fetchPlugins(offset, config, aksMode, org), PAGE_SIZE);
+  }
+  const { packages } = await fetchPlugins(0, config, aksMode, org);
   return packages;
 }
 
-async function processPlugins() {
+async function processPlugins(config: PluginCatalogConfig, aksMode: boolean) {
   const [allPlugins, orgPlugins] = await Promise.all([
-    fetchAllPlugins(),
-    fetchOrgPlugins(ORGANIZATION_NAME),
+    aksMode && config.displayOnlyAksOptimizedPlugins === false
+      ? Promise.resolve([])
+      : fetchAllPlugins(config, aksMode),
+    fetchOrgPlugins(ORGANIZATION_NAME, config, aksMode),
   ]);
 
   let pluginData: Record<string, any>[] = [];
@@ -163,12 +163,20 @@ async function processPlugins() {
     // Reorder so plugins with logos show first.
     .sort((a, b) => (!!b.logo_image_id ? 1 : 0) - (!!a.logo_image_id ? 1 : 0));
 
-  const totalPages = Math.ceil(pluginsWithInstallStatus.length / PAGE_SIZE);
-
-  return { plugins: pluginsWithInstallStatus, totalPages };
+  if (!aksMode) {
+    return { plugins: pluginsWithInstallStatus };
+  }
+  return {
+    plugins: pluginsWithInstallStatus.filter(plugin =>
+      config.displayOnlyAksOptimizedPlugins !== false
+        ? isAksOptimizedPlugin(plugin)
+        : plugin.repository?.organization_name === ORGANIZATION_NAME
+    ),
+  };
 }
 
 export interface PurePluginListProps {
+  aksMode?: boolean;
   plugins: PluginPackage[] | null;
   totalPages: number;
   page: number;
@@ -179,41 +187,50 @@ export interface PurePluginListProps {
   onOfficialSwitchChange: (isChecked: boolean) => void;
 }
 
-interface OfficialSwitchProps {
+interface CatalogFilterSwitchProps {
+  aksMode?: boolean;
   isChecked: boolean;
   onChange: (isChecked: boolean) => void;
 }
 
-function OfficialSwitch(props: OfficialSwitchProps) {
-  const { onChange: onOfficialSwitchChange, isChecked } = props;
+function CatalogFilterSwitch({ onChange, isChecked, aksMode = false }: CatalogFilterSwitchProps) {
   const { t } = useTranslation();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const label = aksMode ? t('AKS optimized') : t('Only Official');
   return (
     <>
       <FormControlLabel
-        control={
-          <Switch defaultChecked size="small" inputProps={{ 'aria-label': t('Only Official') }} />
-        }
-        label={<Typography>{t('Only Official')}</Typography>}
+        control={<Switch defaultChecked size="small" inputProps={{ 'aria-label': label }} />}
+        label={<Typography>{label}</Typography>}
         checked={isChecked}
         onChange={() => {
           if (isChecked) {
             setIsConfirmOpen(true);
           } else {
-            onOfficialSwitchChange(true);
+            onChange(true);
           }
         }}
       />
       <ConfirmDialog
         // @ts-ignore
         open={isConfirmOpen}
-        title={t('Do you want to show non-official plugins?')}
-        description={t(
-          "Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
-        )}
+        title={
+          aksMode
+            ? t('Do you want to show plugins that are not AKS optimized?')
+            : t('Do you want to show non-official plugins?')
+        }
+        description={
+          aksMode
+            ? t(
+                'Important: Plugins that are not AKS optimized are published by third parties and have not been validated for use with AKS Desktop. Are you sure you want to show them?'
+              )
+            : t(
+                "Important: Non-official plugins may not be published by the actual projects they are related to, nor by Headlamp's maintainers. Are you sure you want to show them?"
+              )
+        }
         handleClose={() => setIsConfirmOpen(false)}
         onConfirm={() => {
-          onOfficialSwitchChange(false);
+          onChange(false);
         }}
       />
     </>
@@ -221,6 +238,7 @@ function OfficialSwitch(props: OfficialSwitchProps) {
 }
 
 export function PurePluginList({
+  aksMode = false,
   plugins,
   totalPages,
   page,
@@ -237,7 +255,12 @@ export function PurePluginList({
         title={t('Plugins')}
         titleSideActions={[
           <Box pl={2}>
-            <OfficialSwitch isChecked={isOfficialSwitchChecked} onChange={onOfficialSwitchChange} />
+            <CatalogFilterSwitch
+              key={aksMode ? 'aks' : 'headlamp'}
+              aksMode={aksMode}
+              isChecked={isOfficialSwitchChecked}
+              onChange={onOfficialSwitchChange}
+            />
           </Box>,
         ]}
         actions={[
@@ -290,43 +313,48 @@ export function PurePluginList({
 
 export function PluginList() {
   const [search, setSearch] = useState('');
-  const [allPlugins, setAllPlugins] = useState<PluginPackage[] | null>(null);
+  const [result, setResult] = useState<{ key: string; plugins: PluginPackage[] } | null>(null);
+  const [error, setError] = useState<{ key: string } | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const conf = configStore.useConfig()();
-  const [fetchSettings, setFetchSettings] = useState<conf | null>({
-    displayOnlyOfficialPlugins: true,
-    displayOnlyVerifiedPlugins: true,
-  });
+  const conf = usePluginCatalogConfig();
+  const mode = useCatalogMode();
+  const aksMode = mode === 'aks';
+  const onlyOfficial = conf?.displayOnlyOfficialPlugins ?? true;
+  const onlyVerified = conf?.displayOnlyVerifiedPlugins ?? true;
+  const onlyAksOptimized = conf?.displayOnlyAksOptimizedPlugins ?? true;
+  const key = aksMode ? `aks:${onlyAksOptimized}` : `${mode}:${onlyOfficial}:${onlyVerified}`;
+  const { t } = useTranslation();
 
   useEffect(() => {
+    if (mode === 'loading') return;
+    let active = true;
+    setPage(1);
     const fetchAndProcessPlugins = async () => {
-      const { plugins, totalPages } = await processPlugins();
-      setAllPlugins(plugins);
-      setTotalPages(totalPages);
-      console.log(plugins, totalPages);
+      try {
+        const { plugins } = await processPlugins(
+          {
+            displayOnlyOfficialPlugins: onlyOfficial,
+            displayOnlyVerifiedPlugins: onlyVerified,
+            displayOnlyAksOptimizedPlugins: onlyAksOptimized,
+          },
+          aksMode
+        );
+        if (active) {
+          setResult({ key, plugins });
+          setError(null);
+        }
+      } catch (error) {
+        console.error('plugin-catalog: Failed to fetch plugins', error);
+        if (active) setError({ key });
+      }
     };
     fetchAndProcessPlugins();
-  }, [fetchSettings]);
+    return () => {
+      active = false;
+    };
+  }, [mode, aksMode, onlyOfficial, onlyVerified, onlyAksOptimized, key]);
 
-  useEffect(() => {
-    if (!conf) {
-      return;
-    }
-
-    setFetchSettings(oldSettings => {
-      const newSettings = {
-        ...oldSettings,
-        ...conf,
-      };
-
-      if (!isEqual(oldSettings, newSettings)) {
-        return newSettings;
-      }
-
-      return oldSettings;
-    });
-  }, [conf]);
+  const allPlugins = result?.key === key ? result.plugins : null;
 
   const filteredPlugins = useMemo(() => {
     if (!allPlugins) return null;
@@ -343,6 +371,11 @@ export function PluginList() {
     return filteredPlugins.slice(startIndex, startIndex + PAGE_SIZE);
   }, [filteredPlugins, page]);
 
+  const totalPages = useMemo(() => {
+    if (!filteredPlugins) return 0;
+    return Math.ceil(filteredPlugins.length / PAGE_SIZE);
+  }, [filteredPlugins]);
+
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(event.target.value);
     setPage(1);
@@ -353,17 +386,25 @@ export function PluginList() {
   };
 
   return (
-    <PurePluginList
-      plugins={paginatedPlugins}
-      totalPages={totalPages}
-      page={page}
-      search={search}
-      onSearchChange={handleSearchChange}
-      onPageChange={handlePageChange}
-      isOfficialSwitchChecked={conf?.displayOnlyOfficialPlugins ?? true}
-      onOfficialSwitchChange={(isChecked: boolean) => {
-        configStore.update({ displayOnlyOfficialPlugins: isChecked });
-      }}
-    />
+    <>
+      {error?.key === key && <Alert severity="error">{t('Failed to fetch plugins')}</Alert>}
+      <PurePluginList
+        aksMode={aksMode}
+        plugins={paginatedPlugins}
+        totalPages={totalPages}
+        page={page}
+        search={search}
+        onSearchChange={handleSearchChange}
+        onPageChange={handlePageChange}
+        isOfficialSwitchChecked={aksMode ? onlyAksOptimized : onlyOfficial}
+        onOfficialSwitchChange={(isChecked: boolean) => {
+          configStore.update(
+            aksMode
+              ? { displayOnlyAksOptimizedPlugins: isChecked }
+              : { displayOnlyOfficialPlugins: isChecked }
+          );
+        }}
+      />
+    </>
   );
 }

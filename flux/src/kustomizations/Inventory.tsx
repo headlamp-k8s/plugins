@@ -37,6 +37,9 @@ export function GetResourcesFromInventory(
   const { t } = useTranslation();
 
   React.useEffect(() => {
+    setResources([]);
+    const unsubscribes: Promise<() => void>[] = [];
+
     props.inventory?.forEach(item => {
       const parsedID = parseID(item.id);
       const { name, namespace, group, kind } = parsedID;
@@ -52,7 +55,7 @@ export function GetResourcesFromInventory(
         customResourceDefinition: undefined as any,
       });
 
-      resourceClass.apiGet(
+      const unsubscribe = resourceClass.apiGet(
         data => {
           // add the resource if it does not exist yet, compare with uid.
           setResources(prevResources => {
@@ -71,8 +74,24 @@ export function GetResourcesFromInventory(
           });
         }
       )();
+
+      unsubscribes.push(unsubscribe);
     });
-  }, []);
+
+    return () => {
+      unsubscribes.forEach(unsubscribePromise => {
+        unsubscribePromise
+          .then(cancelFn => {
+            if (typeof cancelFn === 'function') {
+              cancelFn();
+            }
+          })
+          .catch(() => {
+            /* ignore */
+          });
+      });
+    };
+  }, [props.inventory]);
 
   return (
     <Table
@@ -129,7 +148,7 @@ export function GetResourcesFromInventory(
   );
 }
 
-function inventoryNameLink(item: KubeObject) {
+export function inventoryNameLink(item: KubeObject) {
   // return the name and not a link if we could not query the resource
   if (!item.metadata.creationTimestamp) {
     return item.metadata.name;
@@ -181,7 +200,9 @@ function inventoryNameLink(item: KubeObject) {
   const resourceKind = K8s.ResourceClasses[kind];
   if (resourceKind) {
     const resource = new resourceKind(item);
-    if (resource?.getDetailsLink && resource.getDetailsLink()) {
+    // skip namespaced details link when cluster scoped resource has no namespace
+    const canBuildLink = !(resource.isNamespaced && !item.metadata.namespace);
+    if (canBuildLink && resource?.getDetailsLink && resource.getDetailsLink()) {
       return <Link kubeObject={resource}>{item.metadata.name}</Link>;
     }
     return item.metadata.name;

@@ -4,6 +4,7 @@ import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCre
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
 import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
 export const PLUGIN_NAME = 'prometheus';
@@ -23,6 +24,8 @@ type ClusterData = {
   subPath?: string;
   defaultTimespan?: string;
   defaultResolution?: string;
+  /** Exact scrape job label for the selected Tinkerbell installation. */
+  tinkerbellJob?: string;
 };
 
 /**
@@ -164,6 +167,7 @@ function getResourceApiVersion(resource?: ResourceIdentity): string | undefined 
 const resourceApiVersionRules: Record<string, RegExp> = {
   Job: /^batch\/v1$/,
   Queue: /^scheduling\.volcano\.sh\/v1beta1$/,
+  Application: /^argoproj\.io\/v1alpha1$/,
   Cluster: /^cluster\.x-k8s\.io\//,
   Machine: /^cluster\.x-k8s\.io\//,
   MachineDeployment: /^cluster\.x-k8s\.io\//,
@@ -174,7 +178,22 @@ const resourceApiVersionRules: Record<string, RegExp> = {
   Revision: /^serving\.knative\.dev\/v1$/,
 };
 
+/**
+ * Returns whether a resource is the Argo CD Application CRD that exposes the
+ * Application-specific Prometheus metrics. This is deliberately separate from
+ * the chart allowlist: the chart UI is added by the follow-up feature.
+ */
+export function isArgoCDApplication(resource?: ResourceIdentity): boolean {
+  return (
+    getResourceKind(resource) === 'Application' &&
+    getResourceApiVersion(resource) === 'argoproj.io/v1alpha1'
+  );
+}
+
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
+  if (getTinkerbellController(resource)) {
+    return true;
+  }
   const kind = getResourceKind(resource);
 
   if (!kind || !ChartEnabledKinds.includes(kind)) {
@@ -207,6 +226,7 @@ const ChartEnabledKinds = [
   'Service',
   'Revision',
   'Queue',
+  'Application',
   'Cluster',
   'MachineDeployment',
   'MachineSet',

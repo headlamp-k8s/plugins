@@ -35,70 +35,74 @@ export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: st
   );
 }
 
-export const registerHelmRelease = () => {
-  registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => {
-    console.log('flux', { resource });
-    if (resource.kind !== 'HelmRelease') return null;
+function HelmReleaseDetailsSection({ resource }: { resource: HelmRelease }) {
+  const { t } = useTranslation();
+  if (resource.kind !== 'HelmRelease') return null;
 
-    const themeName = localStorage.getItem('headlampThemePreference');
+  const themeName = localStorage.getItem('headlampThemePreference');
 
-    const cr = resource;
+  const cr = resource;
 
-    return (
-      <>
-        {cr && cr?.jsonData?.spec?.values && (
-          <SectionBox title="Values">
-            <Editor
-              language="yaml"
-              value={YAML.stringify(cr?.jsonData?.spec?.values)}
-              height={200}
-              theme={themeName === 'dark' ? 'vs-dark' : 'light'}
-            />
-          </SectionBox>
-        )}
-
-        <SectionBox title="Inventory">
-          <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
-        </SectionBox>
-
-        <SectionBox title="Dependencies">
-          <Table
-            data={cr?.jsonData?.spec?.dependsOn}
-            columns={[
-              {
-                header: 'Name',
-                accessorFn: item => (
-                  <Link
-                    routeName="helm"
-                    params={{
-                      name: item.name,
-                      namespace: item.namespace || resource.metadata.namespace,
-                    }}
-                  >
-                    {item.name}
-                  </Link>
-                ),
-              },
-              {
-                header: 'Namespace',
-                accessorFn: item => (
-                  <Link
-                    routeName="namespace"
-                    params={{ name: item.namespace || resource.metadata.namespace }}
-                  >
-                    {item.namespace || resource.metadata.namespace}
-                  </Link>
-                ),
-              },
-            ]}
+  return (
+    <>
+      {cr && cr?.jsonData?.spec?.values && (
+        <SectionBox title={t('Values')}>
+          <Editor
+            language="yaml"
+            value={YAML.stringify(cr?.jsonData?.spec?.values)}
+            height={200}
+            theme={themeName === 'dark' ? 'vs-dark' : 'light'}
           />
         </SectionBox>
-        <SectionBox title="Conditions">
-          <ConditionsTable resource={cr?.jsonData} />
-        </SectionBox>
-      </>
-    );
-  });
+      )}
+
+      <SectionBox title={t('Inventory')}>
+        <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
+      </SectionBox>
+
+      <SectionBox title={t('Dependencies')}>
+        <Table
+          data={cr?.jsonData?.spec?.dependsOn}
+          columns={[
+            {
+              header: t('Name'),
+              accessorFn: item => (
+                <Link
+                  routeName="helm"
+                  params={{
+                    name: item.name,
+                    namespace: item.namespace || resource.metadata.namespace,
+                  }}
+                >
+                  {item.name}
+                </Link>
+              ),
+            },
+            {
+              header: t('Namespace'),
+              accessorFn: item => (
+                <Link
+                  routeName="namespace"
+                  params={{ name: item.namespace || resource.metadata.namespace }}
+                >
+                  {item.namespace || resource.metadata.namespace}
+                </Link>
+              ),
+            },
+          ]}
+        />
+      </SectionBox>
+      <SectionBox title={t('Conditions')}>
+        <ConditionsTable resource={cr?.jsonData} />
+      </SectionBox>
+    </>
+  );
+}
+
+export const registerHelmRelease = () => {
+  registerDetailsViewSection(({ resource }: { resource: HelmRelease }) => (
+    <HelmReleaseDetailsSection resource={resource} />
+  ));
 };
 
 function CustomResourceDetails(props) {

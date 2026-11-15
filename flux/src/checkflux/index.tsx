@@ -21,7 +21,11 @@ export default function Flux404(props: Readonly<{ message: string; docs?: string
       <h1>{t(message)}</h1>
       <p>
         {t('Follow the')}{' '}
-        <Link target="_blank" href={docs ?? 'https://fluxcd.io/docs/installation/'}>
+        <Link
+          target="_blank"
+          rel="noopener noreferrer"
+          href={docs ?? 'https://fluxcd.io/docs/installation/'}
+        >
           {t('installation guide')}
         </Link>{' '}
         {t('to install flux on your cluster')}
@@ -38,7 +42,7 @@ export function NotSupported(props: { typeName: string }) {
       <p>{t('Flux installation has no support for {{typeName}}.', { typeName: t(typeName) })}</p>
       <p>
         {t('Follow the')}{' '}
-        <Link target="_blank" href="https://fluxcd.io/docs/installation/">
+        <Link target="_blank" rel="noopener noreferrer" href="https://fluxcd.io/docs/installation/">
           {t('installation guide')}
         </Link>{' '}
         {t('to support {{typeName}} on your cluster', { typeName: t(typeName) })}

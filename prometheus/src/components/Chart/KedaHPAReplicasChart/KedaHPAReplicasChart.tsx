@@ -27,10 +27,18 @@ interface KedaHPASeriesInfo extends BaseSeriesInfo {
   horizontalpodautoscaler: string;
 }
 
-function extractHPAsSeriesInfo(response: PrometheusResponse): KedaHPASeriesInfo[] {
-  return extractSeriesInfo<KedaHPASeriesInfo>(response, metric => ({
-    horizontalpodautoscaler: metric.horizontalpodautoscaler || 'Unknown HPA',
-  }));
+function extractHPAsSeriesInfo(
+  response: PrometheusResponse,
+  unknownInstance: string,
+  unknownHpa: string
+): KedaHPASeriesInfo[] {
+  return extractSeriesInfo<KedaHPASeriesInfo>(
+    response,
+    metric => ({
+      horizontalpodautoscaler: metric.horizontalpodautoscaler || unknownHpa,
+    }),
+    unknownInstance
+  );
 }
 
 interface KedaHPAReplicasChartProps extends KedaChartProps {
@@ -60,7 +68,11 @@ export function KedaHPAReplicasChart(props: KedaHPAReplicasChartProps) {
 
   const hpaReplicasDataProcessor = useCallback(
     (response: PrometheusResponse): ChartDataPoint[] => {
-      const newSeriesInfo = extractHPAsSeriesInfo(response);
+      const newSeriesInfo = extractHPAsSeriesInfo(
+        response,
+        t('Unknown Instance'),
+        t('Unknown HPA')
+      );
       const newInstanceGroups = groupSeriesByInstance(newSeriesInfo);
 
       // Update instance groups only when structure changes

@@ -12,10 +12,17 @@ import {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      options
-        ? key.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
-        : key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      const pluralKey =
+        Number(options?.count) === 1
+          ? key
+          : key.startsWith('Toggle {{phase}}:')
+          ? 'Toggle {{phase}}: {{count}} steps'
+          : key.replace('{{count}} step', '{{count}} steps');
+      return options
+        ? pluralKey.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options[name] ?? ''))
+        : pluralKey;
+    },
   }),
 }));
 

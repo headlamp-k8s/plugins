@@ -18,6 +18,8 @@ import {
   SavedConfigurations,
   StoredProviderConfig,
 } from '@headlamp-k8s/ai-common/providers/savedConfigs';
+import type { BuiltinSkillSourceState } from '@headlamp-k8s/ai-common/skills/builtinSources';
+import type { SkillsConfig } from '@headlamp-k8s/ai-common/skills/config';
 import {
   getAllAvailableToolsIncludingMCP as discoverAllAvailableToolsIncludingMCP,
   getEnabledToolIdsIncludingMCP as discoverEnabledToolIdsIncludingMCP,
@@ -130,6 +132,19 @@ export function initializeToolsState(pluginSettings: unknown) {
 //   };
 // }
 
+/**
+ * Headlamp project shape, mirrored locally because @kinvolk/headlamp-plugin
+ * does not export the project event types.
+ */
+export interface ProjectSummary {
+  /** Project identifier, also used as its display name. */
+  id: string;
+  /** Namespaces that belong to the project. */
+  namespaces: string[];
+  /** Clusters the project spans. */
+  clusters: string[];
+}
+
 export type HeadlampEventPayload =
   | {
       type: 'headlamp.home-page-loaded';
@@ -138,6 +153,36 @@ export type HeadlampEventPayload =
       clusters: any;
       errors: any;
       resource?: EventListEvent['data']['resource'];
+      resources?: any;
+      resourceKind?: string;
+      objectEvent?: any;
+    }
+  | {
+      type: 'headlamp.project-list-view';
+      title?: string;
+      items?: any[];
+      projects: ProjectSummary[];
+      resource?: any;
+      resources?: any;
+      resourceKind?: string;
+      objectEvent?: any;
+    }
+  | {
+      type:
+        | 'headlamp.project-details-view'
+        | 'headlamp.project-details-tab-change'
+        | 'headlamp.create-project'
+        | 'headlamp.delete-project';
+      title?: string;
+      items?: any[];
+      project: ProjectSummary;
+      /** Selected tab in the project details view. */
+      projectTab?: string;
+      /** Tab that was selected before the current one. */
+      previousProjectTab?: string;
+      /** Whether project namespaces were deleted along with the project. */
+      deleteNamespaces?: boolean;
+      resource?: any;
       resources?: any;
       resourceKind?: string;
       objectEvent?: any;
@@ -191,6 +236,10 @@ export interface PluginConfig extends SavedConfigurations {
   enabledTools?: string[] | Record<string, boolean>;
   /** MCP configuration */
   mcpConfig?: MCPConfig;
+  /** Skills configuration */
+  skills?: SkillsConfig;
+  /** Definitions last written for host-provided built-in skill sources, keyed by identity. */
+  seededBuiltinSkillSources?: BuiltinSkillSourceState;
   /** Is the AI Assistant preview enabled? Disabled by default. */
   previewEnabled?: boolean;
   /** Is scheduled proactive diagnosis enabled? Disabled by default. */

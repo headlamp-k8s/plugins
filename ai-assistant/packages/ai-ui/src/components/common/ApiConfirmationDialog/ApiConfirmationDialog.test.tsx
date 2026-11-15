@@ -167,6 +167,24 @@ it('locks default dialog actions while loading', () => {
   expect(onClose).not.toHaveBeenCalled();
 });
 
+it('shows the target cluster in the delete, patch, and create confirmations', () => {
+  const { rerender } = render(
+    <ApiConfirmationDialog
+      {...postRequestArgs}
+      method="DELETE"
+      url="/api/v1/namespaces/default/pods/example-pod"
+      body={undefined}
+      cluster="prod-west"
+    />
+  );
+  expect(screen.getByText('Cluster:')).toBeTruthy();
+  expect(screen.getByText(/prod-west/)).toBeTruthy();
+  rerender(<ApiConfirmationDialog {...postRequestArgs} method="PATCH" cluster="prod-west" />);
+  expect(screen.getByText(/prod-west/)).toBeTruthy();
+  rerender(<ApiConfirmationDialog {...postRequestArgs} cluster="prod-west" />);
+  expect(screen.getByText(/Cluster: prod-west/)).toBeTruthy();
+});
+
 it('supports typed custom confirmation and editor slots', () => {
   const confirmSlot = vi.fn();
   const editorSlot = vi.fn();

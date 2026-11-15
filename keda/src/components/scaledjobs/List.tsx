@@ -9,19 +9,19 @@ export function ScaledJobsList() {
   return (
     <KedaInstallCheck>
       <ResourceListView
-        title={t('ScaledJobs')}
+        title={t('Scaled Jobs')}
         resourceClass={ScaledJob}
         columns={[
           'name',
           'namespace',
           {
             id: 'min-replica-count',
-            label: t('Min'),
+            label: t('Minimum'),
             getValue: item => item.minReplicaCount,
           },
           {
             id: 'max-replica-count',
-            label: t('Max'),
+            label: t('Maximum'),
             getValue: item => item.maxReplicaCount,
           },
           {

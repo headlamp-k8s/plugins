@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   Link,
   SectionBox,
@@ -22,6 +23,7 @@ export function Notifications() {
 }
 
 function Alerts() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = AlertNotification.useList({ namespace: useNamespaces() });
 
@@ -30,12 +32,12 @@ function Alerts() {
   }
 
   return (
-    <SectionBox title={<SectionFilterHeader title="Alerts" />}>
+    <SectionBox title={<SectionFilterHeader title={t('Alerts')} />}>
       <Table
         data={resources}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => (
               <Link
@@ -52,11 +54,11 @@ function Alerts() {
           },
           'namespace',
           {
-            header: 'Severity',
+            header: t('Severity'),
             accessorFn: item => item?.jsonData?.spec.eventSeverity,
           },
           {
-            header: 'Provider Ref',
+            header: t('Provider Ref'),
             accessorFn: item =>
               item?.jsonData.spec.providerRef && (
                 <Link
@@ -72,14 +74,14 @@ function Alerts() {
               ),
           },
           {
-            header: 'Event Sources',
+            header: t('Event Sources'),
             accessorFn: item =>
               item?.jsonData.spec?.eventSources
                 .map(source => `${source.kind}/${source.name}`)
                 .join(', '),
           },
           {
-            header: 'Summary',
+            header: t('Summary'),
             accessorFn: item => item?.jsonData?.spec.summary,
           },
         ]}
@@ -90,6 +92,7 @@ function Alerts() {
 }
 
 function Providers() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = ProviderNotification.useList({ namespace: useNamespaces() });
 
@@ -98,12 +101,12 @@ function Providers() {
   }
 
   return (
-    <SectionBox title="Providers">
+    <SectionBox title={t('Providers')}>
       <Table
         data={resources}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => (
               <Link
@@ -119,7 +122,7 @@ function Providers() {
             ),
           },
           {
-            header: 'Namespace',
+            header: t('Namespace'),
             accessorFn: item => (
               <Link
                 routeName="namespace"
@@ -132,38 +135,38 @@ function Providers() {
             ),
           },
           {
-            header: 'certSecretRef',
+            header: t('certSecretRef'),
             accessorFn: item =>
               (item.jsonData.spec.certSecretRef &&
                 JSON.stringify(item.jsonData.spec.certSecretRef)) ||
               '-',
           },
           {
-            header: 'Interval',
+            header: t('Interval'),
             accessorFn: item => item.jsonData.spec.interval || '-',
           },
           {
-            header: 'Timeout',
+            header: t('Timeout'),
             accessorFn: item => item.jsonData.spec.timeout || '-',
           },
           {
-            header: 'Address',
+            header: t('Address'),
             accessorFn: item => item.jsonData.spec.address || '-',
           },
           {
-            header: 'channel',
+            header: t('channel'),
             accessorFn: item => item.jsonData.spec.channel,
           },
           {
-            header: 'Type',
+            header: t('Type'),
             accessorFn: item => item.jsonData.spec.type,
           },
           {
-            header: 'Username',
+            header: t('Username'),
             accessorFn: item => item.jsonData.spec.username || '-',
           },
           {
-            header: 'Proxy',
+            header: t('Proxy'),
             accessorFn: item => item.jsonData.spec.proxy || '-',
           },
         ]}
@@ -174,6 +177,7 @@ function Providers() {
 }
 
 function Receivers() {
+  const { t } = useTranslation();
   const filterFunction = useFilterFunc();
   const [resources, error] = ReceiverNotification.useList({ namespace: useNamespaces() });
 
@@ -182,12 +186,12 @@ function Receivers() {
   }
 
   return (
-    <SectionBox title="Receivers">
+    <SectionBox title={t('Receivers')}>
       <Table
         data={resources}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'metadata.name',
             Cell: ({ row: { original: item } }) => (
               <Link
@@ -203,7 +207,7 @@ function Receivers() {
             ),
           },
           {
-            header: 'Namespace',
+            header: t('Namespace'),
             accessorKey: 'metadata.namespace',
             Cell: ({ row: { original: item } }) => (
               <Link
@@ -217,16 +221,16 @@ function Receivers() {
             ),
           },
           {
-            header: 'Type',
+            header: t('Type'),
             accessorFn: item => item.jsonData.spec.type,
           },
-          { header: 'Events', accessorFn: item => item.jsonData.spec.events },
+          { header: t('Events'), accessorFn: item => item.jsonData.spec.events },
           {
-            header: 'Interval',
+            header: t('Interval'),
             accessorFn: item => item.jsonData.spec.interval,
           },
           {
-            header: 'Resources',
+            header: t('Resources'),
             accessorFn: item =>
               item.jsonData.spec?.resources &&
               item.jsonData.spec.resources.map(obj => (
@@ -234,7 +238,7 @@ function Receivers() {
               )),
           },
           {
-            header: 'Secret Ref',
+            header: t('Secret Ref'),
             accessorFn: item =>
               item.jsonData.spec.secretRef && (
                 <Link

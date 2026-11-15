@@ -16,15 +16,29 @@
 
 import type { CommandRunner } from '@headlamp-k8s/ai-common/providers/detectProvider';
 import {
+  BrowserSkillCache,
   createFetchHttpClient,
   createNoopFileSystem,
 } from '@headlamp-k8s/ai-common/skills/adapters/browser';
 import { getSkillsConfig, getSkillSourceIdentity } from '@headlamp-k8s/ai-common/skills/config';
+import {
+  getSkillContent,
+  getSkillContentSizeBytes,
+} from '@headlamp-k8s/ai-common/skills/parseSkill';
 import { SkillManager } from '@headlamp-k8s/ai-common/skills/SkillManager';
+import { AiUiI18nProvider } from '@headlamp-k8s/ai-ui/AiUiI18nProvider';
+import {
+  type DefaultSectionWrapperProps,
+  DefaultSettingsTable,
+  type DefaultSettingsTableProps,
+} from '@headlamp-k8s/ai-ui/components/defaults/DefaultSlots';
 import type { DeveloperOptionsConfig } from '@headlamp-k8s/ai-ui/components/settings/DeveloperSettings';
 import { SettingsPage } from '@headlamp-k8s/ai-ui/components/settings/SettingsPage';
+import { isAksDesktopHost } from '@headlamp-k8s/ai-ui/mcp/host';
 import { isTestModeCheck } from '@headlamp-k8s/ai-ui/testing/testMode';
 import { Headlamp, runCommand, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, Paper, Typography } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React from 'react';
 
@@ -36,6 +50,7 @@ import {
   HOLMES_SERVICE_NAMESPACE,
   HOLMES_SERVICE_PORT,
 } from '../../holmesClient';
+import { createPluginCommandRunner } from '../../pluginCommandRunner';
 import {
   getAllAvailableTools,
   isToolEnabled,
@@ -57,6 +72,48 @@ interface SkillDisplayInfo {
 }
 
 /**
+ * Adapts the shared settings sections to Headlamp's native section layout.
+ *
+ * @param props - Section heading, actions, and content.
+ * @returns Native settings section.
+ */
+export function SettingsSection({ title, children, actions }: DefaultSectionWrapperProps) {
+  return (
+    <Box sx={{ mb: 4 }}>
+      <SectionBox
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
+              <Typography variant="h5" component="h2">
+                {title}
+              </Typography>
+            </Box>
+            {actions && <Box sx={{ ml: 'auto', maxWidth: '100%' }}>{actions}</Box>}
+          </Box>
+        }
+        sx={{ px: 0, pt: 2 }}
+      >
+        {children}
+      </SectionBox>
+    </Box>
+  );
+}
+
+/**
+ * Gives descriptive settings the available width while keeping controls at the trailing edge.
+ *
+ * @param props - Setting labels and controls.
+ * @returns Theme-aware settings rows.
+ */
+export function SettingsRows(props: DefaultSettingsTableProps) {
+  return (
+    <Paper variant="outlined" sx={{ px: 2 }}>
+      <DefaultSettingsTable {...props} />
+    </Paper>
+  );
+}
+
+/**
  * Plugin settings page for the AI Assistant.
  *
  * Thin wrapper around the framework-agnostic {@link SettingsPage} component
@@ -69,7 +126,7 @@ interface SkillDisplayInfo {
 export default function Settings() {
   const savedConfigs = usePluginConfig();
   const { enqueueSnackbar } = useSnackbar();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Persistent SkillManager for the viewer (reuses cache across opens)
   const skillManagerRef = React.useRef<SkillManager | null>(null);
@@ -77,13 +134,16 @@ export default function Settings() {
   const loadSkills = React.useCallback(
     async (
       onProgress?: (progress: any) => void,
-      sourceIdentity?: string
+      sourceIdentity?: string,
+      forceReload?: boolean
     ): Promise<SkillDisplayInfo[]> => {
       if (!skillManagerRef.current) {
         skillManagerRef.current = new SkillManager(createNoopFileSystem(), createFetchHttpClient());
+        skillManagerRef.current.setSkillCache(new BrowserSkillCache());
       }
-      // Invalidate cache to force fresh load
-      skillManagerRef.current.invalidateCache();
+      if (forceReload) {
+        skillManagerRef.current.invalidateCache();
+      }
       const config = getSkillsConfig(pluginStore.get());
 
       // When a source identity is given, load only that exact URL/path source.
@@ -104,7 +164,8 @@ export default function Settings() {
 
       const { skills, errors } = await skillManagerRef.current.loadAllSkillsWithErrors(
         filteredConfig,
-        onProgress ? (_url, p) => onProgress(p) : undefined
+        onProgress ? (_url, p) => onProgress(p) : undefined,
+        forceReload
       );
 
       // Surface per-source errors so the user knows what failed
@@ -125,8 +186,8 @@ export default function Settings() {
         name: s.metadata.name,
         description: s.metadata.description,
         source: s.source,
-        content: s.content,
-        contentSizeBytes: s.contentSizeBytes,
+        content: getSkillContent(s),
+        contentSizeBytes: getSkillContentSizeBytes(s),
         version: s.metadata.version,
         author: s.metadata.author,
         tags: s.metadata.tags,
@@ -155,78 +216,98 @@ export default function Settings() {
 
   // Command runner for CLI-based provider detection
   const [commandRunner, setCommandRunner] = React.useState<CommandRunner | null>(null);
+  const isRunningAsApp = Headlamp.isRunningAsApp();
   React.useEffect(() => {
     if (typeof pluginRunCommand !== 'undefined') {
-      setCommandRunner(() => async (command: string, args: string[]) => {
-        // pluginRunCommand returns an EventEmitter-like object; convert to
-        // the { stdout, exitCode } shape that CommandRunner expects.
-        return new Promise<{ stdout: string; exitCode: number }>(resolve => {
-          // @ts-ignore — 'gh' and 'az' are narrower than the declared type
-          const proc = pluginRunCommand(command as any, args, {});
-          let out = '';
-          proc.stdout.on('data', (d: any) => (out += String(d)));
-          proc.on('exit', (code: number | null) => resolve({ stdout: out, exitCode: code ?? -1 }));
-        });
-      });
+      console.info(
+        '[ai-assistant auto-detect] GitHub and Azure CLI command runner is available: ' +
+          'pluginRunCommand was injected.'
+      );
+      setCommandRunner(() =>
+        createPluginCommandRunner((command, args, options) =>
+          pluginRunCommand(command as Parameters<typeof pluginRunCommand>[0], args, options)
+        )
+      );
+    } else {
+      console.warn(
+        '[ai-assistant auto-detect] GitHub and Azure CLI detection is unavailable: ' +
+          'pluginRunCommand was not injected. Ensure Headlamp grants runCmd-gh and runCmd-az permissions.'
+      );
     }
-  }, []);
+    if (!isRunningAsApp) {
+      console.warn(
+        '[ai-assistant auto-detect] Auto Detect UI is unavailable: ' +
+          'Headlamp.isRunningAsApp() returned false.'
+      );
+    }
+  }, [isRunningAsApp]);
 
   const pluginSettings = savedConfigs;
   const isTestMode = isTestModeCheck() || savedConfigs?.testMode === true;
+  // AKS Desktop ships its own agent, so Holmes is not offered there.
+  const holmesEnabled = !isAksDesktopHost();
 
   return (
-    <SettingsPage
-      savedConfigs={savedConfigs}
-      onConfigsChange={configs => pluginStore.update(configs as any)}
-      onTermsAccept={configs => pluginStore.update(configs as any)}
-      commandRunner={commandRunner}
-      dismissedProviders={(pluginStore.get() as any)?.autoDetectDismissedProviders || []}
-      onDismissProviders={keys => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, autoDetectDismissedProviders: keys } as any);
-      }}
-      tools={getAllAvailableTools()}
-      isToolEnabled={toolId => isToolEnabled(pluginSettings, toolId)}
-      onToolToggle={toolId => {
-        const updatedSettings = toggleTool(pluginSettings, toolId);
-        pluginStore.update(updatedSettings);
-      }}
-      isRunningAsApp={Headlamp.isRunningAsApp()}
-      configStore={pluginStore}
-      loadSkills={loadSkills}
-      onSkillsLoadComplete={handleSkillsLoadComplete}
-      onHolmesConfigChange={(patch: Record<string, any>) => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, ...patch });
-      }}
-      defaultHolmesNamespace={HOLMES_SERVICE_NAMESPACE}
-      defaultHolmesServiceName={HOLMES_SERVICE_NAME}
-      defaultHolmesPort={HOLMES_SERVICE_PORT}
-      previewEnabled={savedConfigs?.previewEnabled ?? true}
-      onPreviewChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, previewEnabled: enabled });
-      }}
-      proactiveDiagnosisEnabled={savedConfigs?.proactiveDiagnosisEnabled ?? false}
-      onProactiveDiagnosisChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, proactiveDiagnosisEnabled: enabled });
-      }}
-      isTestMode={isTestMode}
-      onTestModeChange={enabled => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, testMode: enabled });
-      }}
-      hasShownConfigPopover={savedConfigs?.configPopoverShown || false}
-      onResetPopover={() => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, configPopoverShown: false });
-      }}
-      devOptions={savedConfigs?.devOptions ?? {}}
-      onDevOptionsChange={(options: DeveloperOptionsConfig) => {
-        const current = pluginStore.get() || {};
-        pluginStore.update({ ...current, devOptions: options });
-      }}
-    />
+    <AiUiI18nProvider i18n={i18n}>
+      <SettingsPage
+        SectionWrapper={SettingsSection}
+        SettingsTable={SettingsRows}
+        savedConfigs={savedConfigs}
+        onConfigsChange={configs => pluginStore.update(configs as any)}
+        onTermsAccept={configs => pluginStore.update(configs as any)}
+        commandRunner={commandRunner}
+        dismissedProviders={(pluginStore.get() as any)?.autoDetectDismissedProviders || []}
+        onDismissProviders={keys => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, autoDetectDismissedProviders: keys } as any);
+        }}
+        tools={getAllAvailableTools()}
+        isToolEnabled={toolId => isToolEnabled(pluginSettings, toolId)}
+        onToolToggle={toolId => {
+          const updatedSettings = toggleTool(pluginSettings, toolId);
+          pluginStore.update(updatedSettings);
+        }}
+        isRunningAsApp={isRunningAsApp}
+        configStore={pluginStore}
+        loadSkills={loadSkills}
+        onSkillsLoadComplete={handleSkillsLoadComplete}
+        onHolmesConfigChange={
+          holmesEnabled
+            ? (patch: Record<string, any>) => {
+                const current = pluginStore.get() || {};
+                pluginStore.update({ ...current, ...patch });
+              }
+            : undefined
+        }
+        defaultHolmesNamespace={HOLMES_SERVICE_NAMESPACE}
+        defaultHolmesServiceName={HOLMES_SERVICE_NAME}
+        defaultHolmesPort={HOLMES_SERVICE_PORT}
+        previewEnabled={savedConfigs?.previewEnabled ?? true}
+        onPreviewChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, previewEnabled: enabled });
+        }}
+        proactiveDiagnosisEnabled={savedConfigs?.proactiveDiagnosisEnabled ?? false}
+        onProactiveDiagnosisChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, proactiveDiagnosisEnabled: enabled });
+        }}
+        isTestMode={isTestMode}
+        onTestModeChange={enabled => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, testMode: enabled });
+        }}
+        hasShownConfigPopover={savedConfigs?.configPopoverShown || false}
+        onResetPopover={() => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, configPopoverShown: false });
+        }}
+        devOptions={savedConfigs?.devOptions ?? {}}
+        onDevOptionsChange={(options: DeveloperOptionsConfig) => {
+          const current = pluginStore.get() || {};
+          pluginStore.update({ ...current, devOptions: options });
+        }}
+      />
+    </AiUiI18nProvider>
   );
 }

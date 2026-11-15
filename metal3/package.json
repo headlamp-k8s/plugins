@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/metal3",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "A Headlamp plugin for viewing Metal3 bare-metal hosts and infrastructure.",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -35,7 +35,8 @@
     ]
   },
   "overrides": {
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "vitest": "^3.2.6"
   },
   "devDependencies": {
     "@kinvolk/headlamp-plugin": "^0.14.0"

@@ -16,7 +16,11 @@
 
 import ConfigMap from '@kinvolk/headlamp-plugin/lib/k8s/configMap';
 import { Alert, Stack } from '@mui/material';
-import { formatIngressClass, INGRESS_CLASS_GATEWAY_API } from '../../../../../config/ingress';
+import {
+  formatIngressClass,
+  INGRESS_CLASS_GATEWAY_API,
+  readIngressClass,
+} from '../../../../../config/ingress';
 import { KService } from '../../../../../resources/knative';
 import DomainMappingSection from './DomainMappingSection';
 import IngressIntegrationsSection from './IngressIntegrationsSection';
@@ -39,17 +43,7 @@ function useIngressClassForCluster(cluster: string): IngressClassHookResult {
   );
   const ingressClassLoaded = !ingressClassLoading && !!networkConfig;
 
-  let ingressClass: string | null = null;
-
-  if (networkConfig?.data) {
-    const data = networkConfig.data as Record<string, string | undefined>;
-    const raw = data['ingress.class'];
-    const trimmed = raw?.trim();
-
-    if (trimmed && trimmed !== '') {
-      ingressClass = trimmed;
-    }
-  }
+  const ingressClass = readIngressClass(networkConfig?.data).value;
 
   return {
     ingressClass,
@@ -91,7 +85,7 @@ export function NetworkingSection({ kservice }: KServiceSectionProps) {
       {shouldShowIngressWarning && (
         <Alert severity="warning" variant="filled">
           Gateway API integration may be limited because Knative "config-network" ConfigMap
-          ingress.class
+          ingress-class
           {ingressClass === null
             ? ' is not set.'
             : ` is set to "${ingressClass}", not "${INGRESS_CLASS_GATEWAY_API}".`}

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { modelProviders } from '@headlamp-k8s/ai-common/providers/catalog';
 import type {
   CommandRunner,
   DetectedProvider,
@@ -33,6 +34,7 @@ import {
 } from './ModelSelector.stories';
 
 const detectionMocks = vi.hoisted(() => ({
+  detectAzureOpenAIProvider: vi.fn(),
   detectCopilotChatModels: vi.fn(),
   detectCopilotProvider: vi.fn(),
   detectGhCliAvailable: vi.fn(),
@@ -89,6 +91,7 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  detectionMocks.detectAzureOpenAIProvider.mockResolvedValue(null);
   detectionMocks.detectCopilotChatModels.mockResolvedValue([]);
   detectionMocks.detectCopilotProvider.mockResolvedValue(null);
   detectionMocks.detectGhCliAvailable.mockResolvedValue(true);
@@ -111,7 +114,8 @@ describe('ModelSelector static states', () => {
     expect(screen.getByText('OpenAI')).toBeTruthy();
     expect(screen.getByText('GitHub Copilot')).toBeTruthy();
     expect(screen.getByText('Ollama (llama3)')).toBeTruthy();
-    expect(screen.getByText('Default')).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Default' })).toBeTruthy();
+    expect(screen.getByText('Default', { selector: 'span' })).toBeTruthy();
   });
 
   it('resolves a non-default legacy selection when no selectedConfigId is supplied', () => {
@@ -155,6 +159,18 @@ describe('ModelSelector static states', () => {
     expect(onAutoDetect).toHaveBeenCalledOnce();
   });
 
+  it('places secondary detection before the primary add action in the header', () => {
+    renderSelector(withMultipleProvidersArgs, { onAutoDetect: vi.fn() });
+    const heading = screen.getByRole('heading', { name: 'Configured Providers' });
+    const detect = screen.getByRole('button', { name: 'Auto Detect' });
+    const add = screen.getByRole('button', { name: 'Add Provider' });
+    expect(heading.parentElement?.contains(detect)).toBe(true);
+    expect(heading.parentElement?.contains(add)).toBe(true);
+    expect(detect.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(add.classList.contains('MuiButton-sizeSmall')).toBe(true);
+    expect(detect.classList.contains('MuiButton-sizeSmall')).toBe(true);
+  });
+
   it('exposes busy state for the detecting story', async () => {
     renderSelector(autoDetectingArgs);
 
@@ -195,6 +211,15 @@ describe('ModelSelector static states', () => {
     fireEvent.click(screen.getByText('OpenAI'));
     fireEvent.keyDown(screen.getByText('OpenAI'), { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('renders compact provider rows with accessible management actions', async () => {
+    renderSelector(withMultipleProvidersArgs);
+    const table = screen.getByRole('table', { name: 'Configured Providers' });
+    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    expect(within(table).getAllByRole('button', { name: /^More options for / })).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Select OpenAI' })).toBeNull();
+    await expect(runAxe()).resolves.toEqual([]);
   });
 
   it('handles Space selection and missing change callbacks safely', () => {
@@ -416,6 +441,29 @@ describe('ModelSelector saved configuration actions', () => {
 });
 
 describe('ModelSelector configuration editing', () => {
+  it('preserves a removed model when editing only the configuration name', async () => {
+    const onChange = vi.fn();
+    const options = modelProviders
+      .find(provider => provider.id === 'openai')
+      ?.fields.find(field => field.name === 'model')?.options;
+    expect(options).not.toContain('gpt-4o');
+    renderSelector(withMultipleProvidersArgs, { onChange });
+    await openEditDialog();
+
+    expect(screen.getByDisplayValue('gpt-4o')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('Give this configuration a name'), {
+      target: { value: 'Renamed configuration' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configId: 'openai-primary',
+        config: expect.objectContaining({ model: 'gpt-4o' }),
+      })
+    );
+  });
+
   it('disables save until required values are present', async () => {
     renderSelector({ ...emptyArgs, savedConfigs: { providers: [], termsAccepted: true } });
     fireEvent.click(screen.getByRole('button', { name: 'Add Provider' }));
@@ -477,6 +525,66 @@ describe('ModelSelector configuration editing', () => {
     expect(screen.queryByRole('button', { name: 'Auto Detect' })).toBeNull();
   });
 
+  it('auto-detects Azure OpenAI settings in the provider form', async () => {
+    detectionMocks.detectAzureOpenAIProvider.mockResolvedValue({
+      providerId: 'azure',
+      source: 'Azure CLI · foundry-subscription',
+      displayName: 'Azure OpenAI (my-foundry · foundry-subscription)',
+      config: {
+        apiKey: '__AZ_CLI_AUTH__',
+        endpoint: 'https://my-foundry.cognitiveservices.azure.com/',
+        deploymentName: 'gpt-4.1-deployment',
+        model: 'gpt-4.1',
+        azSubscriptionId: 'foundry-subscription',
+        azResourceGroup: 'foundry-rg',
+        azAccountName: 'my-foundry',
+      },
+    });
+    const azureArgs: ModelSelectorProps = {
+      selectedConfigId: 'azure-primary',
+      selectedProvider: 'azure',
+      config: {},
+      savedConfigs: {
+        termsAccepted: true,
+        providers: [
+          {
+            id: 'azure-primary',
+            providerId: 'azure',
+            displayName: 'Azure OpenAI',
+            config: {},
+          },
+        ],
+      },
+      isConfigView: true,
+      onChange: vi.fn(),
+    };
+
+    renderSelector(azureArgs, { commandRunner });
+    await openEditDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'Auto Detect' }));
+
+    expect(await screen.findByText('Detected and applied provider settings.')).toBeTruthy();
+    expect(detectionMocks.detectAzureOpenAIProvider).toHaveBeenCalledWith(
+      commandRunner,
+      new Set(),
+      new Set(),
+      new Set(),
+      expect.any(AbortSignal)
+    );
+    const signal = detectionMocks.detectAzureOpenAIProvider.mock.calls[0][4] as AbortSignal;
+    expect(signal.aborted).toBe(false);
+    expect(
+      screen.getByDisplayValue('Azure OpenAI (my-foundry · foundry-subscription)')
+    ).toBeTruthy();
+    expect(
+      screen.getByDisplayValue('https://my-foundry.cognitiveservices.azure.com/')
+    ).toBeTruthy();
+    expect(screen.getByDisplayValue('gpt-4.1-deployment')).toBeTruthy();
+    expect(screen.getByDisplayValue('gpt-4.1')).toBeTruthy();
+    expect(detectionMocks.refreshGitHubToken).not.toHaveBeenCalled();
+    expect(detectionMocks.detectCopilotChatModels).not.toHaveBeenCalled();
+  });
+
   it('ignores stale manual detection after closing and opening another provider', async () => {
     let resolveDetection: (value: DetectedProvider | null) => void = () => {};
     detectionMocks.detectCopilotProvider.mockReturnValue(
@@ -487,20 +595,17 @@ describe('ModelSelector configuration editing', () => {
     renderSelector(withMultipleProvidersArgs, { commandRunner });
     await openEditDialog(1);
     fireEvent.click(screen.getByRole('button', { name: 'Auto Detect' }));
+    const signal = detectionMocks.detectCopilotProvider.mock.calls[0][1] as AbortSignal;
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'Configure GitHub Copilot' })).toBeNull()
     );
     await openEditDialog(0);
-    resolveDetection({
-      providerId: 'copilot',
-      source: 'GitHub CLI',
-      config: { apiKey: 'stale-token', model: 'stale-model' },
-      displayName: 'Stale Copilot',
-    });
+    expect(signal.aborted).toBe(true);
+    resolveDetection(null);
     await Promise.resolve();
     expect(screen.getByRole('heading', { name: 'Configure OpenAI' })).toBeTruthy();
-    expect(screen.queryByDisplayValue('stale-model')).toBeNull();
+    expect(detectionMocks.detectGhCliAvailable).not.toHaveBeenCalled();
   });
 
   it('preserves edits made while provider detection is pending', async () => {
@@ -514,6 +619,7 @@ describe('ModelSelector configuration editing', () => {
     renderSelector(withCopilotProviderArgs, { commandRunner, onChange });
     await openEditDialog();
     fireEvent.click(screen.getByRole('button', { name: 'Auto Detect' }));
+    expect(screen.getByRole('button', { name: 'Detecting…' })).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText('Give this configuration a name'), {
       target: { value: 'Keep my name' },
     });
@@ -617,6 +723,10 @@ describe('ModelSelector configuration editing', () => {
   });
 
   it('resets a custom model to the provider default', async () => {
+    const defaultModel = modelProviders
+      .find(provider => provider.id === 'openai')
+      ?.fields.find(field => field.name === 'model')?.default;
+    expect(defaultModel).toBeTruthy();
     renderSelector(withMultipleProvidersArgs, {
       config: { apiKey: 'sk-example', model: 'custom-model' },
       savedConfigs: {
@@ -634,7 +744,7 @@ describe('ModelSelector configuration editing', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset to default model' }));
 
-    await waitFor(() => expect(screen.getByDisplayValue('gpt-4.1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByDisplayValue(defaultModel as string)).toBeTruthy());
   });
 });
 
@@ -742,8 +852,14 @@ describe('ModelSelector auto-detection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Auto Detect' }));
 
     expect(await screen.findByText('Detected and applied provider settings.')).toBeTruthy();
-    expect(detectionMocks.refreshGitHubToken).toHaveBeenCalledWith(commandRunner);
-    expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith('refreshed-token');
+    expect(detectionMocks.refreshGitHubToken).toHaveBeenCalledWith(
+      commandRunner,
+      expect.any(AbortSignal)
+    );
+    expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(
+      'refreshed-token',
+      expect.any(AbortSignal)
+    );
   });
 
   it('keeps detected settings successful when optional model discovery fails', async () => {
@@ -825,7 +941,10 @@ describe('ModelSelector auto-detection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Auto Detect' }));
 
     await waitFor(() =>
-      expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith('literal-detected-token')
+      expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(
+        'literal-detected-token',
+        expect.any(AbortSignal)
+      )
     );
     expect(detectionMocks.refreshGitHubToken).not.toHaveBeenCalled();
   });
@@ -853,7 +972,11 @@ describe('ModelSelector auto-detection', () => {
     await openEditDialog();
 
     await waitFor(
-      () => expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(typedToken),
+      () =>
+        expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(
+          typedToken,
+          expect.any(AbortSignal)
+        ),
       { timeout: 1200 }
     );
   });
@@ -883,12 +1006,18 @@ describe('ModelSelector auto-detection', () => {
     );
     await openEditDialog();
     await waitFor(
-      () => expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(typedToken),
+      () =>
+        expect(detectionMocks.detectCopilotChatModels).toHaveBeenCalledWith(
+          typedToken,
+          expect.any(AbortSignal)
+        ),
       { timeout: 1200 }
     );
+    const modelSignal = detectionMocks.detectCopilotChatModels.mock.calls[0][1] as AbortSignal;
     fireEvent.change(screen.getByPlaceholderText('ghp_... or use Auto Detect'), {
       target: { value: 'short' },
     });
+    expect(modelSignal.aborted).toBe(true);
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Model' }));
     expect(screen.queryByText('live-only-model')).toBeNull();
   });

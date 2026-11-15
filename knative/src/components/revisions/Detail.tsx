@@ -71,7 +71,7 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
   return (
     <Box display="flex" gap={1} flexWrap="wrap">
       {traffic.map(t => {
-        const isTagOnly = t.percent === 0 && t.tag;
+        const isTagOnly = (t.percent ?? 0) === 0 && t.tag;
         const latestSuffix = t.latestRevision ? ' (Latest)' : '';
         if (isTagOnly) {
           const url = getSafeUrl(t.url);
@@ -114,7 +114,7 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
 export function RevisionDetail() {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   if (!isKnativeInstalled) {
     return <NotInstalledBanner isLoading={isKnativeCheckLoading} />;

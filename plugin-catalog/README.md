@@ -2,6 +2,18 @@
 
 This plugin enhances Headlamp by adding a plugin catalog powered by ArtifactHub.
 
+## Settings
+
+Open **Settings > Plugins > plugin-catalog** to choose whether the catalog shows
+only official plugins or only verified plugins. Both filters are enabled by default.
+Changes are saved automatically when a switch is toggled; there is no Save or
+Cancel step.
+
+With the `aks-desktop` plugin enabled and compatible, the catalog defaults to
+**AKS optimized** plugins. Turning the filter off shows only Headlamp
+organization plugins after confirmation. Disabling the AKS plugin restores
+the stock filters; each mode keeps its saved preferences.
+
 ## Developing Headlamp Plugins
 
 ### Setting up the Environment

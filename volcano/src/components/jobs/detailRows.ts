@@ -1,4 +1,5 @@
 import { ContainerSpec, LifecyclePolicy, TaskSpec } from '../../resources/job';
+import { getTaskReplicas } from '../../utils/taskReplicas';
 
 type DetailRow = {
   name: string;
@@ -138,8 +139,8 @@ export function getTaskContainerRows(container: ContainerSpec): DetailRow[] {
 export function getTaskRows(task: TaskSpec, index: number): DetailRow[] {
   return [
     { name: 'Name', value: task.name || `Task ${index + 1}` },
-    { name: 'Replicas', value: task.replicas },
-    { name: 'Min Available', value: task.minAvailable ?? task.replicas },
+    { name: 'Replicas', value: getTaskReplicas(task) },
+    { name: 'Min Available', value: task.minAvailable ?? getTaskReplicas(task) },
     { name: 'Max Retry', value: task.maxRetry ?? '-' },
     { name: 'Restart Policy', value: task.template?.spec?.restartPolicy || '-' },
     {

@@ -1,0 +1,95 @@
+# Optional single-replica Vagrant lab monitoring, not a production installation.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tinkerbell-metrics-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus
+  namespace: tinkerbell-metrics-demo
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: tinkerbell
+        metrics_path: /controllers/metrics
+        static_configs:
+          - targets: ['tinkerbell.tinkerbell.svc.cluster.local:7080']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: tinkerbell-metrics-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tinkerbell-metrics-demo
+  template:
+    metadata:
+      labels:
+        app: tinkerbell-metrics-demo
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: prometheus
+          image: quay.io/prometheus/prometheus:v3.5.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=24h
+            - --storage.tsdb.retention.size=256MB
+          ports:
+            - name: http
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus
+        - name: data
+          emptyDir:
+            sizeLimit: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: tinkerbell-metrics-demo
+  labels:
+    headlamp-prometheus: 'true'
+spec:
+  selector:
+    app: tinkerbell-metrics-demo
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http

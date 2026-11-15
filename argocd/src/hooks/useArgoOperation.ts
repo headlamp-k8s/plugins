@@ -17,7 +17,11 @@
 import { useSnackbar } from 'notistack';
 import { useCallback, useRef, useState } from 'react';
 
-type OperationFn = (name: string, namespace: string) => Promise<unknown>;
+type OperationFn<Args extends unknown[] = []> = (
+  name: string,
+  namespace: string,
+  ...args: Args
+) => Promise<unknown>;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -32,25 +36,30 @@ function getErrorMessage(error: unknown): string {
  * Hook for a single Argo CD operation with loading state and snackbar feedback.
  * Used by the Application detail view where one operation runs at a time.
  */
-export function useArgoOperation(operationFn: OperationFn, operationLabel: string) {
+export function useArgoOperation<Args extends unknown[]>(
+  operationFn: OperationFn<Args>,
+  operationLabel: string
+) {
   const { enqueueSnackbar } = useSnackbar();
   const [isLoading, setIsLoading] = useState(false);
   const inFlightRef = useRef(false);
 
   const execute = useCallback(
-    async (name: string, namespace: string) => {
-      if (isLoading) return;
-      if (inFlightRef.current) return;
+    async (name: string, namespace: string, ...args: Args): Promise<boolean> => {
+      if (isLoading) return false;
+      if (inFlightRef.current) return false;
       inFlightRef.current = true;
       setIsLoading(true);
       try {
-        await operationFn(name, namespace);
+        await operationFn(name, namespace, ...args);
         enqueueSnackbar(`${operationLabel} triggered for ${name}`, { variant: 'success' });
+        return true;
       } catch (error) {
         enqueueSnackbar(
           `Failed to ${operationLabel.toLowerCase()} ${name}: ${getErrorMessage(error)}`,
           { variant: 'error' }
         );
+        return false;
       } finally {
         inFlightRef.current = false;
         setIsLoading(false);

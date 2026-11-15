@@ -26,6 +26,11 @@ interface ErrorMapping {
   pattern: RegExp;
   /** User-facing message returned when the pattern matches. */
   message: string;
+  /**
+   * Append the provider's own message. Set where the status code alone cannot
+   * distinguish causes, e.g. an Azure 403 from a missing role vs. a firewall rule.
+   */
+  keepDetail?: boolean;
 }
 
 const ERROR_MAPPINGS: ErrorMapping[] = [
@@ -37,10 +42,15 @@ const ERROR_MAPPINGS: ErrorMapping[] = [
     pattern: /timeout|timed out/i,
     message: 'Request timed out. The operation took too long to complete.',
   },
-  { pattern: /unauthorized|401/i, message: 'Authentication error. Please check your credentials.' },
+  {
+    pattern: /unauthorized|401/i,
+    message: 'Authentication error. Please check your credentials.',
+    keepDetail: true,
+  },
   {
     pattern: /forbidden|403/i,
     message: 'Access denied. You may not have permission for this operation.',
+    keepDetail: true,
   },
   { pattern: /not found|404/i, message: 'The requested resource was not found.' },
   { pattern: /rate limit|429/i, message: 'Too many requests. Please wait a moment and try again.' },
@@ -61,6 +71,34 @@ const ERROR_MAPPINGS: ErrorMapping[] = [
   { pattern: /abort|cancel/i, message: 'Operation was cancelled.' },
 ];
 
+/** Messages that only restate the status code and so add nothing to the mapping. */
+const UNINFORMATIVE_DETAIL =
+  /^(?:\d{3}\s*)?(?:forbidden|unauthorized|access denied|permission denied|error|request failed)[\s.!]*$/i;
+
+/**
+ * Strips exception prefixes and a leading HTTP status code from a raw error message.
+ *
+ * @param rawMessage - Original message from the thrown error.
+ * @returns The provider's explanation, or `null` when it only restates the status.
+ */
+function extractErrorDetail(rawMessage: string): string | null {
+  const detail = stripExceptionPrefix(rawMessage)
+    .replace(/^\d{3}\s+/, '')
+    .trim();
+  if (!detail || UNINFORMATIVE_DETAIL.test(detail)) return null;
+  return detail;
+}
+
+/**
+ * Removes standard exception-type prefixes such as `Error:` from a message.
+ *
+ * @param rawMessage - Original message from the thrown error.
+ * @returns The message without its exception-type prefix.
+ */
+function stripExceptionPrefix(rawMessage: string): string {
+  return rawMessage.replace(/^(?:Error|TypeError|ReferenceError|SyntaxError):\s*/i, '').trim();
+}
+
 /**
  * Converts a raw `Error` (or any thrown value) to a short, human-readable
  * string suitable for display in the chat UI.
@@ -79,15 +117,13 @@ export function toUserFriendlyError(error: unknown): string {
 
   const errorMessage = error instanceof Error ? error.message : String(error);
 
-  for (const { pattern, message } of ERROR_MAPPINGS) {
-    if (pattern.test(errorMessage)) return message;
+  for (const { pattern, message, keepDetail } of ERROR_MAPPINGS) {
+    if (!pattern.test(errorMessage)) continue;
+    const detail = keepDetail ? extractErrorDetail(errorMessage) : null;
+    return detail ? `${message} ${detail}` : message;
   }
 
-  const clean = errorMessage
-    .replace(/^(?:Error|TypeError|ReferenceError|SyntaxError):\s*/i, '')
-    .trim();
-
-  return clean || 'An unexpected error occurred. Please try again.';
+  return stripExceptionPrefix(errorMessage) || 'An unexpected error occurred. Please try again.';
 }
 
 /**

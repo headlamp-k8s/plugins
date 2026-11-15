@@ -63,6 +63,12 @@ export function makeInstanceClass(info: InstanceApiInfo): InstanceClass {
     static apiName = info.plural;
     static apiVersion = `${info.group}/${info.version}`;
     static isNamespaced = info.isNamespaced;
+    /**
+     * Name of the CRD this class was built from, `<plural>.<group>`.
+     * Headlamp's details panel can only render a custom resource when
+     * told its CRD, so graph nodes read it back via getCrdName.
+     */
+    static crdName = `${info.plural}.${info.group}`;
   };
   instanceClassCache.set(cacheKey, instanceClass);
   return instanceClass;

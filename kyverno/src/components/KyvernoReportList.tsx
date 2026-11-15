@@ -18,24 +18,11 @@ import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
-import {
-  AdmissionReport,
-  BackgroundScanReport,
-  ClusterAdmissionReport,
-  ClusterBackgroundScanReport,
-  ClusterEphemeralReport,
-  EphemeralReport,
-} from '../resources/kyvernoReports';
-import { SummaryChips } from './common';
+import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
+import { SummaryChips, tableRemountKey } from './common';
 import { ReportClass, ReportLike, ReportViewer } from './ReportViewer';
 
-export type AnyKyvernoReportClass =
-  | typeof AdmissionReport
-  | typeof ClusterAdmissionReport
-  | typeof BackgroundScanReport
-  | typeof ClusterBackgroundScanReport
-  | typeof EphemeralReport
-  | typeof ClusterEphemeralReport;
+export type AnyKyvernoReportClass = typeof EphemeralReport | typeof ClusterEphemeralReport;
 
 interface KyvernoReportListProps<T extends AnyKyvernoReportClass> {
   /** Untranslated title key, fed through useTranslation. */
@@ -50,7 +37,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
   resourceClass,
   activityIdPrefix,
 }: KyvernoReportListProps<T>) {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const isNamespaced = resourceClass.isNamespaced;
 
   function openReport(item: InstanceType<T>) {
@@ -74,6 +61,7 @@ export function KyvernoReportList<T extends AnyKyvernoReportClass>({
 
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t(titleKey)}
       resourceClass={resourceClass}
       columns={[

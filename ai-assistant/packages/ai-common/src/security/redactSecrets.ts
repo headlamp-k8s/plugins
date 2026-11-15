@@ -44,11 +44,11 @@ export function redactSecrets(input: string): string {
 
   // PEM blocks — run first so private-key content is gone before the
   // generic key-value patterns could match individual lines inside them.
-  out = out.replace(/-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g, '[REDACTED]');
+  out = redactPemBlocks(out);
 
   // JWT tokens: three base64url segments separated by dots.
   // The first two start with "eyJ" (base64 of '{"').
-  out = out.replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]');
+  out = redactJwts(out);
 
   // AWS long-lived and temporary access key IDs.
   out = out.replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '[REDACTED]');
@@ -130,6 +130,150 @@ export function redactSecrets(input: string): string {
 }
 
 /**
+ * Returns the end of a run of base64url characters (`[A-Za-z0-9_-]`).
+ *
+ * @param text - Text being scanned.
+ * @param from - Index where the run starts.
+ * @returns Index after the last base64url character.
+ */
+function base64UrlRunEnd(text: string, from: number): number {
+  let end = from;
+  while (end < text.length) {
+    const code = text.charCodeAt(end);
+    const isBase64Url =
+      (code >= 48 && code <= 57) || // 0-9
+      (code >= 65 && code <= 90) || // A-Z
+      (code >= 97 && code <= 122) || // a-z
+      code === 95 || // _
+      code === 45; // -
+    if (!isBase64Url) break;
+    end++;
+  }
+  return end;
+}
+
+/**
+ * Replaces JWTs (`eyJ<b64>.eyJ<b64>.<b64>`) with `[REDACTED]`.
+ *
+ * Matches `/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g` in linear
+ * time; that regex is quadratic on long runs of `eyJ`.
+ *
+ * @param text - Text that may contain JWTs.
+ * @returns The text with each JWT replaced.
+ */
+function redactJwts(text: string): string {
+  let out = '';
+  let copied = 0;
+  let search = 0;
+  for (;;) {
+    const start = text.indexOf('eyJ', search);
+    if (start === -1) break;
+    // The dots aren't base64url, so each segment must span a whole run.
+    const headerEnd = base64UrlRunEnd(text, start + 3);
+    const payloadStart = headerEnd + 4;
+    const payloadEnd = base64UrlRunEnd(text, payloadStart);
+    const signatureEnd = base64UrlRunEnd(text, payloadEnd + 1);
+    const isJwt =
+      headerEnd > start + 3 &&
+      text.startsWith('.eyJ', headerEnd) &&
+      payloadEnd > payloadStart &&
+      text[payloadEnd] === '.' &&
+      signatureEnd > payloadEnd + 1;
+    if (!isJwt) {
+      // Any later `eyJ` in the same run shares this header end and fails too.
+      search = Math.max(headerEnd, start + 1);
+      continue;
+    }
+    out += text.slice(copied, start) + '[REDACTED]';
+    copied = search = signatureEnd;
+  }
+  return out + text.slice(copied);
+}
+
+// The two scanners below replace regexes that were quadratic on adversarial
+// input (`/-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----/g` and
+// /```json\s*([\s\S]*?)```/gi) with linear scans that match the same text.
+
+/**
+ * Returns the index after a `[A-Z ]+-----` PEM label starting at `from`.
+ *
+ * @param text - Text being scanned.
+ * @param from - Index where the label should start.
+ * @returns Index after the closing dashes, or -1 when there is no label.
+ */
+function matchPemLabel(text: string, from: number): number {
+  let end = from;
+  while (end < text.length) {
+    const code = text.charCodeAt(end);
+    if (code !== 32 && (code < 65 || code > 90)) break;
+    end++;
+  }
+  return end > from && text.startsWith('-----', end) ? end + 5 : -1;
+}
+
+/**
+ * Replaces `-----BEGIN X----- ... -----END Y-----` blocks with `[REDACTED]`.
+ *
+ * @param text - Text that may contain PEM blocks.
+ * @returns The text with each PEM block replaced.
+ */
+function redactPemBlocks(text: string): string {
+  const begin = '-----BEGIN ';
+  const end = '-----END ';
+  let out = '';
+  let copied = 0;
+  let search = 0;
+  for (;;) {
+    const blockStart = text.indexOf(begin, search);
+    if (blockStart === -1) break;
+    const headerEnd = matchPemLabel(text, blockStart + begin.length);
+    if (headerEnd === -1) {
+      search = blockStart + 1;
+      continue;
+    }
+    let blockEnd = -1;
+    for (let footer = text.indexOf(end, headerEnd); footer !== -1; ) {
+      blockEnd = matchPemLabel(text, footer + end.length);
+      if (blockEnd !== -1) break;
+      footer = text.indexOf(end, footer + 1);
+    }
+    // Later blocks start after this header, so they cannot find a footer either.
+    if (blockEnd === -1) break;
+    out += text.slice(copied, blockStart) + '[REDACTED]';
+    copied = search = blockEnd;
+  }
+  return out + text.slice(copied);
+}
+
+/**
+ * Replaces each ```json fenced block using `replacer`.
+ *
+ * @param text - Text that may contain fenced JSON blocks.
+ * @param replacer - Receives the whole block and its body after leading whitespace.
+ * @returns The text with each block replaced.
+ */
+function replaceFencedJsonBlocks(
+  text: string,
+  replacer: (block: string, body: string) => string
+): string {
+  const opening = /```json/gi;
+  let out = '';
+  let copied = 0;
+  for (let match = opening.exec(text); match; match = opening.exec(text)) {
+    let bodyStart = opening.lastIndex;
+    while (bodyStart < text.length && /\s/.test(text[bodyStart])) bodyStart++;
+    const close = text.indexOf('```', bodyStart);
+    // Later blocks open after this one, so they cannot find a closing fence either.
+    if (close === -1) break;
+    out +=
+      text.slice(copied, match.index) +
+      replacer(text.slice(match.index, close + 3), text.slice(bodyStart, close));
+    copied = opening.lastIndex = close + 3;
+  }
+  return out + text.slice(copied);
+}
+
+/**
  * Redacts every value under `data` / `stringData` of Kubernetes Secret objects.
  *
  * Unlike the key-name heuristics, this removes secret material even when the
@@ -142,12 +286,14 @@ export function redactSecrets(input: string): string {
  * @returns The input with Secret data values replaced by `[REDACTED]`.
  */
 function redactKubernetesSecretValues(input: string): string {
-  // Cheap early-out: only act when the text mentions a Secret kind.
-  if (!/\bkind\b["\s]*:\s*["']?Secret\b/i.test(input)) {
+  // Cheap early-out: only act when the text mentions a Secret kind. Matches
+  // both the singular `Secret` kind and the apiserver's list kind
+  // `SecretList` (returned by e.g. `GET /api/v1/namespaces/{ns}/secrets`).
+  if (!/\bkind\b["\s]*:\s*["']?Secret(List)?\b/i.test(input)) {
     return input;
   }
 
-  const fencedJson = input.replace(/```json\s*([\s\S]*?)```/gi, (block, body: string) => {
+  const fencedJson = replaceFencedJsonBlocks(input, (block, body) => {
     try {
       const parsed: unknown = JSON.parse(body.trim());
       return redactSecretsInParsedJson(parsed)
@@ -196,13 +342,16 @@ function redactSecretsInParsedJson(value: unknown): boolean {
     const obj = value as Record<string, unknown>;
 
     if (obj.kind === 'Secret') {
-      for (const field of ['data', 'stringData'] as const) {
-        const bag = obj[field];
-        if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
-          for (const key of Object.keys(bag as Record<string, unknown>)) {
-            (bag as Record<string, unknown>)[key] = '[REDACTED]';
-            changed = true;
-          }
+      changed = redactSecretDataFields(obj) || changed;
+    }
+
+    // The apiserver's `SecretList` (e.g. `GET /api/v1/namespaces/{ns}/secrets`)
+    // nests bare Secret objects under `items` that omit their own `kind`,
+    // unlike `kubectl -o json`'s generic `List` wrapper used in tests below.
+    if (obj.kind === 'SecretList' && Array.isArray(obj.items)) {
+      for (const item of obj.items as unknown[]) {
+        if (item && typeof item === 'object') {
+          changed = redactSecretDataFields(item as Record<string, unknown>) || changed;
         }
       }
     }
@@ -212,6 +361,27 @@ function redactSecretsInParsedJson(value: unknown): boolean {
     }
   }
 
+  return changed;
+}
+
+/**
+ * Redacts the `data` / `stringData` fields of a single Secret-shaped object.
+ *
+ * @param obj - A parsed Secret object (or a `SecretList` item, which has the
+ *   same shape but omits its own `kind`).
+ * @returns Whether any redaction was applied.
+ */
+function redactSecretDataFields(obj: Record<string, unknown>): boolean {
+  let changed = false;
+  for (const field of ['data', 'stringData'] as const) {
+    const bag = obj[field];
+    if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
+      for (const key of Object.keys(bag as Record<string, unknown>)) {
+        (bag as Record<string, unknown>)[key] = '[REDACTED]';
+        changed = true;
+      }
+    }
+  }
   return changed;
 }
 
@@ -229,7 +399,13 @@ function redactKubernetesSecretValuesYaml(input: string): string {
     .map(document => {
       if (
         /^\s*---\s*$/.test(document) ||
-        !/^\s*(?:-\s*)?kind:\s*["']?Secret["']?\s*$/m.test(document)
+        // Matches both a single Secret document and a SecretList document
+        // (the `-o yaml` shape for `GET /api/.../secrets`, a single document
+        // with a top-level `kind: SecretList` and secrets nested under
+        // `items`). The line scanner below redacts `data`/`stringData`
+        // blocks wherever they appear, so no further List-specific handling
+        // is needed once the document passes this gate.
+        !/^\s*(?:-\s*)?kind:\s*["']?Secret(List)?["']?\s*$/m.test(document)
       ) {
         return document;
       }
@@ -297,14 +473,34 @@ export function redactSecretsInValue(value: unknown): unknown {
     copy[key] = redactSecretsInValue(item);
   }
   if (copy.kind === 'Secret') {
-    for (const field of ['data', 'stringData'] as const) {
-      const bag = copy[field];
-      if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
-        copy[field] = Object.fromEntries(
-          Object.keys(bag as Record<string, unknown>).map(key => [key, '[REDACTED]'])
-        );
+    redactSecretDataFieldsInPlace(copy);
+  }
+  // The apiserver's `SecretList` nests bare Secret objects under `items` that
+  // omit their own `kind`, so they are not caught by the check above.
+  if (copy.kind === 'SecretList' && Array.isArray(copy.items)) {
+    for (const item of copy.items as unknown[]) {
+      if (item && typeof item === 'object') {
+        redactSecretDataFieldsInPlace(item as Record<string, unknown>);
       }
     }
   }
   return copy;
+}
+
+/**
+ * Replaces the `data` / `stringData` fields of a Secret-shaped object with
+ * `[REDACTED]` values, in place.
+ *
+ * @param obj - A Secret object (or a `SecretList` item, which has the same
+ *   shape but omits its own `kind`).
+ */
+function redactSecretDataFieldsInPlace(obj: Record<string, unknown>): void {
+  for (const field of ['data', 'stringData'] as const) {
+    const bag = obj[field];
+    if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
+      obj[field] = Object.fromEntries(
+        Object.keys(bag as Record<string, unknown>).map(key => [key, '[REDACTED]'])
+      );
+    }
+  }
 }

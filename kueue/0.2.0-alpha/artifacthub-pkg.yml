@@ -1,0 +1,48 @@
+version: 0.2.0-alpha
+name: headlamp_kueue
+displayName: Kueue
+createdAt: "2026-11-08T00:00:00Z"
+description: A Headlamp plugin for viewing Kueue batch workload queueing, admission, and resource usage.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/kueue
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - kueue
+  - batch
+  - scheduling
+  - queueing
+  - workloads
+screenshots:
+  - title: Why a Workload is not admitted
+    url: https://github.com/user-attachments/assets/5ba915a8-353b-4607-8c68-95e861ce8449
+  - title: Workloads with the Blocked On column
+    url: https://github.com/user-attachments/assets/42d351af-c2db-4829-89cf-b47ed2e14047
+  - title: Kueue queue and status on the Jobs list
+    url: https://github.com/user-attachments/assets/3d8d617e-b680-4c9f-abe9-178e9a4f8fe5
+changes:
+  - kind: added
+    description: "Explain why a Workload is not admitted with its blocking stage, reason, Kueue message, blocking admission checks, and next retry time."
+  - kind: added
+    description: "Show a sortable Blocked On column in the Workloads list."
+  - kind: fixed
+    description: "Report a Workload as admitted only when Kueue's Admitted condition is True."
+  - kind: added
+    description: "Add AdmissionCheck list and detail pages with links from Workloads and ClusterQueues."
+  - kind: added
+    description: "Show queue, Workload status, and admission blockers on Headlamp's Job detail pages."
+  - kind: added
+    description: "Add Queue and Kueue Status columns to Headlamp's Jobs list."
+  - kind: added
+    description: "Show topology assignments in the Workload Admission table."
+  - kind: fixed
+    description: "Make sample ClusterQueue flavor names match the ResourceFlavor examples."
+  - kind: changed
+    description: "Include the dependency maintenance merged before the October 18 feature snapshot."
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/kueue-0.2.0-alpha/headlamp-k8s-kueue-0.2.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:919cba6299e114f00d8a5c849555519cac499d6048eb234d0c7c05453bd6bfe2
+  headlamp/plugin/version-compat: ">=0.22"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

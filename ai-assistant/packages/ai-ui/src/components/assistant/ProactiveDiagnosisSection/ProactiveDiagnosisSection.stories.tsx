@@ -22,6 +22,7 @@ export function createDiagnosis(overrides: Partial<DiagnosisResult> = {}): Diagn
   return {
     eventUid: 'event-1',
     event: {
+      cluster: 'demo-cluster',
       uid: 'event-1',
       name: 'pod-warning.1827a1',
       type: 'Warning',

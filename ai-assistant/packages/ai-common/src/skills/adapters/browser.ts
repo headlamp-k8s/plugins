@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { trimSlashes } from '../../text/trimSlashes';
 import type { ParsedSkill } from '../parseSkill';
 import type { SkillFileSystem, SkillHttpClient, SkillZipExtractor } from '../SkillLoader';
 import { MAX_ZIP_EXTRACTED_BYTES, MAX_ZIP_FILE_COUNT } from '../SkillLoader';
@@ -244,7 +245,7 @@ export function createJSZipExtractor(): SkillZipExtractor {
       // GitHub zips have a top-level directory like "owner-repo-sha/"
       const entries = Object.keys(zip.files).sort();
       const topLevelPrefix = entries.length > 0 ? entries[0].split('/')[0] + '/' : '';
-      const normalizedPathFilter = pathFilter?.replace(/^\/+|\/+$/g, '');
+      const normalizedPathFilter = pathFilter === undefined ? undefined : trimSlashes(pathFilter);
 
       for (const entryPath of entries) {
         const entry = zip.files[entryPath];
@@ -386,8 +387,8 @@ function openSkillsDB(): Promise<IDBDatabase> {
  * IndexedDB-backed cache for parsed skills.
  *
  * Persists downloaded and parsed skills in the browser so they survive
- * page reloads. Each source is stored separately, keyed by
- * `{type}:{url}:{ref}:{path}`.
+ * page reloads. Each source is stored separately under an opaque key
+ * supplied by the caller.
  *
  * Falls back gracefully: if IndexedDB is unavailable (e.g. private
  * browsing in some browsers), all operations return null/resolve
@@ -399,9 +400,9 @@ export class BrowserSkillCache {
   /**
    * Creates an IndexedDB-backed skill cache.
    *
-   * @param cacheTtlMs - How long cached skills remain valid (default: 1 hour).
+   * @param cacheTtlMs - How long cached skills remain valid (default: no expiry).
    */
-  constructor(cacheTtlMs: number = 60 * 60 * 1000) {
+  constructor(cacheTtlMs: number = Number.POSITIVE_INFINITY) {
     this.cacheTtlMs = cacheTtlMs;
   }
 
@@ -460,6 +461,27 @@ export class BrowserSkillCache {
           cachedAt: Date.now(),
         };
         const request = store.put(entry);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      // IndexedDB not available — skip silently
+    }
+  }
+
+  /**
+   * Removes cached skills for one source.
+   *
+   * @param key - Source cache key.
+   * @returns No value; IndexedDB failures are ignored.
+   */
+  async delete(key: string): Promise<void> {
+    try {
+      const db = await openSkillsDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.delete(key);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });

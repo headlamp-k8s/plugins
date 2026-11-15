@@ -9,6 +9,7 @@ import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import type { Meta, StoryFn } from '@storybook/react';
 import React from 'react';
+import { ReduxDecorator } from '../../helpers/storybook';
 
 type JobLogsViewerStoryProps = {
   helperMessage: string | null;
@@ -137,6 +138,7 @@ function JobLogsViewerStoryHarness({
 const meta = {
   title: 'Jobs/JobLogsViewer',
   component: JobLogsViewerStoryHarness,
+  decorators: [ReduxDecorator],
 } satisfies Meta<typeof JobLogsViewerStoryHarness>;
 
 export default meta;

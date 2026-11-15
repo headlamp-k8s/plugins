@@ -1,0 +1,80 @@
+# held-queue-job uses a stopped ClusterQueue, and missing-queue-job a LocalQueue that does not exist.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kueue-inadmissible
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: held
+spec:
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: kueue-inadmissible
+  stopPolicy: Hold
+  resourceGroups:
+    - coveredResources:
+        - cpu
+        - memory
+      flavors:
+        - name: default-flavor
+          resources:
+            - name: cpu
+              nominalQuota: '1'
+            - name: memory
+              nominalQuota: 1Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: held
+  namespace: kueue-inadmissible
+spec:
+  clusterQueue: held
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: held-queue-job
+  namespace: kueue-inadmissible
+  labels:
+    kueue.x-k8s.io/queue-name: held
+spec:
+  suspend: true
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: main
+          image: busybox:1.36
+          command:
+            - sleep
+            - '3600'
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: missing-queue-job
+  namespace: kueue-inadmissible
+  labels:
+    kueue.x-k8s.io/queue-name: does-not-exist
+spec:
+  suspend: true
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: main
+          image: busybox:1.36
+          command:
+            - sleep
+            - '3600'
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi

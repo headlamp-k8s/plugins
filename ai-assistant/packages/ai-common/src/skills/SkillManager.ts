@@ -15,7 +15,7 @@
  */
 
 import { isSkillEnabled, SkillsConfig } from './config';
-import { formatSkillsForPrompt, ParsedSkill } from './parseSkill';
+import { formatSkillsForPrompt, getSkillContentSizeBytes, ParsedSkill } from './parseSkill';
 import { EmbeddingSkillRouter } from './routing/EmbeddingSkillRouter';
 import {
   DEFAULT_ROUTER_CONFIG,
@@ -23,6 +23,16 @@ import {
   SkillRouterConfig,
 } from './routing/KeywordSkillRouter';
 import { SkillFileSystem, SkillHttpClient, SkillLoader, SkillZipExtractor } from './SkillLoader';
+
+/** Optional per-source cache shared across SkillManager instances. */
+export interface SkillCache {
+  /** Returns cached parsed skills, or null when the source is not cached. */
+  get(key: string): Promise<ParsedSkill[] | null>;
+  /** Stores parsed skills for a source. */
+  set(key: string, skills: ParsedSkill[]): Promise<void>;
+  /** Removes one source entry before an explicit reload. */
+  delete?(key: string): Promise<void>;
+}
 
 /** Per-source error reported during skill loading. */
 export interface SkillLoadError {
@@ -48,6 +58,7 @@ export class SkillManager {
   private lastLoadTimestamp: number = 0;
   private lastSourcesKey: string = '';
   private lastMaxSkillSizeBytes: number = 0;
+  private reloadRequired: boolean = false;
 
   /** Cache TTL in milliseconds (default: 1 hour). */
   private cacheTtlMs: number;
@@ -55,6 +66,7 @@ export class SkillManager {
   private fs: SkillFileSystem;
   private httpClient?: SkillHttpClient;
   private zipExtractor?: SkillZipExtractor;
+  private skillCache?: SkillCache;
 
   /**
    * Optional embedding router for semantic skill selection.
@@ -101,9 +113,59 @@ export class SkillManager {
           ref: source.ref ?? '',
           path: source.path ?? '',
           sha256: source.sha256 ?? '',
+          ...(source.includeReferences ? { includeReferences: true } : {}),
         }))
         .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
     });
+  }
+
+  /** Builds the persistent cache key for one source, including integrity constraints. */
+  private buildSourceCacheKey(
+    source: SkillsConfig['sources'][number],
+    maxSkillSizeBytes: number
+  ): string {
+    return JSON.stringify({
+      type: source.type,
+      url: source.url,
+      ref: source.ref ?? '',
+      path: source.path ?? '',
+      sha256: source.sha256 ?? '',
+      ...(source.includeReferences ? { includeReferences: true, referencesVersion: 2 } : {}),
+      maxSkillSizeBytes,
+    });
+  }
+
+  /** Attaches a cache that can be shared by separately-created managers. */
+  setSkillCache(skillCache: SkillCache): void {
+    this.skillCache = skillCache;
+  }
+
+  /** Reads persistent skills as a best-effort cache lookup. */
+  private async getPersistedSkills(key: string): Promise<ParsedSkill[] | null> {
+    try {
+      return (await this.skillCache?.get(key)) ?? null;
+    } catch (error) {
+      console.warn(`Failed to read persistent skill cache for ${key}:`, error);
+      return null;
+    }
+  }
+
+  /** Writes persistent skills without affecting source loading on failure. */
+  private async setPersistedSkills(key: string, skills: ParsedSkill[]): Promise<void> {
+    try {
+      await this.skillCache?.set(key, skills);
+    } catch (error) {
+      console.warn(`Failed to write persistent skill cache for ${key}:`, error);
+    }
+  }
+
+  /** Deletes persistent skills without affecting explicit reload on failure. */
+  private async deletePersistedSkills(key: string): Promise<void> {
+    try {
+      await this.skillCache?.delete?.(key);
+    } catch (error) {
+      console.warn(`Failed to delete persistent skill cache for ${key}:`, error);
+    }
   }
 
   /**
@@ -116,9 +178,11 @@ export class SkillManager {
    * @param config - The current skills configuration.
    * @returns Array of all loaded skills (before filtering by enabled state).
    */
-  async loadAllSkills(config: SkillsConfig): Promise<ParsedSkill[]> {
+  async loadAllSkills(config: SkillsConfig, forceReload = false): Promise<ParsedSkill[]> {
     const now = Date.now();
     const sourcesKey = this.buildSourcesKey(config);
+    const reloadRequested = forceReload || this.reloadRequired;
+    this.reloadRequired = false;
 
     // Invalidate cache if sources have changed
     if (sourcesKey !== this.lastSourcesKey) {
@@ -126,7 +190,11 @@ export class SkillManager {
       this.lastSourcesKey = sourcesKey;
     }
 
-    if (this.cachedSkills.size > 0 && now - this.lastLoadTimestamp < this.cacheTtlMs) {
+    if (
+      !reloadRequested &&
+      this.cachedSkills.size > 0 &&
+      now - this.lastLoadTimestamp < this.cacheTtlMs
+    ) {
       return this.getAllCachedSkills();
     }
 
@@ -148,9 +216,19 @@ export class SkillManager {
       if (!source.enabled) continue;
 
       try {
-        const sourceKey = `${source.type}:${source.url}:${source.path || ''}`;
+        const sourceKey = this.buildSourceCacheKey(source, config.maxSkillSizeBytes);
+        if (reloadRequested) {
+          await this.deletePersistedSkills(sourceKey);
+        } else {
+          const cached = await this.getPersistedSkills(sourceKey);
+          if (cached !== null) {
+            this.cachedSkills.set(sourceKey, cached);
+            continue;
+          }
+        }
         const skills = await this.loader.loadFromSource(source);
         this.cachedSkills.set(sourceKey, skills);
+        await this.setPersistedSkills(sourceKey, skills);
       } catch (error) {
         loadFailed = true;
         console.warn(`Error loading skills from ${source.url}:`, error);
@@ -173,7 +251,8 @@ export class SkillManager {
    */
   async loadAllSkillsWithErrors(
     config: SkillsConfig,
-    onProgress?: (sourceUrl: string, progress: import('./SkillLoader').SkillLoadProgress) => void
+    onProgress?: (sourceUrl: string, progress: import('./SkillLoader').SkillLoadProgress) => void,
+    forceReload = false
   ): Promise<{
     /** Skills loaded successfully from enabled sources. */
     skills: ParsedSkill[];
@@ -183,13 +262,19 @@ export class SkillManager {
     const errors: SkillLoadError[] = [];
     const now = Date.now();
     const sourcesKey = this.buildSourcesKey(config);
+    const reloadRequested = forceReload || this.reloadRequired;
+    this.reloadRequired = false;
 
     if (sourcesKey !== this.lastSourcesKey) {
       this.cachedSkills.clear();
       this.lastSourcesKey = sourcesKey;
     }
 
-    if (this.cachedSkills.size > 0 && now - this.lastLoadTimestamp < this.cacheTtlMs) {
+    if (
+      !reloadRequested &&
+      this.cachedSkills.size > 0 &&
+      now - this.lastLoadTimestamp < this.cacheTtlMs
+    ) {
       return { skills: this.getAllCachedSkills(), errors };
     }
 
@@ -209,12 +294,22 @@ export class SkillManager {
       if (!source.enabled) continue;
 
       try {
-        const sourceKey = `${source.type}:${source.url}:${source.path || ''}`;
+        const sourceKey = this.buildSourceCacheKey(source, config.maxSkillSizeBytes);
+        if (reloadRequested) {
+          await this.deletePersistedSkills(sourceKey);
+        } else {
+          const cached = await this.getPersistedSkills(sourceKey);
+          if (cached !== null) {
+            this.cachedSkills.set(sourceKey, cached);
+            continue;
+          }
+        }
         const skills = await this.loader.loadFromSource(
           source,
           onProgress ? p => onProgress(source.url, p) : undefined
         );
         this.cachedSkills.set(sourceKey, skills);
+        await this.setPersistedSkills(sourceKey, skills);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`Error loading skills from ${source.url}:`, error);
@@ -282,7 +377,7 @@ export class SkillManager {
   } {
     const all = this.getAllCachedSkills();
     const enabled = this.getEnabledSkills(config);
-    const totalSizeBytes = enabled.reduce((sum, s) => sum + s.contentSizeBytes, 0);
+    const totalSizeBytes = enabled.reduce((sum, skill) => sum + getSkillContentSizeBytes(skill), 0);
 
     return {
       totalSkills: all.length,
@@ -368,6 +463,7 @@ export class SkillManager {
   invalidateCache(): void {
     this.cachedSkills.clear();
     this.lastLoadTimestamp = 0;
+    this.reloadRequired = true;
     if (this.embeddingRouter) {
       this.embeddingRouter.clearIndex();
     }

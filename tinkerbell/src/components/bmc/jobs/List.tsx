@@ -4,6 +4,7 @@ import {
   type ResourceTableColumn,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { BmcJob } from '../../../resources/bmcJob';
+import { activeConditionType } from '../../../resources/common';
 import { countLabel, fallback, renderStatus } from '../../common/listHelpers';
 
 /**
@@ -26,8 +27,9 @@ export function BmcJobList() {
     {
       id: 'status',
       label: 'Status',
-      getValue: item => fallback(item.status?.conditions?.at(-1)?.type),
-      render: item => renderStatus(item.status?.conditions?.at(-1)?.type),
+      gridTemplate: 'max-content',
+      getValue: item => fallback(activeConditionType(item.status?.conditions)),
+      render: item => renderStatus(activeConditionType(item.status?.conditions)),
     },
     {
       id: 'started',

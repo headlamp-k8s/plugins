@@ -6,12 +6,14 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { KarpenterChart } from '../src/components/Chart/KarpenterChart/KarpenterChart';
+import { getArgoCDApplicationChartConfigs } from './components/Chart/ArgoCDApplicationChart/ArgoCDApplicationChart';
 import { CapiChart } from './components/Chart/CapiChart/CapiChart';
 import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetricsChart';
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
+import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
 import {
   getVolcanoQueueChartConfigs,
   VolcanoChart,
@@ -24,6 +26,7 @@ import {
   getMachinePoolChartConfigs,
   getMachineSetChartConfigs,
 } from './components/Config/capiChart/capiChartConfigs';
+import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {
@@ -46,6 +49,11 @@ function PrometheusMetrics(resource: KubeObject) {
 
   if (!supportsPrometheusMetrics(resource)) {
     return null;
+  }
+
+  const tinkerbellController = getTinkerbellController(resource);
+  if (tinkerbellController) {
+    return <TinkerbellChart controller={tinkerbellController} />;
   }
 
   if (resourceKind === 'Pod' || resourceKind === 'Job' || resourceKind === 'CronJob') {
@@ -180,6 +188,18 @@ function PrometheusMetrics(resource: KubeObject) {
     const name = resource.jsonData.metadata.name;
 
     return <VolcanoChart chartConfigs={getVolcanoQueueChartConfigs(name)} defaultChart="cpu" />;
+  }
+
+  if (resourceKind === 'Application' && resource.jsonData?.apiVersion === 'argoproj.io/v1alpha1') {
+    return (
+      <VolcanoChart
+        chartConfigs={getArgoCDApplicationChartConfigs(
+          resource.jsonData.metadata.namespace,
+          resource.jsonData.metadata.name
+        )}
+        defaultChart="sync-activity"
+      />
+    );
   }
 
   // cluster api resources

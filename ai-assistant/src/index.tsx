@@ -14,32 +14,29 @@
  * limitations under the License.
  */
 
-// Initialize the bundled react-i18next instance so that i18n interpolation
-// works in ai-ui components before plugin-specific translations are loaded.
-// The vite bundle ships its own react-i18next (not externalized) which is
-// separate from Headlamp's I18nextProvider; without init, t() returns keys
-// verbatim (e.g. "Configure {{provider}}") with no interpolation applied.
-import { initAiUiI18n } from '@headlamp-k8s/ai-ui/i18n';
+// Register provider icons for offline use
+import '@headlamp-k8s/ai-ui/icons/iconBundles';
+import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
+import { AI_ASSISTANT_ICON_NAME } from '@headlamp-k8s/ai-ui/icons/aiAssistantIcon';
 import {
   registerAppBarAction,
   registerPluginSettings,
   registerResourceTableColumnsProcessor,
   registerUIPanel,
+  useTranslation,
 } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
 import React from 'react';
-
-void initAiUiI18n();
-// Register provider icons for offline use
-import '@headlamp-k8s/ai-ui/icons/iconBundles';
-import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import HeadlampAIPrompt from './components/appbar/HeadlampAIPrompt';
 import HeadlampEventHandler from './components/appbar/HeadlampEventHandler';
 import AIPanelComponent from './components/panel/AIPanelComponent';
 import Settings from './components/settings/Settings';
 import type { RawK8sEvent } from './kubernetes/EventFetcher';
 import { PLUGIN_NAME, useGlobalState, usePluginConfig } from './pluginState';
+import { seedBuiltinSkillSources } from './skills/seedBuiltinSources';
+
+seedBuiltinSkillSources();
 
 // Register UI Panel component that uses the shared state to show/hide
 registerUIPanel({
@@ -57,6 +54,7 @@ registerPluginSettings(PLUGIN_NAME, Settings);
 function AIDiagnosisButton({ event }: { event: Event }) {
   const pluginState = useGlobalState();
   const pluginConfig = usePluginConfig();
+  const { t } = useTranslation();
 
   if (pluginConfig?.proactiveDiagnosisEnabled !== true) return null;
 
@@ -66,6 +64,7 @@ function AIDiagnosisButton({ event }: { event: Event }) {
     const involvedObject = data?.involvedObject ?? { kind: '', name: '', namespace: '' };
 
     const eventDigest = {
+      cluster: event.cluster || undefined,
       uid: eventUid,
       name: data?.metadata?.name || 'unknown',
       type: data?.type || 'Warning',
@@ -79,6 +78,9 @@ function AIDiagnosisButton({ event }: { event: Event }) {
     };
 
     if (!proactiveDiagnosisManager.hasDiagnosis(eventUid)) {
+      // The panel owns the diagnosis function and may still be unmounted.
+      // Enable the manager now so this request queues until the panel opens.
+      proactiveDiagnosisManager.start();
       proactiveDiagnosisManager.diagnoseSingleEvent(eventDigest).catch(err => {
         console.error('[AIDiagnosisButton] Failed to diagnose event:', err);
       });
@@ -90,8 +92,8 @@ function AIDiagnosisButton({ event }: { event: Event }) {
 
   return (
     <ActionButton
-      description="Diagnose with AI"
-      icon="mdi:robot-outline"
+      description={t('Diagnose with AI')}
+      icon={AI_ASSISTANT_ICON_NAME}
       onClick={handleDiagnose}
     />
   );

@@ -125,7 +125,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             <ToggleButtonGroup
               onChange={handleChartVariantChange}
               size="small"
-              aria-label="metric chooser"
+              aria-label={t('metric chooser')}
               value={chartVariant}
               exclusive
             >
@@ -140,6 +140,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             </ToggleButtonGroup>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Timespan') }}
                 variant="outlined"
                 size="small"
                 name="Time"
@@ -164,6 +165,7 @@ export function GenericMetricsChart(props: GenericMetricsChartProps) {
             </Box>
             <Box>
               <Select
+                inputProps={{ 'aria-label': t('Resolution') }}
                 variant="outlined"
                 size="small"
                 name="Time"
