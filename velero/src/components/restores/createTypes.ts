@@ -18,12 +18,13 @@ export type BackupSelection = {
  * Next Backup source for the Create Restore form.
  * The first discovered list may fill an empty selection once.
  * After that, an empty selection stays empty, including when a chosen backup disappears.
- * An empty list keeps a typed name, because backup discovery may be unavailable.
+ * A list that has not loaded keeps a typed name. A loaded empty list clears it.
  */
 export function nextBackupSelection(
   current: string,
   backups: string[],
-  allowInitial: boolean
+  allowInitial: boolean,
+  listLoaded = false
 ): BackupSelection {
   if (!current) {
     if (allowInitial && backups.length > 0) {
@@ -31,7 +32,10 @@ export function nextBackupSelection(
     }
     return { next: '', allowInitial };
   }
-  if (backups.length === 0 || backups.includes(current)) {
+  if (!listLoaded && backups.length === 0) {
+    return { next: current, allowInitial: false };
+  }
+  if (backups.includes(current)) {
     return { next: current, allowInitial: false };
   }
   return { next: '', allowInitial: false };
@@ -55,6 +59,8 @@ export interface RestoreCreateInput {
 export interface RestoreCreateFormProps {
   /** Completed or PartiallyFailed backup names on the destination cluster. */
   backups: string[];
+  /** True only after the backup list has loaded without an error. */
+  backupsLoaded: boolean;
   /** Namespace names the user may pick. Typed names are also accepted. */
   namespaces: string[];
   /** Initial backup selection when the form opens. */

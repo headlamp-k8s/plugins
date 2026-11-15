@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import { isGoDuration } from '../../utils/duration';
 import FreeSoloMulti from '../common/FreeSoloMulti';
 import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
 import {
@@ -58,6 +59,10 @@ export default function BackupCreateForm({
       setError('Name must be a valid DNS-1123 label (lowercase alphanumeric and -)');
       return;
     }
+    if (ttl.trim() && !isGoDuration(ttl)) {
+      setError('TTL must be a Go duration such as 720h0m0s');
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
 
@@ -69,7 +74,7 @@ export default function BackupCreateForm({
         includedResources: includedResources.commit(),
         excludedResources: excludedResources.commit(),
         storageLocation,
-        ttl,
+        ttl: ttl.trim(),
         snapshotVolumes,
         defaultVolumesToFsBackup: fsBackupChoiceToSpec(fsBackup),
       };
@@ -90,6 +95,7 @@ export default function BackupCreateForm({
 
       {error && (
         <Box
+          role="alert"
           sx={{
             backgroundColor: 'error.light',
             color: 'error.contrastText',

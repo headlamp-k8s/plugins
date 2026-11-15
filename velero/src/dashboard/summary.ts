@@ -119,6 +119,22 @@ export function countScheduleHealth(items: ScheduleHealthItem[]): ScheduleHealth
   return counts;
 }
 
+/**
+ * Green only when every discovered location is Available.
+ * Empty and unknown lists stay a warning. Any Unavailable location is an error.
+ */
+export function storageCardColor(
+  counts: StorageHealthCounts
+): 'success.dark' | 'error.main' | 'warning.dark' {
+  if (counts.unavailable > 0) {
+    return 'error.main';
+  }
+  if (counts.total > 0 && counts.available === counts.total) {
+    return 'success.dark';
+  }
+  return 'warning.dark';
+}
+
 export function countStorageHealth(items: StorageHealthItem[]): StorageHealthCounts {
   const counts: StorageHealthCounts = {
     total: items.length,

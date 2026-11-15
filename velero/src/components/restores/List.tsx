@@ -48,12 +48,19 @@ function RestoreListContent() {
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [restores, error] = VeleroRestore.useList({ namespace: veleroNamespace });
-  const [backupsList] = VeleroBackup.useList({ namespace: veleroNamespace, cluster });
+  const [backupsList, backupsError] = VeleroBackup.useList({
+    namespace: veleroNamespace,
+    cluster,
+  });
   const [namespacesList] = K8s.ResourceClasses.Namespace.useList({ cluster });
 
-  const backups = restorableBackupNames(
-    (backupsList ?? []).map(backup => ({ name: backup.getName(), phase: backup.phase }))
-  );
+  const backupsLoaded = backupsList !== null && !backupsError;
+  const backups =
+    backupsList !== null && !backupsError
+      ? restorableBackupNames(
+          backupsList.map(backup => ({ name: backup.getName(), phase: backup.phase }))
+        )
+      : [];
   const namespaces = namespacesList ? namespacesList.map(ns => ns.getName()) : [];
 
   const handleCreateRestore = async (values: RestoreCreateInput) => {
@@ -86,6 +93,7 @@ function RestoreListContent() {
       <Box padding={2}>
         <RestoreCreateForm
           backups={backups}
+          backupsLoaded={backupsLoaded}
           namespaces={namespaces}
           onSubmit={handleCreateRestore}
           onCancel={() => setShowCreateForm(false)}

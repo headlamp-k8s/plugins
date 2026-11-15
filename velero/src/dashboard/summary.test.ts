@@ -4,6 +4,7 @@ import {
   countScheduleHealth,
   countStorageHealth,
   recentFailedItems,
+  storageCardColor,
 } from './summary';
 
 describe('countBackupPhases', () => {
@@ -80,6 +81,23 @@ describe('countStorageHealth', () => {
         { name: 'new', namespace: 'velero', phase: 'New' },
       ])
     ).toEqual({ total: 3, available: 1, unavailable: 1, other: 1 });
+  });
+});
+
+describe('storageCardColor', () => {
+  test('is success only when every location is available', () => {
+    expect(storageCardColor({ total: 2, available: 2, unavailable: 0, other: 0 })).toBe(
+      'success.dark'
+    );
+    expect(storageCardColor({ total: 0, available: 0, unavailable: 0, other: 0 })).toBe(
+      'warning.dark'
+    );
+    expect(storageCardColor({ total: 2, available: 1, unavailable: 0, other: 1 })).toBe(
+      'warning.dark'
+    );
+    expect(storageCardColor({ total: 2, available: 1, unavailable: 1, other: 0 })).toBe(
+      'error.main'
+    );
   });
 });
 

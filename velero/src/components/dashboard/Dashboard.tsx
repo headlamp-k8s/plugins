@@ -12,15 +12,16 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { useMemo } from 'react';
+import { type ReactNode,useMemo } from 'react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   type BackupPhaseCounts,
   type PhaseCountedItem,
   type ScheduleHealthCounts,
+  storageCardColor,
   type StorageHealthItem,
 } from '../../dashboard/summary';
-import { useVeleroDashboard } from '../../hooks/useVeleroDashboard';
+import { type ResourceQueryState, useVeleroDashboard } from '../../hooks/useVeleroDashboard';
 import { getBackupStatusColor, getStorageStatusColor } from '../../utils/status';
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
@@ -183,6 +184,34 @@ function StorageTable({ items }: { items: StorageHealthItem[] }) {
   );
 }
 
+function displayValue(state: ResourceQueryState, value: number | string): number | string {
+  if (state.loading) {
+    return '…';
+  }
+  if (state.error) {
+    return '—';
+  }
+  return value;
+}
+
+function SectionBody({ state, children }: { state: ResourceQueryState; children: ReactNode }) {
+  if (state.loading) {
+    return (
+      <Box display="flex" justifyContent="center" p={2}>
+        <CircularProgress size={28} />
+      </Box>
+    );
+  }
+  if (state.error) {
+    return (
+      <Typography color="error" role="alert">
+        {state.error.message}
+      </Typography>
+    );
+  }
+  return <>{children}</>;
+}
+
 function backupSlices(c: BackupPhaseCounts): Slice[] {
   return toSlices([
     { name: 'Completed', value: c.completed, color: COLORS.success },
@@ -213,21 +242,7 @@ function DashboardContent() {
     [data.backups, data.schedules, data.restores]
   );
 
-  if (data.loading) {
-    return (
-      <Box display="flex" justifyContent="center" p={4}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (data.error) {
-    return (
-      <SectionBox title="Velero Overview">
-        <Typography color="error">{data.error.message}</Typography>
-      </SectionBox>
-    );
-  }
+  const storageReady = !data.queries.storage.loading && !data.queries.storage.error;
 
   return (
     <>
@@ -235,19 +250,34 @@ function DashboardContent() {
         <QuickLinks />
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={6} sm={3}>
-            <MetricCard title="Backups" value={data.backups.total} color={COLORS.info} />
+            <MetricCard
+              title="Backups"
+              value={displayValue(data.queries.backups, data.backups.total)}
+              color={COLORS.info}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title="Schedules" value={data.schedules.total} color={COLORS.info} />
+            <MetricCard
+              title="Schedules"
+              value={displayValue(data.queries.schedules, data.schedules.total)}
+              color={COLORS.info}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title="Restores" value={data.restores.total} color={COLORS.info} />
+            <MetricCard
+              title="Restores"
+              value={displayValue(data.queries.restores, data.restores.total)}
+              color={COLORS.info}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
             <MetricCard
               title="BSL available"
-              value={`${data.storage.available}/${data.storage.total}`}
-              color={data.storage.unavailable > 0 ? COLORS.error : COLORS.success}
+              value={displayValue(
+                data.queries.storage,
+                `${data.storage.available}/${data.storage.total}`
+              )}
+              color={storageReady ? storageCardColor(data.storage) : undefined}
             />
           </Grid>
         </Grid>
@@ -256,40 +286,52 @@ function DashboardContent() {
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
           <SectionBox title="Backups by status">
-            <DonutChart data={charts.backups} emptyLabel="No backups yet." />
+            <SectionBody state={data.queries.backups}>
+              <DonutChart data={charts.backups} emptyLabel="No backups yet." />
+            </SectionBody>
           </SectionBox>
         </Grid>
         <Grid item xs={12} md={6}>
           <SectionBox title="Schedules by health">
-            <DonutChart data={charts.schedules} emptyLabel="No schedules yet." />
+            <SectionBody state={data.queries.schedules}>
+              <DonutChart data={charts.schedules} emptyLabel="No schedules yet." />
+            </SectionBody>
           </SectionBox>
         </Grid>
         <Grid item xs={12} md={6}>
           <SectionBox title="Restores by status">
-            <DonutChart data={charts.restores} emptyLabel="No restores yet." />
+            <SectionBody state={data.queries.restores}>
+              <DonutChart data={charts.restores} emptyLabel="No restores yet." />
+            </SectionBody>
           </SectionBox>
         </Grid>
       </Grid>
 
       <SectionBox title="Storage locations">
-        <StorageTable items={data.storageLocations} />
+        <SectionBody state={data.queries.storage}>
+          <StorageTable items={data.storageLocations} />
+        </SectionBody>
       </SectionBox>
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
           <SectionBox title="Recent failed backups">
-            <FailedTable
-              items={data.recentFailedBackups}
-              detailRoute={veleroRouteNames.backupDetail}
-            />
+            <SectionBody state={data.queries.backups}>
+              <FailedTable
+                items={data.recentFailedBackups}
+                detailRoute={veleroRouteNames.backupDetail}
+              />
+            </SectionBody>
           </SectionBox>
         </Grid>
         <Grid item xs={12} md={6}>
           <SectionBox title="Recent failed restores">
-            <FailedTable
-              items={data.recentFailedRestores}
-              detailRoute={veleroRouteNames.restoreDetail}
-            />
+            <SectionBody state={data.queries.restores}>
+              <FailedTable
+                items={data.recentFailedRestores}
+                detailRoute={veleroRouteNames.restoreDetail}
+              />
+            </SectionBody>
           </SectionBox>
         </Grid>
       </Grid>

@@ -18,11 +18,20 @@ import {
 import { VeleroBackupStorageLocation } from '../resources/storage';
 import { VeleroBackup, VeleroRestore, VeleroSchedule } from '../resources/velero';
 
-export type VeleroDashboardState = {
+export type ResourceQueryState = {
   loading: boolean;
   error: Error | null;
+};
+
+export type VeleroDashboardState = {
   cluster?: string;
   veleroNamespace: string;
+  queries: {
+    backups: ResourceQueryState;
+    restores: ResourceQueryState;
+    schedules: ResourceQueryState;
+    storage: ResourceQueryState;
+  };
   backups: BackupPhaseCounts;
   restores: RestorePhaseCounts;
   schedules: ScheduleHealthCounts;
@@ -31,6 +40,13 @@ export type VeleroDashboardState = {
   recentFailedRestores: PhaseCountedItem[];
   storageLocations: StorageHealthItem[];
 };
+
+function queryState(list: unknown[] | null, error: Error | null | undefined): ResourceQueryState {
+  return {
+    loading: list === null && !error,
+    error: error ?? null,
+  };
+}
 
 /**
  * Loads Schedules / Backups / Restores / BSLs for the current cluster and
@@ -97,15 +113,15 @@ export function useVeleroDashboard(): VeleroDashboardState {
     [bslList]
   );
 
-  const error = schedulesError ?? backupsError ?? restoresError ?? bslError ?? null;
-  const loading =
-    !error && (schedules === null || backups === null || restores === null || bslList === null);
-
   return {
-    loading,
-    error,
     cluster,
     veleroNamespace,
+    queries: {
+      backups: queryState(backups, backupsError),
+      restores: queryState(restores, restoresError),
+      schedules: queryState(schedules, schedulesError),
+      storage: queryState(bslList, bslError),
+    },
     backups: countBackupPhases(backupItems),
     restores: countRestorePhases(restoreItems),
     schedules: countScheduleHealth(scheduleItems),

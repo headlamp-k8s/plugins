@@ -9,6 +9,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import { isGoDuration } from '../../utils/duration';
 import FreeSoloMulti from '../common/FreeSoloMulti';
 import { useFreeSoloMulti } from '../common/useFreeSoloMulti';
 import type { ScheduleCreateFormProps, ScheduleCreateInput } from './createTypes';
@@ -42,6 +43,10 @@ export default function ScheduleCreateForm({
       setError('Cron / schedule expression is required');
       return;
     }
+    if (ttl.trim() && !isGoDuration(ttl)) {
+      setError('TTL must be a Go duration such as 720h0m0s');
+      return;
+    }
 
     setError(null);
     setLoading(true);
@@ -51,7 +56,7 @@ export default function ScheduleCreateForm({
         schedule: schedule.trim(),
         includedNamespaces: includedNamespaces.commit(),
         excludedNamespaces: excludedNamespaces.commit(),
-        ttl,
+        ttl: ttl.trim(),
         paused,
       };
       await onSubmit(values);
@@ -70,6 +75,7 @@ export default function ScheduleCreateForm({
 
       {error && (
         <Box
+          role="alert"
           sx={{
             backgroundColor: 'error.light',
             color: 'error.contrastText',

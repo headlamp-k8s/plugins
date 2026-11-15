@@ -23,13 +23,20 @@ describe('nextBackupSelection', () => {
     });
   });
 
-  test('keeps a selection that is still available, including a typed name when the list is empty', () => {
-    expect(nextBackupSelection('ok', ['ok', 'other'], false)).toEqual({
+  test('keeps a selection that is still available, and a typed name until the list loads', () => {
+    expect(nextBackupSelection('ok', ['ok', 'other'], false, true)).toEqual({
       next: 'ok',
       allowInitial: false,
     });
-    expect(nextBackupSelection('typed', [], true)).toEqual({
+    expect(nextBackupSelection('typed', [], true, false)).toEqual({
       next: 'typed',
+      allowInitial: false,
+    });
+  });
+
+  test('clears a name when the loaded backup list is empty', () => {
+    expect(nextBackupSelection('typed', [], false, true)).toEqual({
+      next: '',
       allowInitial: false,
     });
   });

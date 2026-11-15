@@ -152,7 +152,7 @@ function ScheduleDetailContent() {
                 {
                   name: 'Pause error',
                   value: (
-                    <Box component="span" sx={{ color: 'error.main' }}>
+                    <Box component="span" role="alert" sx={{ color: 'error.main' }}>
                       {pauseError}
                     </Box>
                   ),
