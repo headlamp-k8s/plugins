@@ -77,6 +77,8 @@ export function ApplicationDetail(): JSX.Element {
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deploymentsLoading, setDeploymentsLoading] = useState(true);
+  const [deploymentsError, setDeploymentsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isConfigured(config) || !id) {
@@ -88,30 +90,44 @@ export function ApplicationDetail(): JSX.Element {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setDeploymentsLoading(true);
+    setDeploymentsError(null);
     // Drop the previous application, so a failed fetch for a new id cannot
     // show it again under the new URL.
     setApp(null);
     setDeployments([]);
 
-    Promise.all([
-      getApplication(config, id),
-      listDeployments(config, {
-        applicationId: id,
-        pageSize: DEPLOYMENT_PAGE_SIZE,
-        signal: controller.signal,
-      }),
-    ])
-      .then(([application, deploymentsResponse]) => {
-        if (cancelled) return;
-        setApp(application);
-        setDeployments(deploymentsResponse.deployments ?? []);
+    const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+    // Loaded separately, so a failed history still leaves the application usable.
+    getApplication(config, id)
+      .then(application => {
+        if (!cancelled) setApp(application);
       })
       .catch(err => {
-        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
-        setError(err instanceof Error ? err.message : String(err));
+        if (cancelled) return;
+        setError(messageOf(err));
+        // Without the application there is no page to show the history on.
+        controller.abort();
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+
+    listDeployments(config, {
+      applicationId: id,
+      pageSize: DEPLOYMENT_PAGE_SIZE,
+      signal: controller.signal,
+    })
+      .then(response => {
+        if (!cancelled) setDeployments(response.deployments ?? []);
+      })
+      .catch(err => {
+        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return;
+        setDeploymentsError(messageOf(err));
+      })
+      .finally(() => {
+        if (!cancelled) setDeploymentsLoading(false);
       });
 
     return () => {
@@ -242,7 +258,15 @@ export function ApplicationDetail(): JSX.Element {
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
-          {deployments.length === 0 ? (
+          {deploymentsError && (
+            <Alert severity="error" sx={[{ mb: 2 }, alertTextSx('error')]}>
+              {t('Failed to load deployments: {{error}}', { error: deploymentsError })}
+            </Alert>
+          )}
+
+          {deploymentsLoading ? (
+            <Typography color="text.secondary">{t('Loading deployments…')}</Typography>
+          ) : deploymentsError ? null : deployments.length === 0 ? (
             <Typography color="text.secondary">
               {t('No deployments yet for this application.')}
             </Typography>

@@ -148,6 +148,44 @@ describe('ApplicationDetail', () => {
     expect(screen.getByText(/application not found/i)).toBeTruthy();
   });
 
+  it('keeps the application usable when only its deployment history fails', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+    vi.mocked(pipecdApi.listDeployments).mockRejectedValue(new Error('history unavailable'));
+
+    renderDetail();
+
+    expect(await screen.findByText('Failed to load deployments: history unavailable')).toBeTruthy();
+    expect(screen.getByText('frontend-prod')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open in PipeCD' })).toBeTruthy();
+    expect(screen.queryByText(/Failed to load application/i)).toBeNull();
+    expect(screen.queryByText(/No deployments yet/i)).toBeNull();
+  });
+
+  it('cancels the history request when the application cannot be loaded', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockRejectedValue(new Error('application not found'));
+    vi.mocked(pipecdApi.listDeployments).mockReturnValue(new Promise(() => {}));
+
+    renderDetail();
+
+    await screen.findByText(/Failed to load application/i);
+    const options = vi.mocked(pipecdApi.listDeployments).mock.calls[0][1];
+    expect(options?.signal?.aborted).toBe(true);
+  });
+
+  it('shows the application while its deployment history is still loading', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+    vi.mocked(pipecdApi.listDeployments).mockReturnValue(new Promise(() => {}));
+
+    renderDetail();
+
+    expect(await screen.findByText('frontend-prod')).toBeTruthy();
+    expect(screen.getByText('Loading deployments…')).toBeTruthy();
+    expect(screen.queryByText(/No deployments yet/i)).toBeNull();
+  });
+
   it('shows the last successful deployment as last synced, not the status report', async () => {
     setupConfigured();
     vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);

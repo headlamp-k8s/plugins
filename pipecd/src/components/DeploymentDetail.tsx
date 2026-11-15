@@ -85,16 +85,48 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
  * PipelineStage.visible is deprecated in PipeCD's proto and left unset by the
  * server, so it cannot be used here. Instead this mirrors the PipeCD console:
  * piped appends a rollback stage to every pipeline up front, so one that never
- * ran is noise and stays hidden until it actually does something.
+ * ran (not started, or skipped) is noise and stays hidden until it actually
+ * does something.
  */
 function isRollback(stage: PipelineStage): boolean {
   // Not every provider sets the rollback flag, so fall back to the stage name.
   return stage.rollback || stage.name.toUpperCase().endsWith('ROLLBACK');
 }
 
+const REQUEST_TIMEOUT_MS = 30000;
+
+function messageOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Rejects with `message` after `ms`. These API calls take no abort signal, so a
+ * stuck one keeps running, but it can no longer keep the page busy.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      err => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+/** A stage that never ran, so it has no logs. */
+function neverRan(stage: PipelineStage): boolean {
+  return stage.status === 'STAGE_NOT_STARTED_YET' || stage.status === 'STAGE_SKIPPED';
+}
+
 function pipelineStages(deployment: Deployment): PipelineStage[] {
   return deployment.stages
-    .filter(stage => !(isRollback(stage) && stage.status === 'STAGE_NOT_STARTED_YET'))
+    .filter(stage => !(isRollback(stage) && neverRan(stage)))
     .sort((a, b) => a.index - b.index);
 }
 
@@ -109,44 +141,54 @@ export function DeploymentDetail(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [expandedStage, setExpandedStage] = useState<string | false>(false);
 
-  const [logsLoading, setLogsLoading] = useState(false);
+  // True while logs, or a refresh of the deployment and logs, are loading.
+  const [fetching, setFetching] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   // Only the newest request may update the page. The id changing, or the page
   // closing, bumps it too, so replies for an old deployment are dropped.
   const latestRequest = useRef(0);
+  // Stages whose missing log was already fetched again once on this page.
+  const retriedStages = useRef(new Set<string>());
 
   /**
-   * Fetches the stage logs, and with `refresh` the deployment again too, so a
-   * stage's status matches its logs. Logs are best-effort: the deployment still
-   * renders when the piped has not reported them yet, or has pruned them.
+   * Fetches the stage logs, and with `refresh` the deployment again too. Logs
+   * are best-effort: the deployment still renders when the piped has not
+   * reported them yet, or has pruned them. Failures keep what is on screen.
    */
   function fetchDetails(deploymentId: string, refresh: boolean): void {
     const request = ++latestRequest.current;
-    const isLatest = () => request === latestRequest.current;
-    setLogsLoading(true);
+    const isLatest = (): boolean => request === latestRequest.current;
+    const timedOut = t('The request timed out.');
+    setFetching(true);
 
-    if (refresh) {
-      getDeployment(config, deploymentId)
-        .then(result => {
-          if (isLatest()) setDeployment(result);
-        })
-        // The deployment already on screen stays; only its logs are reported.
-        .catch(() => undefined);
-    }
+    const deploymentReply = refresh
+      ? withTimeout(getDeployment(config, deploymentId), REQUEST_TIMEOUT_MS, timedOut)
+      : Promise.resolve(null);
+    const logsReply = withTimeout(
+      listStageLogs(config, deploymentId),
+      REQUEST_TIMEOUT_MS,
+      timedOut
+    );
 
-    listStageLogs(config, deploymentId)
-      .then(logs => {
-        if (!isLatest()) return;
-        setStageLogs(logs.stageLogs);
+    // Apply both together, so stage statuses and logs come from the same moment.
+    void Promise.allSettled([deploymentReply, logsReply]).then(([deploymentResult, logsResult]) => {
+      if (!isLatest()) return;
+      if (deploymentResult.status === 'fulfilled' && deploymentResult.value) {
+        setDeployment(deploymentResult.value);
+        setRefreshError(null);
+      } else if (deploymentResult.status === 'rejected') {
+        // The deployment already on screen stays; say it may be out of date.
+        setRefreshError(messageOf(deploymentResult.reason));
+      }
+      if (logsResult.status === 'fulfilled') {
+        setStageLogs(logsResult.value.stageLogs);
         setLogsError(null);
-      })
-      .catch(err => {
-        // Keep any logs already shown, and say why newer ones are missing.
-        if (isLatest()) setLogsError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
-        if (isLatest()) setLogsLoading(false);
-      });
+      } else {
+        setLogsError(messageOf(logsResult.reason));
+      }
+      setFetching(false);
+    });
   }
 
   useEffect(() => {
@@ -162,9 +204,11 @@ export function DeploymentDetail(): JSX.Element {
     // it again under the new URL.
     setDeployment(null);
     setStageLogs({});
-    setLogsLoading(false);
+    setFetching(false);
     setLogsError(null);
+    setRefreshError(null);
     setExpandedStage(false);
+    retriedStages.current = new Set();
 
     getDeployment(config, id)
       .then(result => {
@@ -176,7 +220,7 @@ export function DeploymentDetail(): JSX.Element {
       })
       .catch(err => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
+        setError(messageOf(err));
         setLoading(false);
       });
 
@@ -188,15 +232,21 @@ export function DeploymentDetail(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, config.baseURL, config.apiKey]);
 
-  function handleStageChange(stageId: string, isExpanded: boolean): void {
-    setExpandedStage(isExpanded ? stageId : false);
-    if (!isExpanded || !id || !deployment || logsLoading) return;
+  function handleStageChange(stage: PipelineStage, isExpanded: boolean): void {
+    setExpandedStage(isExpanded ? stage.id : false);
+    if (!isExpanded || !id || !deployment || fetching) return;
     // The first fetch is a snapshot. While the deployment runs, a stage may
     // have more logs than that, so opening it fetches the deployment and logs
-    // again. Once the deployment has finished, no more logs will come, unless
-    // the last fetch failed or caught a log the piped was still writing.
-    const log = stageLogs[stageId];
-    if (!FINISHED.has(deployment.status) || logsError || (log && !log.completed)) {
+    // again. Once it has finished, fetch again only for a stage that ran and
+    // whose log failed to load, was incomplete, or was missing: the piped may
+    // have reported it after the snapshot. A missing log is retried once, since
+    // some stages never write one; Refresh covers anything later.
+    const log = stageLogs[stage.id];
+    const missing = !log && !retriedStages.current.has(stage.id);
+    const logMayHaveMore =
+      !neverRan(stage) && (logsError !== null || (log !== undefined && !log.completed) || missing);
+    if (!FINISHED.has(deployment.status) || logMayHaveMore) {
+      if (!log) retriedStages.current.add(stage.id);
       fetchDetails(id, true);
     }
   }
@@ -260,21 +310,41 @@ export function DeploymentDetail(): JSX.Element {
               </Stack>
             </Stack>
 
-            <Button
-              size="small"
-              variant="outlined"
-              href={consoleURL(
-                config.baseURL,
-                `/deployments/${deployment.id}`,
-                deployment.projectId
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              {t('Open in PipeCD')}
-            </Button>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ flexShrink: 0 }}>
+              {/* Stages and logs do not update by themselves, so a running
+                  deployment can be reloaded without opening a stage. */}
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={fetching}
+                onClick={() => id && fetchDetails(id, true)}
+                startIcon={<Icon icon="mdi:refresh" />}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                {t('Refresh')}
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                href={consoleURL(
+                  config.baseURL,
+                  `/deployments/${deployment.id}`,
+                  deployment.projectId
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                {t('Open in PipeCD')}
+              </Button>
+            </Stack>
           </Stack>
+
+          {refreshError && (
+            <Alert severity="warning" sx={[{ mb: 2 }, alertTextSx('warning')]}>
+              {t('Could not refresh the deployment: {{error}}', { error: refreshError })}
+            </Alert>
+          )}
 
           {deployment.statusReason && (
             <Alert
@@ -343,7 +413,7 @@ export function DeploymentDetail(): JSX.Element {
               <Accordion
                 key={stage.id}
                 expanded={expandedStage === stage.id}
-                onChange={(_event, isExpanded) => handleStageChange(stage.id, isExpanded)}
+                onChange={(_event, isExpanded) => handleStageChange(stage, isExpanded)}
                 disableGutters
                 // Stage logs can run to thousands of lines, so only mount the
                 // stage that is actually open.
@@ -390,12 +460,12 @@ export function DeploymentDetail(): JSX.Element {
                       {stage.statusReason}
                     </Alert>
                   )}
-                  {logsError && !logsLoading && (
+                  {logsError && !fetching && (
                     <Alert severity="error" sx={[{ mb: 1.5 }, alertTextSx('error')]}>
                       {t('Failed to load logs: {{error}}', { error: logsError })}
                     </Alert>
                   )}
-                  {logsLoading && !stageLogs[stage.id] ? (
+                  {fetching && !stageLogs[stage.id] ? (
                     <Typography variant="body2" color="text.secondary">
                       {t('Loading logs…')}
                     </Typography>

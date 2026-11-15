@@ -154,6 +154,23 @@ describe('DeploymentDetail', () => {
     expect(screen.queryByText('ROLLBACK')).toBeNull();
   });
 
+  it('hides a rollback stage that was skipped', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue({
+      ...deploymentCompleted,
+      stages: deploymentCompleted.stages.map(stage =>
+        stage.rollback ? { ...stage, status: 'STAGE_SKIPPED' as const } : stage
+      ),
+    });
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    expect(screen.queryByText('ROLLBACK')).toBeNull();
+    expect(screen.getByText('K8S_SYNC')).toBeTruthy();
+  });
+
   // PipelineStage.visible is deprecated and left unset by the server, so
   // filtering on it used to hide every stage.
   it('renders stages even though the deprecated visible flag is unset', async () => {
@@ -300,9 +317,105 @@ describe('DeploymentDetail', () => {
     await waitFor(() => expect(screen.queryByText('Running')).toBeNull());
   });
 
-  it('does not fetch again for a finished deployment whose stage has no logs', async () => {
+  it('fetches again for a finished stage whose log was missing from the first snapshot', async () => {
     setupConfigured();
     vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockResolvedValueOnce({ stageLogs: {} })
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText('Applying manifests...')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a missing log only once for a finished deployment', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: {} });
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1));
+
+    // Open, close and open again: only the first open fetches.
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps Refresh off until both the deployment and logs are back', async () => {
+    setupConfigured();
+    let finishDeployment: (value: Deployment) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment)
+      .mockResolvedValueOnce(deploymentRunning)
+      .mockReturnValueOnce(new Promise(resolve => (finishDeployment = resolve)));
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    const refresh = (): HTMLButtonElement =>
+      screen.getByRole('button', { name: /Refresh/ }) as HTMLButtonElement;
+    await waitFor(() => expect(refresh().disabled).toBe(false));
+
+    fireEvent.click(refresh());
+    await waitFor(() => expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2));
+    // The logs are back, the deployment is not: still busy, and still Running.
+    await act(async () => undefined);
+    expect(refresh().disabled).toBe(true);
+    expect(screen.getAllByText('Running').length).toBeGreaterThan(0);
+
+    await act(async () => finishDeployment(deploymentCompleted));
+
+    await waitFor(() => expect(refresh().disabled).toBe(false));
+    expect(screen.queryByText('Running')).toBeNull();
+  });
+
+  it('gives up on a request that hangs, so Refresh works again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+      vi.mocked(pipecdApi.listStageLogs).mockReturnValue(new Promise(() => {}));
+
+      renderDetail();
+
+      await findHeading();
+      const refresh = screen.getByRole('button', { name: /Refresh/ }) as HTMLButtonElement;
+      expect(refresh.disabled).toBe(true);
+      fireEvent.click(screen.getByText('K8S_SYNC'));
+      expect(await screen.findByText('Loading logs…')).toBeTruthy();
+
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(await screen.findByText('Failed to load logs: The request timed out.')).toBeTruthy();
+      expect(refresh.disabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not fetch logs for a stage that never ran', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue({
+      ...deploymentCompleted,
+      stages: deploymentCompleted.stages.map(stage =>
+        stage.id === 'stage-k8s-sync' ? { ...stage, status: 'STAGE_SKIPPED' as const } : stage
+      ),
+    });
     vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: {} });
 
     renderDetail();
@@ -317,6 +430,58 @@ describe('DeploymentDetail', () => {
     expect(await screen.findByText(/No logs available for this stage/i)).toBeTruthy();
     expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
     expect(pipecdApi.getDeployment).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads the deployment and its stages with the Refresh button', async () => {
+    setupConfigured();
+    // Pending, before piped has planned any stages.
+    const pending: Deployment = {
+      ...deploymentRunning,
+      status: 'DEPLOYMENT_PENDING',
+      stages: [],
+    };
+    vi.mocked(pipecdApi.getDeployment)
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    expect(await screen.findByText(/no pipeline stages/i)).toBeTruthy();
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: /Refresh/ }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/ }));
+
+    expect(await screen.findByText('K8S_SYNC')).toBeTruthy();
+    expect(screen.queryByText(/no pipeline stages/i)).toBeNull();
+    expect(pipecdApi.getDeployment).toHaveBeenCalledTimes(2);
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the deployment and warns when a refresh fails', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment)
+      .mockResolvedValueOnce(deploymentCompleted)
+      .mockRejectedValue(new Error('network down'));
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: /Refresh/ }) as HTMLButtonElement).disabled).toBe(
+        false
+      )
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/ }));
+
+    expect(await screen.findByText('Could not refresh the deployment: network down')).toBeTruthy();
+    expect(await findHeading()).toBeTruthy();
+    expect(screen.queryByText(/Failed to load deployment/i)).toBeNull();
   });
 
   it('does not fetch the logs again for a stage whose logs are complete', async () => {
