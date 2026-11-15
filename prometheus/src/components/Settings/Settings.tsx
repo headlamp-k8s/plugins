@@ -1,8 +1,7 @@
 import { Icon } from '@iconify/react';
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
+import { ApiProxy, K8s } from '@kinvolk/headlamp-plugin/lib';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { NameValueTable } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { useClustersConf } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { Button, IconButton, Tooltip } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -12,7 +11,7 @@ import Select from '@mui/material/Select';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DiscoveryIntrospectionDialog } from './DiscoveryIntrospectionDialog';
 
 /**
@@ -41,6 +40,7 @@ interface SettingsProps {
       autoDetect?: boolean;
       address?: string;
       subPath?: string;
+      namespaceQueryParam?: boolean;
       defaultTimespan?: string;
       defaultResolution?: string;
       /** Exact Prometheus job label for one Tinkerbell installation. */
@@ -61,9 +61,11 @@ export function Settings(props: SettingsProps) {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [introspectionOpen, setIntrospectionOpen] = useState(false);
+  const [testNamespace, setTestNamespace] = useState('');
+  const testRequestId = useRef(0);
   const request = ApiProxy.request;
 
-  const clusters = useClustersConf() || {};
+  const clusters = K8s.useClustersConf() || {};
 
   useEffect(() => {
     if (Object.keys(clusters).length > 0 && !selectedCluster) {
@@ -93,12 +95,22 @@ export function Settings(props: SettingsProps) {
   useEffect(() => {
     if (selectedClusterData.address) {
       setAddressError(!isValidAddress(selectedClusterData.address));
-      setTestStatus('idle');
-      setTestMessage('');
     } else {
       setAddressError(false);
     }
-  }, [selectedClusterData.address]);
+    setTestStatus('idle');
+    setTestMessage('');
+    return () => {
+      testRequestId.current += 1;
+    };
+  }, [
+    selectedCluster,
+    selectedClusterData.address,
+    selectedClusterData.namespaceQueryParam,
+    selectedClusterData.subPath,
+    isAddressFieldEnabled,
+    testNamespace,
+  ]);
 
   const handleTestConnection = async () => {
     if (!selectedClusterData.address || !isValidAddress(selectedClusterData.address)) {
@@ -108,6 +120,7 @@ export function Settings(props: SettingsProps) {
       return;
     }
 
+    const requestId = ++testRequestId.current;
     setTestStatus('testing');
     setTestMessage(t('Testing Connection'));
 
@@ -128,10 +141,15 @@ export function Settings(props: SettingsProps) {
       // something is listening on the port.
       const normalizedSubPath = subPath.replace(/\/+$/, '');
       const queryParams = new URLSearchParams({ query: '1' });
+      if (selectedClusterData.namespaceQueryParam) {
+        queryParams.set('namespace', testNamespace.trim());
+      }
       const proxyUrl = `/clusters/${selectedCluster}/api/v1/namespaces/${namespace}/services/${service}:${port}/proxy${normalizedSubPath}/api/v1/query?${queryParams.toString()}`;
       const response = await request(proxyUrl, {
         method: 'GET',
       });
+
+      if (requestId !== testRequestId.current) return;
 
       if (response?.status !== 'success') {
         const detail =
@@ -144,6 +162,7 @@ export function Settings(props: SettingsProps) {
       setTestStatus('success');
       setTestMessage(t('Connection successful!'));
     } catch (err) {
+      if (requestId !== testRequestId.current) return;
       setTestStatus('error');
       const errorMessage = err instanceof Error ? err.message : String(err);
       setTestMessage(t('Connection failed: {{ errorMessage }}', { errorMessage }));
@@ -206,6 +225,32 @@ export function Settings(props: SettingsProps) {
       ),
     },
     {
+      name: t('Send resource namespace'),
+      value: (
+        <Box>
+          <Switch
+            inputProps={{ 'aria-label': t('Send resource namespace') }}
+            disabled={!isMetricsEnabled}
+            checked={selectedClusterData.namespaceQueryParam ?? false}
+            onChange={event =>
+              onDataChange({
+                ...(data || {}),
+                [selectedCluster]: {
+                  ...selectedClusterData,
+                  namespaceQueryParam: event.target.checked,
+                },
+              })
+            }
+          />
+          <Typography variant="body2">
+            {t(
+              'Send the resource namespace as a query parameter for prom-label-proxy. Configure its service address manually.'
+            )}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
       name: t('Prometheus Service Address'),
       value: (
         <Box display="flex" flexDirection="column" width="100%">
@@ -240,7 +285,8 @@ export function Settings(props: SettingsProps) {
                 !isAddressFieldEnabled ||
                 addressError ||
                 !selectedClusterData.address ||
-                testStatus === 'testing'
+                testStatus === 'testing' ||
+                (selectedClusterData.namespaceQueryParam && !testNamespace.trim())
               }
               onClick={handleTestConnection}
               sx={{ mt: 1, minWidth: '100px' }}
@@ -248,6 +294,16 @@ export function Settings(props: SettingsProps) {
               {t('Test Connection')}
             </Button>
           </Box>
+          {selectedClusterData.namespaceQueryParam && (
+            <TextField
+              label={t('Namespace for connection test')}
+              value={testNamespace}
+              disabled={!isAddressFieldEnabled}
+              onChange={event => setTestNamespace(event.target.value)}
+              helperText={t('Charts use the namespace of the resource being viewed.')}
+              sx={{ mt: 2 }}
+            />
+          )}
           {testStatus !== 'idle' && testMessage && (
             <Alert
               severity={testStatus === 'success' ? 'success' : 'error'}

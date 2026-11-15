@@ -419,6 +419,7 @@ export async function fetchMetrics(data: {
   step: number;
   subPath?: string;
   cluster?: string;
+  namespace?: string;
 }): Promise<object> {
   const params = new URLSearchParams();
   if (data.from) {
@@ -432,6 +433,9 @@ export async function fetchMetrics(data: {
   }
   if (data.query) {
     params.append('query', data.query);
+  }
+  if (data.namespace) {
+    params.append('namespace', data.namespace);
   }
   var url = `/api/v1/namespaces/${data.prefix}/proxy/api/v1/query_range?${params.toString()}`;
   if (data.subPath && data.subPath !== '') {
