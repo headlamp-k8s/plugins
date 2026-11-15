@@ -161,6 +161,21 @@ export interface GetDeploymentResponse {
   deployment: Deployment;
 }
 
+export type PipedStatus = 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
+
+/**
+ * A piped as APIService returns it. Only ListPipeds fills in `status`; GetPiped
+ * sends the stored record, so a piped from there is always UNKNOWN.
+ */
+export interface Piped {
+  id: string;
+  name: string;
+  version: string;
+  disabled: boolean;
+  startedAt: number;
+  status: PipedStatus;
+}
+
 export type LogSeverity = 'INFO' | 'SUCCESS' | 'ERROR';
 
 export interface LogBlock {

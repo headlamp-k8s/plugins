@@ -36,6 +36,8 @@ import {
 } from '../generated/pkg/model/deployment_pb';
 import type { LogBlock as GenLogBlock } from '../generated/pkg/model/logblock_pb';
 import { LogSeverity as GenLogSeverity } from '../generated/pkg/model/logblock_pb';
+import type { Piped as GenPiped } from '../generated/pkg/model/piped_pb';
+import { Piped_ConnectionStatus as GenPipedStatus } from '../generated/pkg/model/piped_pb';
 import type {
   Application,
   ApplicationKind,
@@ -50,6 +52,8 @@ import type {
   ListStageLogsResponse,
   LogBlock,
   LogSeverity,
+  Piped,
+  PipedStatus,
   PipelineStage,
   StageStatus,
   SyncStatus,
@@ -94,6 +98,11 @@ export class PipeCDApiError extends Error {
     super(message);
     this.name = 'PipeCDApiError';
   }
+}
+
+/** True when the server does not have this call, e.g. it is an older version. */
+export function isUnimplemented(err: unknown): boolean {
+  return err instanceof PipeCDApiError && err.status === Code.Unimplemented;
 }
 
 function getClient(config: PipeCDConfig) {
@@ -344,6 +353,8 @@ function mapDeployment(d: GenDeployment): Deployment {
 
 export interface ListApplicationsOptions {
   kind?: ApplicationKind;
+  /** The server returns either enabled or disabled applications, never both. */
+  disabled?: boolean;
   cursor?: string;
   pageSize?: number;
   signal?: AbortSignal;
@@ -364,7 +375,7 @@ export async function listApplications(
           cursor,
           limit: options.pageSize ?? 0,
           name: '',
-          disabled: false,
+          disabled: options.disabled ?? false,
           labels: {},
           pipedId: '',
         },
@@ -449,6 +460,43 @@ export async function getDeployment(
     throw new PipeCDApiError(`PipeCD API returned no deployment for ${deploymentId}`, 5, '');
   }
   return mapDeployment(resp.deployment);
+}
+
+const PIPED_STATUS_MAP: Record<number, PipedStatus> = {
+  [GenPipedStatus.UNKNOWN]: 'UNKNOWN',
+  [GenPipedStatus.ONLINE]: 'ONLINE',
+  [GenPipedStatus.OFFLINE]: 'OFFLINE',
+};
+
+function mapPiped(p: GenPiped): Piped {
+  return {
+    id: p.id,
+    name: p.name,
+    version: p.version,
+    disabled: p.disabled,
+    startedAt: toNumber(p.startedAt),
+    status: PIPED_STATUS_MAP[p.status] ?? 'UNKNOWN',
+  };
+}
+
+/** Every piped in the API key's project, disabled ones included. */
+export async function listPipeds(config: PipeCDConfig, signal?: AbortSignal): Promise<Piped[]> {
+  const client = getClient(config);
+  const resp = await call('ListPipeds', () => client.listPipeds({ withStatus: true }, { signal }));
+  return resp.pipeds.map(mapPiped);
+}
+
+export async function getPiped(
+  config: PipeCDConfig,
+  pipedId: string,
+  signal?: AbortSignal
+): Promise<Piped> {
+  const client = getClient(config);
+  const resp = await call('GetPiped', () => client.getPiped({ pipedId }, { signal }));
+  if (!resp.piped) {
+    throw new PipeCDApiError(`PipeCD API returned no piped for ${pipedId}`, Code.NotFound, '');
+  }
+  return mapPiped(resp.piped);
 }
 
 function mapLogBlock(b: GenLogBlock): LogBlock {
