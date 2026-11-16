@@ -175,6 +175,20 @@ export function getUniqueFlavorNames(resourceGroups: ResourceGroupLike[]) {
   return Array.from(new Set(names)).filter(Boolean).sort();
 }
 
+/**
+ * Render the nominal quota a ResourceFlavor gives a ClusterQueue, such as `cpu: 4, memory: 8Gi`.
+ * Returns '-' when the flavor is listed without resources.
+ */
+export function renderFlavorNominalQuota(resourceGroups: ResourceGroupLike[], flavorName: string) {
+  const quotas = resourceGroups
+    .flatMap(group => group.flavors || [])
+    .filter(flavor => flavor.name === flavorName)
+    .flatMap(flavor => flavor.resources || [])
+    .map(resource => `${resource.name}: ${resource.nominalQuota}`);
+
+  return renderStringList(quotas);
+}
+
 /** Render a compact resource group and flavor count for ClusterQueue lists. */
 export function renderResourceGroupsSummary(resourceGroups: ResourceGroupLike[]) {
   if (resourceGroups.length === 0) {

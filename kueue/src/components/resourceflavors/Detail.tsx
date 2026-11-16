@@ -2,6 +2,7 @@ import { DetailsGrid } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { useParams } from 'react-router-dom';
 import { ResourceFlavor } from '../../resources/resourceFlavor';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import { FlavorClusterQueuesSection } from '../common/RelatedResources';
 
 export default function ResourceFlavorDetail(props: { name?: string; cluster?: string }) {
   const params = useParams<{ name: string }>();
@@ -37,6 +38,16 @@ export default function ResourceFlavorDetail(props: { name?: string; cluster?: s
                 {
                   name: 'Topology',
                   value: resourceFlavor.topologyName,
+                },
+              ]
+            : []
+        }
+        extraSections={resourceFlavor =>
+          resourceFlavor
+            ? [
+                {
+                  id: 'flavor-cluster-queues',
+                  section: <FlavorClusterQueuesSection flavorName={resourceFlavor.metadata.name} />,
                 },
               ]
             : []
