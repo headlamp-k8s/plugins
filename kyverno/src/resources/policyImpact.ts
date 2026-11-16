@@ -633,14 +633,15 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
   if (rule.validate?.foreach && (rule.validate.foreach as ForEachValidation[]).length > 0) {
-    const listExprs = (rule.validate.foreach as ForEachValidation[]).map(entry =>
-      entry.list ? `the list expression "${entry.list}"` : 'a list expression'
-    );
-    return `This rule uses validate.foreach over ${listExprs.join(
-      ', '
-    )}. Review the nested pattern or deny condition in each foreach block of ${ruleLabel} on policy "${
-      target.policy
-    }" and update the elements in whichever list failed validation.`;
+    const entries = rule.validate.foreach as ForEachValidation[];
+    const lists = entries.map(e => e.list).filter(Boolean) as string[];
+    const listDesc =
+      lists.length === 0
+        ? ' a list expression'
+        : lists.length === 1
+        ? ` the list expression "${lists[0]}"`
+        : ` list expressions: ${lists.map(l => `"${l}"`).join(', ')}`;
+    return `This rule uses validate.foreach over${listDesc}. Each element must satisfy the nested pattern or deny condition inside the foreach block. Review the foreach block in ${ruleLabel} on policy "${target.policy}" and update each element of the specified list in the resource so it passes.`;
   }
   if (rule.validate?.deny) {
     // deny.conditions (any/all, confirmed against the real CRD schema) is what
@@ -660,9 +661,15 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
     return `This rule is enforced with a CEL expression. Review validate.cel.expressions on ${ruleLabel} and adjust the resource so the expression evaluates to true.`;
   }
   if (rule.mutate?.foreach && (rule.mutate.foreach as ForEachMutation[]).length > 0) {
-    const first = (rule.mutate.foreach as ForEachMutation[])[0];
-    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
-    return `This is a foreach mutation rule that patches each element of${listExpr}. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
+    const entries = rule.mutate.foreach as ForEachMutation[];
+    const lists = entries.map(e => e.list).filter(Boolean) as string[];
+    const listDesc =
+      lists.length === 0
+        ? ' a list expression'
+        : lists.length === 1
+        ? ` the list expression "${lists[0]}"`
+        : ` list expressions: ${lists.map(l => `"${l}"`).join(', ')}`;
+    return `This is a foreach mutation rule that patches each element of${listDesc}. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;
   }
   if (rule.mutate) {
     return `This is a mutation rule; Kyverno should patch the resource automatically. If the patch did not apply, confirm the rule's match block covers this resource and that mutation was not skipped.`;

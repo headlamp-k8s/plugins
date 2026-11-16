@@ -17,6 +17,7 @@
 import { Icon } from '@iconify/react';
 import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Chip, Divider, Link as MuiLink, Typography } from '@mui/material';
+import { effectiveEnforcementAction } from '../resources/kyvernoPolicy';
 import { ImpactedResource, PolicyImpactSummary } from '../resources/policyImpact';
 import { PolicyViewer } from './PolicyViewer';
 
@@ -36,6 +37,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
       <Icon
         icon="mdi:close-circle"
         width="16"
+        aria-hidden={false}
         aria-label={status}
         style={{ color: 'rgb(211, 47, 47)', flexShrink: 0 }}
       />
@@ -46,6 +48,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
       <Icon
         icon="mdi:alert-circle"
         width="16"
+        aria-hidden={false}
         aria-label={status}
         style={{ color: 'rgb(237, 108, 2)', flexShrink: 0 }}
       />
@@ -56,6 +59,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
       <Icon
         icon="mdi:minus-circle"
         width="16"
+        aria-hidden={false}
         aria-label={status}
         style={{ color: 'rgb(120, 120, 120)', flexShrink: 0 }}
       />
@@ -65,6 +69,7 @@ function ResourceStatusIcon({ status }: { status: ImpactedResource['status'] }) 
     <Icon
       icon="mdi:check-circle"
       width="16"
+      aria-hidden={false}
       aria-label={status}
       style={{ color: 'rgb(46, 125, 50)', flexShrink: 0 }}
     />
@@ -88,7 +93,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
   const policy = node.kubeObject;
   const name: string = policy?.metadata?.name ?? '(unknown)';
   const namespace: string | undefined = policy?.metadata?.namespace;
-  const action: string = policy?.spec?.validationFailureAction ?? 'Audit';
+  const action = effectiveEnforcementAction(policy?.spec);
 
   const data: MapNodeData | undefined = node.data;
   const impact = data?.impact;
@@ -146,11 +151,11 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
               {data.reportError}
             </Typography>
           )}
-          {impact.resources.length === 0 ? (
+          {impact.resources.length === 0 && !data?.reportError ? (
             <Typography variant="caption" color="text.secondary">
               {t('No evaluated resources yet.')}
             </Typography>
-          ) : (
+          ) : impact.resources.length > 0 ? (
             <>
               <Typography
                 variant="caption"
@@ -211,7 +216,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
                 </MuiLink>
               )}
             </>
-          )}
+          ) : null}
         </>
       )}
     </Box>

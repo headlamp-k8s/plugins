@@ -18,9 +18,19 @@ import { Icon } from '@iconify/react';
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Box, Typography } from '@mui/material';
 import { useMemo } from 'react';
-import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
+import {
+  effectiveEnforcementAction,
+  KyvernoClusterPolicy,
+  KyvernoPolicy,
+} from '../resources/kyvernoPolicy';
 import { apiGroupOf, collectPolicyImpact, PolicyImpactSummary } from '../resources/policyImpact';
-import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  POLICY_REPORT_SOURCE,
+  PolicyReport,
+  PolicyReportInterface,
+  PolicyReportResult,
+} from '../resources/policyReport';
 import { PolicyImpactNodeDetails } from './PolicyImpactNodeDetails';
 
 // Per-policy cap on resource nodes written to the Map. Above this, the policy
@@ -36,6 +46,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-off"
         width="100%"
         height="100%"
+        aria-hidden={false}
         aria-label="failing"
         style={{ color: 'rgb(211, 47, 47)' }}
       />
@@ -47,6 +58,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-alert"
         width="100%"
         height="100%"
+        aria-hidden={false}
         aria-label="warning"
         style={{ color: 'rgb(237, 108, 2)' }}
       />
@@ -58,6 +70,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-check"
         width="100%"
         height="100%"
+        aria-hidden={false}
         aria-label="passing"
         style={{ color: 'rgb(46, 125, 50)' }}
       />
@@ -71,6 +84,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
         icon="mdi:shield-outline"
         width="100%"
         height="100%"
+        aria-hidden={false}
         aria-label="skip"
         style={{ color: 'rgb(120, 120, 120)' }}
       />
@@ -82,6 +96,7 @@ function policyStatusIcon(impact: PolicyImpactSummary) {
       icon="mdi:shield-outline"
       width="100%"
       height="100%"
+      aria-hidden={false}
       aria-label="no data"
       style={{ color: 'rgb(120, 120, 120)' }}
     />
@@ -110,7 +125,7 @@ export function KyvernoPolicyGlance({ node }: { node: any }) {
   const kind: string | undefined = policy?.kind ?? policy?.jsonData?.kind;
   if (kind !== 'ClusterPolicy' && kind !== 'Policy') return null;
 
-  const action: string = policy?.spec?.validationFailureAction ?? 'Audit';
+  const action = effectiveEnforcementAction(policy?.spec);
   const ruleCount: number = (policy?.spec?.rules ?? []).length;
   const impact = node.data?.impact;
 
@@ -170,6 +185,11 @@ export const kyvernoMapSource = {
       // clusters where RBAC denies the policy list.
       if (clusterPolicies === null && policies === null && !clusterPoliciesErr && !policiesErr)
         return null;
+      // Also hold while report lists are loading so the first render never flashes
+      // "0/0 passing" or "No evaluated resources yet." before reports arrive.
+      // Once either report query errors, we proceed and surface the error.
+      if ((policyReports === null || clusterPolicyReports === null) && !prErrors && !cprErrors)
+        return null;
 
       // Surface the first report-fetch error so the sidebar can show it instead
       // of silently presenting an empty "No evaluated resources yet." (finding 3).
@@ -187,23 +207,38 @@ export const kyvernoMapSource = {
         ...(policies ?? []).map(p => ({ obj: p, ns: p.metadata.namespace })),
       ];
 
-      // Pre-bucket report objects by the qualified policy name that appears in their
-      // results. This turns the per-policy collectPolicyImpact scan from
-      // O(policies × total results) to O(total results) for the grouping step,
-      // then O(results for that policy) per policy (finding 4).
-      const prByPolicy = new Map<string, PolicyReport[]>();
-      const cprByPolicy = new Map<string, ClusterPolicyReport[]>();
+      // Pre-bucket report results by qualified policy name so each collectPolicyImpact
+      // call only scans its own policy's results rather than all results in the report.
+      // Buckets store pre-filtered fragments (not whole reports) to avoid the
+      // O(policies × total results) quadratic scan when a report covers many policies.
+      // The cast is safe: collectPolicyImpact only reads .results, .scope, and
+      // .jsonData.metadata.namespace from each object.
+      type ReportFragment = {
+        results: PolicyReportResult[];
+        scope: PolicyReportInterface['scope'];
+        jsonData: { metadata: { namespace?: string } };
+      };
+      const prByPolicy = new Map<string, ReportFragment[]>();
+      const cprByPolicy = new Map<string, ReportFragment[]>();
       for (const report of policyReports ?? []) {
         for (const name of new Set(report.results.map(r => r.policy))) {
           const bucket = prByPolicy.get(name) ?? [];
-          bucket.push(report);
+          bucket.push({
+            results: report.results.filter(r => r.policy === name),
+            scope: report.scope,
+            jsonData: { metadata: { namespace: report.jsonData.metadata.namespace } },
+          });
           prByPolicy.set(name, bucket);
         }
       }
       for (const report of clusterPolicyReports ?? []) {
         for (const name of new Set(report.results.map(r => r.policy))) {
           const bucket = cprByPolicy.get(name) ?? [];
-          bucket.push(report);
+          bucket.push({
+            results: report.results.filter(r => r.policy === name),
+            scope: report.scope,
+            jsonData: { metadata: { namespace: undefined } },
+          });
           cprByPolicy.set(name, bucket);
         }
       }
@@ -219,12 +254,19 @@ export const kyvernoMapSource = {
             impact: collectPolicyImpact(
               policy.metadata.name,
               POLICY_REPORT_SOURCE.legacy,
-              prByPolicy.get(qualifiedName) ?? [],
-              cprByPolicy.get(qualifiedName) ?? [],
+              (prByPolicy.get(qualifiedName) ?? []) as unknown as PolicyReport[],
+              (cprByPolicy.get(qualifiedName) ?? []) as unknown as ClusterPolicyReport[],
               ns
             ),
           };
         });
+
+      // Sort each policy's resources worst-status-first so the 50-node cap and
+      // the sidebar's top-5 list both prioritize failures over passing resources.
+      const statusPriority = { error: 4, fail: 3, warn: 2, skip: 1, pass: 0 } as const;
+      for (const { impact } of policyImpacts) {
+        impact.resources.sort((a, b) => statusPriority[b.status] - statusPriority[a.status]);
+      }
 
       // Build a cross-policy nameKey → UID map so the same physical resource
       // resolves to one node even when different policies' reports mix UID-carrying
@@ -287,7 +329,12 @@ export const kyvernoMapSource = {
         }
       }
 
-      nodes.push(...resourceNodeMap.values());
+      // Filter out synthetic resource nodes whose IDs match a policy node: when a
+      // policy evaluates another Policy/ClusterPolicy, its UID appears in both the
+      // policy node list (with icon and details) and the resourceNodeMap (label-only).
+      // Keep the richer policy node and drop the duplicate label-only entry.
+      const policyNodeIds = new Set(policyImpacts.map(({ policy }) => policy.metadata.uid));
+      nodes.push(...Array.from(resourceNodeMap.values()).filter(n => !policyNodeIds.has(n.id)));
 
       return { nodes, edges };
     }, [

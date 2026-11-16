@@ -38,6 +38,7 @@ interface PolicyImpactPanelProps {
   policyName: string;
   policyNamespace?: string;
   rules: PolicyRule[];
+  autogenRules?: PolicyRule[];
 }
 
 /**
@@ -62,15 +63,21 @@ interface PolicyImpactPanelProps {
  * their own case needs, so a namespace-only RBAC identity never issues that forbidden cluster-wide
  * request in the first place.
  */
-export function PolicyImpactPanel({ policyName, policyNamespace, rules }: PolicyImpactPanelProps) {
+export function PolicyImpactPanel({
+  policyName,
+  policyNamespace,
+  rules,
+  autogenRules,
+}: PolicyImpactPanelProps) {
   return policyNamespace ? (
     <NamespacedPolicyImpact
       policyName={policyName}
       policyNamespace={policyNamespace}
       rules={rules}
+      autogenRules={autogenRules}
     />
   ) : (
-    <ClusterPolicyImpact policyName={policyName} rules={rules} />
+    <ClusterPolicyImpact policyName={policyName} rules={rules} autogenRules={autogenRules} />
   );
 }
 
@@ -78,10 +85,12 @@ function NamespacedPolicyImpact({
   policyName,
   policyNamespace,
   rules,
+  autogenRules,
 }: {
   policyName: string;
   policyNamespace: string;
   rules: PolicyRule[];
+  autogenRules?: PolicyRule[];
 }) {
   const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace });
   return (
@@ -89,6 +98,7 @@ function NamespacedPolicyImpact({
       policyName={policyName}
       policyNamespace={policyNamespace}
       rules={rules}
+      autogenRules={autogenRules}
       policyReports={policyReportQuery.items}
       // Never fetched for a namespaced Policy, not merely loading: a namespaced Policy can't
       // match any cluster-scoped resource, so an empty list is the real, complete answer here,
@@ -100,7 +110,15 @@ function NamespacedPolicyImpact({
   );
 }
 
-function ClusterPolicyImpact({ policyName, rules }: { policyName: string; rules: PolicyRule[] }) {
+function ClusterPolicyImpact({
+  policyName,
+  rules,
+  autogenRules,
+}: {
+  policyName: string;
+  rules: PolicyRule[];
+  autogenRules?: PolicyRule[];
+}) {
   const policyReportQuery = PolicyReport.useList();
   const clusterPolicyReportQuery = ClusterPolicyReport.useList();
   return (
@@ -108,6 +126,7 @@ function ClusterPolicyImpact({ policyName, rules }: { policyName: string; rules:
       policyName={policyName}
       policyNamespace={undefined}
       rules={rules}
+      autogenRules={autogenRules}
       policyReports={policyReportQuery.items}
       clusterPolicyReports={clusterPolicyReportQuery.items}
       loading={policyReportQuery.isLoading || clusterPolicyReportQuery.isLoading}
@@ -120,6 +139,7 @@ function PolicyImpactPanelBody({
   policyName,
   policyNamespace,
   rules,
+  autogenRules,
   policyReports,
   clusterPolicyReports,
   loading,
@@ -128,6 +148,7 @@ function PolicyImpactPanelBody({
   policyName: string;
   policyNamespace?: string;
   rules: PolicyRule[];
+  autogenRules?: PolicyRule[];
   policyReports: PolicyReport[] | null;
   clusterPolicyReports: ClusterPolicyReport[] | null;
   loading: boolean;
@@ -285,6 +306,7 @@ function PolicyImpactPanelBody({
         target={drillDownTarget}
         onClose={() => setDrillDownTarget(null)}
         rules={rules}
+        autogenRules={autogenRules}
       />
       <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Chip label={t('{{count}} resources', { count: impact.resources.length })} size="small" />

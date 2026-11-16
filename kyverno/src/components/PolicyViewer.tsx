@@ -535,6 +535,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
         policyName={policy.jsonData.metadata.name}
         policyNamespace={policy.jsonData.metadata.namespace}
         rules={policy.rules}
+        autogenRules={policy.status?.autogen?.rules}
       />
       <AssociatedReportsSection
         policyName={policy.jsonData.metadata.name}
