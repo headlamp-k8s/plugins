@@ -33,7 +33,9 @@ export interface ResourceRule {
 
 export interface MatchConstraints {
   resourceRules?: ResourceRule[];
+  excludeResourceRules?: ResourceRule[];
   namespaceSelector?: Record<string, unknown>;
+  objectSelector?: Record<string, unknown>;
   labelSelector?: Record<string, unknown>;
   matchConditions?: { name: string; expression: string }[];
 }
@@ -65,6 +67,7 @@ export interface CELValidation {
 export interface ValidatingPolicySpec {
   validationActions?: string[];
   matchConstraints?: MatchConstraints;
+  matchConditions?: { name: string; expression: string }[];
   variables?: CELVariable[];
   validations?: CELValidation[];
   evaluation?: CELPolicyEvaluation;
@@ -80,7 +83,7 @@ export interface ValidatingPolicyInterface extends KubeObjectInterface {
 export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
   static kind = 'ValidatingPolicy';
   static apiName = 'validatingpolicies';
-  static apiVersion = 'policies.kyverno.io/v1';
+  static apiVersion = 'policies.kyverno.io/v1alpha1';
   static isNamespaced = false;
 
   get spec() {
@@ -140,7 +143,7 @@ export interface MutatingPolicyInterface extends KubeObjectInterface {
 export class MutatingPolicy extends KubeObject<MutatingPolicyInterface> {
   static kind = 'MutatingPolicy';
   static apiName = 'mutatingpolicies';
-  static apiVersion = 'policies.kyverno.io/v1';
+  static apiVersion = 'policies.kyverno.io/v1alpha1';
   static isNamespaced = false;
 
   get spec() {
@@ -191,7 +194,7 @@ export interface GeneratingPolicyInterface extends KubeObjectInterface {
 export class GeneratingPolicy extends KubeObject<GeneratingPolicyInterface> {
   static kind = 'GeneratingPolicy';
   static apiName = 'generatingpolicies';
-  static apiVersion = 'policies.kyverno.io/v1';
+  static apiVersion = 'policies.kyverno.io/v1alpha1';
   static isNamespaced = false;
 
   get spec() {
@@ -230,7 +233,7 @@ export interface DeletingPolicyInterface extends KubeObjectInterface {
 export class DeletingPolicy extends KubeObject<DeletingPolicyInterface> {
   static kind = 'DeletingPolicy';
   static apiName = 'deletingpolicies';
-  static apiVersion = 'policies.kyverno.io/v1';
+  static apiVersion = 'policies.kyverno.io/v1alpha1';
   static isNamespaced = false;
 
   get spec() {
@@ -292,7 +295,7 @@ export interface ImageValidatingPolicyInterface extends KubeObjectInterface {
 export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInterface> {
   static kind = 'ImageValidatingPolicy';
   static apiName = 'imagevalidatingpolicies';
-  static apiVersion = 'policies.kyverno.io/v1';
+  static apiVersion = 'policies.kyverno.io/v1alpha1';
   static isNamespaced = false;
 
   get spec() {

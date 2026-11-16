@@ -625,7 +625,7 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
   const ruleLabel = rule.name ? `rule "${rule.name}"` : 'this rule';
 
   if (rule.validate?.pattern) {
-    return `This rule enforces the pattern below on ${
+    return `This rule enforces the pattern on ${
       target.kind || 'the resource'
     }. Update the manifest so every field matches the pattern, then re-apply it.`;
   }
@@ -633,9 +633,14 @@ export function suggestFix(rule: PolicyRule, target: DrillDownTarget): string {
     return `This rule requires the resource to satisfy at least one of several patterns. Compare the resource against each entry in validate.anyPattern and adjust it to match one of them.`;
   }
   if (rule.validate?.foreach && (rule.validate.foreach as ForEachValidation[]).length > 0) {
-    const first = (rule.validate.foreach as ForEachValidation[])[0];
-    const listExpr = first?.list ? ` the list expression "${first.list}"` : ' a list expression';
-    return `This rule uses validate.foreach over${listExpr}. Each element must satisfy the nested pattern or deny condition inside the foreach block. Review the foreach block in ${ruleLabel} on policy "${target.policy}" and update each element of the specified list in the resource so it passes.`;
+    const listExprs = (rule.validate.foreach as ForEachValidation[]).map(entry =>
+      entry.list ? `the list expression "${entry.list}"` : 'a list expression'
+    );
+    return `This rule uses validate.foreach over ${listExprs.join(
+      ', '
+    )}. Review the nested pattern or deny condition in each foreach block of ${ruleLabel} on policy "${
+      target.policy
+    }" and update the elements in whichever list failed validation.`;
   }
   if (rule.validate?.deny) {
     // deny.conditions (any/all, confirmed against the real CRD schema) is what
@@ -739,6 +744,11 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
       `matchConstraints.namespaceSelector further restricts which namespaces this policy applies to.`
     );
   }
+  if (mc.objectSelector && Object.keys(mc.objectSelector).length > 0) {
+    reasons.push(
+      `matchConstraints.objectSelector further restricts which resources this policy applies to by object label.`
+    );
+  }
   if (mc.labelSelector && Object.keys(mc.labelSelector).length > 0) {
     reasons.push(
       `matchConstraints.labelSelector further restricts which resources this policy applies to by label.`
@@ -748,6 +758,22 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
     const names = mc.matchConditions.map(c => `"${c.name}"`).join(', ');
     reasons.push(
       `matchConstraints.matchConditions [${names}] further restrict when this policy applies.`
+    );
+  }
+  if (mc.excludeResourceRules && mc.excludeResourceRules.length > 0) {
+    const excluded = mc.excludeResourceRules
+      .map(r => (r.resources && r.resources.length > 0 ? r.resources.join(', ') : '*'))
+      .join('; ');
+    reasons.push(
+      `matchConstraints.excludeResourceRules explicitly excludes resources [${excluded}] from this policy.`
+    );
+  }
+
+  // Top-level spec.matchConditions (distinct from matchConstraints.matchConditions)
+  if (spec.matchConditions && spec.matchConditions.length > 0) {
+    const names = spec.matchConditions.map(c => `"${c.name}"`).join(', ');
+    reasons.push(
+      `spec.matchConditions [${names}] further restrict when this policy applies at the admission webhook level.`
     );
   }
 

@@ -1703,6 +1703,55 @@ describe('describeCELMatchReasons', () => {
     expect(reasons.some(r => r.includes('labelSelector'))).toBe(true);
     expect(reasons.some(r => r.includes('"only-on-create"'))).toBe(true);
   });
+
+  test('appends objectSelector and excludeResourceRules when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          objectSelector: { matchLabels: { tier: 'frontend' } },
+          excludeResourceRules: [{ resources: ['pods'], operations: ['DELETE'] }],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('objectSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('excludeResourceRules'))).toBe(true);
+    expect(reasons.some(r => r.includes('pods'))).toBe(true);
+  });
+
+  test('appends top-level spec.matchConditions when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: { resourceRules: [{ resources: ['pods'] }] },
+        matchConditions: [
+          {
+            name: 'only-system-sa',
+            expression: 'request.userInfo.username.startsWith("system:")',
+          },
+        ],
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('"only-system-sa"'))).toBe(true);
+    expect(reasons.some(r => r.includes('spec.matchConditions'))).toBe(true);
+  });
+});
+
+describe('suggestFix forEach multi-block', () => {
+  const target = { policy: 'require-app-label', status: 'fail' as const };
+
+  test('names all list expressions when a foreach rule has multiple blocks', () => {
+    const foreach: ForEachValidation[] = [
+      { list: 'request.object.spec.containers[]' },
+      { list: 'request.object.spec.initContainers[]' },
+    ];
+    const rule: PolicyRule = { name: 'check-containers', validate: { foreach } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('request.object.spec.containers[]');
+    expect(result).toContain('request.object.spec.initContainers[]');
+    expect(result).not.toContain('undefined');
+  });
 });
 
 describe('suggestCELFix', () => {

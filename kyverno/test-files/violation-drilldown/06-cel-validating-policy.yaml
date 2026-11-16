@@ -1,6 +1,6 @@
 # Exercises describeCELMatchReasons and suggestCELFix paths.
-# A ValidatingPolicy (policies.kyverno.io/v1) that requires every Pod in the
-# drilldown-test namespace to have a non-empty 'cost-center' annotation.
+# A ValidatingPolicy (policies.kyverno.io/v1alpha1) that requires every Pod in
+# the drilldown-test namespace to have a non-empty 'cost-center' annotation.
 # The dialog should show:
 #   - matchConstraints targeting resources [pods]
 #   - the CEL expression verbatim in the monospace box
@@ -9,12 +9,17 @@
 # Requires Kyverno 1.16+ for ValidatingPolicy support.
 # Confirm the CRD is available before applying:
 #   kubectl get crd validatingpolicies.policies.kyverno.io
-apiVersion: policies.kyverno.io/v1
+apiVersion: policies.kyverno.io/v1alpha1
 kind: ValidatingPolicy
 metadata:
   name: dd-require-cost-center
 spec:
+  validationActions:
+    - Audit
   matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: drilldown-test
     resourceRules:
       - apiGroups:
           - ""
@@ -28,6 +33,6 @@ spec:
   validations:
     - expression: >-
         has(object.metadata.annotations) &&
-        has(object.metadata.annotations['cost-center']) &&
+        'cost-center' in object.metadata.annotations &&
         object.metadata.annotations['cost-center'] != ''
       message: "Pods must carry a non-empty 'cost-center' annotation."
