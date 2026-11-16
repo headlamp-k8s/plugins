@@ -7,6 +7,15 @@ orphaned resources. These charts appear only when Prometheus is enabled for the 
 and the resource is `argoproj.io/v1alpha1` `Application`. Missing Argo CD metrics simply show the
 normal no-data state.
 
+Deployment, StatefulSet, DaemonSet, and ReplicaSet charts aggregate all selected
+Pods in the namespace, including old and new Pods during a rollout. Pod selection
+uses controller-specific generated-name shapes rather than a broad name prefix,
+so `web` does not include `web-api` Pods. Names are regex-escaped and generated
+prefix truncation is handled. This uses the existing container metrics, without
+requiring kube-state-metrics ownership series. Matching is name-based, not an
+ownership proof: controllers with indistinguishable generated prefixes (including
+truncated long names) cannot be distinguished from container metrics alone.
+
 On PersistentVolumeClaim details, use the disk chart's **Timespan** and **Resolution**
 selectors to override the cluster's defaults for the current view. These choices do not
 change plugin settings and reset when switching clusters. **Pause** and **Resume**
