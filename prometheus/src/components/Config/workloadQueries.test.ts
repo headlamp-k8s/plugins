@@ -11,23 +11,23 @@ describe('workload metric queries', () => {
   it.each([
     {
       kind: 'Deployment',
-      own: ['web-6d7f8b9b6c-abcde', 'web-7c8f6bb995-fghjk'],
-      unrelated: ['web-api-6d7f8b9b6c-abcde', 'web-0', 'web-abcde'],
+      own: ['web-6d7f8b9b6c-bcdfg', 'web-7c8f6bb995-hjklm'],
+      unrelated: ['web-api-6d7f8b9b6c-bcdfg', 'web-0', 'web-bcdfg'],
     },
     {
       kind: 'StatefulSet',
       own: ['web-0', 'web-12'],
-      unrelated: ['web-api-0', 'web-0-extra', 'web-abcde'],
+      unrelated: ['web-api-0', 'web-0-extra', 'web-bcdfg'],
     },
     {
       kind: 'DaemonSet',
-      own: ['web-abcde', 'web-fghjk'],
-      unrelated: ['web-api-abcde', 'web-abcde-extra', 'web-6d7f8b9b6c-abcde'],
+      own: ['web-bcdfg', 'web-hjklm'],
+      unrelated: ['web-api-bcdfg', 'web-bcdfg-extra', 'web-6d7f8b9b6c-bcdfg'],
     },
     {
       kind: 'ReplicaSet',
-      own: ['web-abcde', 'web-fghjk'],
-      unrelated: ['web-api-abcde', 'web-abcde-extra', 'web-6d7f8b9b6c-abcde'],
+      own: ['web-bcdfg', 'web-hjklm'],
+      unrelated: ['web-api-bcdfg', 'web-bcdfg-extra', 'web-6d7f8b9b6c-bcdfg'],
     },
   ] as const)(
     'selects $kind Pods without matching longer workload names',
@@ -43,6 +43,27 @@ describe('workload metric queries', () => {
     }
   );
 
+  it.each(['Deployment', 'DaemonSet', 'ReplicaSet'] as const)(
+    'excludes cross-kind and standalone Pod collisions from %s totals',
+    kind => {
+      const pattern = matcher(kind, 'web');
+      expect(pattern.test('web-api-bcdfg')).toBe(false);
+      expect(pattern.test('web-admin')).toBe(false);
+      expect(pattern.test('web-6d7f8b9b6c-admin')).toBe(false);
+    }
+  );
+
+  it('rejects invalid Deployment hash characters in full and truncated alternatives', () => {
+    const name = 'w'.repeat(48);
+    const pattern = matcher('Deployment', name);
+    expect(pattern.test(`${name}-bcdf-bcdfg`)).toBe(true);
+    expect(pattern.test(`${name}-6d7f8b9b6bcdfg`)).toBe(true);
+    for (const invalid of ['g', '2', 'a', '0']) {
+      expect(pattern.test(`${name}-${invalid}cdf-bcdfg`)).toBe(false);
+      expect(pattern.test(`${name}-${invalid}d7f8b9b6bcdfg`)).toBe(false);
+    }
+  });
+
   it('escapes dots in names as literals in the PromQL regex string', () => {
     const pattern = matcher('StatefulSet', 'web.api');
     expect(pattern.test('web.api-0')).toBe(true);
@@ -56,9 +77,9 @@ describe('workload metric queries', () => {
       for (const length of [45, 46, 47, 48, 55, 56, 57, 58, 60, 63]) {
         const name = 'w'.repeat(length);
         const pattern = matcher(kind, name);
-        for (const hash of ['bcdfghjklm', 'bcdfghjkl', 'bcdf']) {
+        for (const hash of ['6d7f8b9b6c', '7c8f6bb99', 'bcdf']) {
           const controller = kind === 'Deployment' ? `${name}-${hash}` : name;
-          const pod = `${`${controller}-`.slice(0, 58)}abcde`;
+          const pod = `${`${controller}-`.slice(0, 58)}bcdfg`;
           expect(pattern.test(pod), `${kind}: ${pod}`).toBe(true);
         }
       }

@@ -11,7 +11,10 @@ Deployment, StatefulSet, DaemonSet, and ReplicaSet charts aggregate all selected
 Pods in the namespace, including old and new Pods during a rollout. Pod selection
 uses controller-specific generated-name shapes rather than a broad name prefix,
 so `web` does not include `web-api` Pods. Names are regex-escaped and generated
-prefix truncation is handled. This uses the existing container metrics, without
+prefix truncation is handled. Matching uses Kubernetes' decimal-encoded Deployment
+hash alphabet and consonant/digit random-suffix alphabet, excluding cross-kind
+lookalikes such as `web-api-bcdfg` and standalone Pods such as `web-admin`.
+This uses the existing container metrics, without
 requiring kube-state-metrics ownership series. Matching is name-based, not an
 ownership proof: controllers with indistinguishable generated prefixes (including
 truncated long names) cannot be distinguished from container metrics alone.

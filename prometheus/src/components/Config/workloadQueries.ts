@@ -9,16 +9,18 @@ function podPattern(kind: WorkloadKind, name: string) {
 
   // Kubernetes truncates generateName prefixes to 58 characters before adding five random characters.
   const prefix = `${name}-`;
-  const suffix = '[a-z0-9]{5}';
+  const suffix = '[bcdfghjklmnpqrstvwxz2456789]{5}';
   if (kind !== 'Deployment' || prefix.length >= 58) {
     return `${escapeRegex(prefix.slice(0, 58))}${suffix}`;
   }
 
   // Deployments add a decimal-derived ReplicaSet hash (up to ten characters) before the Pod suffix.
   const available = 58 - prefix.length;
+  // SafeEncodeString maps decimal hash digits to this subset of the random-name alphabet.
+  const hash = '[456789bcdf]';
   const shapes: string[] = [];
-  if (available > 1) shapes.push(`[a-z0-9]{1,${Math.min(10, available - 1)}}-`);
-  if (available <= 10) shapes.push(`[a-z0-9]{${available}}`);
+  if (available > 1) shapes.push(`${hash}{1,${Math.min(10, available - 1)}}-`);
+  if (available <= 10) shapes.push(`${hash}{${available}}`);
   return `${escapeRegex(prefix)}(${shapes.join('|')})${suffix}`;
 }
 
