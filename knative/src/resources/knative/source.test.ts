@@ -18,19 +18,29 @@ import { vi } from 'vitest';
 
 vi.mock('./conditionedResource', () => ({
   ConditionedKnativeCustomResource: class {
-    jsonData: { spec?: unknown };
+    jsonData: { spec?: unknown; metadata: { name: string; namespace?: string } };
 
-    constructor(jsonData: { spec?: unknown }) {
+    constructor(jsonData: { spec?: unknown; metadata: { name: string; namespace?: string } }) {
       this.jsonData = jsonData;
     }
 
     get spec() {
       return this.jsonData.spec;
     }
+
+    getDetailsLink() {
+      const { namespace, name } = this.jsonData.metadata;
+      return ['/c/cluster-a+cluster-b/knative/sources', namespace, name].filter(Boolean).join('/');
+    }
+
+    _class() {
+      return this.constructor;
+    }
   },
 }));
 
-import { getKnativeSourceClass } from './source';
+import { KNATIVE_SOURCE_KINDS } from './eventingData';
+import { getKnativeSourceClass, SOURCE_FAMILY } from './source';
 
 const pingSource = {
   kind: 'PingSource',
@@ -49,6 +59,8 @@ describe('getKnativeSourceClass', () => {
       apiVersion: sourceClass.apiVersion,
       isNamespaced: sourceClass.isNamespaced,
     }).toEqual(pingSource);
+    expect(sourceClass.detailsRoute).toBe('knativeSourceDetails');
+    expect(sourceClass.listRoute).toBe('knativeSources');
   });
 
   it('gives the same class for the same kind, so its list keeps its watch', () => {
@@ -80,5 +92,65 @@ describe('KnativeSource', () => {
 
     expect(new SourceClass({ ...json, spec: { sink } }).sink).toEqual(sink);
     expect(new SourceClass(json).sink).toBeUndefined();
+  });
+
+  it('shows the rest of its spec as its settings, without the sink', () => {
+    const SourceClass = getKnativeSourceClass(pingSource);
+    const json = {
+      apiVersion: 'sources.knative.dev/v1',
+      kind: 'PingSource',
+      metadata: { name: 'heartbeat', uid: 'uid-1', creationTimestamp: '' },
+    } satisfies ConstructorParameters<typeof SourceClass>[0];
+    const sink = { uri: 'https://example.com/events' };
+    const ceOverrides = { extensions: { team: 'shop' } };
+
+    expect(
+      new SourceClass({ ...json, spec: { schedule: '0 * * * *', ceOverrides, sink } }).settings
+    ).toEqual({ schedule: '0 * * * *', ceOverrides });
+    expect(new SourceClass({ ...json, spec: { sink } }).settings).toBeUndefined();
+    expect(new SourceClass(json).settings).toBeUndefined();
+  });
+
+  it.each([
+    [
+      'in its namespace',
+      pingSource,
+      'shop',
+      '/c/cluster-a+cluster-b/knative/sources/shop/heartbeat?crd=pingsources.sources.knative.dev',
+    ],
+    [
+      'of a cluster-scoped kind, without a namespace',
+      {
+        kind: 'WidgetSource',
+        apiName: 'widgetsources',
+        apiVersion: 'example.dev/v1',
+        isNamespaced: false,
+      },
+      undefined,
+      '/c/cluster-a+cluster-b/knative/sources/heartbeat?crd=widgetsources.example.dev',
+    ],
+  ])(
+    'links to its page %s, keeping the selected clusters and naming its CRD',
+    (_case, info, namespace, link) => {
+      const SourceClass = getKnativeSourceClass(info);
+
+      expect(
+        new SourceClass({
+          apiVersion: info.apiVersion,
+          kind: info.kind,
+          metadata: { name: 'heartbeat', namespace, uid: 'uid-1', creationTimestamp: '' },
+        }).getDetailsLink()
+      ).toBe(link);
+    }
+  );
+});
+
+describe('SOURCE_FAMILY', () => {
+  it("finds every Source kind by its label, or Knative's own kinds", () => {
+    expect(SOURCE_FAMILY).toEqual({
+      labelKey: 'duck.knative.dev/source',
+      fallbackKinds: KNATIVE_SOURCE_KINDS,
+      getKindClass: getKnativeSourceClass,
+    });
   });
 });

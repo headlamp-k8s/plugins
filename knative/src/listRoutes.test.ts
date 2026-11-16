@@ -18,6 +18,9 @@ import { vi } from 'vitest';
 
 vi.mock('./components/brokers/List', () => ({ BrokersList: () => null }));
 vi.mock('./components/certificates/List', () => ({ CertificatesList: () => null }));
+vi.mock('./components/channelimplementations/List', () => ({
+  ChannelImplementationsList: () => null,
+}));
 vi.mock('./components/channels/List', () => ({ ChannelsList: () => null }));
 vi.mock('./components/clusterdomainclaims/List', () => ({
   ClusterDomainClaimsList: () => null,
