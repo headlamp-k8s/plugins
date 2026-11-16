@@ -11,6 +11,7 @@ import { Kafka, KafkaUser } from '../resources';
 import type { CreateKafkaUserPayload, KafkaUserInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
 import { clusterNamespaces, clusterNamesInNamespace } from '../utils/clusters';
+import { requestInCluster } from '../utils/requestInCluster';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { SecureSecretDisplay } from './SecureSecretDisplay';
@@ -32,6 +33,8 @@ export function KafkaUserList() {
   const [showSecretDialog, setShowSecretDialog] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<KafkaUserInterface | null>(null);
   const [deletingUser, setDeletingUser] = React.useState<KafkaUserInterface | null>(null);
+  // Cluster of the user being deleted, so the delete goes to that cluster.
+  const [deletingCluster, setDeletingCluster] = React.useState<string>();
   const [userSecret, setUserSecret] = React.useState<string>('');
   const [formData, setFormData] = React.useState<UserFormData>({
     name: '',
@@ -53,13 +56,16 @@ export function KafkaUserList() {
     [kafkaClusters, formData.namespace]
   );
 
-  const fetchUserSecret = async (user: KafkaUserInterface) => {
+  const fetchUserSecret = async (user: KafkaUserInterface, cluster?: string) => {
     try {
       setLoading(true);
       const secretName = user.metadata.name;
       const namespace = user.metadata.namespace;
 
-      const secret = await ApiProxy.request(`/api/v1/namespaces/${namespace}/secrets/${secretName}`);
+      const secret = await requestInCluster(
+        cluster,
+        `/api/v1/namespaces/${namespace}/secrets/${secretName}`
+      );
 
       try {
         if (user.spec.authentication.type === 'scram-sha-512') {
@@ -137,8 +143,9 @@ export function KafkaUserList() {
     }
   };
 
-  const openDeleteDialog = (user: KafkaUserInterface) => {
+  const openDeleteDialog = (user: KafkaUserInterface, cluster?: string) => {
     setDeletingUser(user);
+    setDeletingCluster(cluster);
     setShowDeleteDialog(true);
   };
 
@@ -148,7 +155,8 @@ export function KafkaUserList() {
     setShowDeleteDialog(false);
 
     try {
-      await ApiProxy.request(
+      await requestInCluster(
+        deletingCluster,
         `${kafkaApiPath}/namespaces/${deletingUser.metadata.namespace}/kafkausers/${deletingUser.metadata.name}`,
         { method: 'DELETE' }
       );
@@ -252,11 +260,16 @@ export function KafkaUserList() {
             color="warning"
             disabled={loading}
             sx={{ marginRight: 1 }}
-            onClick={() => fetchUserSecret(item.jsonData)}
+            onClick={() => fetchUserSecret(item.jsonData, item.cluster)}
           >
             View Secret
           </Button>
-          <Button size="small" variant="contained" color="error" onClick={() => openDeleteDialog(item.jsonData)}>
+          <Button
+            size="small"
+            variant="contained"
+            color="error"
+            onClick={() => openDeleteDialog(item.jsonData, item.cluster)}
+          >
             Delete
           </Button>
         </>

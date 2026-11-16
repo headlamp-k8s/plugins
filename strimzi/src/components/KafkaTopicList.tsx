@@ -11,6 +11,7 @@ import { Kafka, KafkaTopic } from '../resources';
 import type { KafkaTopicInterface } from '../resources';
 import { getErrorMessage } from '../utils/errors';
 import { clusterNamespaces, clusterNamesInNamespace } from '../utils/clusters';
+import { requestInCluster } from '../utils/requestInCluster';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { Toast, ToastMessage } from './Toast';
@@ -31,6 +32,8 @@ export function KafkaTopicList() {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [editingTopic, setEditingTopic] = React.useState<KafkaTopicInterface | null>(null);
   const [deletingTopic, setDeletingTopic] = React.useState<KafkaTopicInterface | null>(null);
+  // Cluster of the topic being edited or deleted, so the change goes to that cluster.
+  const [topicCluster, setTopicCluster] = React.useState<string>();
   const [formData, setFormData] = React.useState<TopicFormData>({
     name: '',
     namespace: '',
@@ -118,7 +121,8 @@ export function KafkaTopicList() {
         },
       };
 
-      await ApiProxy.request(
+      await requestInCluster(
+        topicCluster,
         `${kafkaApiPath}/namespaces/${editingTopic.metadata.namespace}/kafkatopics/${editingTopic.metadata.name}`,
         {
           method: 'PUT',
@@ -137,8 +141,9 @@ export function KafkaTopicList() {
     }
   };
 
-  const openDeleteDialog = (topic: KafkaTopicInterface) => {
+  const openDeleteDialog = (topic: KafkaTopicInterface, cluster?: string) => {
     setDeletingTopic(topic);
+    setTopicCluster(cluster);
     setShowDeleteDialog(true);
   };
 
@@ -148,7 +153,8 @@ export function KafkaTopicList() {
     setShowDeleteDialog(false);
 
     try {
-      await ApiProxy.request(
+      await requestInCluster(
+        topicCluster,
         `${kafkaApiPath}/namespaces/${deletingTopic.metadata.namespace}/kafkatopics/${deletingTopic.metadata.name}`,
         { method: 'DELETE' }
       );
@@ -165,8 +171,9 @@ export function KafkaTopicList() {
     setDeletingTopic(null);
   };
 
-  const openEditDialog = (topic: KafkaTopicInterface) => {
+  const openEditDialog = (topic: KafkaTopicInterface, cluster?: string) => {
     setEditingTopic(topic);
+    setTopicCluster(cluster);
     setFormData({
       name: topic.metadata.name,
       namespace: topic.metadata.namespace,
@@ -236,11 +243,16 @@ export function KafkaTopicList() {
             variant="contained"
             color="primary"
             sx={{ marginRight: 1 }}
-            onClick={() => openEditDialog(item.jsonData)}
+            onClick={() => openEditDialog(item.jsonData, item.cluster)}
           >
             Edit
           </Button>
-          <Button size="small" variant="contained" color="error" onClick={() => openDeleteDialog(item.jsonData)}>
+          <Button
+            size="small"
+            variant="contained"
+            color="error"
+            onClick={() => openDeleteDialog(item.jsonData, item.cluster)}
+          >
             Delete
           </Button>
         </>
