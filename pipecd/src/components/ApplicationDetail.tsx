@@ -39,6 +39,7 @@ import type { Application, Deployment, SyncStatus } from '../types/pipecd';
 import type { AlertSeverity } from '../utils/alert';
 import { alertTextSx } from '../utils/alert';
 import { duration, formatTimestamp, relativeTime } from '../utils/time';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
 import { triggeredBy } from '../utils/trigger';
 import { consoleURL, pluginURL } from '../utils/url';
 import { lastSyncedAt } from './ApplicationList';
@@ -98,9 +99,10 @@ export function ApplicationDetail(): JSX.Element {
     setDeployments([]);
 
     const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+    const timedOut = t('The request timed out.');
 
     // Loaded separately, so a failed history still leaves the application usable.
-    getApplication(config, id)
+    withTimeout(getApplication(config, id), REQUEST_TIMEOUT_MS, timedOut)
       .then(application => {
         if (!cancelled) setApp(application);
       })
@@ -114,11 +116,15 @@ export function ApplicationDetail(): JSX.Element {
         if (!cancelled) setLoading(false);
       });
 
-    listDeployments(config, {
-      applicationId: id,
-      pageSize: DEPLOYMENT_PAGE_SIZE,
-      signal: controller.signal,
-    })
+    withTimeout(
+      listDeployments(config, {
+        applicationId: id,
+        pageSize: DEPLOYMENT_PAGE_SIZE,
+        signal: controller.signal,
+      }),
+      REQUEST_TIMEOUT_MS,
+      timedOut
+    )
       .then(response => {
         if (!cancelled) setDeployments(response.deployments ?? []);
       })

@@ -42,6 +42,7 @@ import type { Deployment, DeploymentStatus, PipelineStage, StageLog } from '../t
 import type { AlertSeverity } from '../utils/alert';
 import { alertTextSx } from '../utils/alert';
 import { duration, formatTimestamp } from '../utils/time';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
 import { triggeredBy } from '../utils/trigger';
 import { consoleURL, pluginURL } from '../utils/url';
 import { DeploymentStatusLabel } from './DeploymentStatusLabel';
@@ -80,6 +81,17 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 /**
+ * The rollback stages a legacy (v0) piped plans. It leaves their rollback flag
+ * unset, so they are known by name. Plugins set the flag, and may name other
+ * stages with a ROLLBACK suffix, so no wider name match is safe.
+ */
+const LEGACY_ROLLBACK_STAGES: ReadonlySet<string> = new Set([
+  'ROLLBACK',
+  'CUSTOM_SYNC_ROLLBACK',
+  'SCRIPT_RUN_ROLLBACK',
+]);
+
+/**
  * Picks the stages worth showing, in pipeline order.
  *
  * PipelineStage.visible is deprecated in PipeCD's proto and left unset by the
@@ -89,34 +101,11 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
  * does something.
  */
 function isRollback(stage: PipelineStage): boolean {
-  // Not every provider sets the rollback flag, so fall back to the stage name.
-  return stage.rollback || stage.name.toUpperCase().endsWith('ROLLBACK');
+  return stage.rollback || LEGACY_ROLLBACK_STAGES.has(stage.name);
 }
-
-const REQUEST_TIMEOUT_MS = 30000;
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-/**
- * Rejects with `message` after `ms`. These API calls take no abort signal, so a
- * stuck one keeps running, but it can no longer keep the page busy.
- */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    promise.then(
-      value => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      err => {
-        clearTimeout(timer);
-        reject(err);
-      }
-    );
-  });
 }
 
 /** A stage that never ran, so it has no logs. */
@@ -125,9 +114,12 @@ function neverRan(stage: PipelineStage): boolean {
 }
 
 function pipelineStages(deployment: Deployment): PipelineStage[] {
+  // Rollback stages run after the stages they undo, but their index says
+  // nothing about that: plugins give them the lowest forward index, and a
+  // legacy piped leaves it at 0. So they go last, each group in index order.
   return deployment.stages
     .filter(stage => !(isRollback(stage) && neverRan(stage)))
-    .sort((a, b) => a.index - b.index);
+    .sort((a, b) => Number(isRollback(a)) - Number(isRollback(b)) || a.index - b.index);
 }
 
 export function DeploymentDetail(): JSX.Element {
@@ -150,6 +142,8 @@ export function DeploymentDetail(): JSX.Element {
   const latestRequest = useRef(0);
   // Stages whose missing log was already fetched again once on this page.
   const retriedStages = useRef(new Set<string>());
+  // A stage opened while a fetch was running, to check once that fetch is done.
+  const pendingCheck = useRef<string | null>(null);
 
   /**
    * Fetches the stage logs, and with `refresh` the deployment again too. Logs
@@ -209,8 +203,9 @@ export function DeploymentDetail(): JSX.Element {
     setRefreshError(null);
     setExpandedStage(false);
     retriedStages.current = new Set();
+    pendingCheck.current = null;
 
-    getDeployment(config, id)
+    withTimeout(getDeployment(config, id), REQUEST_TIMEOUT_MS, t('The request timed out.'))
       .then(result => {
         if (cancelled) return;
         setDeployment(result);
@@ -232,9 +227,34 @@ export function DeploymentDetail(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, config.baseURL, config.apiKey]);
 
+  // Once a fetch settles, check the stage opened during it, with the deployment
+  // and logs that fetch brought back.
+  useEffect(() => {
+    if (fetching || pendingCheck.current === null) return;
+    const stageId = pendingCheck.current;
+    pendingCheck.current = null;
+    const stage = deployment?.stages.find(s => s.id === stageId);
+    if (stage && expandedStage === stageId) checkStage(stage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetching]);
+
   function handleStageChange(stage: PipelineStage, isExpanded: boolean): void {
     setExpandedStage(isExpanded ? stage.id : false);
-    if (!isExpanded || !id || !deployment || fetching) return;
+    if (!isExpanded) {
+      if (pendingCheck.current === stage.id) pendingCheck.current = null;
+      return;
+    }
+    if (fetching) {
+      // Never run two fetches at once; look at this stage when this one is done.
+      pendingCheck.current = stage.id;
+      return;
+    }
+    checkStage(stage);
+  }
+
+  /** Fetches again if the opened stage may have more logs than are on screen. */
+  function checkStage(stage: PipelineStage): void {
+    if (!id || !deployment) return;
     // The first fetch is a snapshot. While the deployment runs, a stage may
     // have more logs than that, so opening it fetches the deployment and logs
     // again. Once it has finished, fetch again only for a stage that ran and
@@ -419,39 +439,36 @@ export function DeploymentDetail(): JSX.Element {
                 // stage that is actually open.
                 TransitionProps={{ unmountOnExit: true }}
               >
+                {/* No stage duration: PipeCD records when a stage was planned,
+                    not when it started, so the gap would include any wait,
+                    such as an approval, before it ran. */}
                 <AccordionSummary expandIcon={<Icon icon="mdi:chevron-down" />}>
                   <Stack
                     direction="row"
                     alignItems="center"
-                    justifyContent="space-between"
                     gap={1.5}
                     flexWrap="wrap"
                     sx={{ width: '100%', pr: 1 }}
                   >
-                    <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap">
-                      <Typography variant="body2" fontWeight={600}>
-                        {stage.name}
-                      </Typography>
-                      <StageStatusLabel status={stage.status} />
-                      {isRollback(stage) && (
-                        <Typography variant="caption" color="warning.main" fontWeight={600}>
-                          {t('rollback')}
-                        </Typography>
-                      )}
-                      {stage.retriedCount > 0 && (
-                        <Typography variant="caption" color="text.secondary">
-                          {t('retried {{times}}×', { times: stage.retriedCount })}
-                        </Typography>
-                      )}
-                      {stage.desc && (
-                        <Typography variant="caption" color="text.secondary">
-                          {stage.desc}
-                        </Typography>
-                      )}
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      {duration(stage.createdAt, stage.completedAt)}
+                    <Typography variant="body2" fontWeight={600}>
+                      {stage.name}
                     </Typography>
+                    <StageStatusLabel status={stage.status} />
+                    {isRollback(stage) && (
+                      <Typography variant="caption" color="warning.main" fontWeight={600}>
+                        {t('rollback')}
+                      </Typography>
+                    )}
+                    {stage.retriedCount > 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        {t('retried {{times}}×', { times: stage.retriedCount })}
+                      </Typography>
+                    )}
+                    {stage.desc && (
+                      <Typography variant="caption" color="text.secondary">
+                        {stage.desc}
+                      </Typography>
+                    )}
                   </Stack>
                 </AccordionSummary>
                 <AccordionDetails>

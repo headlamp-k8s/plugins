@@ -575,4 +575,188 @@ describe('DeploymentDetail', () => {
     expect(screen.queryByRole('heading', { name: 'feat: add dark mode support' })).toBeNull();
     expect(screen.queryByText('K8S_SYNC')).toBeNull();
   });
+
+  // A plugin may name an ordinary stage with a ROLLBACK suffix; only its
+  // rollback flag says whether it is one.
+  it('does not treat a plugin stage named like a rollback as one', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue({
+      ...deploymentRunning,
+      stages: [
+        ...deploymentRunning.stages,
+        {
+          ...deploymentRunning.stages[1],
+          id: 'stage-verify',
+          name: 'VERIFY_ROLLBACK',
+          index: 2,
+          rollback: false,
+          status: 'STAGE_NOT_STARTED_YET',
+        },
+      ],
+    });
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: {} });
+
+    renderDetail();
+
+    await findHeading();
+    expect(screen.getByText('VERIFY_ROLLBACK')).toBeTruthy();
+    expect(screen.queryByText('rollback')).toBeNull();
+  });
+
+  // A legacy piped plans these without setting the rollback flag.
+  it('treats the legacy rollback stages as rollbacks without the flag', async () => {
+    setupConfigured();
+    const legacy = (
+      id: string,
+      name: string,
+      status: 'STAGE_SUCCESS' | 'STAGE_NOT_STARTED_YET'
+    ): Deployment['stages'][number] => ({
+      ...deploymentCompleted.stages[2],
+      id,
+      name,
+      index: 0,
+      rollback: false,
+      status,
+    });
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue({
+      ...deploymentCompleted,
+      stages: [
+        ...deploymentCompleted.stages.filter(stage => !stage.rollback),
+        legacy('rb', 'ROLLBACK', 'STAGE_SUCCESS'),
+        legacy('rb-custom', 'CUSTOM_SYNC_ROLLBACK', 'STAGE_NOT_STARTED_YET'),
+        legacy('rb-script', 'SCRIPT_RUN_ROLLBACK', 'STAGE_NOT_STARTED_YET'),
+      ],
+    });
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    expect(screen.getByText('ROLLBACK')).toBeTruthy();
+    expect(screen.getByText('rollback')).toBeTruthy();
+    // Never ran, so hidden like any other unused rollback stage.
+    expect(screen.queryByText('CUSTOM_SYNC_ROLLBACK')).toBeNull();
+    expect(screen.queryByText('SCRIPT_RUN_ROLLBACK')).toBeNull();
+  });
+
+  // Plugins give a rollback stage the lowest forward index, and a legacy piped
+  // leaves it at 0, so the index alone would list it first.
+  it('lists a rollback stage that ran after the forward stages', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue({
+      ...deploymentCompleted,
+      status: 'DEPLOYMENT_FAILURE',
+      stages: [
+        { ...deploymentCompleted.stages[2], index: 0, status: 'STAGE_SUCCESS' },
+        ...deploymentCompleted.stages.filter(stage => !stage.rollback),
+      ],
+    });
+    vi.mocked(pipecdApi.listStageLogs).mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    const stageNames = screen.getAllByText(/^(WAIT_APPROVAL|K8S_SYNC|ROLLBACK)$/);
+    expect(stageNames.map(node => node.textContent)).toEqual([
+      'WAIT_APPROVAL',
+      'K8S_SYNC',
+      'ROLLBACK',
+    ]);
+  });
+
+  // createdAt is when the stage was planned, so a duration from it would count
+  // the time spent waiting for earlier stages and approvals.
+  it('does not show a stage duration measured from its planning time', async () => {
+    setupConfigured();
+    mockSuccess();
+
+    renderDetail();
+
+    await findHeading();
+    // WAIT_APPROVAL and K8S_SYNC span 50s and 2m 30s between createdAt and completedAt.
+    expect(screen.queryByText('50s')).toBeNull();
+    expect(screen.queryByText('2m 30s')).toBeNull();
+    // The deployment's own duration is still shown.
+    expect(screen.getByText('3m 20s')).toBeTruthy();
+  });
+
+  it('gives up on a first deployment request that hangs', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.getDeployment).mockReturnValue(new Promise(() => {}));
+
+      renderDetail();
+
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(await screen.findByText(/Failed to load deployment/i)).toBeTruthy();
+      expect(screen.getByText('The request timed out.')).toBeTruthy();
+      expect(pipecdApi.listStageLogs).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('checks a stage opened during the first log fetch once that fetch is done', async () => {
+    setupConfigured();
+    let finishLogs: (value: { stageLogs: typeof stageLogsCompleted }) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockReturnValueOnce(new Promise(resolve => (finishLogs = resolve)))
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    expect(await screen.findByText('Loading logs…')).toBeTruthy();
+    // Still one request: opening the stage does not start a second one.
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+
+    // The snapshot comes back without this stage's log.
+    await act(async () => finishLogs({ stageLogs: {} }));
+
+    expect(await screen.findByText('Applying manifests...')).toBeTruthy();
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not check a stage that was closed again during the fetch', async () => {
+    setupConfigured();
+    let finishLogs: (value: { stageLogs: typeof stageLogsCompleted }) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockReturnValueOnce(new Promise(resolve => (finishLogs = resolve)))
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+
+    await act(async () => finishLogs({ stageLogs: {} }));
+    await act(async () => undefined);
+
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fetch again when the fetch a stage waited for brought its complete log', async () => {
+    setupConfigured();
+    let finishLogs: (value: { stageLogs: typeof stageLogsCompleted }) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockReturnValueOnce(new Promise(resolve => (finishLogs = resolve)))
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    await act(async () => finishLogs({ stageLogs: stageLogsCompleted }));
+
+    expect(await screen.findByText('Applying manifests...')).toBeTruthy();
+    await act(async () => undefined);
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+  });
 });

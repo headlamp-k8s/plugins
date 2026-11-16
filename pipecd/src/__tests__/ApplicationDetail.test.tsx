@@ -174,6 +174,48 @@ describe('ApplicationDetail', () => {
     expect(options?.signal?.aborted).toBe(true);
   });
 
+  it('gives up on an application request that hangs', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.getApplication).mockReturnValue(new Promise(() => {}));
+      vi.mocked(pipecdApi.listDeployments).mockReturnValue(new Promise(() => {}));
+
+      renderDetail();
+
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(await screen.findByText(/Failed to load application/i)).toBeTruthy();
+      expect(screen.getByText('The request timed out.')).toBeTruthy();
+      // Without the application, the history request is cancelled too.
+      const options = vi.mocked(pipecdApi.listDeployments).mock.calls[0][1];
+      expect(options?.signal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up on a deployment history request that hangs', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
+      vi.mocked(pipecdApi.listDeployments).mockReturnValue(new Promise(() => {}));
+
+      renderDetail();
+
+      expect(await screen.findByText('frontend-prod')).toBeTruthy();
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(
+        await screen.findByText('Failed to load deployments: The request timed out.')
+      ).toBeTruthy();
+      expect(screen.queryByText('Loading deployments…')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows the application while its deployment history is still loading', async () => {
     setupConfigured();
     vi.mocked(pipecdApi.getApplication).mockResolvedValue(appKubernetesSynced);
