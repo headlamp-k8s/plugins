@@ -8,20 +8,37 @@ export function restorableBackupNames(backups: Array<{ name: string; phase: stri
     .map(backup => backup.name);
 }
 
+export type BackupSelection = {
+  next: string;
+  /** True only until the first discovered list has supplied a source, or a choice was cleared. */
+  allowInitial: boolean;
+};
+
 /**
  * Next Backup source for the Create Restore form.
- * An empty selection takes the first available name when the list arrives.
- * A selection that disappears is cleared so the form does not switch to another backup.
- * An empty list keeps a typed name, because namespace discovery may be unavailable.
+ * The first discovered list may fill an empty selection once.
+ * After that, an empty selection stays empty, including when a chosen backup disappears.
+ * A list that has not loaded keeps a typed name. A loaded empty list clears it.
  */
-export function nextBackupSelection(current: string, backups: string[]): string {
+export function nextBackupSelection(
+  current: string,
+  backups: string[],
+  allowInitial: boolean,
+  listLoaded = false
+): BackupSelection {
   if (!current) {
-    return backups[0] ?? '';
+    if (allowInitial && backups.length > 0) {
+      return { next: backups[0], allowInitial: false };
+    }
+    return { next: '', allowInitial };
   }
-  if (backups.length === 0 || backups.includes(current)) {
-    return current;
+  if (!listLoaded && backups.length === 0) {
+    return { next: current, allowInitial: false };
   }
-  return '';
+  if (backups.includes(current)) {
+    return { next: current, allowInitial: false };
+  }
+  return { next: '', allowInitial: false };
 }
 
 /** Values submitted by the Create Restore form. */
@@ -42,6 +59,8 @@ export interface RestoreCreateInput {
 export interface RestoreCreateFormProps {
   /** Completed or PartiallyFailed backup names on the destination cluster. */
   backups: string[];
+  /** True only after the backup list has loaded without an error. */
+  backupsLoaded: boolean;
   /** Namespace names the user may pick. Typed names are also accepted. */
   namespaces: string[];
   /** Initial backup selection when the form opens. */

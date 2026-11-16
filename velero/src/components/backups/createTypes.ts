@@ -1,3 +1,8 @@
+/** True when the chosen storage location is no longer in the discovered list. */
+export function isUnavailableStorageLocation(selected: string, available: string[]): boolean {
+  return selected !== '' && !available.includes(selected);
+}
+
 /** Whether Create Backup forces kopia file backup or leaves Velero's server default. */
 export type FsBackupChoice = 'server' | 'on' | 'off';
 

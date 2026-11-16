@@ -24,6 +24,7 @@ import {
 /** Create Restore form — adapted from reasonerjt prototype. */
 export default function RestoreCreateForm({
   backups,
+  backupsLoaded,
   namespaces,
   defaultBackupName = '',
   onSubmit,
@@ -31,6 +32,7 @@ export default function RestoreCreateForm({
 }: RestoreCreateFormProps) {
   const [name, setName] = useState('');
   const [backupName, setBackupName] = useState(defaultBackupName);
+  const [allowInitialBackup, setAllowInitialBackup] = useState(defaultBackupName === '');
   const includedNamespaces = useFreeSoloMulti();
   const excludedNamespaces = useFreeSoloMulti();
   const [restorePVs, setRestorePVs] = useState(true);
@@ -38,8 +40,17 @@ export default function RestoreCreateForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setBackupName(prev => nextBackupSelection(prev, backups));
-  }, [backups]);
+    const result = nextBackupSelection(backupName, backups, allowInitialBackup, backupsLoaded);
+    if (backupName && !result.next) {
+      setError('The selected backup is no longer available. Choose another source.');
+    }
+    if (result.next !== backupName) {
+      setBackupName(result.next);
+    }
+    if (result.allowInitial !== allowInitialBackup) {
+      setAllowInitialBackup(result.allowInitial);
+    }
+  }, [allowInitialBackup, backupName, backups, backupsLoaded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +94,7 @@ export default function RestoreCreateForm({
 
       {error && (
         <Box
+          role="alert"
           sx={{
             backgroundColor: 'error.light',
             color: 'error.contrastText',
@@ -111,9 +123,9 @@ export default function RestoreCreateForm({
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined" required disabled={loading}>
-              <InputLabel id="backup-name-label">Backup Source</InputLabel>
-              {backups.length > 0 ? (
+            {backupsLoaded && backups.length > 0 ? (
+              <FormControl fullWidth variant="outlined" required disabled={loading}>
+                <InputLabel id="backup-name-label">Backup Source</InputLabel>
                 <Select
                   labelId="backup-name-label"
                   id="backup-name"
@@ -132,18 +144,27 @@ export default function RestoreCreateForm({
                     </MenuItem>
                   ))}
                 </Select>
-              ) : (
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  value={backupName}
-                  onChange={e => setBackupName(e.target.value)}
-                  placeholder="Enter backup name"
-                  disabled={loading}
-                  label="Backup Source"
-                />
-              )}
-            </FormControl>
+              </FormControl>
+            ) : backupsLoaded ? (
+              <TextField
+                fullWidth
+                label="Backup Source"
+                value=""
+                disabled
+                helperText="No completed backups are available."
+              />
+            ) : (
+              <TextField
+                fullWidth
+                required
+                label="Backup Source"
+                variant="outlined"
+                value={backupName}
+                onChange={e => setBackupName(e.target.value)}
+                placeholder="Enter backup name"
+                disabled={loading}
+              />
+            )}
           </Grid>
 
           <Grid item xs={12} md={6}>
