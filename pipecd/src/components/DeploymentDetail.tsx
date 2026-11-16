@@ -233,6 +233,9 @@ export function DeploymentDetail(): JSX.Element {
     if (fetching || pendingCheck.current === null) return;
     const stageId = pendingCheck.current;
     pendingCheck.current = null;
+    // After a failed fetch, show the error and the Refresh button instead of
+    // starting another request straight away.
+    if (logsError !== null || refreshError !== null) return;
     const stage = deployment?.stages.find(s => s.id === stageId);
     if (stage && expandedStage === stageId) checkStage(stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps

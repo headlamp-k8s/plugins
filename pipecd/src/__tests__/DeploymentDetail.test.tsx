@@ -721,6 +721,25 @@ describe('DeploymentDetail', () => {
     expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(2);
   });
 
+  it('shows the error instead of checking a stage again when the fetch it waited for fails', async () => {
+    setupConfigured();
+    let failLogs: (reason: Error) => void = () => {};
+    vi.mocked(pipecdApi.getDeployment).mockResolvedValue(deploymentCompleted);
+    vi.mocked(pipecdApi.listStageLogs)
+      .mockReturnValueOnce(new Promise((_, reject) => (failLogs = reject)))
+      .mockResolvedValue({ stageLogs: stageLogsCompleted });
+
+    renderDetail();
+
+    await findHeading();
+    fireEvent.click(screen.getByText('K8S_SYNC'));
+    await act(async () => failLogs(new Error('network down')));
+
+    expect(await screen.findByText('Failed to load logs: network down')).toBeTruthy();
+    await act(async () => undefined);
+    expect(pipecdApi.listStageLogs).toHaveBeenCalledTimes(1);
+  });
+
   it('does not check a stage that was closed again during the fetch', async () => {
     setupConfigured();
     let finishLogs: (value: { stageLogs: typeof stageLogsCompleted }) => void = () => {};
