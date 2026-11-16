@@ -11,6 +11,8 @@ import { formatDuration, localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Step, StepLabel, Stepper, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { ClusterQueue } from '../../resources/clusterQueue';
+import { LocalQueue } from '../../resources/localQueue';
 import {
   AdmissionCheckState,
   PodSet,
@@ -22,8 +24,11 @@ import {
 } from '../../resources/workload';
 import {
   findWorkloadCondition,
+  formatQuantity,
+  getQuotaFitRows,
   getWorkloadBlocker,
   getWorkloadTimeline,
+  QuotaFitRow,
   renderPodSetRequests,
   renderQueuePosition,
   renderResourceList,
@@ -616,6 +621,86 @@ function WorkloadBlockerTable(props: {
   );
 }
 
+/**
+ * What a Workload waiting for quota asks for, against what its ClusterQueue has left per
+ * flavor. Renders nothing until the LocalQueue and ClusterQueue are found, or when Kueue
+ * has not filled in the requests.
+ */
+function QuotaFitTable(props: { workload: Workload }) {
+  const { workload } = props;
+  const cluster = workload.cluster;
+  const [localQueues] = LocalQueue.useList({ namespace: workload.metadata.namespace, cluster });
+  const [clusterQueues] = ClusterQueue.useList({ cluster });
+  const clusterQueueName = localQueues?.find(
+    queue => queue.metadata.name === workload.queueName
+  )?.clusterQueueName;
+  const clusterQueue = clusterQueues?.find(queue => queue.metadata.name === clusterQueueName);
+
+  if (!clusterQueue) {
+    return null;
+  }
+
+  const rows = getQuotaFitRows(
+    workload.status.resourceRequests,
+    clusterQueue.resourceGroups,
+    clusterQueue.status.flavorsReservation
+  );
+  if (!rows.length) {
+    return null;
+  }
+
+  return (
+    <Box mt={2}>
+      <Typography variant="subtitle2">
+        Requests against free quota in ClusterQueue{' '}
+        {renderClusterQueueLink(clusterQueue.metadata.name, cluster)}
+      </Typography>
+      <SimpleTable
+        data={rows}
+        columns={[
+          { label: 'Resource', getter: (row: QuotaFitRow) => row.resource },
+          {
+            label: 'Flavor',
+            getter: (row: QuotaFitRow) => row.flavor ?? 'Not covered by this ClusterQueue',
+          },
+          {
+            label: 'Requested',
+            getter: (row: QuotaFitRow) => formatQuantity(row.resource, row.requested),
+          },
+          {
+            label: 'Quota',
+            getter: (row: QuotaFitRow) =>
+              row.flavor ? formatQuantity(row.resource, row.quota) : '-',
+          },
+          { label: 'Free', getter: (row: QuotaFitRow) => formatQuantity(row.resource, row.free) },
+          {
+            label: 'Fits',
+            getter: (row: QuotaFitRow) =>
+              row.fits ? (
+                <StatusLabel status="success">Yes</StatusLabel>
+              ) : !row.flavor ? (
+                <StatusLabel status="error">No</StatusLabel>
+              ) : row.aboveQuota ? (
+                // Freeing quota cannot help, so do not suggest it with "Short by".
+                <StatusLabel status="error">
+                  More than the {formatQuantity(row.resource, row.quota)} quota
+                </StatusLabel>
+              ) : (
+                <StatusLabel status="warning">
+                  Short by {formatQuantity(row.resource, row.requested - row.free)}
+                </StatusLabel>
+              ),
+          },
+        ]}
+      />
+      <Typography variant="body2" color="text.secondary">
+        Free is the nominal quota minus what is reserved. Quota the ClusterQueue can borrow from its
+        cohort is not counted.
+      </Typography>
+    </Box>
+  );
+}
+
 /** Build the section explaining what is stopping the Workload from being admitted. */
 export function getBlockerSection(workload: Workload) {
   const blocker = getWorkloadBlocker(
@@ -670,6 +755,7 @@ export function getBlockerSection(workload: Workload) {
           inQueue={blocker.stage === 'Not evaluated' || blocker.stage === 'Waiting for quota'}
           rows={rows}
         />
+        {blocker.stage === 'Waiting for quota' && <QuotaFitTable workload={workload} />}
       </SectionBox>
     ),
   };
