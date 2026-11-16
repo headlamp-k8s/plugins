@@ -327,6 +327,7 @@ export function HistoricalSearch({ cluster }: { cluster: string }) {
         <Box
           role="log"
           aria-label="Historical log results"
+          tabIndex={0}
           sx={{ maxHeight: 600, overflow: 'auto' }}
         >
           {entries.map((entry, i) => (

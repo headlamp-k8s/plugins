@@ -107,6 +107,14 @@ it.each([
   expect(request).not.toHaveBeenCalled();
 });
 
+it('makes the named results region keyboard-focusable', () => {
+  render(<HistoricalSearch cluster="a" />);
+  const results = screen.getByRole('log', { name: 'Historical log results' });
+  expect(results.getAttribute('tabindex')).toBe('0');
+  results.focus();
+  expect(document.activeElement).toBe(results);
+});
+
 it('renders a bounded prefix and loads older entries with one expanded request', async () => {
   request.mockImplementation(async path => {
     const limit = Number(new URLSearchParams(path.split('?')[1]).get('limit'));
