@@ -152,7 +152,7 @@ export interface ConcurrentAdmissionPolicyLike {
 }
 
 /** Render the user-facing ClusterQueue status from its Active condition. */
-export function renderClusterQueueStatus(activeCondition?: ClusterQueueConditionLike) {
+export function renderClusterQueueStatus(activeCondition?: ClusterQueueConditionLike | null) {
   if (!activeCondition) {
     return 'Unknown';
   }
@@ -169,31 +169,34 @@ export function renderClusterQueueStatus(activeCondition?: ClusterQueueCondition
 }
 
 /** Return unique ResourceFlavor names referenced by ClusterQueue resource groups. */
-export function getUniqueFlavorNames(resourceGroups: ResourceGroupLike[]) {
-  const names = resourceGroups.flatMap(group => group.flavors?.map(flavor => flavor.name) || []);
+export function getUniqueFlavorNames(resourceGroups?: ResourceGroupLike[] | null) {
+  const names = (resourceGroups || []).flatMap(
+    group => group.flavors?.map(flavor => flavor.name) || []
+  );
 
   return Array.from(new Set(names)).filter(Boolean).sort();
 }
 
 /** Render a compact resource group and flavor count for ClusterQueue lists. */
-export function renderResourceGroupsSummary(resourceGroups: ResourceGroupLike[]) {
-  if (resourceGroups.length === 0) {
+export function renderResourceGroupsSummary(resourceGroups?: ResourceGroupLike[] | null) {
+  const groups = resourceGroups || [];
+  if (groups.length === 0) {
     return '-';
   }
 
-  const flavorCount = resourceGroups.reduce(
-    (count, group) => count + (group.flavors?.length || 0),
-    0
-  );
-  const groupLabel = resourceGroups.length === 1 ? 'group' : 'groups';
+  const flavorCount = groups.reduce((count, group) => count + (group.flavors?.length || 0), 0);
+  const groupLabel = groups.length === 1 ? 'group' : 'groups';
   const flavorLabel = flavorCount === 1 ? 'flavor' : 'flavors';
 
-  return `${resourceGroups.length} ${groupLabel}, ${flavorCount} ${flavorLabel}`;
+  return `${groups.length} ${groupLabel}, ${flavorCount} ${flavorLabel}`;
 }
 
 /** Convert nested resource groups into table rows. */
-export function getResourceGroupRows(resourceGroups: ResourceGroupLike[]): ResourceGroupRow[] {
-  return resourceGroups.flatMap((group, groupIndex): ResourceGroupRow[] => {
+export function getResourceGroupRows(
+  resourceGroups?: ResourceGroupLike[] | null
+): ResourceGroupRow[] {
+  const groups = resourceGroups || [];
+  return groups.flatMap((group, groupIndex): ResourceGroupRow[] => {
     const groupLabel = `Group ${groupIndex + 1}`;
     const coveredResources = group.coveredResources?.join(', ') || '-';
 
@@ -236,12 +239,13 @@ export function getResourceGroupRows(resourceGroups: ResourceGroupLike[]): Resou
 }
 
 /** Render a comma-separated list, falling back to '-' when empty. */
-export function renderStringList(values: string[]) {
-  return values.length > 0 ? values.join(', ') : '-';
+export function renderStringList(values?: string[] | null) {
+  const list = values || [];
+  return list.length > 0 ? list.join(', ') : '-';
 }
 
 /** Render a Kubernetes label selector as compact detail text. */
-export function renderLabelSelector(selector?: LabelSelectorLike) {
+export function renderLabelSelector(selector?: LabelSelectorLike | null) {
   if (!selector) {
     return 'All namespaces';
   }
@@ -259,12 +263,13 @@ export function renderLabelSelector(selector?: LabelSelectorLike) {
 }
 
 /** Render all resource groups and nested flavors as multiline detail text. */
-export function renderResourceGroups(resourceGroups: ResourceGroupLike[]) {
-  if (resourceGroups.length === 0) {
+export function renderResourceGroups(resourceGroups?: ResourceGroupLike[] | null) {
+  const groups = resourceGroups || [];
+  if (groups.length === 0) {
     return '-';
   }
 
-  return resourceGroups
+  return groups
     .map((group, index) => {
       const resources = renderStringList(group.coveredResources || []);
       const flavors = (group.flavors || []).map(renderFlavorQuotas).join('; ') || '-';
@@ -293,12 +298,13 @@ function renderResourceQuota(resource: ResourceQuotaLike) {
 }
 
 /** Render ClusterQueue conditions as multiline status text. */
-export function renderConditions(conditions: ClusterQueueConditionLike[]) {
-  if (conditions.length === 0) {
+export function renderConditions(conditions?: ClusterQueueConditionLike[] | null) {
+  const list = conditions || [];
+  if (list.length === 0) {
     return '-';
   }
 
-  return conditions
+  return list
     .map(condition => {
       const reason = condition.reason ? ` (${condition.reason})` : '';
       const message = condition.message ? `: ${condition.message}` : '';
@@ -309,7 +315,7 @@ export function renderConditions(conditions: ClusterQueueConditionLike[]) {
 }
 
 /** Render ClusterQueue preemption policies for the detail page. */
-export function renderPreemption(preemption?: ClusterQueuePreemptionLike) {
+export function renderPreemption(preemption?: ClusterQueuePreemptionLike | null) {
   if (!preemption) {
     return '-';
   }
@@ -335,7 +341,7 @@ export function renderPreemption(preemption?: ClusterQueuePreemptionLike) {
 }
 
 /** Render admission checks and their flavor scopes for the detail page. */
-export function renderAdmissionChecks(strategy?: AdmissionChecksStrategyLike) {
+export function renderAdmissionChecks(strategy?: AdmissionChecksStrategyLike | null) {
   const checks = strategy?.admissionChecks || [];
 
   if (checks.length === 0) {
@@ -351,7 +357,7 @@ export function renderAdmissionChecks(strategy?: AdmissionChecksStrategyLike) {
 }
 
 /** Render ClusterQueue flavor fungibility settings for the detail page. */
-export function renderFlavorFungibility(flavorFungibility?: FlavorFungibilityLike) {
+export function renderFlavorFungibility(flavorFungibility?: FlavorFungibilityLike | null) {
   if (!flavorFungibility) {
     return '-';
   }
@@ -370,7 +376,7 @@ export function renderFlavorFungibility(flavorFungibility?: FlavorFungibilityLik
 }
 
 /** Render ClusterQueue status usage or reservations grouped by flavor. */
-export function renderFlavorUsage(flavorUsage?: FlavorUsageLike[]) {
+export function renderFlavorUsage(flavorUsage?: FlavorUsageLike[] | null) {
   if (!flavorUsage?.length) {
     return '-';
   }
@@ -395,8 +401,8 @@ export function renderFlavorUsage(flavorUsage?: FlavorUsageLike[]) {
 
 /** Render ClusterQueue fair sharing configuration and status. */
 export function renderFairSharing(
-  fairSharing?: FairSharingLike,
-  fairSharingStatus?: FairSharingStatusLike
+  fairSharing?: FairSharingLike | null,
+  fairSharingStatus?: FairSharingStatusLike | null
 ) {
   const values = [
     fairSharing?.weight !== undefined ? `Weight: ${fairSharing.weight}` : undefined,
@@ -409,7 +415,7 @@ export function renderFairSharing(
 }
 
 /** Render ClusterQueue concurrent admission migration policy. */
-export function renderConcurrentAdmissionPolicy(policy?: ConcurrentAdmissionPolicyLike) {
+export function renderConcurrentAdmissionPolicy(policy?: ConcurrentAdmissionPolicyLike | null) {
   if (!policy?.migration) {
     return '-';
   }
