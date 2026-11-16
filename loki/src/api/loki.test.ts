@@ -40,11 +40,25 @@ describe('Absolute timestamps', () => {
   });
 
   it.each([
+    '2026-03-01T10:00:00.1234Z',
+    '2026-03-01T10:00:00.123400Z',
+    '2026-03-01T10:00:00.123900Z',
+    '2026-03-01T10:00:00.123456789+05:30',
+    '2026-03-01T10:00:00.0000Z',
+  ])('rejects sub-millisecond input rather than silently truncating %s', value => {
+    expect(() => parseAbsoluteTimestamp(value)).toThrow(
+      'Absolute timestamps support at most three fractional digits (milliseconds).'
+    );
+  });
+
+  it.each([
     ['2024-02-29T10:00:00Z', '2024-02-29T10:00:00.000Z'],
     ['2000-02-29T10:00:00Z', '2000-02-29T10:00:00.000Z'],
     ['2024-02-29T23:30:00-05:00', '2024-03-01T04:30:00.000Z'],
     ['2024-03-01T00:30:00+05:30', '2024-02-29T19:00:00.000Z'],
     ['2026-03-01T10:00Z', '2026-03-01T10:00:00.000Z'],
+    ['2026-03-01T10:00:00.1Z', '2026-03-01T10:00:00.100Z'],
+    ['2026-03-01T10:00:00.12Z', '2026-03-01T10:00:00.120Z'],
     ['2026-03-01T10:00:00.123Z', '2026-03-01T10:00:00.123Z'],
   ])('preserves the instant of %s', (value, expected) => {
     expect(new Date(parseAbsoluteTimestamp(value)).toISOString()).toBe(expected);

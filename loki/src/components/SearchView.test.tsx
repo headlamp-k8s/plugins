@@ -93,6 +93,20 @@ it('queries valid leap-day timestamps with timezone offsets without changing the
   );
 });
 
+it.each([
+  ['2026-03-01T10:00:00.123400Z', '2026-03-01T10:00:00.123900Z'],
+  ['2026-03-01T10:00:00.123Z', '2026-03-01T11:00:00.123900Z'],
+])('rejects sub-millisecond bounds before querying (%s to %s)', async (start, end) => {
+  request.mockResolvedValue({ status: 'success', data: { resultType: 'streams', result: [] } });
+  render(<HistoricalSearch cluster="a" />);
+  enterAbsoluteRange(start, end);
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  await screen.findByText(
+    'Absolute timestamps support at most three fractional digits (milliseconds).'
+  );
+  expect(request).not.toHaveBeenCalled();
+});
+
 it('renders a bounded prefix and loads older entries with one expanded request', async () => {
   request.mockImplementation(async path => {
     const limit = Number(new URLSearchParams(path.split('?')[1]).get('limit'));

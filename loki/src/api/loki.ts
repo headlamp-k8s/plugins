@@ -57,6 +57,9 @@ export function parseAbsoluteTimestamp(value: string): number {
   ) {
     throw invalid();
   }
+  if (/\.\d{4}/.test(value)) {
+    throw new Error('Absolute timestamps support at most three fractional digits (milliseconds).');
+  }
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) throw invalid();
   return timestamp;
