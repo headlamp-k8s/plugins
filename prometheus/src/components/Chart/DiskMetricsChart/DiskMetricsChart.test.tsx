@@ -152,13 +152,17 @@ describe('DiskMetricsChart', () => {
     const oldRequest = new Promise<void>(resolve => {
       releaseOld = resolve;
     });
+    let completeOldResponse!: () => void;
+    const oldResponseParsed = new Promise<void>(resolve => {
+      completeOldResponse = resolve;
+    });
     vi.mocked(ApiProxy.request).mockImplementation(async path => {
       const params = new URL(String(path), 'http://localhost').searchParams;
       const from = Number(params.get('start'));
       const to = Number(params.get('end'));
       const oldSelection = to - from === 21600 && params.get('step') === '28';
       if (oldSelection) await oldRequest;
-      return new Response(
+      const response = new Response(
         JSON.stringify({
           status: 'success',
           data: {
@@ -177,6 +181,15 @@ describe('DiskMetricsChart', () => {
         }),
         { status: 200 }
       );
+      if (oldSelection) {
+        const parse = response.json.bind(response);
+        vi.spyOn(response, 'json').mockImplementation(async () => {
+          const data = await parse();
+          completeOldResponse();
+          return data;
+        });
+      }
+      return response;
     });
     renderChart();
     await screen.findByRole('combobox', { name: control });
@@ -186,18 +199,9 @@ describe('DiskMetricsChart', () => {
     await selectOption(control, option);
     expect(await screen.findByText('No Data')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
-    await act(async () => releaseOld!());
-    await waitFor(() =>
-      expect(
-        requests().some(
-          url =>
-            url.searchParams.get('step') === '28' &&
-            url.searchParams.get('query') === 'disk_capacity'
-        )
-      ).toBe(true)
-    );
     await act(async () => {
-      await Promise.resolve();
+      releaseOld!();
+      await oldResponseParsed;
     });
     expect(screen.getByText('No Data')).toBeVisible();
     expect(document.querySelector('.recharts-surface')).toBeNull();

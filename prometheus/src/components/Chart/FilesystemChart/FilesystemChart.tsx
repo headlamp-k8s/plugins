@@ -4,7 +4,7 @@ import { orange, purple } from '@mui/material/colors';
 import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import { formatBytes } from '../../../util';
-import Chart from '../Chart/Chart';
+import Chart, { ChartProps } from '../Chart/Chart';
 import { CustomTooltipFormatBytes } from '../common';
 
 /**
@@ -17,6 +17,7 @@ import { CustomTooltipFormatBytes } from '../common';
  * @property {boolean} autoRefresh - Whether to automatically refresh the chart data
  */
 interface FilesystemChartProps {
+  referenceLines?: ChartProps['referenceLines'];
   readQuery: string;
   writeQuery: string;
   interval: string;
