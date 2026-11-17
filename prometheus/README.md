@@ -14,6 +14,8 @@ so `web` does not include `web-api` Pods. Names are regex-escaped and generated
 prefix truncation is handled. Matching uses Kubernetes' decimal-encoded Deployment
 hash alphabet and consonant/digit random-suffix alphabet, excluding cross-kind
 lookalikes such as `web-api-bcdfg` and standalone Pods such as `web-admin`.
+Deployment hashes must encode a decimal uint32 without leading zeros; truncated
+hashes must be valid prefixes of such encodings.
 This uses the existing container metrics, without
 requiring kube-state-metrics ownership series. Matching is name-based, not an
 ownership proof: controllers with indistinguishable generated prefixes (including

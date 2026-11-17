@@ -4,6 +4,34 @@ function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function deploymentHashPattern(length: number, exactLength: boolean) {
+  // SafeEncodeString maps decimal digits 0-9 to these characters in order.
+  const digits = '456789bcdf';
+  const digit = `[${digits}]`;
+  const nonzero = `[${digits.slice(1)}]`;
+  if (length < 10) {
+    if (length === 1) return digit;
+    return exactLength
+      ? `${nonzero}${digit}{${length - 1}}`
+      : `(${digits[0]}|${nonzero}${digit}{0,${length - 1}})`;
+  }
+
+  const alternatives = exactLength ? [] : [digits[0], `${nonzero}${digit}{0,8}`];
+  const maximum = '4294967295';
+  let prefix = '';
+  // Ten-digit hashes must not exceed the encoded uint32 maximum.
+  for (let i = 0; i < maximum.length; i++) {
+    const upper = Number(maximum[i]);
+    const lower = i === 0 ? 1 : 0;
+    if (upper > lower) {
+      alternatives.push(`${prefix}[${digits.slice(lower, upper)}]${digit}{${9 - i}}`);
+    }
+    prefix += digits[upper];
+  }
+  alternatives.push(prefix);
+  return `(${alternatives.join('|')})`;
+}
+
 function podPattern(kind: WorkloadKind, name: string) {
   if (kind === 'StatefulSet') return `${escapeRegex(name)}-[0-9]+`;
 
@@ -16,11 +44,9 @@ function podPattern(kind: WorkloadKind, name: string) {
 
   // Deployments add a decimal-derived ReplicaSet hash (up to ten characters) before the Pod suffix.
   const available = 58 - prefix.length;
-  // SafeEncodeString maps decimal hash digits to this subset of the random-name alphabet.
-  const hash = '[456789bcdf]';
   const shapes: string[] = [];
-  if (available > 1) shapes.push(`${hash}{1,${Math.min(10, available - 1)}}-`);
-  if (available <= 10) shapes.push(`${hash}{${available}}`);
+  if (available > 1) shapes.push(`${deploymentHashPattern(Math.min(10, available - 1), false)}-`);
+  if (available <= 10) shapes.push(deploymentHashPattern(available, true));
   return `${escapeRegex(prefix)}(${shapes.join('|')})${suffix}`;
 }
 

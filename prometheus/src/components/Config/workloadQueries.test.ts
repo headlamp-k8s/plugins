@@ -7,6 +7,14 @@ function matcher(kind: Parameters<typeof getWorkloadQueries>[0], name: string) {
   return new RegExp(`^(?:${JSON.parse(match[1])})$`);
 }
 
+function encodedHash(decimal: string) {
+  return [...decimal].map(digit => '456789bcdf'[Number(digit)]).join('');
+}
+
+function deploymentPod(name: string, decimal: string) {
+  return `${`${name}-${encodedHash(decimal)}-`.slice(0, 58)}bcdfg`;
+}
+
 describe('workload metric queries', () => {
   it.each(['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'] as const)(
     'preserves non-empty-container filters for %s memory/CPU/filesystem but not Pod-level network metrics',
@@ -77,6 +85,40 @@ describe('workload metric queries', () => {
       expect(pattern.test(`${name}-${invalid}cdf-bcdfg`)).toBe(false);
       expect(pattern.test(`${name}-${invalid}d7f8b9b6bcdfg`)).toBe(false);
     }
+  });
+
+  it('accepts encoded uint32 values without leading zeros and rejects out-of-range values', () => {
+    const pattern = matcher('Deployment', 'web');
+    for (const decimal of [
+      '0',
+      '1',
+      '10',
+      '1000000000',
+      '2147483647',
+      '3999999999',
+      '4294967294',
+      '4294967295',
+    ]) {
+      expect(pattern.test(deploymentPod('web', decimal)), decimal).toBe(true);
+    }
+    for (const decimal of ['00', '010', '0429496729', '4294967296', '5000000000', '9999999999']) {
+      expect(pattern.test(deploymentPod('web', decimal)), decimal).toBe(false);
+    }
+    expect(pattern.test('web-454-bcdfg')).toBe(false);
+    expect(pattern.test('web-ffffffffff-bcdfg')).toBe(false);
+  });
+
+  it('restricts truncated Deployment hashes to prefixes of valid uint32 encodings', () => {
+    const ten = 'w'.repeat(47);
+    expect(matcher('Deployment', ten).test(deploymentPod(ten, '4294967295'))).toBe(true);
+    expect(matcher('Deployment', ten).test(deploymentPod(ten, '4294967296'))).toBe(false);
+    const nine = 'w'.repeat(48);
+    expect(matcher('Deployment', nine).test(deploymentPod(nine, '999999999'))).toBe(true);
+    expect(matcher('Deployment', nine).test(deploymentPod(nine, '4294967295'))).toBe(true);
+    expect(matcher('Deployment', nine).test(deploymentPod(nine, '0100000000'))).toBe(false);
+    const one = 'w'.repeat(56);
+    expect(matcher('Deployment', one).test(deploymentPod(one, '0'))).toBe(true);
+    expect(matcher('Deployment', one).test(deploymentPod(one, '9'))).toBe(true);
   });
 
   it('escapes dots in names as literals in the PromQL regex string', () => {
