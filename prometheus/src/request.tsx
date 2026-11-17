@@ -147,10 +147,11 @@ export const PROMETHEUS_SEARCH_STRATEGIES: {
 
 /**
  * Returns the first Prometheus pod or service that fits our search and is reachable.
+ * @param cluster - The cluster to search. Defaults to the current cluster.
  * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
  */
-export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
-  return discoverPrometheus();
+export async function isPrometheusInstalled(cluster?: string): Promise<PrometheusEndpoint> {
+  return discoverPrometheus(cluster);
 }
 
 /**

@@ -1,10 +1,9 @@
 import { Icon } from '@iconify/react';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/K8s/cluster';
 import { Tooltip } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   disableMetrics,
   enableMetrics,
@@ -13,23 +12,28 @@ import {
 } from '../../util';
 
 interface VisibilityButtonProps {
+  /** The resource whose page shows the button. */
   resource?: KubeObject;
+  /** The cluster whose metrics the button turns on and off, when it is not the current one. */
+  cluster?: string;
 }
 
+/**
+ * Shows a button that turns Prometheus metrics on or off for a cluster, on the page of a resource
+ * that has Prometheus charts.
+ *
+ * @param props - The resource and the cluster.
+ * @returns The button, or nothing for a resource without Prometheus charts.
+ */
 export function VisibilityButton(props: VisibilityButtonProps) {
   const { t } = useTranslation();
   const { resource } = props;
-  const cluster = useCluster();
-  const [isEnabled, setIsEnabled] = useState(false);
+  const currentCluster = K8s.useCluster();
+  const cluster = props.cluster || currentCluster;
   const configStore = getConfigStore();
   const useClusterConfig = configStore.useConfig();
   const clusterConfig = useClusterConfig();
-
-  useEffect(() => {
-    if (clusterConfig?.[cluster]?.isMetricsEnabled !== isEnabled) {
-      setIsEnabled(clusterConfig?.[cluster]?.isMetricsEnabled || false);
-    }
-  }, [clusterConfig]);
+  const isEnabled = clusterConfig?.[cluster]?.isMetricsEnabled || false;
 
   const [description, icon] = React.useMemo(() => {
     if (isEnabled) {
