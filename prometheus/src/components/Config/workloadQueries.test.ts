@@ -8,6 +8,21 @@ function matcher(kind: Parameters<typeof getWorkloadQueries>[0], name: string) {
 }
 
 describe('workload metric queries', () => {
+  it.each(['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet'] as const)(
+    'preserves non-empty-container filters for %s memory/CPU/filesystem but not Pod-level network metrics',
+    kind => {
+      const queries = getWorkloadQueries(kind, 'apps', 'web');
+      for (const query of [
+        queries.cpuQuery,
+        queries.memoryQuery,
+        queries.filesystemReadQuery,
+        queries.filesystemWriteQuery,
+      ])
+        expect(query).toContain("container!=''");
+      expect(queries.networkRxQuery).not.toContain("container!=''");
+      expect(queries.networkTxQuery).not.toContain("container!=''");
+    }
+  );
   it.each([
     {
       kind: 'Deployment',

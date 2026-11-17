@@ -18,6 +18,8 @@ This uses the existing container metrics, without
 requiring kube-state-metrics ownership series. Matching is name-based, not an
 ownership proof: controllers with indistinguishable generated prefixes (including
 truncated long names) cannot be distinguished from container metrics alone.
+CPU, memory, and filesystem queries exclude empty-container aggregate series;
+network queries retain Pod-level series.
 
 On PersistentVolumeClaim details, use the disk chart's **Timespan** and **Resolution**
 selectors to override the cluster's defaults for the current view. These choices do not
