@@ -14,6 +14,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
   createTickTimestampFormatter,
+  escapePrometheusLabelValue,
   getConfigStore,
   getPrometheusInterval,
   getPrometheusPrefix,
@@ -44,10 +45,6 @@ interface ChartConfig {
 interface VolcanoChartProps {
   chartConfigs: ChartConfig[];
   defaultChart?: string;
-}
-
-function escapePrometheusLabelValue(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 }
 
 function getVolcanoQueueMetricQuery(metricName: string, queueName: string) {

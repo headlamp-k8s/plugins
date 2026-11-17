@@ -197,6 +197,88 @@ documentation's retry example: its page then also shows Backoff Max `PT2S`.
 Cleanup removes these fixtures with the `knative-eventing-test` namespace; NATS, Kafka and their
 channel controllers stay installed.
 
+### Eventing charts
+
+These checks need the Eventing fixtures, the channel implementations above and the Prometheus
+Operator, set to pick up monitors without a `release` label (with kube-prometheus-stack,
+`podMonitorSelectorNilUsesHelmValues` and `serviceMonitorSelectorNilUsesHelmValues` set to
+`false`). Install the Kafka Broker, KafkaSource and KafkaSink, turn on the metrics, and restart
+the components so that they export them:
+
+```bash
+KAFKA_RELEASE_URL=https://github.com/knative-extensions/eventing-kafka-broker/releases/download/knative-v1.23.2
+for component in broker source sink; do
+  kubectl apply -f "${KAFKA_RELEASE_URL}/eventing-kafka-${component}.yaml"
+done
+kubectl patch configmap config-observability -n knative-eventing --type merge \
+  -p '{"data":{"metrics-protocol":"prometheus"}}'
+kubectl rollout restart deployment,statefulset -n knative-eventing
+```
+
+Then scrape them, and run Kafka Exporter and the NATS exporter for the queues:
+
+```bash
+kubectl apply -f \
+  https://raw.githubusercontent.com/knative-extensions/monitoring/main/config/eventing-monitors.yaml
+for component in broker channel controller sink source; do
+  kubectl apply -f "${KAFKA_RELEASE_URL}/eventing-kafka-${component}-prometheus-operator.yaml"
+done
+kubectl apply -f test-files/eventing/metrics-monitors.yaml
+kubectl apply -f test-files/eventing/channel-implementations/kafka-exporter.yaml
+kubectl apply -f test-files/eventing/channel-implementations/nats-exporter.yaml
+```
+
+The Kafka components run on Java; on kind, give Docker at least 10 GB of memory, or pods restart.
+
+Add the traffic. `metrics-traffic.yaml` has PingSources that send to the `orders` Channel, the
+`orders-kafka` KafkaChannel and the `orders-nats` NatsJetStreamChannel each minute, Subscriptions
+that `example.com` answers with `405`, and Subscriptions to an address that never answers.
+`metrics-kafka.yaml` adds a Kafka Broker with three such Triggers, and a PingSource that sends to a
+KafkaSink whose topic a KafkaSource reads. Once `payments-stalled` is Ready, send it 100 events,
+which wait in Kafka:
+
+```bash
+kubectl apply -f test-files/eventing/metrics-traffic.yaml
+kubectl apply -f test-files/eventing/channel-implementations/metrics-kafka.yaml
+kubectl wait --for=condition=Ready subscription/payments-stalled -n knative-eventing-test \
+  --timeout=300s
+kubectl apply -f test-files/eventing/metrics-burst.yaml
+```
+
+PingSource `heartbeat` sends one event a minute to the `default` Broker. Pick a short timespan, such
+as 30 minutes, until Prometheus has a few minutes of data.
+
+| Detail page                        | Chart              | What it shows                                                                                 |
+| ---------------------------------- | ------------------ | --------------------------------------------------------------------------------------------- |
+| Trigger `catch-all`                | Deliveries         | Every heartbeat succeeded                                                                     |
+| Trigger `uri-subscriber`           | Deliveries         | Every heartbeat failed, because `example.com` answers `405`                                   |
+| Trigger `order-created`            | Deliveries         | No data, because its filters do not match the heartbeat                                       |
+| Broker `default`                   | Deliveries         | One success and one failure for each heartbeat                                                |
+| Broker `orders-kafka-broker`       | Events received    | One event accepted a minute                                                                   |
+| Trigger `kafka-broker-display`     | Deliveries         | One success a minute                                                                          |
+| Trigger `kafka-broker-rejected`    | Deliveries         | One `405` failure a minute                                                                    |
+| Trigger `kafka-broker-stalled`     | Queued events      | Events waiting, because its subscriber never answers; its Deliveries chart has no data        |
+| Channel `orders`                   | Deliveries         | One success, from `orders-to-display`, and one failure, from `orders-rejected`, each minute   |
+| Channel `orders`                   | Events received    | One event rejected a minute, because `orders-rejected` fails without a dead letter sink       |
+| Subscription `orders-rejected`     | Deliveries         | Every event failed                                                                            |
+| KafkaChannel `orders-kafka`        | Deliveries         | One success, from `kafka-to-display`, and one failure, from `orders-kafka-rejected`, a minute |
+| KafkaChannel `orders-kafka`        | Events received    | One event accepted a minute                                                                   |
+| Subscription `kafka-to-display`    | Queued events      | 0, or 1 for a moment each minute                                                              |
+| Subscription `payments-stalled`    | Queued events      | The 100 events, going down slowly while each delivery waits for an answer                     |
+| Channel `payments-kafka`           | Queued events      | The same 100 events; its Deliveries chart has no data, as no delivery gets an answer          |
+| NatsJetStreamChannel `orders-nats` | Events received    | One event accepted a minute                                                                   |
+| NatsJetStreamChannel `orders-nats` | Queued events      | The events waiting for `orders-nats-stalled`                                                  |
+| Subscription `orders-nats-stalled` | Queued events      | The same events                                                                               |
+| KafkaSource `payments-source`      | Deliveries         | One success a minute, of the event `payments-sink-ping` sends to KafkaSink `payments-sink`    |
+| ApiServerSource `k8s-events`       | Deliveries         | A success for each Kubernetes event in `knative-eventing-test`                                |
+| PingSource `heartbeat`             | Admission requests | Only the admission requests and reconciles charts                                             |
+| Any of these pages                 | Reconciles         | The reconciles of the page's kind, rising each time its resources change                      |
+
+On the **Delivery latency** chart, `catch-all` and `orders-to-display` take a few milliseconds, and
+`uri-subscriber` and `orders-rejected` show no data, because none of their deliveries succeeded.
+Cleanup removes the traffic with the `knative-eventing-test` namespace; the monitors, the exporters
+and the Kafka components stay installed.
+
 ## Remove the fixtures
 
 ```bash
