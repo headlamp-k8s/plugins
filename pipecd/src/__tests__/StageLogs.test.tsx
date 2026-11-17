@@ -58,6 +58,13 @@ describe('StageLogs', () => {
     expect(logs.textContent).toMatch(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [+-]\d{2}:\d{2}\]/);
   });
 
+  it('makes the log panel a named region that the keyboard can focus', () => {
+    render(<StageLogs log={stageLogsCompleted['stage-k8s-sync']} />);
+
+    const logs = screen.getByRole('region', { name: 'stage-logs' });
+    expect(logs.getAttribute('tabindex')).toBe('0');
+  });
+
   it('numbers the log lines', () => {
     render(<StageLogs log={stageLogsCompleted['stage-k8s-sync']} />);
 

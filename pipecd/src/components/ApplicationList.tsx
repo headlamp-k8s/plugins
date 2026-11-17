@@ -26,6 +26,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { isConfigured, listApplications, loadConfig, PipeCDApiError } from '../api/pipecd';
 import type { Application, ApplicationKind } from '../types/pipecd';
 import { formatTimestamp, relativeTime } from '../utils/time';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
 import { consoleURL, pluginURL } from '../utils/url';
 import { KindBadge, useKindLabels } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
@@ -121,10 +122,11 @@ export function ApplicationList(): JSX.Element {
         const collected: Application[] = [];
         let cursor = '';
         for (;;) {
-          const resp = await listApplications(config, {
-            cursor: cursor || undefined,
-            signal,
-          });
+          const resp = await withTimeout(
+            listApplications(config, { cursor: cursor || undefined, signal }),
+            REQUEST_TIMEOUT_MS,
+            t('The request timed out.')
+          );
           collected.push(...(resp.applications ?? []));
           if (!resp.cursor || resp.cursor === cursor || !resp.applications?.length) break;
           cursor = resp.cursor;

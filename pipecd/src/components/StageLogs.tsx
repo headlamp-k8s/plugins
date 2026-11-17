@@ -52,7 +52,9 @@ export function StageLogs({ log }: StageLogsProps): JSX.Element {
 
   return (
     <Box
+      role="region"
       aria-label="stage-logs"
+      tabIndex={0}
       sx={{
         py: 1,
         maxHeight: 420,

@@ -93,6 +93,24 @@ describe('ApplicationList', () => {
     expect(await screen.findByLabelText('loading-skeleton')).toBeTruthy();
   });
 
+  it('gives up on a list request that hangs and lets the user refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.listApplications).mockReturnValue(new Promise(() => {}));
+
+      renderList();
+
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(await screen.findByText(/Failed to load applications/i)).toBeTruthy();
+      expect(screen.getByText('The request timed out.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Refresh/i }).hasAttribute('disabled')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('renders all three applications from mock data', async () => {
     setupConfigured();
     mockListSuccess();
