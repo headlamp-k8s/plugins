@@ -211,13 +211,14 @@ export class KyvernoClusterPolicy extends KyvernoPolicyBase {
 }
 
 // Derives the effective enforcement action from a policy spec.
-// Rule-level validate.failureAction overrides the spec-level action; if all
-// validate rules agree on a single action, that action wins. When rules differ
-// or none carry a rule-level action, the spec-level validationFailureAction is
-// used, defaulting to 'Audit'.
+// Rule-level validate.failureAction overrides the spec-level action. Resolve
+// each validation rule's effective action before checking agreement; differing
+// actions produce 'Mixed', and the fallback action defaults to 'Audit'.
 export function effectiveEnforcementAction(spec: KyvernoPolicySpec | undefined): string {
   const ruleActions = new Set(
-    (spec?.rules ?? []).filter(r => r.validate?.failureAction).map(r => r.validate!.failureAction!)
+    (spec?.rules ?? [])
+      .filter(r => r.validate)
+      .map(r => r.validate!.failureAction ?? spec?.validationFailureAction ?? 'Audit')
   );
   if (ruleActions.size === 1) return [...ruleActions][0];
   if (ruleActions.size > 1) return 'Mixed';
