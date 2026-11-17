@@ -545,12 +545,6 @@ export function useRadiusResources(): [UCPResource[] | null, Error | null, boole
         const results = await Promise.all(promises);
         const allResources = results.flat();
 
-        if (allResources.length === 0) {
-          throw new Error(
-            'Failed to fetch Radius resources from all configured providers and resource types.'
-          );
-        }
-
         if (mounted) {
           setResources(allResources);
           setError(null);
