@@ -1,7 +1,9 @@
+import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import { Link } from '@mui/material';
 import { ReactNode, useEffect, useState } from 'react';
+import { isKueueInstalled } from '../../utils/kueueInstallation';
 
 interface KueueAdminResourceAccessProps {
   /** Kueue resource class to check access for. */
@@ -14,11 +16,80 @@ interface KueueAdminResourceAccessProps {
   accessDescription?: string;
   /** Cluster to check access in. Defaults to the cluster in the current route. */
   cluster?: string;
+  /** Skip the installation check, for a page that already sits in a KueueInstallationGate. */
+  installationChecked?: boolean;
   /** Page content to render after the user is authorized. */
   children: ReactNode;
 }
 
-export default function KueueAdminResourceAccess({
+/** Resolve the cluster to check: the given one, else the one in the current route. */
+function useTargetCluster(cluster?: string) {
+  const routeCluster = K8s.useCluster();
+  return cluster ?? routeCluster ?? undefined;
+}
+
+/**
+ * Run a check once per mount. Callers key the component by cluster, so a cluster
+ * switch remounts it and shows the loader until the new cluster answers, instead
+ * of reusing an earlier result for that cluster or another one.
+ */
+function useCheck(check: () => Promise<boolean>) {
+  const [result, setResult] = useState<boolean | null>(null);
+  useEffect(() => {
+    let current = true;
+    check().then(
+      value => current && setResult(value),
+      () => current && setResult(false)
+    );
+    return () => {
+      current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return result;
+}
+
+function InstallationCheck({ cluster, children }: { cluster?: string; children: ReactNode }) {
+  const installed = useCheck(() => isKueueInstalled(cluster));
+
+  if (installed === null) {
+    return <Loader title="Checking for Kueue" />;
+  }
+
+  if (!installed) {
+    return (
+      <SectionBox title="Kueue is not installed">
+        <EmptyContent color="text.secondary">
+          {/* One child, so EmptyContent keeps the sentence and its link on one line. */}
+          <span>
+            Kueue custom resources are not available in the selected Kubernetes cluster.{' '}
+            <Link
+              href="https://kueue.sigs.k8s.io/docs/getting-started/installation/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Install Kueue
+            </Link>
+          </span>
+        </EmptyContent>
+      </SectionBox>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+/** Render the children only when the cluster serves the Kueue API. */
+export function KueueInstallationGate(props: { cluster?: string; children: ReactNode }) {
+  const cluster = useTargetCluster(props.cluster);
+  return (
+    <InstallationCheck key={cluster ?? ''} cluster={cluster}>
+      {props.children}
+    </InstallationCheck>
+  );
+}
+
+function AccessCheck({
   resourceClass,
   resourceLabel,
   verb,
@@ -26,37 +97,38 @@ export default function KueueAdminResourceAccess({
   cluster,
   children,
 }: KueueAdminResourceAccessProps) {
-  const [allowed, setAllowed] = useState<boolean | null>(null);
-  // Resolve the route cluster here so switching clusters on the same route checks access again.
-  const routeCluster = useCluster();
-  const targetCluster = cluster ?? routeCluster ?? undefined;
-
   // AuthVisible only takes the cluster from an object, not from a resource class.
-  useEffect(() => {
-    let current = true;
-    setAllowed(null);
+  const allowed = useCheck(() =>
     resourceClass
-      .getAuthorization(verb, {}, targetCluster)
-      .then(result => current && setAllowed(!!result?.status?.allowed))
-      .catch(() => current && setAllowed(false));
-    return () => {
-      current = false;
-    };
-  }, [resourceClass, verb, targetCluster]);
+      .getAuthorization(verb, {}, cluster)
+      .then((result: any) => !!result?.status?.allowed)
+  );
 
-  return (
-    <>
-      {allowed === null && <Loader title={`Checking access to Kueue ${resourceLabel}`} />}
-      {allowed === false && (
-        <SectionBox title={`Kueue ${resourceLabel}`}>
-          <EmptyContent color="text.secondary">
-            {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
-              verb === 'get' ? 'view' : 'list'
-            } this page.`}
-          </EmptyContent>
-        </SectionBox>
-      )}
-      {allowed && children}
-    </>
+  if (allowed === null) {
+    return <Loader title={`Checking access to Kueue ${resourceLabel}`} />;
+  }
+
+  if (!allowed) {
+    return (
+      <SectionBox title={`Kueue ${resourceLabel}`}>
+        <EmptyContent color="text.secondary">
+          {`${accessDescription} Your current Kubernetes credentials are not authorized to ${
+            verb === 'get' ? 'view' : 'list'
+          } this page.`}
+        </EmptyContent>
+      </SectionBox>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+export default function KueueAdminResourceAccess(props: KueueAdminResourceAccessProps) {
+  const cluster = useTargetCluster(props.cluster);
+  const access = <AccessCheck key={cluster ?? ''} {...props} cluster={cluster} />;
+  return props.installationChecked ? (
+    access
+  ) : (
+    <KueueInstallationGate cluster={cluster}>{access}</KueueInstallationGate>
   );
 }
