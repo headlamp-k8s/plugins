@@ -141,6 +141,34 @@ describe('Workload formatters', () => {
         true
       )
     ).toBe('Running');
+    expect(
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'True' },
+        ],
+        true
+      )
+    ).toBe('Waiting for replacement pods');
+    expect(
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'PodsReady', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'True' },
+        ],
+        true
+      )
+    ).toBe('Running');
+    expect(
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'False' },
+        ],
+        true
+      )
+    ).toBe('Admitted');
     expect(renderWorkloadStatus([{ type: 'Admitted', status: 'True' }], true)).toBe('Admitted');
     expect(renderWorkloadStatus([{ type: 'QuotaReserved', status: 'True' }], true)).toBe('Pending');
     expect(renderWorkloadStatus([{ type: 'Requeued', status: 'True' }], true)).toBe('Pending');
