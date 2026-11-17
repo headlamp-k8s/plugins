@@ -438,47 +438,86 @@ function redactKubernetesSecretValuesYaml(input: string): string {
 }
 
 /**
+ * Finds the object each line of a YAML document belongs to: the document
+ * itself or one item of its top-level `items` list. Only a `kind` key at the
+ * object's own key column counts, so nested `kind` fields (annotations,
+ * ownerReferences) are ignored and the key order does not matter.
+ *
+ * @param lines - Lines of one YAML document, without line terminators.
+ * @returns The object index of each line and the `kind` of each object
+ *   (`null` when the object has no `kind`).
+ */
+function yamlObjectKinds(lines: string[]): {
+  objectOfLine: number[];
+  kinds: Array<string | null>;
+} {
+  const kinds: Array<string | null> = [null];
+  const keyColumns: Array<number | null> = [null];
+  const objectOfLine: number[] = [];
+  let current = 0;
+  let itemsColumn: number | null = null;
+  let dashColumn: number | null = null;
+
+  for (const line of lines) {
+    const keyMatch = line.match(/^(\s*)(-\s+)?([^\s#].*)$/);
+    if (keyMatch) {
+      const isItem = keyMatch[2] !== undefined;
+      const lineIndent = keyMatch[1].length;
+      const keyColumn = lineIndent + (keyMatch[2]?.length ?? 0);
+      if (itemsColumn !== null) {
+        if (
+          isItem &&
+          (dashColumn === null ? lineIndent >= itemsColumn : lineIndent === dashColumn)
+        ) {
+          dashColumn = lineIndent;
+          kinds.push(null);
+          keyColumns.push(keyColumn);
+          current = kinds.length - 1;
+        } else if (!isItem && keyColumn <= itemsColumn) {
+          itemsColumn = null;
+          dashColumn = null;
+          current = 0;
+        }
+      }
+      if (keyColumns[current] === null) keyColumns[current] = keyColumn;
+      if (keyColumn === keyColumns[current]) {
+        const kindMatch = keyMatch[3].match(/^kind\s*:\s*["']?([^"'\s]+)["']?\s*$/);
+        if (kindMatch) kinds[current] = kindMatch[1];
+        if (current === 0 && !isItem && /^items\s*:\s*$/.test(keyMatch[3])) {
+          itemsColumn = keyColumn;
+          dashColumn = null;
+        }
+      }
+    }
+    objectOfLine.push(current);
+  }
+  return { objectOfLine, kinds };
+}
+
+/**
  * Redacts data blocks in one YAML document already identified as a Secret.
  *
  * @param input - One Kubernetes Secret YAML document.
  * @returns YAML with data and stringData values replaced.
  */
 function redactSecretYamlDocument(input: string): string {
-  const lines = input.split('\n');
+  const rawLines = input.split('\n');
+  // CRLF input: scan each line without its `\r` and put it back afterwards.
+  const lines = rawLines.map(line => (line.endsWith('\r') ? line.slice(0, -1) : line));
+  // A List mixing Secrets and other kinds only loses the annotation on its
+  // Secrets; objects without a `kind` (SecretList items) are treated as Secrets.
+  const { objectOfLine, kinds } = yamlObjectKinds(lines);
   let dataBlockIndent: number | null = null;
   let blockScalarIndent: number | null = null;
-  // `kind` of the object being scanned, so a List mixing Secrets and other
-  // kinds only loses the annotation on its Secrets. `null` until a `kind` is
-  // seen for the current object (`kubectl` prints `metadata` after `kind`).
-  let objectKind: string | null = null;
-  let objectKeyColumn: number | null = null;
 
-  const redacted = lines.map(line => {
+  const redacted = lines.map((line, index) => {
+    const eol = rawLines[index].endsWith('\r') ? '\r' : '';
     const indent = line.match(/^\s*/)?.[0].length ?? 0;
     if (blockScalarIndent !== null) {
-      if (line.trim() === '' || indent > blockScalarIndent) return '';
+      if (line.trim() === '' || indent > blockScalarIndent) return eol;
       blockScalarIndent = null;
     }
-
-    const keyMatch = line.match(/^(\s*)(-\s+)?\S/);
-    if (keyMatch) {
-      const keyColumn = keyMatch[1].length + (keyMatch[2]?.length ?? 0);
-      if (
-        objectKeyColumn !== null &&
-        (keyColumn < objectKeyColumn || (keyMatch[2] && keyColumn === objectKeyColumn))
-      ) {
-        objectKind = null;
-        objectKeyColumn = null;
-      }
-      const kindMatch = line.match(/^\s*(?:-\s+)?kind\s*:\s*["']?([^"'\s]+)["']?\s*$/);
-      if (
-        kindMatch &&
-        (objectKeyColumn === null || keyColumn <= objectKeyColumn || /List$/.test(objectKind ?? ''))
-      ) {
-        objectKind = kindMatch[1];
-        objectKeyColumn = keyColumn;
-      }
-    }
+    const objectKind = kinds[objectOfLine[index]];
 
     // `kubectl apply` keeps the whole manifest, data included, in this
     // annotation. Drop its value and any indented continuation lines.
@@ -487,13 +526,13 @@ function redactSecretYamlDocument(input: string): string {
     );
     if (lastAppliedMatch && (objectKind === null || /^Secret(List)?$/.test(objectKind))) {
       blockScalarIndent = lastAppliedMatch[1].length;
-      return `${lastAppliedMatch[1]}${LAST_APPLIED_ANNOTATION}: [REDACTED]`;
+      return `${lastAppliedMatch[1]}${LAST_APPLIED_ANNOTATION}: [REDACTED]${eol}`;
     }
 
     const dataMatch = line.match(/^(\s*)(data|stringData):\s*$/);
     if (dataMatch) {
       dataBlockIndent = dataMatch[1].length;
-      return line;
+      return line + eol;
     }
 
     if (dataBlockIndent !== null && line.trim() !== '') {
@@ -502,14 +541,14 @@ function redactSecretYamlDocument(input: string): string {
         const entryIndent = entryMatch[1].length;
         if (entryIndent > dataBlockIndent) {
           if (/^[|>][-+]?\s*$/.test(entryMatch[3])) blockScalarIndent = entryIndent;
-          return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]`;
+          return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]${eol}`;
         }
         // Dedented back out of the data block; leave sibling keys intact.
         dataBlockIndent = null;
       }
     }
 
-    return line;
+    return line + eol;
   });
 
   return redacted.join('\n');

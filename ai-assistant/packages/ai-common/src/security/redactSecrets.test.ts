@@ -539,6 +539,69 @@ namespace: default`;
     expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"flags"}}');
   });
 
+  it('ignores a nested kind field when redacting a kindless SecretList item', () => {
+    const list = [
+      'apiVersion: v1',
+      'kind: SecretList',
+      'items:',
+      '- metadata:',
+      '    annotations:',
+      '      kind: ConfigMap',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    name: db',
+      '  type: Opaque',
+    ].join('\n');
+    const out = redactSecrets(list);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('kind: ConfigMap');
+    expect(out).toContain('name: db');
+  });
+
+  it('redacts a List item whose kind comes after its metadata', () => {
+    const list = [
+      'apiVersion: v1',
+      'kind: List',
+      'items:',
+      '- apiVersion: v1',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    name: db',
+      '  kind: Secret',
+      '- apiVersion: v1',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"kind":"ConfigMap","metadata":{"name":"settings"}}',
+      '    name: settings',
+      '  kind: ConfigMap',
+    ].join('\n');
+    const out = redactSecrets(list);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"settings"}}');
+  });
+
+  it('redacts the last-applied-configuration annotation of a CRLF YAML Secret', () => {
+    const secret = [
+      'apiVersion: v1',
+      'data:',
+      '  DATABASE_URL: cG9zdGdyZXM6Ly8=',
+      'kind: Secret',
+      'metadata:',
+      '  annotations:',
+      '    kubectl.kubernetes.io/last-applied-configuration: |',
+      '      {"stringData":{"token":"s3cr3t"},"kind":"Secret"}',
+      '  name: db',
+    ].join('\r\n');
+    const out = redactSecrets(secret);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).not.toContain('s3cr3t');
+    expect(out).toContain('kubectl.kubernetes.io/last-applied-configuration: [REDACTED]\r\n');
+    expect(out).toContain('  name: db');
+  });
+
   it('keeps the last-applied-configuration annotation of a ConfigMap', () => {
     const cm = [
       'kind: ConfigMap',
