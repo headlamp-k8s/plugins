@@ -1716,8 +1716,35 @@ describe('describeCELMatchReasons', () => {
       'Pod'
     );
     expect(reasons.some(r => r.includes('objectSelector'))).toBe(true);
-    expect(reasons.some(r => r.includes('excludeResourceRules'))).toBe(true);
-    expect(reasons.some(r => r.includes('pods'))).toBe(true);
+    const exclusion = reasons.find(r => r.includes('excludeResourceRules'));
+    expect(exclusion).toBeDefined();
+    expect(exclusion).toContain('resources [pods]');
+    expect(exclusion).toContain('operations [DELETE]');
+  });
+
+  test('excludeResourceRules description includes apiGroups and apiVersions', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          excludeResourceRules: [
+            {
+              resources: ['secrets'],
+              apiGroups: [''],
+              apiVersions: ['v1'],
+              operations: ['CREATE', 'UPDATE'],
+            },
+          ],
+        },
+      },
+      'Pod'
+    );
+    const exclusion = reasons.find(r => r.includes('excludeResourceRules'));
+    expect(exclusion).toBeDefined();
+    expect(exclusion).toContain('resources [secrets]');
+    expect(exclusion).toContain('API groups []');
+    expect(exclusion).toContain('versions [v1]');
+    expect(exclusion).toContain('operations [CREATE, UPDATE]');
   });
 
   test('appends top-level spec.matchConditions when present', () => {

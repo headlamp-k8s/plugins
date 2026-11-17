@@ -762,10 +762,21 @@ export function describeCELMatchReasons(spec: ValidatingPolicySpec, kind: string
   }
   if (mc.excludeResourceRules && mc.excludeResourceRules.length > 0) {
     const excluded = mc.excludeResourceRules
-      .map(r => (r.resources && r.resources.length > 0 ? r.resources.join(', ') : '*'))
+      .map(r => {
+        const parts = [
+          `resources [${r.resources && r.resources.length > 0 ? r.resources.join(', ') : '*'}]`,
+        ];
+        if (r.apiGroups && r.apiGroups.length > 0)
+          parts.push(`API groups [${r.apiGroups.join(', ')}]`);
+        if (r.apiVersions && r.apiVersions.length > 0)
+          parts.push(`versions [${r.apiVersions.join(', ')}]`);
+        if (r.operations && r.operations.length > 0)
+          parts.push(`operations [${r.operations.join(', ')}]`);
+        return parts.join(' and ');
+      })
       .join('; ');
     reasons.push(
-      `matchConstraints.excludeResourceRules explicitly excludes resources [${excluded}] from this policy.`
+      `matchConstraints.excludeResourceRules explicitly excludes ${excluded} from this policy.`
     );
   }
 

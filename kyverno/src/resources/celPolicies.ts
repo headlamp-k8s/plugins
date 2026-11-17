@@ -331,32 +331,40 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
 // three identity fields is enough for every inherited method to behave
 // correctly for the namespaced kind.
 
+// Namespaced variants serve v1beta1, not v1alpha1 like their cluster-scoped parents.
+// Without an explicit override here the inherited v1alpha1 would cause 404s on every
+// fetch, falling the dialog back to BasicContent with no match-reason or fix text.
 export class NamespacedValidatingPolicy extends ValidatingPolicy {
   static kind = 'NamespacedValidatingPolicy';
   static apiName = 'namespacedvalidatingpolicies';
+  static apiVersion = 'policies.kyverno.io/v1beta1';
   static isNamespaced = true;
 }
 
 export class NamespacedMutatingPolicy extends MutatingPolicy {
   static kind = 'NamespacedMutatingPolicy';
   static apiName = 'namespacedmutatingpolicies';
+  static apiVersion = 'policies.kyverno.io/v1beta1';
   static isNamespaced = true;
 }
 
 export class NamespacedGeneratingPolicy extends GeneratingPolicy {
   static kind = 'NamespacedGeneratingPolicy';
   static apiName = 'namespacedgeneratingpolicies';
+  static apiVersion = 'policies.kyverno.io/v1beta1';
   static isNamespaced = true;
 }
 
 export class NamespacedDeletingPolicy extends DeletingPolicy {
   static kind = 'NamespacedDeletingPolicy';
   static apiName = 'namespaceddeletingpolicies';
+  static apiVersion = 'policies.kyverno.io/v1beta1';
   static isNamespaced = true;
 }
 
 export class NamespacedImageValidatingPolicy extends ImageValidatingPolicy {
   static kind = 'NamespacedImageValidatingPolicy';
   static apiName = 'namespacedimagevalidatingpolicies';
+  static apiVersion = 'policies.kyverno.io/v1beta1';
   static isNamespaced = true;
 }
