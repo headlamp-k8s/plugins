@@ -16,16 +16,23 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Chip, CircularProgress, Typography } from '@mui/material';
-import { useMemo } from 'react';
+import { Box, Button, Chip, CircularProgress, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
 import { PolicyRule } from '../resources/kyvernoPolicy';
 import {
   collectPolicyImpact,
   describeMatchReasons,
+  DrillDownTarget,
   ImpactedResource,
 } from '../resources/policyImpact';
-import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from '../resources/policyReport';
+import {
+  ClusterPolicyReport,
+  POLICY_REPORT_SOURCE,
+  PolicyReport,
+  PolicyReportSource,
+} from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { ViolationDrillDown } from './ViolationDrillDown';
 
 interface PolicyImpactPanelProps {
   policyName: string;
@@ -42,8 +49,6 @@ interface PolicyImpactPanelProps {
  * Scoped to POLICY_REPORT_SOURCE.legacy: this panel is only wired into
  * PolicyViewer, which only ever renders the legacy kyverno.io/v1 Policy and
  * ClusterPolicy kinds, never the CEL policy kinds.
- *
- * No drill-down link yet, that opens a dialog PR-4 hasn't built yet.
  *
  * A namespaced Policy can only ever match resources in its own namespace (Kyverno enforces this),
  * so its results only ever land in a namespaced PolicyReport, never a ClusterPolicyReport,
@@ -129,6 +134,7 @@ function PolicyImpactPanelBody({
   queryError: unknown;
 }) {
   const { i18n, ready, t } = useTranslation();
+  const [drillDownTarget, setDrillDownTarget] = useState<DrillDownTarget | null>(null);
 
   const impact = useMemo(
     () =>
@@ -156,6 +162,7 @@ function PolicyImpactPanelBody({
   const statusHeader = t('Status');
   const severityHeader = t('Severity');
   const ruleHeader = t('Rule');
+  const detailsHeader = t('Details');
 
   const columns = useMemo(
     () => [
@@ -195,8 +202,47 @@ function PolicyImpactPanelBody({
         id: 'rule',
         accessorFn: (r: ImpactedResource) => r.rule || '-',
       },
+      {
+        header: detailsHeader,
+        id: 'details',
+        accessorFn: (r: ImpactedResource) => r.status,
+        Cell: ({ row }: { row: { original: ImpactedResource } }) => (
+          <Button
+            size="small"
+            variant="outlined"
+            aria-label={t('Open violation details')}
+            onClick={() =>
+              setDrillDownTarget({
+                policy: policyNamespace ? `${policyNamespace}/${policyName}` : policyName,
+                source: POLICY_REPORT_SOURCE.legacy as PolicyReportSource,
+                rule: row.original.rule,
+                kind: row.original.kind,
+                apiVersion: row.original.apiVersion,
+                name: row.original.name,
+                namespace: row.original.namespace,
+                message: row.original.message,
+                severity: row.original.severity,
+                status: row.original.status,
+              })
+            }
+          >
+            {detailsHeader}
+          </Button>
+        ),
+      },
     ],
-    [namespaceHeader, nameHeader, apiVersionHeader, statusHeader, severityHeader, ruleHeader]
+    [
+      namespaceHeader,
+      nameHeader,
+      apiVersionHeader,
+      statusHeader,
+      severityHeader,
+      ruleHeader,
+      detailsHeader,
+      policyName,
+      policyNamespace,
+      setDrillDownTarget,
+    ]
   );
 
   if (loading) {
@@ -235,6 +281,11 @@ function PolicyImpactPanelBody({
 
   return (
     <SectionBox title={t('Policy Impact Map')}>
+      <ViolationDrillDown
+        target={drillDownTarget}
+        onClose={() => setDrillDownTarget(null)}
+        rules={rules}
+      />
       <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Chip label={t('{{count}} resources', { count: impact.resources.length })} size="small" />
         <Chip label={t('{{count}} namespaces', { count: impact.namespaces.size })} size="small" />

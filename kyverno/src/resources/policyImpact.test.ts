@@ -15,8 +15,14 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
-import { PolicyRule } from './kyvernoPolicy';
-import { collectPolicyImpact, describeMatchReasons, suggestFix } from './policyImpact';
+import { ForEachValidation, PolicyRule } from './kyvernoPolicy';
+import {
+  collectPolicyImpact,
+  describeCELMatchReasons,
+  describeMatchReasons,
+  suggestCELFix,
+  suggestFix,
+} from './policyImpact';
 import { ClusterPolicyReport, POLICY_REPORT_SOURCE, PolicyReport } from './policyReport';
 
 // policyReport.ts extends KubeObject from @kinvolk/headlamp-plugin/lib/k8s/cluster,
@@ -1588,5 +1594,212 @@ describe('suggestFix', () => {
 
     expect(result).toContain('outright');
     expect(result).toContain('match and exclude blocks');
+  });
+
+  test('names the list expression for a validate.foreach rule', () => {
+    const foreach: ForEachValidation = { list: 'request.object.spec.containers[]' };
+    const rule: PolicyRule = { name: 'check-containers', validate: { foreach: [foreach] } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('validate.foreach');
+    expect(result).toContain('request.object.spec.containers[]');
+    expect(result).toContain('rule "check-containers"');
+  });
+
+  test('falls back gracefully when a foreach rule has no list expression', () => {
+    const foreach: ForEachValidation = {};
+    const rule: PolicyRule = { name: 'check-items', validate: { foreach: [foreach] } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('validate.foreach');
+    expect(result).toContain('a list expression');
+    expect(result).not.toContain('undefined');
+  });
+});
+
+describe('describeCELMatchReasons', () => {
+  test('returns a no-matchConstraints message when spec has no matchConstraints', () => {
+    const reasons = describeCELMatchReasons({}, 'Pod');
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('no matchConstraints');
+  });
+
+  test('returns a no-resourceRules message when matchConstraints has no resourceRules', () => {
+    const reasons = describeCELMatchReasons({ matchConstraints: {} }, 'Pod');
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('no resourceRules');
+  });
+
+  test('matches the kind via exact plural form (pods -> Pod)', () => {
+    const reasons = describeCELMatchReasons(
+      { matchConstraints: { resourceRules: [{ resources: ['pods'] }] } },
+      'Pod'
+    );
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('resources [pods]');
+  });
+
+  test('matches when resources contains wildcard *', () => {
+    const reasons = describeCELMatchReasons(
+      { matchConstraints: { resourceRules: [{ resources: ['*'] }] } },
+      'Deployment'
+    );
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('resources [*]');
+  });
+
+  test('falls back to all declared rules for an irregular plural like Ingress -> ingresses', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [
+            { resources: ['ingresses'], apiGroups: ['networking.k8s.io'], operations: ['CREATE'] },
+          ],
+        },
+      },
+      'Ingress'
+    );
+    // The kind+s heuristic ("ingresss") doesn't match "ingresses", but the report proves
+    // evaluation happened. describeCELMatchReasons should fall back to the declared rule.
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain('ingresses');
+    expect(reasons[0]).not.toContain('No resourceRule');
+  });
+
+  test('includes apiGroups, versions, and operations when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [
+            {
+              resources: ['pods'],
+              apiGroups: [''],
+              apiVersions: ['v1'],
+              operations: ['CREATE', 'UPDATE'],
+            },
+          ],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons[0]).toContain('API groups []');
+    expect(reasons[0]).toContain('versions [v1]');
+    expect(reasons[0]).toContain('operations [CREATE, UPDATE]');
+  });
+
+  test('appends namespaceSelector, labelSelector, and matchConditions when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          namespaceSelector: { matchLabels: { env: 'prod' } },
+          labelSelector: { matchLabels: { app: 'web' } },
+          matchConditions: [
+            { name: 'only-on-create', expression: 'request.operation == "CREATE"' },
+          ],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('namespaceSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('labelSelector'))).toBe(true);
+    expect(reasons.some(r => r.includes('"only-on-create"'))).toBe(true);
+  });
+
+  test('appends objectSelector and excludeResourceRules when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          objectSelector: { matchLabels: { tier: 'frontend' } },
+          excludeResourceRules: [{ resources: ['pods'], operations: ['DELETE'] }],
+        },
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('objectSelector'))).toBe(true);
+    const exclusion = reasons.find(r => r.includes('excludeResourceRules'));
+    expect(exclusion).toBeDefined();
+    expect(exclusion).toContain('resources [pods]');
+    expect(exclusion).toContain('operations [DELETE]');
+  });
+
+  test('excludeResourceRules description includes apiGroups and apiVersions', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: {
+          resourceRules: [{ resources: ['pods'] }],
+          excludeResourceRules: [
+            {
+              resources: ['secrets'],
+              apiGroups: [''],
+              apiVersions: ['v1'],
+              operations: ['CREATE', 'UPDATE'],
+            },
+          ],
+        },
+      },
+      'Pod'
+    );
+    const exclusion = reasons.find(r => r.includes('excludeResourceRules'));
+    expect(exclusion).toBeDefined();
+    expect(exclusion).toContain('resources [secrets]');
+    expect(exclusion).toContain('API groups []');
+    expect(exclusion).toContain('versions [v1]');
+    expect(exclusion).toContain('operations [CREATE, UPDATE]');
+  });
+
+  test('appends top-level spec.matchConditions when present', () => {
+    const reasons = describeCELMatchReasons(
+      {
+        matchConstraints: { resourceRules: [{ resources: ['pods'] }] },
+        matchConditions: [
+          {
+            name: 'only-system-sa',
+            expression: 'request.userInfo.username.startsWith("system:")',
+          },
+        ],
+      },
+      'Pod'
+    );
+    expect(reasons.some(r => r.includes('"only-system-sa"'))).toBe(true);
+    expect(reasons.some(r => r.includes('spec.matchConditions'))).toBe(true);
+  });
+});
+
+describe('suggestFix forEach multi-block', () => {
+  const target = { policy: 'require-app-label', status: 'fail' as const };
+
+  test('names all list expressions when a foreach rule has multiple blocks', () => {
+    const foreach: ForEachValidation[] = [
+      { list: 'request.object.spec.containers[]' },
+      { list: 'request.object.spec.initContainers[]' },
+    ];
+    const rule: PolicyRule = { name: 'check-containers', validate: { foreach } };
+    const result = suggestFix(rule, target);
+    expect(result).toContain('request.object.spec.containers[]');
+    expect(result).toContain('request.object.spec.initContainers[]');
+    expect(result).not.toContain('undefined');
+  });
+});
+
+describe('suggestCELFix', () => {
+  const target = { policy: 'dd-require-cost-center', status: 'fail' as const };
+
+  test('cites the validation message when one is present', () => {
+    const result = suggestCELFix({ expression: 'true', message: 'Must have cost-center' }, target);
+    expect(result).toContain('Must have cost-center');
+    expect(result).toContain('dd-require-cost-center');
+  });
+
+  test('mentions messageExpression when there is no static message', () => {
+    const result = suggestCELFix({ expression: 'true', messageExpression: 'self.name' }, target);
+    expect(result).toContain('computed dynamically');
+    expect(result).toContain('dd-require-cost-center');
+  });
+
+  test('falls back to a generic message when neither message nor messageExpression is set', () => {
+    const result = suggestCELFix({ expression: 'has(object.metadata.labels.app)' }, target);
+    expect(result).toContain('CEL expression');
+    expect(result).toContain('dd-require-cost-center');
+    expect(result).not.toContain('undefined');
   });
 });
