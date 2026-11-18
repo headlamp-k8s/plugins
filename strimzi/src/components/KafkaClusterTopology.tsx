@@ -10,14 +10,20 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Icon } from '@iconify/react';
-import { Button, ButtonGroup, Box, useTheme, Chip } from '@mui/material';
+import { Alert, Button, ButtonGroup, Box, useTheme, Chip } from '@mui/material';
 import type { KafkaInterface } from '../resources';
 import { KafkaNodePool, StrimziPodSet, isKRaftMode } from '../crds';
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { useTopologyTheme } from '../hooks/useTopologyTheme';
 import { hexToRgba } from '../utils/topologyColors';
-import { topologyRequestPaths } from '../utils/topologyRequests';
+import {
+  describeTopologyFailures,
+  settledItems,
+  topologyLoadFailures,
+  topologyRequestPaths,
+  type TopologyLoadFailure,
+} from '../utils/topologyRequests';
 
 interface TopologyProps {
   kafka: KafkaInterface;
@@ -581,6 +587,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
   const [podSets, setPodSets] = React.useState<StrimziPodSet[]>([]);
   const [pods, setPods] = React.useState<Pod[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadFailures, setLoadFailures] = React.useState<TopologyLoadFailure[]>([]);
   const [nodes, setNodes] = React.useState<Node[]>([]);
 
   const theme = useTopologyTheme();
@@ -604,35 +611,29 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
       coreVersion
     );
 
-    Promise.all([
-      ApiProxy.request(paths.nodePools),
-      ApiProxy.request(paths.podSets),
-      ApiProxy.request(paths.pods),
-    ])
-      .then(
-        ([nodePoolData, podSetData, podData]: [
-          { items?: KafkaNodePool[] },
-          { items?: StrimziPodSet[] },
-          { items?: Pod[] }
-        ]) => {
-          if (cancelled) return;
-          if (nodePoolData?.items) {
-            setNodePools(nodePoolData.items);
-          }
-          if (podSetData?.items) {
-            setPodSets(podSetData.items);
-          }
-          if (podData?.items) {
-            setPods(podData.items);
-          }
-          setLoading(false);
-        }
-      )
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('Failed to fetch Kafka topology data:', err);
-        setLoading(false);
-      });
+    // Settle each list on its own: a user may be allowed to read some of them but not
+    // others (StrimziPodSets are operator internals that RBAC often leaves out), and
+    // what did load should still be drawn.
+    Promise.allSettled([
+      ApiProxy.request(paths.nodePools) as Promise<{ items?: KafkaNodePool[] }>,
+      ApiProxy.request(paths.podSets) as Promise<{ items?: StrimziPodSet[] }>,
+      ApiProxy.request(paths.pods) as Promise<{ items?: Pod[] }>,
+    ]).then(([nodePoolResult, podSetResult, podResult]) => {
+      if (cancelled) return;
+      const failures = topologyLoadFailures([
+        ['KafkaNodePools', nodePoolResult],
+        ['StrimziPodSets', podSetResult],
+        ['Pods', podResult],
+      ]);
+      if (failures.length > 0) {
+        console.error('Failed to fetch some Kafka topology data:', failures);
+      }
+      setNodePools(settledItems(nodePoolResult));
+      setPodSets(settledItems(podSetResult));
+      setPods(settledItems(podResult));
+      setLoadFailures(failures);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
@@ -646,6 +647,9 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
     const clusterName = kafka.metadata.name;
     const namespace = kafka.metadata.namespace;
     const generatedNodes: Node[] = [];
+    // When pod sets couldn't be read, pods are drawn straight inside their node pool
+    // instead of being dropped along with the missing pod set boxes.
+    const podSetsUnreadable = loadFailures.some(f => f.resource === 'StrimziPodSets');
 
     // PHASE 1: Calculate ALL pod dimensions first (based on real data)
     // This ensures cluster/namespace dimensions are accurate
@@ -1111,8 +1115,13 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
               } : undefined,
             })
           );
+        }
 
-          // Individual pod nodes - horizontal layout inside StrimziPodSet
+        // Individual pod nodes - horizontal layout inside StrimziPodSet, or directly in
+        // the node pool (at the same place) when pod sets couldn't be read
+        if (podSet || podSetsUnreadable) {
+          const podParentId = podSet ? `podset-${poolName}` : `pool-${poolName}`;
+          const offset = podSet ? { x: 0, y: 0 } : { x: PADDING.group.left, y: PADDING.group.top };
           let cumulativeX = PADDING.podSet.left;
           nodeIds.forEach((nodeId, index) => {
             const podName = `${clusterName}-${poolName}-${nodeId}`;
@@ -1125,10 +1134,10 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
                 name: poolName,
                 nodeId,
                 role: isDual ? 'Controller + Broker' : isController ? 'Controller' : 'Broker',
-                parentId: `podset-${poolName}`,
+                parentId: podParentId,
                 position: {
-                  x: cumulativeX,
-                  y: PADDING.podSet.top,
+                  x: offset.x + cumulativeX,
+                  y: offset.y + PADDING.podSet.top,
                 },
                 pod,
                 theme,
@@ -1387,7 +1396,7 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
     }
 
     setNodes(generatedNodes);
-  }, [kafka, isKRaft, nodePools, podSets, pods, loading, clusterReady, theme, onEditResource]);
+  }, [kafka, isKRaft, nodePools, podSets, pods, loadFailures, loading, clusterReady, theme, onEditResource]);
 
   if (loading) {
     return (
@@ -1424,8 +1433,17 @@ function TopologyFlow({ kafka, onEditResource }: TopologyProps) {
         borderRadius: '12px',
         overflow: 'hidden',
         boxShadow: theme.colors.nodeShadow,
+        position: 'relative',
       }}
     >
+      {loadFailures.length > 0 && (
+        <Alert
+          severity="warning"
+          sx={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10 }}
+        >
+          {describeTopologyFailures(loadFailures, kafka.metadata.namespace)}
+        </Alert>
+      )}
       <style>{`
         /* Hide ReactFlow default controls background */
         .react-flow__controls {
