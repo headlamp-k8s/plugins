@@ -17,19 +17,27 @@ Click an application to open its detail page, with its Git path, piped, labels
 and recent deployments. Click a deployment to see its pipeline stages, and open
 a stage to read its logs. A rollback stage only appears once it has run.
 
-The Settings page stores the PipeCD server URL and API key, and can test the
-connection to your control plane. It is read-only, and the settings live in the
-browser: only the server URL is persisted in local storage. The API key is kept
-in memory for the current page lifetime.
+The application page also has a Sync button. It asks you to confirm first, and
+its menu lets you pick Sync, Quick Sync or Pipeline Sync. Syncing needs a
+`READ_WRITE` API key. With a read-only key everything else still works, and
+Sync tells you the key cannot do it. Sync is turned off for a disabled
+application.
 
-Everything is read-only. A sync button is coming in a later change.
+Quick Sync and Pipeline Sync need a PipeCD server newer than v0.58.0. An older
+server ignores the choice and runs its default sync, so check your version
+first.
+
+The Settings page stores the PipeCD server URL and API key, and can test the
+connection to your control plane. The settings live in the browser: only the
+server URL is persisted in local storage. The API key is kept
+in memory for the current page lifetime.
 
 ## Before you start
 
 You need a PipeCD control plane that your browser can reach, and an API key.
 
 Create the key in the PipeCD console under Settings → API Keys. A read-only key
-is enough.
+is enough to view everything. Use a read-write key if you want to sync.
 
 You also need to let the browser talk to PipeCD. The plugin calls PipeCD's
 `APIService` straight from the browser over gRPC-Web, and a default PipeCD
