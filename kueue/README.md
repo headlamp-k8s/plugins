@@ -87,7 +87,7 @@ kubectl -n kueue-deactivated get workloads.kueue.x-k8s.io -o name | \
 
 When a Job submitted to Kueue does not start, follow it from the Job to the queue that is holding it back. The screenshots follow a Job that requests 64 CPUs from a ClusterQueue with a nominal quota of 1 CPU.
 
-1. **Job.** Open the Job in `Workloads` > `Jobs`. The Jobs list has `Queue` and `Kueue Status` columns, and the Job detail page has a `Kueue` section with its LocalQueue, its Workload and the Workload's status. If the section is missing, the Job has no `kueue.x-k8s.io/queue-name` label, so Kueue is not managing it. If the Workload shows `Not created yet`, Kueue has not picked up the Job; check that the LocalQueue exists in the Job's namespace.
+1. **Job.** Open the Job in `Workloads` > `Jobs`. The Jobs list has `Queue` and `Kueue Status` columns, and the Job detail page has a `Kueue` section with its LocalQueue, its Workload and the Workload's status. The same section shows on any other resource with the `kueue.x-k8s.io/queue-name` label, such as a Pod, JobSet or RayJob. If the section is missing, the Job has no `kueue.x-k8s.io/queue-name` label, so Kueue is not managing it. If the Workload shows `Not created yet`, Kueue has not picked up the Job; check that the LocalQueue exists in the Job's namespace.
 
    ```bash
    kubectl get job <name> -n <namespace> -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}'

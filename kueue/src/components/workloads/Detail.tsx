@@ -580,7 +580,10 @@ function WorkloadBlockerTable(props: {
 }
 
 /** Build the section explaining what is stopping the Workload from being admitted. */
-export function getBlockerSection(workload: Workload) {
+export function getBlockerSection(
+  workload: Workload,
+  title = 'Why is this Workload not admitted?'
+) {
   const blocker = getWorkloadBlocker(
     workload.conditions,
     workload.status.admissionChecks,
@@ -626,7 +629,7 @@ export function getBlockerSection(workload: Workload) {
   return {
     id: 'blocker',
     section: (
-      <SectionBox title="Why is this Workload not admitted?">
+      <SectionBox title={title}>
         <WorkloadBlockerTable
           workload={workload}
           // Only Workloads still waiting for quota are listed by the visibility API.

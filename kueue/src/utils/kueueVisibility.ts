@@ -47,36 +47,82 @@ export async function fetchPendingWorkloads(
   return null;
 }
 
+type PendingWorkloads = PendingWorkloadSummaryItem[] | null;
+
+/** One running poll of a pendingworkloads list, shared by every component showing it. */
+interface SharedPoll {
+  loaded: boolean;
+  items: PendingWorkloads;
+  listeners: Set<(items: PendingWorkloads) => void>;
+  timer?: ReturnType<typeof setTimeout>;
+  stopped: boolean;
+}
+
+const polls = new Map<string, SharedPoll>();
+
+/**
+ * Follow a pendingworkloads list, joining the poll already running for the same cluster
+ * and path so several panels on one page (one per LeaderWorkerSet group, say) send one
+ * request every pendingWorkloadsRefreshMs between them. Returns the unsubscribe function.
+ */
+function subscribePendingWorkloads(
+  path: string,
+  cluster: string | undefined,
+  listener: (items: PendingWorkloads) => void
+) {
+  const key = `${cluster ?? ''}|${path}`;
+  let poll = polls.get(key);
+  if (!poll) {
+    const created: SharedPoll = {
+      loaded: false,
+      items: null,
+      listeners: new Set(),
+      stopped: false,
+    };
+    const load = () =>
+      fetchPendingWorkloads(path, cluster).then(result => {
+        if (created.stopped) {
+          return;
+        }
+        created.loaded = true;
+        created.items = result;
+        created.listeners.forEach(notify => notify(result));
+        // Wait for this lookup before starting the next, so slow ones cannot overlap.
+        created.timer = setTimeout(load, pendingWorkloadsRefreshMs);
+      });
+    polls.set(key, created);
+    poll = created;
+    load();
+  } else if (poll.loaded) {
+    listener(poll.items);
+  }
+
+  const joined = poll;
+  joined.listeners.add(listener);
+  return () => {
+    joined.listeners.delete(listener);
+    if (joined.listeners.size === 0) {
+      joined.stopped = true;
+      clearTimeout(joined.timer);
+      polls.delete(key);
+    }
+  };
+}
+
 /**
  * Keep a pendingworkloads list loaded, rereading it every pendingWorkloadsRefreshMs so
  * it follows Workloads being admitted, added or deleted. Pass a null path to skip it.
  * Returns null until loaded, and when the API is not served or access is denied.
  */
 export function usePendingWorkloads(path: string | null, cluster?: string) {
-  const [items, setItems] = useState<PendingWorkloadSummaryItem[] | null>(null);
+  const [items, setItems] = useState<PendingWorkloads>(null);
 
   useEffect(() => {
     setItems(null);
     if (!path) {
       return;
     }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = () =>
-      fetchPendingWorkloads(path, cluster).then(result => {
-        if (!cancelled) {
-          setItems(result);
-          // Wait for this lookup before starting the next, so slow ones cannot overlap.
-          timer = setTimeout(load, pendingWorkloadsRefreshMs);
-        }
-      });
-    load();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    return subscribePendingWorkloads(path, cluster, setItems);
   }, [path, cluster]);
 
   return items;

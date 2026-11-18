@@ -1,6 +1,10 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { request } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
+import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchPendingWorkloads } from './kueueVisibility';
+import { fetchPendingWorkloads, usePendingWorkloads } from './kueueVisibility';
 
 vi.mock('@kinvolk/headlamp-plugin/lib/ApiProxy', () => ({ request: vi.fn() }));
 
@@ -41,5 +45,31 @@ describe('fetchPendingWorkloads', () => {
       { cluster: 'other' },
       false
     );
+  });
+});
+
+describe('usePendingWorkloads', () => {
+  beforeEach(() => {
+    mockedRequest.mockReset();
+  });
+
+  it('shares one request between components asking for the same list', async () => {
+    mockedRequest.mockResolvedValue({ items: [{ metadata: { name: 'a' } }] });
+    const path = 'namespaces/ns/localqueues/lq/pendingworkloads';
+
+    const first = renderHook(() => usePendingWorkloads(path));
+    const second = renderHook(() => usePendingWorkloads(path));
+    await waitFor(() => expect(second.result.current).toHaveLength(1));
+    expect(first.result.current).toHaveLength(1);
+    expect(mockedRequest).toHaveBeenCalledTimes(1);
+
+    // A component mounting after the first load gets the list without a new request.
+    const third = renderHook(() => usePendingWorkloads(path));
+    expect(third.result.current).toHaveLength(1);
+    expect(mockedRequest).toHaveBeenCalledTimes(1);
+
+    first.unmount();
+    second.unmount();
+    third.unmount();
   });
 });
