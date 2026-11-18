@@ -64,6 +64,35 @@ function BackupDetailContent() {
             value: backup.includedNamespacesDisplay,
           },
           {
+            name: 'Storage location',
+            value: backup.storageLocation ? (
+              <Link
+                routeName={veleroRouteNames.bslDetail}
+                params={{ namespace: backup.getNamespace(), name: backup.storageLocation }}
+                activeCluster={backup.cluster}
+              >
+                {backup.storageLocation}
+              </Link>
+            ) : (
+              'Velero default'
+            ),
+          },
+          ...(backup.failureReason
+            ? [{ name: 'Failure reason', value: backup.failureReason }]
+            : []),
+          ...(backup.validationErrors.length > 0
+            ? [{ name: 'Validation errors', value: backup.validationErrors.join('; ') }]
+            : []),
+          ...(backup.errors > 0 || backup.warnings > 0
+            ? [
+                { name: 'Errors', value: String(backup.errors) },
+                { name: 'Warnings', value: String(backup.warnings) },
+              ]
+            : []),
+          ...(backup.conditionsDisplay
+            ? [{ name: 'Conditions', value: backup.conditionsDisplay }]
+            : []),
+          {
             name: 'Started',
             value: backup.startTimestamp ? new Date(backup.startTimestamp).toLocaleString() : 'N/A',
           },

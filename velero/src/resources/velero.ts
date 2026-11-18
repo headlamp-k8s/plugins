@@ -14,10 +14,33 @@ export interface LabelSelector {
   matchExpressions?: LabelSelectorRequirement[];
 }
 
+/** One entry from a Velero status.conditions list. */
+export interface VeleroCondition {
+  type?: string;
+  status?: string;
+  reason?: string;
+  message?: string;
+}
+
+/** One line per condition, for detail pages and empty when Velero reported none. */
+export function formatVeleroConditions(conditions: VeleroCondition[] | undefined): string {
+  return (conditions ?? [])
+    .map(condition => {
+      const head = [condition.type, condition.status].filter(Boolean).join('=');
+      const reason = condition.reason ? ` (${condition.reason})` : '';
+      const message = condition.message ? `: ${condition.message}` : '';
+      return `${head}${reason}${message}`.trim();
+    })
+    .filter(Boolean)
+    .join('; ');
+}
+
 /** Backup template fields from a Velero Schedule used for coverage matching. */
 export interface VeleroBackupTemplate {
   includedNamespaces?: string[];
   excludedNamespaces?: string[];
+  /** BackupStorageLocation name copied onto each scheduled Backup. */
+  storageLocation?: string;
   labelSelector?: LabelSelector;
   orLabelSelectors?: LabelSelector[];
   includedResources?: string[];
@@ -52,6 +75,11 @@ export interface VeleroBackupStatus {
   phase?: string;
   startTimestamp?: string;
   completionTimestamp?: string;
+  errors?: number;
+  warnings?: number;
+  failureReason?: string;
+  validationErrors?: string[];
+  conditions?: VeleroCondition[];
 }
 
 export interface VeleroBackupSpec {
@@ -61,6 +89,8 @@ export interface VeleroBackupSpec {
   excludedResources?: string[];
   labelSelector?: LabelSelector;
   orLabelSelectors?: LabelSelector[];
+  /** BackupStorageLocation name. Omitted when the backup uses Velero's default. */
+  storageLocation?: string;
 }
 
 export interface VeleroBackupInterface extends KubeObjectInterface {
@@ -143,6 +173,11 @@ export class VeleroSchedule extends KubeObject<VeleroScheduleInterface> {
     return this.spec?.template ?? {};
   }
 
+  /** BackupStorageLocation named on the schedule template. */
+  get storageLocation(): string | undefined {
+    return this.template.storageLocation;
+  }
+
   /** Namespaces included by this schedule's backup template. */
   get includedNamespacesDisplay(): string {
     const namespaces = this.template.includedNamespaces;
@@ -200,6 +235,30 @@ export class VeleroBackup extends KubeObject<VeleroBackupInterface> {
     }
     return namespaces.join(', ');
   }
+
+  get storageLocation(): string | undefined {
+    return this.spec?.storageLocation;
+  }
+
+  get errors(): number {
+    return this.jsonData.status?.errors ?? 0;
+  }
+
+  get warnings(): number {
+    return this.jsonData.status?.warnings ?? 0;
+  }
+
+  get failureReason(): string | undefined {
+    return this.jsonData.status?.failureReason;
+  }
+
+  get validationErrors(): string[] {
+    return this.jsonData.status?.validationErrors ?? [];
+  }
+
+  get conditionsDisplay(): string {
+    return formatVeleroConditions(this.jsonData.status?.conditions);
+  }
 }
 
 /** Velero Restore CRD (velero.io/v1) — inspired by reasonerjt prototype field set. */
@@ -223,6 +282,9 @@ export interface VeleroRestoreStatus {
     totalItems?: number;
     itemsRestored?: number;
   };
+  failureReason?: string;
+  validationErrors?: string[];
+  conditions?: VeleroCondition[];
 }
 
 export interface VeleroRestoreInterface extends KubeObjectInterface {
@@ -264,6 +326,18 @@ export class VeleroRestore extends KubeObject<VeleroRestoreInterface> {
 
   get phase(): string {
     return this.jsonData.status?.phase ?? 'Unknown';
+  }
+
+  get failureReason(): string | undefined {
+    return this.jsonData.status?.failureReason;
+  }
+
+  get validationErrors(): string[] {
+    return this.jsonData.status?.validationErrors ?? [];
+  }
+
+  get conditionsDisplay(): string {
+    return formatVeleroConditions(this.jsonData.status?.conditions);
   }
 
   get errors(): number {

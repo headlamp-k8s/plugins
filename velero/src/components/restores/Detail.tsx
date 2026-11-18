@@ -94,6 +94,15 @@ function RestoreDetailContent() {
             name: 'Warnings',
             value: String(restore.warnings),
           },
+          ...(restore.failureReason
+            ? [{ name: 'Failure reason', value: restore.failureReason }]
+            : []),
+          ...(restore.validationErrors.length > 0
+            ? [{ name: 'Validation errors', value: restore.validationErrors.join('; ') }]
+            : []),
+          ...(restore.conditionsDisplay
+            ? [{ name: 'Conditions', value: restore.conditionsDisplay }]
+            : []),
           {
             name: 'Started',
             value: restore.startTimestamp
