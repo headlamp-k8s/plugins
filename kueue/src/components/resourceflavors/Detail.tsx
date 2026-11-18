@@ -47,7 +47,12 @@ export default function ResourceFlavorDetail(props: { name?: string; cluster?: s
             ? [
                 {
                   id: 'flavor-cluster-queues',
-                  section: <FlavorClusterQueuesSection flavorName={resourceFlavor.metadata.name} />,
+                  section: (
+                    <FlavorClusterQueuesSection
+                      flavorName={resourceFlavor.metadata.name}
+                      cluster={resourceFlavor.cluster}
+                    />
+                  ),
                 },
               ]
             : []
