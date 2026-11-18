@@ -34,6 +34,53 @@ kubectl get workloads -A
 kubectl get workload <name> -n <namespace> -o yaml
 ```
 
+## Permissions
+
+The plugin only reads from the cluster. Before it loads a page, it asks the API server whether the current user can `list` the resource (list pages) or `get` it (detail pages), across the whole cluster. When the answer is no, the page shows an access message instead.
+
+| Resource                                                         | API group                   | Scope     | Verbs                  | Used by                                                        |
+| ---------------------------------------------------------------- | --------------------------- | --------- | ---------------------- | -------------------------------------------------------------- |
+| `clusterqueues`, `cohorts`, `resourceflavors`, `admissionchecks` | `kueue.x-k8s.io`            | Cluster   | `get`, `list`, `watch` | Their pages, the Map and related resource links                |
+| `localqueues`, `workloads`                                       | `kueue.x-k8s.io`            | Namespace | `get`, `list`, `watch` | Their pages, the Map and the Kueue columns and section on Jobs |
+| `clusterqueues/pendingworkloads`                                 | `visibility.kueue.x-k8s.io` | Cluster   | `get`                  | Pending Workloads on the ClusterQueue page                     |
+| `localqueues/pendingworkloads`                                   | `visibility.kueue.x-k8s.io` | Namespace | `get`                  | Queue position on the Workload page                            |
+| `events`                                                         | core                        | Namespace | `list`, `watch`        | Events on detail pages                                         |
+
+The built-in `view` role, bound in one namespace, covers the LocalQueues, Workloads and queue positions there, but none of the cluster-scoped resources. The access check for LocalQueues and Workloads is also made across the whole cluster, so such a user sees the access message on those pages too.
+
+To give a user read access to every page, bind them to a ClusterRole like this one:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kueue-headlamp-viewer
+rules:
+  - apiGroups: ['kueue.x-k8s.io']
+    resources:
+      - clusterqueues
+      - cohorts
+      - resourceflavors
+      - admissionchecks
+      - localqueues
+      - workloads
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['visibility.kueue.x-k8s.io']
+    resources:
+      - clusterqueues/pendingworkloads
+      - localqueues/pendingworkloads
+    verbs: ['get']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['list', 'watch']
+```
+
+```bash
+kubectl create clusterrolebinding kueue-headlamp-viewer --clusterrole=kueue-headlamp-viewer --user=<user>
+```
+
+When the visibility API is not served or the user cannot read it, the pending Workloads list and queue position are left out and the rest of the page still loads.
+
 ## Test Files
 
 Sample `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and Job manifests are available in `test-files/deploy/`. The sample ClusterQueue belongs to the `default` Cohort, and the sample Job uses the `team-a-queue` LocalQueue so Kueue can create a real `Workload` for local UI testing.
