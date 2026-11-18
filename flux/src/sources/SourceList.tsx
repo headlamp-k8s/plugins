@@ -75,6 +75,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
               namespace: item.metadata.namespace,
               pluralName: pluralName,
             }}
+            activeCluster={item.cluster}
           >
             {item.metadata.name}
           </Link>
@@ -135,6 +136,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
                 pluralName: item.jsonData.spec.sourceRef.kind,
                 name: sourceName,
               }}
+              activeCluster={item.cluster}
             >
               {sourceName}
             </Link>
