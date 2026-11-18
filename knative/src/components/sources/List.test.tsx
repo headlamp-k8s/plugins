@@ -64,6 +64,7 @@ const context = vi.hoisted(() => ({
   clusters: ['cluster-a'],
   namespaces: undefined as string[] | undefined,
   crds: { items: null, errors: null, isLoading: true } as ListResult,
+  crdPendingClusters: [] as string[],
   sources: {} as Record<string, ListResult>,
   crdListOptions: [] as unknown[],
   sourceListOptions: [] as { kind: string; options: unknown }[],
@@ -99,9 +100,18 @@ vi.mock('../../hooks/useSelectedNamespaces', () => ({
 
 vi.mock('../../resources/k8s/customResourceDefinition', () => ({
   CustomResourceDefinition: {
-    useList: (options: unknown) => {
+    useList: (options: { clusters: string[] }) => {
       context.crdListOptions.push(options);
-      return context.crds;
+      const answered = options.clusters.filter(
+        cluster =>
+          context.crds.items !== null &&
+          !context.crdPendingClusters.includes(cluster) &&
+          !context.crds.errors?.some(error => error.cluster === cluster)
+      );
+      return {
+        ...context.crds,
+        clusterResults: Object.fromEntries(answered.map(cluster => [cluster, {}])),
+      };
     },
   },
 }));
@@ -216,6 +226,7 @@ describe('SourcesList', () => {
     context.installed = true;
     context.banners.length = 0;
     context.clusters = ['cluster-a'];
+    context.crdPendingClusters = [];
     context.namespaces = undefined;
     context.crds = {
       items: [
@@ -252,6 +263,15 @@ describe('SourcesList', () => {
 
   it('waits while the Source kinds are being found', () => {
     context.crds = { items: null, errors: null, isLoading: true };
+    renderSourcesList();
+
+    expect(lastView()?.data).toBeNull();
+    expect(context.sourceListOptions).toEqual([]);
+  });
+
+  it('waits for the Source kinds of every cluster, even when the list says it has loaded', () => {
+    context.clusters = ['cluster-a', 'cluster-b'];
+    context.crdPendingClusters = ['cluster-b'];
     renderSourcesList();
 
     expect(lastView()?.data).toBeNull();

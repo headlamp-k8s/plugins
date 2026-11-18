@@ -25,7 +25,7 @@ import {
   registerSidebarEntryFilter,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrokerDetail } from './components/brokers/Detail';
 import {
@@ -43,6 +43,7 @@ import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
+import { queryClient } from './queryClient';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
 import {
   KnativeBroker,
@@ -58,8 +59,6 @@ registerKnativeIcon();
 registerDetailsViewHeaderActionsProcessor((resource, actions) =>
   filterReadOnlyKnativeHeaderActions(resource, actions)
 );
-
-const queryClient = new QueryClient();
 
 function withQueryClient(Component: React.ComponentType) {
   return React.memo(function WithQueryClient() {
@@ -190,6 +189,15 @@ const knativeKindIconKinds = [
   'eventing.knative.dev/Trigger',
   'messaging.knative.dev/Channel',
   'messaging.knative.dev/Subscription',
+  'messaging.knative.dev/InMemoryChannel',
+  'messaging.knative.dev/KafkaChannel',
+  'messaging.knative.dev/NatsJetStreamChannel',
+  'sources.knative.dev/ApiServerSource',
+  'sources.knative.dev/ContainerSource',
+  'sources.knative.dev/PingSource',
+  'sources.knative.dev/SinkBinding',
+  'sources.knative.dev/IntegrationSource',
+  'sources.knative.dev/KafkaSource',
 ];
 
 knativeKindIconKinds.forEach(kind => {

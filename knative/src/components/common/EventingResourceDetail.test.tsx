@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { isKnativeComponentInstalled } from '../../isKnativeInstalled';
@@ -69,9 +70,21 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 
 vi.mock('./ConditionsSection', () => ({ default: () => null }));
 
-const resourceType = { kind: 'Broker' } as Parameters<
-  typeof EventingResourceDetail
->[0]['resourceType'];
+/**
+ * Builds a stand-in for a resource class with the kind and scope the page reads.
+ *
+ * @param kind - The kind.
+ * @param isNamespaced - Whether the kind is namespaced.
+ * @returns The class.
+ */
+function resourceClass(kind: string, isNamespaced: boolean) {
+  const stub = { kind, isNamespaced } satisfies Pick<KubeObjectClass, 'kind' | 'isNamespaced'>;
+  return stub as Parameters<typeof EventingResourceDetail>[0]['resourceType'];
+}
+
+const resourceType = resourceClass('Broker', true);
+
+const clusterScopedType = resourceClass('ClusterChannel', false);
 
 /**
  * Renders the detail page of a Broker with no extra rows.
@@ -97,6 +110,12 @@ describe('EventingResourceDetail', () => {
 
     expect(await screen.findByText('cluster-a/orders/default')).toBeTruthy();
     expect(isKnativeComponentInstalled).toHaveBeenCalledWith('eventing', ['cluster-a']);
+  });
+
+  it('loads a cluster-scoped kind without the namespace a link put in the route', async () => {
+    render(<EventingResourceDetail resourceType={clusterScopedType} extraInfo={() => []} />);
+
+    expect(await screen.findByText('cluster-a/undefined/default')).toBeTruthy();
   });
 
   it('shows the banner when the resource cluster has no Eventing', async () => {

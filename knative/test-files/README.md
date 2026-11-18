@@ -183,6 +183,13 @@ Set `NATS_CHANNEL_RELEASE` or `KAFKA_CHANNEL_RELEASE` to use other release tags.
 | Channel `payments-kafka`                            | A Ready Channel backed by a KafkaChannel                                                     | Its page links the backing `KafkaChannel/payments-kafka`, whose Owner is the Channel and whose page has no Edit or Delete          |
 | Subscriptions `kafka-to-display`, `nats-to-display` | Ready Subscriptions from the KafkaChannel and the NatsJetStreamChannel to `event-display`    | The Subscriptions view links each channel to its channel implementation page, which lists the Subscription as Ready                |
 
+On the Map, select the `knative-eventing-test` namespace with the Knative **Eventing** source
+enabled: `heartbeat` connects to the `default` Broker and the Broker to its Triggers, `catch-all`
+and `order-created` connect to `event-display`, the Channel `orders` to its InMemoryChannel and to
+`orders-to-display`, and `orders-kafka` to `event-display` as its dead letter sink.
+`uri-subscriber` sends to a URI and `dangling-subscriber` to a missing Service, so neither has a
+subscriber edge.
+
 On Knative Eventing 1.24 or later with the `delivery-backoff-max` feature enabled, add
 `backoffMax: PT2S` to the `delivery` of `orders-nats`, as in the NatsJetStreamChannel
 documentation's retry example: its page then also shows Backoff Max `PT2S`.
