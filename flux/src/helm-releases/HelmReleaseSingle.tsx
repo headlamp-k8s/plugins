@@ -21,6 +21,7 @@ import RemainingTimeDisplay from '../common/RemainingTimeDisplay';
 import { HelmRelease } from '../common/Resources';
 import StatusLabel from '../common/StatusLabel';
 import { getSourceNameAndPluralKind, ObjectEvents } from '../helpers/index';
+import { GetResourcesFromInventory } from '../kustomizations/Inventory';
 import { HelmInventory } from './Inventory';
 
 export function FluxHelmReleaseDetailView(props: { name?: string; namespace?: string }) {
@@ -56,9 +57,15 @@ function HelmReleaseDetailsSection({ resource }: { resource: HelmRelease }) {
         </SectionBox>
       )}
 
-      <SectionBox title={t('Inventory')}>
-        <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
-      </SectionBox>
+      {cr && (
+        <SectionBox title={t('Inventory')}>
+          {cr?.jsonData?.status?.inventory ? (
+            <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
+          ) : (
+            <HelmInventory name={resource.metadata.name} namespace={resource.metadata.namespace} />
+          )}
+        </SectionBox>
+      )}
 
       <SectionBox title={t('Dependencies')}>
         <Table
@@ -229,9 +236,15 @@ function CustomResourceDetails(props) {
         </SectionBox>
       )}
 
-      <SectionBox title={t('Inventory')}>
-        <HelmInventory name={name} namespace={namespace} />
-      </SectionBox>
+      {cr && (
+        <SectionBox title={t('Inventory')}>
+          {cr?.jsonData?.status?.inventory ? (
+            <GetResourcesFromInventory inventory={cr?.jsonData?.status?.inventory?.entries} />
+          ) : (
+            <HelmInventory name={name} namespace={namespace} />
+          )}
+        </SectionBox>
+      )}
 
       <SectionBox title={t('Dependencies')}>
         <Table
