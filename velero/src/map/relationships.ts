@@ -28,25 +28,26 @@ function edge(source: string, target: string, label: string): GraphEdge {
   };
 }
 
-function colorToStatus(color: string): GraphNodeStatus | undefined {
+function colorToStatus(color: string): GraphNodeStatus {
   if (color === 'success' || color === 'error' || color === 'warning') {
     return color;
   }
-  return undefined;
+  // Headlamp treats a missing status as success for these resources.
+  return 'warning';
 }
 
 /** Map badge for a Backup or Restore phase. */
-export function backupMapStatus(phase: string): GraphNodeStatus | undefined {
+export function backupMapStatus(phase: string): GraphNodeStatus {
   return colorToStatus(getBackupStatusColor(phase));
 }
 
 /** Map badge for a Schedule statusDisplay value. */
-export function scheduleMapStatus(status: string): GraphNodeStatus | undefined {
+export function scheduleMapStatus(status: string): GraphNodeStatus {
   return colorToStatus(getScheduleStatusColor(status));
 }
 
 /** Map badge for a BackupStorageLocation phase. */
-export function storageMapStatus(phase: string): GraphNodeStatus | undefined {
+export function storageMapStatus(phase: string): GraphNodeStatus {
   return colorToStatus(getStorageStatusColor(phase));
 }
 

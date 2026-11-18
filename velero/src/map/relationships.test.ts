@@ -64,6 +64,6 @@ describe('map status', () => {
     expect(backupMapStatus('Failed')).toBe('error');
     expect(scheduleMapStatus('Paused')).toBe('warning');
     expect(storageMapStatus('Unavailable')).toBe('error');
-    expect(backupMapStatus('SomethingElse')).toBeUndefined();
+    expect(backupMapStatus('SomethingElse')).toBe('warning');
   });
 });

@@ -3,7 +3,6 @@ import type {
   GraphNode,
   GraphSource,
 } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
-import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useMemo } from 'react';
 import { useVeleroNamespace } from './config';
 import {
@@ -24,6 +23,20 @@ type ScopedObject = {
   getNamespace: () => string;
 };
 
+type ResourceClass = {
+  apiName: string;
+  apiVersion: string | string[];
+};
+
+/** CRD name Headlamp uses to open the generic custom-resource details panel. */
+function crdName(resourceClass: ResourceClass): string {
+  const apiVersion = Array.isArray(resourceClass.apiVersion)
+    ? resourceClass.apiVersion[0]
+    : resourceClass.apiVersion;
+  const group = apiVersion.includes('/') ? apiVersion.split('/')[0] : '';
+  return group ? `${resourceClass.apiName}.${group}` : resourceClass.apiName;
+}
+
 function refOf(object: ScopedObject): MapObjectRef | null {
   const uid = object.metadata.uid;
   if (!uid) {
@@ -40,7 +53,8 @@ function refOf(object: ScopedObject): MapObjectRef | null {
 function nodeFor(
   object: ScopedObject,
   status: GraphNode['status'],
-  weight: number
+  weight: number,
+  resourceClass: ResourceClass
 ): GraphNode | null {
   const ref = refOf(object);
   if (!ref) {
@@ -49,6 +63,7 @@ function nodeFor(
   return {
     id: ref.uid,
     kubeObject: object as GraphNode['kubeObject'],
+    customResourceDefinition: crdName(resourceClass),
     status,
     weight,
   };
@@ -65,8 +80,7 @@ export const veleroMapSource: GraphSource = {
   isEnabledByDefault: true,
   useData() {
     const veleroNamespace = useVeleroNamespace();
-    const cluster = getCluster() || undefined;
-    const listOpts = { namespace: veleroNamespace, cluster };
+    const listOpts = { namespace: veleroNamespace };
 
     const [schedules, schedulesError] = VeleroSchedule.useList(listOpts);
     const [backups, backupsError] = VeleroBackup.useList(listOpts);
@@ -90,10 +104,14 @@ export const veleroMapSource: GraphSource = {
       const locationItems = storageLocations ?? [];
 
       const nodes = [
-        ...scheduleItems.map(item => nodeFor(item, scheduleMapStatus(item.statusDisplay), 1000)),
-        ...backupItems.map(item => nodeFor(item, backupMapStatus(item.phase), 800)),
-        ...restoreItems.map(item => nodeFor(item, backupMapStatus(item.phase), 700)),
-        ...locationItems.map(item => nodeFor(item, storageMapStatus(item.phase), 900)),
+        ...scheduleItems.map(item =>
+          nodeFor(item, scheduleMapStatus(item.statusDisplay), 1000, VeleroSchedule)
+        ),
+        ...backupItems.map(item => nodeFor(item, backupMapStatus(item.phase), 800, VeleroBackup)),
+        ...restoreItems.map(item => nodeFor(item, backupMapStatus(item.phase), 700, VeleroRestore)),
+        ...locationItems.map(item =>
+          nodeFor(item, storageMapStatus(item.phase), 900, VeleroBackupStorageLocation)
+        ),
       ].filter((item): item is GraphNode => item !== null);
 
       const edges = veleroMapEdges({
