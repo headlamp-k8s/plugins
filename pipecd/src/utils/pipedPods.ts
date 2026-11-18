@@ -20,8 +20,11 @@
  * whether it is up, and the piped's ConfigMap says which piped it is.
  */
 
-/** Label the PipeCD Helm chart and manifests put on the piped pod and ConfigMap. */
-export const PIPED_LABEL_SELECTOR = 'app.kubernetes.io/name=piped';
+/**
+ * Label the PipeCD Helm charts put on the piped pod and ConfigMap. Each chart
+ * uses its own name: `piped`, and `pipedv1-exp` for the plugin-based piped.
+ */
+export const PIPED_LABEL_SELECTOR = 'app.kubernetes.io/name in (piped,pipedv1-exp)';
 
 /** The parts of a Pod this needs, as in its JSON. */
 export interface PodLike {
@@ -50,7 +53,8 @@ export interface ClusterPiped {
 
 /** Reads `pipedID` from a piped config file. */
 export function pipedIdFromConfig(config: string): string | undefined {
-  return /^\s*pipedID:\s*["']?([\w-]+)/m.exec(config)?.[1];
+  // Spaces and tabs only: a blank id must not pick up the next line.
+  return /^[ \t]*pipedID:[ \t]*["']?([\w-]+)/m.exec(config)?.[1];
 }
 
 function isReady(pod: PodLike): boolean {

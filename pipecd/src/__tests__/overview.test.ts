@@ -22,6 +22,7 @@ import {
   bucketTotal,
   countSync,
   failureRate,
+  hourSpan,
   knownPipeds,
   rangeStart,
   recentDeployments,
@@ -55,25 +56,71 @@ describe('rangeStart', () => {
   });
 });
 
+/** Runs `fn` with the local timezone set to New York. */
+function inNewYork(fn: () => void): void {
+  // Removing TZ again does not undo the change, so restore the zone by name.
+  const saved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  process.env.TZ = 'America/New_York';
+  try {
+    fn();
+  } finally {
+    process.env.TZ = saved;
+  }
+}
+
 describe('bucketDeployments', () => {
   // On 8 March 2026 New York clocks jump from 02:00 to 03:00, so 02:00 does
-  // not exist and the 24 hours before noon hold only 23 hours.
-  it('gives no bar to the hour skipped when clocks go forward', () => {
-    // Removing TZ again does not undo the change, so restore the zone by name.
-    const saved = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    process.env.TZ = 'America/New_York';
-    try {
+  // not exist. The bars still cover the last 24 real hours.
+  it('makes 24 one-hour bars when clocks go forward', () => {
+    inNewYork(() => {
       // Make sure the zone really changed, or this test would prove nothing.
       expect(new Date(2026, 2, 8, 2).getHours()).toBe(3);
 
       const buckets = bucketDeployments([], '24h', new Date(2026, 2, 8, 12));
-      const starts = buckets.map(b => b.start);
 
-      expect(new Set(starts).size).toBe(starts.length);
-      expect(buckets).toHaveLength(23);
-    } finally {
-      process.env.TZ = saved;
-    }
+      expect(buckets).toHaveLength(24);
+      buckets.slice(1).forEach((b, i) => expect(b.start - buckets[i].start).toBe(3600));
+      expect(buckets.map(b => new Date(b.start * 1000).getHours())).not.toContain(2);
+    });
+  });
+
+  // On 1 November 2026 New York clocks go back from 02:00 to 01:00, so 01:00
+  // comes twice. Each one gets its own bar.
+  it('gives the repeated hour its own bar when clocks go back', () => {
+    inNewYork(() => {
+      const firstOne = Date.UTC(2026, 10, 1, 5) / 1000; // 01:00 EDT
+      const secondOne = Date.UTC(2026, 10, 1, 6) / 1000; // 01:00 EST
+      expect(new Date(secondOne * 1000).getHours()).toBe(1);
+
+      const buckets = bucketDeployments(
+        [
+          deployment('a', firstOne + 60, 'DEPLOYMENT_SUCCESS'),
+          deployment('b', secondOne + 60, 'DEPLOYMENT_FAILURE'),
+        ],
+        '24h',
+        new Date(2026, 10, 1, 12)
+      );
+
+      expect(buckets).toHaveLength(24);
+      buckets.slice(1).forEach((b, i) => expect(b.start - buckets[i].start).toBe(3600));
+      const ones = buckets.filter(b => new Date(b.start * 1000).getHours() === 1);
+      expect(ones).toHaveLength(2);
+      expect(ones[0]).toMatchObject({ success: 1, failure: 0 });
+      expect(ones[1]).toMatchObject({ success: 0, failure: 1 });
+    });
+  });
+
+  // During the repeated hour the current bar must start at the second 01:00,
+  // not at the first one an hour earlier.
+  it('starts the current bar at the current hour during the repeated hour', () => {
+    inNewYork(() => {
+      const secondOne = Date.UTC(2026, 10, 1, 6) / 1000; // 01:00 EST
+      const now = new Date((secondOne + 30 * 60) * 1000);
+
+      const buckets = bucketDeployments([], '24h', now);
+
+      expect(buckets[23].start).toBe(secondOne);
+    });
   });
 
   it('makes one bucket per day, oldest first', () => {
@@ -120,6 +167,25 @@ describe('bucketDeployments', () => {
     );
 
     expect(buckets.every(b => bucketTotal(b) === 0)).toBe(true);
+  });
+});
+
+describe('hourSpan', () => {
+  it('labels an hour as a span', () => {
+    inNewYork(() => {
+      expect(hourSpan(Date.UTC(2026, 9, 28, 13) / 1000)).toBe('09–10');
+    });
+  });
+
+  it('tells the two repeated hours apart when clocks go back', () => {
+    inNewYork(() => {
+      const first = hourSpan(Date.UTC(2026, 10, 1, 5) / 1000);
+      const second = hourSpan(Date.UTC(2026, 10, 1, 6) / 1000);
+
+      expect(first).toMatch(/^01–02 /);
+      expect(second).toMatch(/^01–02 /);
+      expect(first).not.toBe(second);
+    });
   });
 });
 

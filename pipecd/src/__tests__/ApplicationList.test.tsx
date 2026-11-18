@@ -122,6 +122,21 @@ describe('ApplicationList', () => {
     expect(await screen.findByText('api-service-prod')).toBeTruthy();
   });
 
+  it('lists an application only once when a later page repeats it', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({
+        applications: [appKubernetesSynced, appTerraformOutOfSync],
+        cursor: '',
+      });
+
+    renderList();
+    await screen.findByText('infra-staging');
+
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
   it('shows a status label for each sync state', async () => {
     setupConfigured();
     mockListSuccess();

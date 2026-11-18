@@ -61,6 +61,7 @@ import {
   bucketTotal,
   countSync,
   failureRate,
+  hourSpan,
   knownPipeds,
   Outcome,
   OUTCOMES,
@@ -392,13 +393,6 @@ const LABEL_STEP: Record<TimeRange, number> = { '24h': 3, '7d': 1, '14d': 2, '30
 
 function shortDate(unix: number): string {
   return new Date(unix * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
-
-/** The hour a bar covers, e.g. "09–10", so it reads as a span, not a moment. */
-function hourSpan(unix: number): string {
-  const hour = new Date(unix * 1000).getHours();
-  const pad = (h: number): string => String(h).padStart(2, '0');
-  return `${pad(hour)}–${pad((hour + 1) % 24)}`;
 }
 
 function bucketLabel(start: number, range: TimeRange): string {
@@ -753,8 +747,13 @@ export function Overview(): JSX.Element {
     return <NotConfigured />;
   }
 
+  // A new lookup may still be running after a refresh, so the old cluster-only
+  // result can hold a piped the refreshed data now lists itself.
+  const listedIds = new Set(data?.pipeds.map(p => p.id));
   const pipeds = data
-    ? [...data.pipeds, ...clusterOnly].sort((a, b) => a.name.localeCompare(b.name))
+    ? [...data.pipeds, ...clusterOnly.filter(p => !listedIds.has(p.id))].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
     : [];
   const runningHere = pipeds.filter(p => inCluster.get(p.id)?.running).length;
   const notRunningHere = pipeds.filter(p => inCluster.get(p.id)?.running === false).length;

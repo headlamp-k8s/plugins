@@ -559,6 +559,46 @@ describe('Overview', () => {
     expect(cardOf('Deployments').textContent).not.toContain('Last 30 days');
   });
 
+  // After a refresh a cluster-only piped can show up in the PipeCD data too,
+  // while the old cluster lookup is still shown until a new one finishes.
+  it('lists a piped once when the refreshed data now includes it', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-old-001', true);
+    runInCluster('piped-new', true);
+    let refreshed = false;
+    vi.mocked(pipecdApi.listDeployments).mockImplementation(async () => ({
+      deployments: refreshed
+        ? [deployment('d1', 1, 'DEPLOYMENT_SUCCESS', { pipedId: 'piped-old-001' })]
+        : [],
+      cursor: '',
+    }));
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id !== 'piped-new') return PIPEDS[id];
+      // Unknown at first, then the lookup hangs.
+      if (refreshed) return new Promise<Piped>(() => {});
+      throw new Error('not found');
+    });
+
+    renderOverview();
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('old-vm');
+    });
+
+    refreshed = true;
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+    await waitFor(() => {
+      expect(
+        vi.mocked(pipecdApi.getPiped).mock.calls.filter(([, id]) => id === 'piped-new')
+      ).toHaveLength(2);
+    });
+
+    const shown = screen.getByRole('table', { name: 'pipecd-pipeds-table' });
+    const rows = [...shown.querySelectorAll('tr')].filter(r => r.textContent?.includes('old-vm'));
+    expect(rows).toHaveLength(1);
+  });
+
   it('reports a cluster piped that could not be looked up', async () => {
     setupConfigured();
     mockSuccess([]);

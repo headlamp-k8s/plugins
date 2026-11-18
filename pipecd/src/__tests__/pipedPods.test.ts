@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clusterPipeds,
   type ConfigMapLike,
+  PIPED_LABEL_SELECTOR,
   pipedIdFromConfig,
   type PodLike,
 } from '../utils/pipedPods';
@@ -65,6 +66,20 @@ describe('pipedIdFromConfig', () => {
 
   it('returns nothing when there is no id', () => {
     expect(pipedIdFromConfig('kind: Piped\nspec: {}')).toBeUndefined();
+  });
+
+  // The next line's key must not be read as the id.
+  it('returns nothing when the id is blank', () => {
+    expect(
+      pipedIdFromConfig('spec:\n  pipedID:\n  pipedKeyFile: /etc/piped-secret/piped-key')
+    ).toBeUndefined();
+  });
+});
+
+describe('PIPED_LABEL_SELECTOR', () => {
+  // The piped chart and the pipedv1-exp chart each label by their chart name.
+  it('matches pods from both piped Helm charts', () => {
+    expect(PIPED_LABEL_SELECTOR).toBe('app.kubernetes.io/name in (piped,pipedv1-exp)');
   });
 });
 

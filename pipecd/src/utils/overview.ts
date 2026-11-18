@@ -54,16 +54,23 @@ export type Bucket = Record<Outcome, number> & {
   start: number;
 };
 
+const HOUR_MS = 3600 * 1000;
+
 /**
  * Start of the `offset`-th hour or local day after the current one (negative
- * goes back). Built with the Date constructor rather than by adding seconds,
- * so a daylight saving change does not shift the buckets.
+ * goes back). Hours are counted in real elapsed time, so when clocks go back
+ * the repeated hour gets its own bar, and when they go forward no bar is two
+ * hours long. Days use the Date constructor, so a day stays a calendar day.
  */
 function unitStart(now: Date, unit: RangeSpec['unit'], offset: number): number {
-  const date =
-    unit === 'hour'
-      ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + offset)
-      : new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+  if (unit === 'hour') {
+    // Cut back to the top of the local hour. Local minutes, not UTC ones, so
+    // zones with a half-hour offset still start on the hour.
+    const top =
+      now.getTime() - now.getMinutes() * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+    return Math.floor((top + offset * HOUR_MS) / 1000);
+  }
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
   return Math.floor(date.getTime() / 1000);
 }
 
@@ -86,9 +93,6 @@ export function bucketDeployments(
   const buckets: Bucket[] = [];
   for (let i = 0; i < count; i++) {
     const start = unitStart(now, unit, i - (count - 1));
-    // On the day clocks go forward, the skipped hour gives the same start as
-    // the next one. That hour does not exist, so it gets no bar.
-    if (buckets.length && buckets[buckets.length - 1].start === start) continue;
     buckets.push({ start, success: 0, failure: 0, inProgress: 0, cancelled: 0 });
   }
   const end = unitStart(now, unit, 1);
@@ -100,6 +104,34 @@ export function bucketDeployments(
     buckets[index][OUTCOME_OF[d.status] ?? 'inProgress']++;
   }
   return buckets;
+}
+
+function offsetAt(unix: number): number {
+  return new Date(unix * 1000).getTimezoneOffset();
+}
+
+/** Short zone name at a moment, e.g. "EDT", or "" if the browser has none. */
+function zoneName(unix: number): string {
+  return (
+    new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
+      .formatToParts(new Date(unix * 1000))
+      .find(p => p.type === 'timeZoneName')?.value ?? ''
+  );
+}
+
+/**
+ * The hour a bar covers, e.g. "09–10", so it reads as a span, not a moment.
+ * Next to a daylight saving change the zone is added, e.g. "01–02 EDT" and
+ * "01–02 EST", so a repeated hour does not show the same label twice.
+ */
+export function hourSpan(unix: number): string {
+  const hour = new Date(unix * 1000).getHours();
+  const pad = (h: number): string => String(h).padStart(2, '0');
+  const span = `${pad(hour)}–${pad((hour + 1) % 24)}`;
+  const offset = offsetAt(unix);
+  const nearChange = offset !== offsetAt(unix - 3600) || offset !== offsetAt(unix + 3600);
+  const zone = nearChange ? zoneName(unix) : '';
+  return zone ? `${span} ${zone}` : span;
 }
 
 export function bucketTotal(b: Bucket): number {
