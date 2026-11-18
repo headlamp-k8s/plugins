@@ -7,6 +7,7 @@ import {
   Divider,
   FormControl,
   InputLabel,
+  Link,
   MenuItem,
   Select,
   Skeleton,
@@ -21,9 +22,12 @@ import {
   Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { isConfigured, listApplications, loadConfig, PipeCDApiError } from '../api/pipecd';
 import type { Application, ApplicationKind } from '../types/pipecd';
 import { formatTimestamp, relativeTime } from '../utils/time';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
+import { consoleURL, pluginURL } from '../utils/url';
 import { KindBadge, useKindLabels } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
 import { SyncStatusLabel } from './SyncStatusLabel';
@@ -37,7 +41,7 @@ const MAX_DESCRIPTION_LENGTH = 90;
  * drift detection sets it even for OUT_OF_SYNC. PipeCD often omits completedAt
  * on the deployment reference, so startedAt is the fallback.
  */
-function lastSyncedAt(app: Application): number | undefined {
+export function lastSyncedAt(app: Application): number | undefined {
   return (
     app.mostRecentSuccessfulDeployment?.completedAt || app.mostRecentSuccessfulDeployment?.startedAt
   );
@@ -118,10 +122,11 @@ export function ApplicationList(): JSX.Element {
         const collected: Application[] = [];
         let cursor = '';
         for (;;) {
-          const resp = await listApplications(config, {
-            cursor: cursor || undefined,
-            signal,
-          });
+          const resp = await withTimeout(
+            listApplications(config, { cursor: cursor || undefined, signal }),
+            REQUEST_TIMEOUT_MS,
+            t('The request timed out.')
+          );
           collected.push(...(resp.applications ?? []));
           if (!resp.cursor || resp.cursor === cursor || !resp.applications?.length) break;
           cursor = resp.cursor;
@@ -298,9 +303,14 @@ export function ApplicationList(): JSX.Element {
             {filtered.map(app => (
               <TableRow key={app.id} hover sx={{ '&:last-child td': { border: 0 } }}>
                 <TableCell>
-                  <Typography variant="body2" fontWeight={600}>
+                  <Link
+                    component={RouterLink}
+                    to={pluginURL(`/pipecd/applications/${app.id}`)}
+                    variant="body2"
+                    fontWeight={600}
+                  >
                     {app.name}
-                  </Typography>
+                  </Link>
                   {app.description && (
                     <Tooltip title={app.description.replace(/\\\s*\n/g, ' ')} arrow>
                       <Typography
@@ -355,7 +365,7 @@ export function ApplicationList(): JSX.Element {
                   <Button
                     size="small"
                     variant="text"
-                    href={`${config.baseURL}/applications/${app.id}`}
+                    href={consoleURL(config.baseURL, `/applications/${app.id}`, app.projectId)}
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{ whiteSpace: 'nowrap' }}

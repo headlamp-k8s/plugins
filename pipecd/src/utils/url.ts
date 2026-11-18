@@ -28,3 +28,24 @@ export function pluginURL(path: string): string {
   const cluster = getCluster();
   return cluster ? getClusterPrefixedPath(path).replace(':cluster', cluster) : path;
 }
+
+/**
+ * Builds a link to a page in the PipeCD console.
+ *
+ * The project goes in the query string, as in the console's own links, so a
+ * logged-out user is sent to that project's login and not to the last one the
+ * browser remembers.
+ */
+export function consoleURL(baseURL: string, path: string, projectId: string): string {
+  let url: URL;
+  try {
+    url = new URL(baseURL);
+  } catch {
+    // The settings page only saves valid URLs, so this is a last resort.
+    return `${baseURL}${path}`;
+  }
+  // Keep any path prefix the console is served under, and any query on it.
+  url.pathname = url.pathname.replace(/\/+$/, '') + path;
+  if (projectId) url.searchParams.set('project', projectId);
+  return url.toString();
+}

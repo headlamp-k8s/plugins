@@ -30,6 +30,11 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   }),
 }));
 
+vi.mock('@kinvolk/headlamp-plugin/lib/Utils', () => ({
+  getCluster: () => null,
+  getClusterPrefixedPath: (path: string) => path,
+}));
+
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
   StatusLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
@@ -86,6 +91,24 @@ describe('ApplicationList', () => {
     renderList();
 
     expect(await screen.findByLabelText('loading-skeleton')).toBeTruthy();
+  });
+
+  it('gives up on a list request that hangs and lets the user refresh', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      vi.mocked(pipecdApi.listApplications).mockReturnValue(new Promise(() => {}));
+
+      renderList();
+
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(await screen.findByText(/Failed to load applications/i)).toBeTruthy();
+      expect(screen.getByText('The request timed out.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Refresh/i }).hasAttribute('disabled')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders all three applications from mock data', async () => {
@@ -195,16 +218,16 @@ describe('ApplicationList', () => {
     expect(screen.queryByText('just now')).toBeNull();
   });
 
-  // There is no detail page yet, so the name must not look clickable. Use the
-  // Open in PipeCD link to reach the application.
-  it('shows the application name as text, not a link', async () => {
+  it('links the application name to its detail page', async () => {
     setupConfigured();
     mockListSuccess();
 
     renderList();
     await screen.findByText('frontend-prod');
 
-    expect(screen.queryByRole('link', { name: 'frontend-prod' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'frontend-prod' }).getAttribute('href')).toBe(
+      '/pipecd/applications/app-k8s-001'
+    );
   });
 
   it('links each application to PipeCD in a new tab', async () => {
@@ -217,7 +240,7 @@ describe('ApplicationList', () => {
     const links = screen.getAllByRole('link', { name: 'Open in PipeCD' });
     expect(links).toHaveLength(3);
     expect(links[0].getAttribute('href')).toBe(
-      'https://pipecd.example.com/applications/app-k8s-001'
+      'https://pipecd.example.com/applications/app-k8s-001?project=myproject'
     );
     expect(links[0].getAttribute('target')).toBe('_blank');
   });

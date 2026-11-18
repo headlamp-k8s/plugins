@@ -113,7 +113,10 @@ export interface PipelineStage {
   statusReason: string;
   metadata: Record<string, string>;
   retrievedAt: number;
-  /** PipeCD reports when a stage was created; it has no separate start time. */
+  /**
+   * When the stage was planned, not when it started: PipeCD has no start time
+   * for a stage, so this cannot be used to time one.
+   */
   createdAt: number;
   completedAt: number;
 }
