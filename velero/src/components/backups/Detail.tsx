@@ -130,7 +130,7 @@ export default function BackupDetail(props: {
   cluster?: string;
 }) {
   return (
-    <VeleroInstallCheck>
+    <VeleroInstallCheck cluster={props.cluster}>
       <BackupDetailContent {...props} />
     </VeleroInstallCheck>
   );

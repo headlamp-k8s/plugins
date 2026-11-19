@@ -143,7 +143,7 @@ export default function RestoreDetail(props: {
   cluster?: string;
 }) {
   return (
-    <VeleroInstallCheck>
+    <VeleroInstallCheck cluster={props.cluster}>
       <RestoreDetailContent {...props} />
     </VeleroInstallCheck>
   );

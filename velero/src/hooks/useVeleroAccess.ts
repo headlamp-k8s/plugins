@@ -6,16 +6,21 @@ async function can(
   resourceClass: typeof VeleroBackup | typeof VeleroRestore | typeof VeleroSchedule,
   verb: string,
   namespace: string,
-  resourceName?: string
+  resourceName?: string,
+  cluster?: string
 ): Promise<boolean> {
   try {
-    const result = await resourceClass.getAuthorization(verb, {
-      namespace,
-      group: 'velero.io',
-      version: 'v1',
-      resource: resourceClass.apiName,
-      ...(resourceName ? { name: resourceName } : {}),
-    });
+    const result = await resourceClass.getAuthorization(
+      verb,
+      {
+        namespace,
+        group: 'velero.io',
+        version: 'v1',
+        resource: resourceClass.apiName,
+        ...(resourceName ? { name: resourceName } : {}),
+      },
+      cluster
+    );
     return !!result?.status?.allowed;
   } catch {
     // If the review itself fails, show actions and let the API reject — better than hiding forever.
@@ -28,6 +33,8 @@ export type VeleroAccessOptions = {
   namespace?: string;
   /** Named resource for patch reviews (e.g. Schedule detail Pause). */
   name?: string;
+  /** Cluster for the access review. Defaults to the cluster selected in the URL. */
+  cluster?: string;
 };
 
 /**
@@ -40,6 +47,7 @@ export function useVeleroAccess(options: VeleroAccessOptions | string = {}) {
   const configuredNamespace = useVeleroNamespace();
   const namespace = opts.namespace || configuredNamespace;
   const resourceName = opts.name;
+  const cluster = opts.cluster;
   // Start denied so write controls stay hidden until SSAR finishes.
   const [canCreateBackup, setCanCreateBackup] = useState(false);
   const [canCreateRestore, setCanCreateRestore] = useState(false);
@@ -52,11 +60,11 @@ export function useVeleroAccess(options: VeleroAccessOptions | string = {}) {
     (async () => {
       setLoading(true);
       const [backup, restore, scheduleCreate, schedulePatch] = await Promise.all([
-        can(VeleroBackup, 'create', namespace),
-        can(VeleroRestore, 'create', namespace),
-        can(VeleroSchedule, 'create', namespace),
+        can(VeleroBackup, 'create', namespace, undefined, cluster),
+        can(VeleroRestore, 'create', namespace, undefined, cluster),
+        can(VeleroSchedule, 'create', namespace, undefined, cluster),
         // Pause/unpause uses schedule.patch — require patch, with name when known.
-        can(VeleroSchedule, 'patch', namespace, resourceName),
+        can(VeleroSchedule, 'patch', namespace, resourceName, cluster),
       ]);
       if (!cancelled) {
         setCanCreateBackup(backup);
@@ -69,7 +77,7 @@ export function useVeleroAccess(options: VeleroAccessOptions | string = {}) {
     return () => {
       cancelled = true;
     };
-  }, [namespace, resourceName]);
+  }, [namespace, resourceName, cluster]);
 
   return {
     loading,

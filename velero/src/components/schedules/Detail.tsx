@@ -22,6 +22,7 @@ function ScheduleDetailContent(props: { name?: string; namespace?: string; clust
   const { loading: accessLoading, canPatchSchedule } = useVeleroAccess({
     namespace,
     name,
+    cluster,
   });
   const [pauseBusy, setPauseBusy] = useState(false);
   const [pauseError, setPauseError] = useState<string | null>(null);
@@ -177,7 +178,7 @@ export default function ScheduleDetail(props: {
   cluster?: string;
 }) {
   return (
-    <VeleroInstallCheck>
+    <VeleroInstallCheck cluster={props.cluster}>
       <ScheduleDetailContent {...props} />
     </VeleroInstallCheck>
   );

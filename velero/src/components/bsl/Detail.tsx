@@ -50,7 +50,7 @@ function BslDetailContent(props: { name?: string; namespace?: string; cluster?: 
 /** Phase 3: BSL detail. */
 export default function BslDetail(props: { name?: string; namespace?: string; cluster?: string }) {
   return (
-    <VeleroInstallCheck>
+    <VeleroInstallCheck cluster={props.cluster}>
       <BslDetailContent {...props} />
     </VeleroInstallCheck>
   );

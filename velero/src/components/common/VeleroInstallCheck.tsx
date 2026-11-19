@@ -54,11 +54,14 @@ function DiscoveryErrorBanner({ error }: { error: Error }) {
 export function VeleroInstallCheck({
   children,
   fallback,
+  cluster,
 }: {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Cluster to probe. Defaults to the cluster selected in the URL. */
+  cluster?: string;
 }) {
-  const { installed, loading, error } = useVeleroInstalled();
+  const { installed, loading, error } = useVeleroInstalled(cluster);
 
   if (error) {
     return <DiscoveryErrorBanner error={error} />;
