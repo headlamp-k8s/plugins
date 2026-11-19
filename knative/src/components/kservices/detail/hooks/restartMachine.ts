@@ -19,7 +19,6 @@ import type { KubeDeployment } from '@kinvolk/headlamp-plugin/lib/k8s/deployment
 import { errorDetail, wasRefused, withDetail } from '../../../../utils/error';
 import { isRunning, judgeRollouts, restartAnnotation, type Tracked } from './rollout';
 
-export const REQUEST_TIMEOUT_MS = 120_000;
 export const MAX_ROLLOUT_TIMEOUT_MS = 3_600_000;
 const DEFAULT_PROGRESS_DEADLINE_SECONDS = 600;
 const ROLLOUT_TIMEOUT_MARGIN_MS = 60_000;
