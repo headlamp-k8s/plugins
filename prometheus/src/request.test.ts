@@ -24,6 +24,7 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
 
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import {
+  fetchMetrics,
   inspectPrometheusDiscovery,
   isPrometheusInstalled,
   KubernetesType,
@@ -208,5 +209,57 @@ describe('request module', () => {
       await expect(isPrometheusInstalled()).rejects.toThrow('pods is forbidden');
       expect(mockRequest).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('fetchMetrics', () => {
+  beforeEach(() => {
+    vi.mocked(ApiProxy.request).mockResolvedValue({
+      status: 200,
+      json: async () => ({ status: 'success', data: { result: [] } }),
+    });
+  });
+
+  test('passes the workload namespace separately from the proxy service namespace', async () => {
+    await fetchMetrics({
+      prefix: 'monitoring/services/prom-label-proxy:8080',
+      query: 'up',
+      from: 1,
+      to: 2,
+      step: 1,
+      namespace: 'tenant-a',
+    });
+    const url = new URL(vi.mocked(ApiProxy.request).mock.calls.at(-1)![0], 'http://localhost');
+    expect(url.pathname).toContain('/namespaces/monitoring/');
+    expect(url.searchParams.get('namespace')).toBe('tenant-a');
+    expect(url.searchParams.get('query')).toBe('up');
+  });
+
+  test('preserves the subpath and encodes the namespace as a single parameter', async () => {
+    await fetchMetrics({
+      prefix: 'monitoring/services/proxy:8080',
+      subPath: '/prometheus/',
+      query: 'up',
+      from: 1,
+      to: 2,
+      step: 1,
+      namespace: 'tenant&query=other',
+    });
+    const url = new URL(vi.mocked(ApiProxy.request).mock.calls.at(-1)![0], 'http://localhost');
+    expect(url.pathname).toContain('/proxy/prometheus/api/v1/query_range');
+    expect(url.searchParams.get('namespace')).toBe('tenant&query=other');
+    expect(url.searchParams.get('query')).toBe('up');
+  });
+
+  test('leaves namespace out when no scope is supplied', async () => {
+    await fetchMetrics({
+      prefix: 'monitoring/services/prometheus:9090',
+      query: 'up',
+      from: 1,
+      to: 2,
+      step: 1,
+    });
+    const url = new URL(vi.mocked(ApiProxy.request).mock.calls.at(-1)![0], 'http://localhost');
+    expect(url.searchParams.has('namespace')).toBe(false);
   });
 });

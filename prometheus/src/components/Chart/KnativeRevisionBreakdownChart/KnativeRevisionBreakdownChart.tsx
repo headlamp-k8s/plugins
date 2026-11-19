@@ -18,7 +18,7 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import Box from '@mui/material/Box';
 import { alpha, useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { fetchMetrics } from '../../../request';
 import {
   createTickTimestampFormatter,
@@ -26,6 +26,7 @@ import {
   getTimeRangeAndStepSize,
 } from '../../../util';
 import Chart from '../Chart/Chart';
+import { MetricsNamespaceContext } from '../MetricsNamespace';
 
 const REVISION_COLORS = [
   '#2196f3', // blue
@@ -55,12 +56,14 @@ export const KnativeRevisionBreakdownChart = (props: KnativeRevisionBreakdownCha
   const { t } = useTranslation();
   const xTickFormatter = createTickTimestampFormatter(props.timespan);
   const theme = useTheme();
+  const metricsNamespace = useContext(MetricsNamespaceContext);
 
   const [revisionNames, setRevisionNames] = useState<string[]>([]);
   const [discovering, setDiscovering] = useState(true);
 
   // Discover active revisions by querying Prometheus for distinct revision_name values
   useEffect(() => {
+    let active = true;
     const discoverRevisions = async () => {
       setDiscovering(true);
       try {
@@ -72,7 +75,10 @@ export const KnativeRevisionBreakdownChart = (props: KnativeRevisionBreakdownCha
           to,
           step,
           subPath: props.subPath ?? undefined,
+          namespace: metricsNamespace,
         });
+
+        if (!active) return;
 
         if (response.status === 'success' && response.data?.result?.length > 0) {
           const names = response.data.result
@@ -84,6 +90,7 @@ export const KnativeRevisionBreakdownChart = (props: KnativeRevisionBreakdownCha
           setRevisionNames([]);
         }
       } catch (e) {
+        if (!active) return;
         console.error('Error discovering revisions:', e);
         setRevisionNames([]);
       }
@@ -91,6 +98,9 @@ export const KnativeRevisionBreakdownChart = (props: KnativeRevisionBreakdownCha
     };
 
     discoverRevisions();
+    return () => {
+      active = false;
+    };
   }, [
     props.prometheusPrefix,
     props.namespace,
@@ -98,6 +108,7 @@ export const KnativeRevisionBreakdownChart = (props: KnativeRevisionBreakdownCha
     props.timespan,
     props.resolution,
     props.subPath,
+    metricsNamespace,
   ]);
 
   const plots = useMemo(() => {

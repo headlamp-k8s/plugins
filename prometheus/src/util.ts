@@ -22,6 +22,7 @@ type ClusterData = {
   isMetricsEnabled?: boolean;
   address?: string;
   subPath?: string;
+  namespaceQueryParam?: boolean;
   defaultTimespan?: string;
   defaultResolution?: string;
   /** Exact scrape job label for the selected Tinkerbell installation. */
