@@ -1,9 +1,10 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
-import type { KueueCondition } from './clusterQueue';
+import type { FlavorUsage, KueueCondition, ResourceGroup, ResourceQuantity } from './clusterQueue';
 import type {
   Admission,
   AdmissionCheckState,
   PodSet,
+  PodSetRequest,
   ReclaimablePod,
   RequeueState,
   ResourceList,
@@ -748,4 +749,131 @@ export function renderQueuePosition(
   return `${item.positionInLocalQueue + 1} in its LocalQueue, ${
     item.positionInClusterQueue + 1
   } in its ClusterQueue`;
+}
+
+const quantitySuffixes: Record<string, number> = {
+  n: 1e-9,
+  u: 1e-6,
+  m: 1e-3,
+  '': 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9,
+  T: 1e12,
+  P: 1e15,
+  E: 1e18,
+  Ki: 2 ** 10,
+  Mi: 2 ** 20,
+  Gi: 2 ** 30,
+  Ti: 2 ** 40,
+  Pi: 2 ** 50,
+  Ei: 2 ** 60,
+};
+
+/** Parse a Kubernetes quantity such as 500m, 2Gi or 1e3; unknown formats parse as NaN. */
+export function parseQuantity(quantity?: ResourceQuantity) {
+  if (typeof quantity === 'number') {
+    return quantity;
+  }
+  const match = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)([a-zA-Z]*)$/.exec(
+    (quantity ?? '').trim()
+  );
+  const multiplier = match ? quantitySuffixes[match[2]] : undefined;
+  return match && multiplier !== undefined ? Number(match[1]) * multiplier : NaN;
+}
+
+/** Format an amount of a resource for display without hiding small differences. */
+export function formatQuantity(resource: string, value: number) {
+  const round = (amount: number) => String(Math.round(amount * 100) / 100);
+  if (resource === 'memory' || resource.includes('storage')) {
+    // Prefer the largest unit that shows the amount exactly, so 1Gi plus 1Mi
+    // reads as 1025Mi rather than looking equal to a quota of 1Gi.
+    for (const unit of ['Ei', 'E', 'Pi', 'P', 'Ti', 'T', 'Gi', 'G', 'Mi', 'M', 'Ki', 'k']) {
+      const amount = value / quantitySuffixes[unit];
+      if (amount >= 1 && Number(round(amount)) === amount) {
+        return round(amount) + unit;
+      }
+    }
+    for (const unit of ['Ei', 'Pi', 'Ti', 'Gi', 'Mi', 'Ki']) {
+      if (value >= quantitySuffixes[unit]) {
+        return round(value / quantitySuffixes[unit]) + unit;
+      }
+    }
+  }
+  if (resource === 'cpu' && value > 0 && value < 1) {
+    return `${Math.round(value * 1000)}m`;
+  }
+  // Keep millicores so a 1001m request does not look equal to a quota of 1.
+  return resource === 'cpu' ? String(Math.round(value * 1000) / 1000) : round(value);
+}
+
+/** One resource a pending Workload asks for, against one flavor its ClusterQueue offers. */
+export interface QuotaFitRow {
+  resource: string;
+  /** ResourceFlavor name; undefined when no resource group of the ClusterQueue covers it. */
+  flavor?: string;
+  requested: number;
+  /** Nominal quota of the flavor; 0 when no resource group covers the resource. */
+  quota: number;
+  /** Nominal quota minus what is reserved, never below zero. */
+  free: number;
+  fits: boolean;
+  /** The request is above the nominal quota, so it cannot fit even in an empty ClusterQueue. */
+  aboveQuota: boolean;
+}
+
+/**
+ * Whether a request fits in what is free. Quantities are parsed to floating point, so
+ * 100m + 200m comes out a hair above 300m; allow 1n of slack, the finest step a Kubernetes
+ * quantity can express. Byte amounts are whole numbers and so stay exact.
+ */
+function fitsIn(requested: number, free: number) {
+  return requested - free < 1e-9;
+}
+
+/**
+ * Compare what a Workload requests with what its ClusterQueue has left, per resource and
+ * flavor. Requests are summed over the PodSets. Quota that could be borrowed from the
+ * cohort is not counted, since it depends on the other ClusterQueues.
+ */
+export function getQuotaFitRows(
+  requests: PodSetRequest[] = [],
+  resourceGroups: ResourceGroup[] = [],
+  reservation: FlavorUsage[] = []
+): QuotaFitRow[] {
+  const totals = new Map<string, number>();
+  for (const podSet of requests) {
+    for (const [resource, quantity] of Object.entries(podSet.resources || {})) {
+      totals.set(resource, (totals.get(resource) || 0) + parseQuantity(quantity));
+    }
+  }
+
+  return [...totals].flatMap(([resource, requested]) => {
+    const group = resourceGroups.find(item => item.coveredResources?.includes(resource));
+    if (!group?.flavors?.length) {
+      const fits = fitsIn(requested, 0);
+      return [{ resource, requested, quota: 0, free: 0, fits, aboveQuota: !fits }];
+    }
+
+    return group.flavors.map(flavor => {
+      const nominal = parseQuantity(
+        flavor.resources?.find(item => item.name === resource)?.nominalQuota ?? 0
+      );
+      const reserved = parseQuantity(
+        reservation
+          .find(item => item.name === flavor.name)
+          ?.resources?.find(item => item.name === resource)?.total ?? 0
+      );
+      const free = Math.max(nominal - reserved, 0);
+      return {
+        resource,
+        flavor: flavor.name,
+        requested,
+        quota: nominal,
+        free,
+        fits: fitsIn(requested, free),
+        aboveQuota: !fitsIn(requested, nominal),
+      };
+    });
+  });
 }
