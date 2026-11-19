@@ -8,6 +8,8 @@ export const volcanoRouteNames = {
   jobFlowDetail: 'volcano-jobflow-detail',
   queuesList: 'volcano-queues-list',
   queueDetail: 'volcano-queue-detail',
+  namespaceQueuesList: 'volcano-namespacequeues-list',
+  namespaceQueueDetail: 'volcano-namespacequeue-detail',
   podGroupsList: 'volcano-podgroups-list',
   podGroupDetail: 'volcano-podgroup-detail',
 } as const;
@@ -22,6 +24,8 @@ export const volcanoRoutePaths = {
   jobFlowDetail: '/volcano/jobflows/:namespace/:name',
   queuesList: '/volcano/queues',
   queueDetail: '/volcano/queues/:name',
+  namespaceQueuesList: '/volcano/namespacequeues',
+  namespaceQueueDetail: '/volcano/namespacequeues/:namespace/:name',
   podGroupsList: '/volcano/podgroups',
   podGroupDetail: '/volcano/podgroups/:namespace/:name',
 } as const;
