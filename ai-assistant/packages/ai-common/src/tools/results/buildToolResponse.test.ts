@@ -58,6 +58,35 @@ describe('detectToolResponseError', () => {
   it('returns isError:false for empty string', () => {
     expect(detectToolResponseError('')).toEqual({ isError: false, errorMsg: null });
   });
+
+  it('honors explicitStatus boolean true when content contains error keywords', () => {
+    const errorLogs = 'ERROR: database connection failed';
+    expect(detectToolResponseError(errorLogs, true)).toEqual({ isError: false, errorMsg: null });
+  });
+
+  it('honors explicitStatus object { success: true } or { isError: false } when content contains error keywords', () => {
+    const errorLogs = 'FATAL: terminating process, request failed';
+    expect(detectToolResponseError(errorLogs, { success: true })).toEqual({
+      isError: false,
+      errorMsg: null,
+    });
+    expect(detectToolResponseError(errorLogs, { isError: false })).toEqual({
+      isError: false,
+      errorMsg: null,
+    });
+  });
+
+  it('honors explicitStatus boolean false or { success: false } as an error', () => {
+    const okContent = 'all systems operational';
+    expect(detectToolResponseError(okContent, false)).toEqual({
+      isError: true,
+      errorMsg: okContent,
+    });
+    expect(detectToolResponseError(okContent, { success: false })).toEqual({
+      isError: true,
+      errorMsg: okContent,
+    });
+  });
 });
 
 // =============================================================================
