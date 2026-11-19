@@ -15,6 +15,10 @@ function ForceReconciliationAction(props) {
   const [open, setOpen] = React.useState<boolean>(false);
   const { resource } = props;
 
+  if (!resource?.jsonData?.spec) {
+    return null;
+  }
+
   return (
     <>
       <ActionButton
@@ -157,7 +161,7 @@ function ResumeAction(props) {
   const { t } = useTranslation();
   const { resource } = props;
   const { enqueueSnackbar } = useSnackbar();
-  if (!resource.jsonData.spec.suspend) {
+  if (!resource?.jsonData?.spec?.suspend) {
     return null;
   }
   return (
