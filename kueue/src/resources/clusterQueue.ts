@@ -3,6 +3,7 @@ import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
 import {
   getUniqueFlavorNames,
+  normalizeAdmissionChecksStrategy,
   renderAdmissionChecks,
   renderClusterQueueStatus,
   renderConcurrentAdmissionPolicy,
@@ -501,6 +502,13 @@ export interface ClusterQueueSpec {
    */
   admissionChecksStrategy?: AdmissionChecksStrategy;
   /**
+   * AdmissionCheck names that apply to all flavors. Only in v1beta1, which v1beta2
+   * replaced with admissionChecksStrategy.
+   *
+   * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta1/#kueue-x-k8s-io-v1beta1-ClusterQueueSpec
+   */
+  admissionChecks?: string[];
+  /**
    * Stop policy for admission and draining behavior.
    *
    * @see https://kueue.sigs.k8s.io/docs/reference/kueue.v1beta2/#clusterqueuespec
@@ -734,8 +742,16 @@ export class ClusterQueue extends KubeObject<KubeClusterQueue> {
     return renderPreemption(this.spec.preemption);
   }
 
+  /** Admission checks from either spec form, as one strategy. */
+  get admissionChecksStrategy() {
+    return normalizeAdmissionChecksStrategy(
+      this.spec.admissionChecksStrategy,
+      this.spec.admissionChecks
+    );
+  }
+
   get admissionChecksDisplay() {
-    return renderAdmissionChecks(this.spec.admissionChecksStrategy);
+    return renderAdmissionChecks(this.admissionChecksStrategy);
   }
 
   get flavorFungibilityDisplay() {
