@@ -101,6 +101,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
   const policy = node.kubeObject;
   const name: string = policy?.metadata?.name ?? '(unknown)';
   const namespace: string | undefined = policy?.metadata?.namespace;
+  const cluster: string | undefined = (policy as any)?.cluster;
   const action = effectiveEnforcementAction(policy?.spec);
 
   const data: MapNodeData | undefined = node.data;
@@ -206,7 +207,9 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
                   }}
                   onClick={() =>
                     Activity.launch({
-                      id: namespace ? `kyverno-pol-${namespace}-${name}` : `kyverno-cpol-${name}`,
+                      id: namespace
+                        ? `kyverno-pol-${cluster ?? ''}-${namespace}-${name}`
+                        : `kyverno-cpol-${cluster ?? ''}-${name}`,
                       location: 'split-right',
                       icon: <Icon icon="mdi:shield-edit" />,
                       title: name,
@@ -215,6 +218,7 @@ export function PolicyImpactNodeDetails({ node }: { node: any }) {
                           name={name}
                           namespace={namespace}
                           isClusterScoped={!namespace}
+                          cluster={cluster}
                         />
                       ),
                     })

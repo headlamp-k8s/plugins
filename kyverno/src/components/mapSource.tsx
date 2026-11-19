@@ -330,6 +330,12 @@ export const kyvernoMapSource = {
           kubeObject: policy,
           weight: 2000,
           icon: policyStatusIcon(impact, t),
+          status:
+            impact.counts.fail + impact.counts.error > 0
+              ? 'error'
+              : impact.counts.warn > 0
+              ? 'warning'
+              : 'success',
           data: {
             impact,
             clipped: impact.resources.length > MAX_RESOURCE_NODES_PER_POLICY,
@@ -358,15 +364,6 @@ export const kyvernoMapSource = {
               id: resourceId,
               label: res.name,
               subtitle,
-              // Expose metadata.namespace so Headlamp's Map namespace filter
-              // can match this node against the selected namespace.
-              kubeObject: {
-                metadata: {
-                  name: res.name,
-                  namespace: res.namespace ?? undefined,
-                  uid: res.uid,
-                },
-              },
             });
           }
 

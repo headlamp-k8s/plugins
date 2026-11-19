@@ -46,6 +46,7 @@ interface PolicyViewerProps {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
+  cluster?: string;
 }
 
 // Well-known Kyverno annotation keys
@@ -546,10 +547,10 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
   );
 }
 
-export function PolicyViewer({ name, namespace, isClusterScoped }: PolicyViewerProps) {
+export function PolicyViewer({ name, namespace, isClusterScoped, cluster }: PolicyViewerProps) {
   const { t } = useTranslation();
   const ResourceClass = isClusterScoped ? KyvernoClusterPolicy : KyvernoPolicy;
-  const [policy, error] = ResourceClass.useGet(name, namespace);
+  const [policy, error] = ResourceClass.useGet(name, namespace, cluster ? { cluster } : undefined);
 
   if (error) {
     return (
