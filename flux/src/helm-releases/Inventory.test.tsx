@@ -1,7 +1,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { inventoryNameLink } from './Inventory';
+import { getLatestSecret, inventoryNameLink } from './Inventory';
 
 vi.mock('../common/Table', () => ({ default: () => null }));
 
@@ -40,5 +40,23 @@ describe('helm-releases inventoryNameLink', () => {
 
   it('still links a namespaced resource that has a namespace', () => {
     expect(React.isValidElement(inventoryNameLink(namespacedRoleItem()))).toBe(true);
+  });
+});
+
+describe('helm-releases getLatestSecret', () => {
+  const secret = (version?: string) => ({ metadata: { labels: version ? { version } : {} } });
+
+  it('returns the secret with the highest numeric version', () => {
+    const latest = secret('10');
+    expect(getLatestSecret([secret('2'), latest, secret('9')])).toBe(latest);
+  });
+
+  it('returns null when no secret has a valid version label', () => {
+    expect(getLatestSecret([secret('abc'), secret()])).toBeNull();
+    expect(getLatestSecret([{ metadata: {} }])).toBeNull();
+  });
+
+  it('returns null for an empty list', () => {
+    expect(getLatestSecret([])).toBeNull();
   });
 });

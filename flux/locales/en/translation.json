@@ -106,6 +106,7 @@
   "Source Ref": "Source Ref",
   "Version": "Version",
   "Next Reconciliation": "Next Reconciliation",
+  "Failed to load the Helm release inventory: {{error}}": "Failed to load the Helm release inventory: {{error}}",
   "Kind": "Kind",
   "Ready": "Ready",
   "Events": "Events",

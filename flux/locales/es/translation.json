@@ -107,6 +107,7 @@
   "Source Ref": "",
   "Version": "",
   "Next Reconciliation": "",
+  "Failed to load the Helm release inventory: {{error}}": "",
   "Kind": "",
   "Ready": "",
   "Events": "",
