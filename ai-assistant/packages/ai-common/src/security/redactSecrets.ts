@@ -382,7 +382,30 @@ function redactSecretDataFields(obj: Record<string, unknown>): boolean {
       }
     }
   }
-  return changed;
+  return redactLastAppliedConfiguration(obj) || changed;
+}
+
+/**
+ * Annotation `kubectl apply` writes with the full applied manifest. On a
+ * Secret it holds a copy of `data` / `stringData`.
+ */
+const LAST_APPLIED_ANNOTATION = 'kubectl.kubernetes.io/last-applied-configuration';
+
+/**
+ * Replaces the `kubectl.kubernetes.io/last-applied-configuration` annotation
+ * of a Secret-shaped object with `[REDACTED]`, in place.
+ *
+ * @param obj - A Secret object or a `SecretList` item.
+ * @returns Whether the annotation was present and redacted.
+ */
+function redactLastAppliedConfiguration(obj: Record<string, unknown>): boolean {
+  const metadata = obj.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  const annotations = (metadata as Record<string, unknown>).annotations;
+  if (!annotations || typeof annotations !== 'object' || Array.isArray(annotations)) return false;
+  if (!Object.prototype.hasOwnProperty.call(annotations, LAST_APPLIED_ANNOTATION)) return false;
+  (annotations as Record<string, unknown>)[LAST_APPLIED_ANNOTATION] = '[REDACTED]';
+  return true;
 }
 
 /**
@@ -415,27 +438,101 @@ function redactKubernetesSecretValuesYaml(input: string): string {
 }
 
 /**
+ * Finds the object each line of a YAML document belongs to: the document
+ * itself or one item of its top-level `items` list. Only a `kind` key at the
+ * object's own key column counts, so nested `kind` fields (annotations,
+ * ownerReferences) are ignored and the key order does not matter.
+ *
+ * @param lines - Lines of one YAML document, without line terminators.
+ * @returns The object index of each line and the `kind` of each object
+ *   (`null` when the object has no `kind`).
+ */
+function yamlObjectKinds(lines: string[]): {
+  objectOfLine: number[];
+  kinds: Array<string | null>;
+} {
+  const kinds: Array<string | null> = [null];
+  const keyColumns: Array<number | null> = [null];
+  const objectOfLine: number[] = [];
+  let current = 0;
+  let itemsColumn: number | null = null;
+  let dashColumn: number | null = null;
+
+  for (const line of lines) {
+    const keyMatch = line.match(/^(\s*)(-\s+)?([^\s#].*)$/);
+    if (keyMatch) {
+      const isItem = keyMatch[2] !== undefined;
+      const lineIndent = keyMatch[1].length;
+      const keyColumn = lineIndent + (keyMatch[2]?.length ?? 0);
+      if (itemsColumn !== null) {
+        if (
+          isItem &&
+          (dashColumn === null ? lineIndent >= itemsColumn : lineIndent === dashColumn)
+        ) {
+          dashColumn = lineIndent;
+          kinds.push(null);
+          keyColumns.push(keyColumn);
+          current = kinds.length - 1;
+        } else if (!isItem && keyColumn <= itemsColumn) {
+          itemsColumn = null;
+          dashColumn = null;
+          current = 0;
+        }
+      }
+      if (keyColumns[current] === null) keyColumns[current] = keyColumn;
+      if (keyColumn === keyColumns[current]) {
+        const kindMatch = keyMatch[3].match(/^kind\s*:\s*["']?([^"'\s]+)["']?\s*$/);
+        if (kindMatch) kinds[current] = kindMatch[1];
+        if (current === 0 && !isItem && /^items\s*:\s*$/.test(keyMatch[3])) {
+          itemsColumn = keyColumn;
+          dashColumn = null;
+        }
+      }
+    }
+    objectOfLine.push(current);
+  }
+  return { objectOfLine, kinds };
+}
+
+/**
  * Redacts data blocks in one YAML document already identified as a Secret.
  *
  * @param input - One Kubernetes Secret YAML document.
  * @returns YAML with data and stringData values replaced.
  */
 function redactSecretYamlDocument(input: string): string {
-  const lines = input.split('\n');
+  const rawLines = input.split('\n');
+  // CRLF input: scan each line without its `\r` and put it back afterwards.
+  const lines = rawLines.map(line => (line.endsWith('\r') ? line.slice(0, -1) : line));
+  // A List mixing Secrets and other kinds only loses the annotation on its
+  // Secrets; objects without a `kind` (SecretList items) are treated as Secrets.
+  const { objectOfLine, kinds } = yamlObjectKinds(lines);
   let dataBlockIndent: number | null = null;
   let blockScalarIndent: number | null = null;
 
-  const redacted = lines.map(line => {
+  const redacted = lines.map((line, index) => {
+    const eol = rawLines[index].endsWith('\r') ? '\r' : '';
     const indent = line.match(/^\s*/)?.[0].length ?? 0;
     if (blockScalarIndent !== null) {
-      if (line.trim() === '' || indent > blockScalarIndent) return '';
+      if (line.trim() === '' || indent > blockScalarIndent) return eol;
       blockScalarIndent = null;
+    }
+    const objectKind = kinds[objectOfLine[index]];
+
+    // `kubectl apply` keeps the whole manifest, data included, in this
+    // annotation. Drop its value and any indented continuation lines.
+    const lastAppliedMatch = line.match(
+      /^(\s*)(["']?)kubectl\.kubernetes\.io\/last-applied-configuration\2[ \t]*:(?:\s.*)?$/
+    );
+    if (lastAppliedMatch && (objectKind === null || /^Secret(List)?$/.test(objectKind))) {
+      blockScalarIndent = lastAppliedMatch[1].length;
+      return `${lastAppliedMatch[1]}${LAST_APPLIED_ANNOTATION}: [REDACTED]${eol}`;
     }
 
     const dataMatch = line.match(/^(\s*)(data|stringData):\s*$/);
     if (dataMatch) {
       dataBlockIndent = dataMatch[1].length;
-      return line;
+      return line + eol;
     }
 
     if (dataBlockIndent !== null && line.trim() !== '') {
@@ -444,14 +541,14 @@ function redactSecretYamlDocument(input: string): string {
         const entryIndent = entryMatch[1].length;
         if (entryIndent > dataBlockIndent) {
           if (/^[|>][-+]?\s*$/.test(entryMatch[3])) blockScalarIndent = entryIndent;
-          return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]`;
+          return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]${eol}`;
         }
         // Dedented back out of the data block; leave sibling keys intact.
         dataBlockIndent = null;
       }
     }
 
-    return line;
+    return line + eol;
   });
 
   return redacted.join('\n');
@@ -503,4 +600,5 @@ function redactSecretDataFieldsInPlace(obj: Record<string, unknown>): void {
       );
     }
   }
+  redactLastAppliedConfiguration(obj);
 }
