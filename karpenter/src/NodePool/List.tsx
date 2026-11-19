@@ -4,6 +4,7 @@ import { PercentageBar } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { makeCustomResourceClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/crd';
 import { getResourceStr } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { parseRam } from '../helpers/parseRam';
+import { getReadyStatus } from '../helpers/readyStatus';
 import { CPUtooltip, Memorytooltip } from '../helpers/tooltip';
 
 interface ChartDataPoint {
@@ -135,11 +136,7 @@ function NodePoolsList() {
         {
           id: 'nodepool-status',
           label: t('Status'),
-          getValue: nodePool => {
-            const conditions = nodePool.jsonData?.status?.conditions || [];
-            const readyCondition = conditions.find(c => c.type === 'Ready');
-            return readyCondition?.status === 'True' ? t('Ready') : t('Not Ready');
-          },
+          getValue: nodePool => getReadyStatus(nodePool, t),
         },
         'age',
       ]}
