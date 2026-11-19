@@ -102,7 +102,37 @@ export const trainJobFailed = {
   },
 };
 
-export const allTrainJobs = [trainJobRunning, trainJobSuspended, trainJobFailed];
+export const trainJobComplete = {
+  apiVersion: 'trainer.kubeflow.org/v1alpha1',
+  kind: 'TrainJob',
+  metadata: {
+    name: 'resnet-finetune',
+    namespace: 'kubeflow-user',
+    creationTimestamp: '2026-05-27T08:00:00Z',
+    uid: 'tj-7777-8888',
+  },
+  spec: {
+    runtimeRef: {
+      name: 'pytorch-distributed',
+      kind: 'ClusterTrainingRuntime',
+    },
+    trainer: {
+      numNodes: 2,
+      image: 'pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime',
+    },
+  },
+  status: {
+    conditions: [
+      {
+        type: 'Complete',
+        status: 'True',
+        lastTransitionTime: '2026-05-27T09:30:00Z',
+      },
+    ],
+  },
+};
+
+export const allTrainJobs = [trainJobRunning, trainJobSuspended, trainJobFailed, trainJobComplete];
 
 export const trainingRuntimeCustom = {
   apiVersion: 'trainer.kubeflow.org/v1alpha1',

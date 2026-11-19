@@ -18,6 +18,7 @@ import {
   formatRuntimeRef,
   getRuntimeFamily,
   getSchedulingSummary,
+  isTrainJobRunning,
   summarizeJobsStatus,
 } from './trainerUtils';
 import { TrainJobStatusBadge } from './TrainJobStatusBadge';
@@ -52,9 +53,7 @@ export function TrainingOverview() {
   const runtimes = trainingRuntimes ?? [];
   const clusterRuntimes = clusterTrainingRuntimes ?? [];
 
-  const runningJobs = jobs.filter(
-    job => !job.suspended && job.phase !== 'Succeeded' && job.phase !== 'Failed'
-  );
+  const runningJobs = jobs.filter(isTrainJobRunning);
   const suspendedJobs = jobs.filter(job => job.suspended);
   const failedJobs = jobs.filter(job => job.phase === 'Failed');
 
