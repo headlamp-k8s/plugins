@@ -1,5 +1,6 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Conditions, KedaTrigger } from './common';
+import { cooldownPeriodOrDefault } from './defaults';
 
 export interface ScaleTargetRef {
   apiVersion?: string;
@@ -147,7 +148,7 @@ export class ScaledObject extends KubeObject<KedaScaledObject> {
   }
 
   get cooldownPeriod(): number {
-    return this.spec.cooldownPeriod || 300;
+    return cooldownPeriodOrDefault(this.spec.cooldownPeriod);
   }
 
   get initialCooldownPeriod(): number {
