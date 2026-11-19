@@ -23,10 +23,10 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { isConfigured, listApplications, loadConfig, PipeCDApiError } from '../api/pipecd';
+import { isConfigured, loadConfig, PipeCDApiError } from '../api/pipecd';
 import type { Application, ApplicationKind } from '../types/pipecd';
+import { listAllApplications } from '../utils/applications';
 import { formatTimestamp, relativeTime } from '../utils/time';
-import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
 import { consoleURL, pluginURL } from '../utils/url';
 import { KindBadge, useKindLabels } from './KindBadge';
 import { NotConfigured } from './NotConfigured';
@@ -116,29 +116,12 @@ export function ApplicationList(): JSX.Element {
       setLoading(true);
       setError(null);
       try {
-        // PipeCD returns a page at a time and hands back a cursor, so follow it
-        // until it stops moving. Without this only the newest page is listed,
-        // and search and filtering only ever see that page. A page can repeat
-        // an application, so skip ids already collected, and stop at a page
-        // with nothing new, or a server that cycles cursors never ends.
-        const seen = new Set<string>();
-        const collected: Application[] = [];
-        let cursor = '';
-        for (;;) {
-          const resp = await withTimeout(
-            listApplications(config, { cursor: cursor || undefined, signal }),
-            REQUEST_TIMEOUT_MS,
-            t('The request timed out.')
-          );
-          const before = collected.length;
-          for (const app of resp.applications ?? []) {
-            if (seen.has(app.id)) continue;
-            seen.add(app.id);
-            collected.push(app);
-          }
-          if (!resp.cursor || resp.cursor === cursor || collected.length === before) break;
-          cursor = resp.cursor;
-        }
+        // PipeCD returns a page at a time. Without following the cursor only
+        // the newest page is listed, and search and filtering only see that.
+        const collected = await listAllApplications(config, {
+          signal,
+          timedOut: t('The request timed out.'),
+        });
         if (signal?.aborted) return;
         setApps(collected);
         setLastFetched(new Date());

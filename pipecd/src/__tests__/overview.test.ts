@@ -56,16 +56,20 @@ describe('rangeStart', () => {
   });
 });
 
-/** Runs `fn` with the local timezone set to New York. */
-function inNewYork(fn: () => void): void {
+/** Runs `fn` with the local timezone set to `zone`. */
+function inZone(zone: string, fn: () => void): void {
   // Removing TZ again does not undo the change, so restore the zone by name.
   const saved = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  process.env.TZ = 'America/New_York';
+  process.env.TZ = zone;
   try {
     fn();
   } finally {
     process.env.TZ = saved;
   }
+}
+
+function inNewYork(fn: () => void): void {
+  inZone('America/New_York', fn);
 }
 
 describe('bucketDeployments', () => {
@@ -185,6 +189,23 @@ describe('hourSpan', () => {
       expect(first).toMatch(/^01–02 /);
       expect(second).toMatch(/^01–02 /);
       expect(first).not.toBe(second);
+    });
+  });
+
+  // On 5 April 2026 Lord Howe Island clocks go back half an hour, from 02:00
+  // to 01:30. Seen at 10:15 that morning, bars start on the hour of the new
+  // offset, so the bars before the change start at half past.
+  it('keeps the minutes across a half-hour clock change', () => {
+    inZone('Australia/Lord_Howe', () => {
+      const now = new Date(Date.UTC(2026, 3, 4, 23, 45));
+      const labels = bucketDeployments([], '24h', now).map(b => hourSpan(b.start));
+
+      expect(labels).toContain('00:30–01:30');
+      expect(labels.some(l => /^01:30–02:30 /.test(l))).toBe(true);
+      expect(labels.some(l => /^02–03 /.test(l))).toBe(true);
+      expect(labels).toContain('03–04');
+      expect(labels[labels.length - 1]).toBe('10–11');
+      expect(new Set(labels).size).toBe(labels.length);
     });
   });
 });

@@ -492,7 +492,7 @@ describe('Overview', () => {
     const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
     expect(table.textContent).toContain('old-vm');
     // Disabled applications find pipeds but are not counted as applications.
-    expect(cardOf('1 synced').textContent).toContain('3');
+    expect(cardOf('1 synced').querySelector('h4')?.textContent).toBe('3');
   });
 
   it('counts only enabled applications in the Apps column', async () => {
@@ -889,6 +889,25 @@ describe('Overview', () => {
     expect(calls).toBeLessThan(5);
   });
 
+  it('keeps paging applications past a page of repeats with a new cursor', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    let page = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async (_config, options) => {
+      if (options?.disabled) return { applications: [], cursor: '' };
+      page++;
+      if (page === 1) return { applications: [appKubernetesSynced], cursor: 'c1' };
+      if (page === 2) return { applications: [appKubernetesSynced], cursor: 'c2' };
+      return { applications: [appTerraformOutOfSync], cursor: '' };
+    });
+
+    renderOverview();
+
+    expect(await screen.findByText('1 synced')).toBeTruthy();
+    expect(cardOf('1 synced').querySelector('h4')?.textContent).toBe('2');
+    expect(screen.getByText('1 out of sync')).toBeTruthy();
+  });
+
   it('does not count a repeated application twice', async () => {
     setupConfigured();
     mockSuccess([]);
@@ -907,6 +926,6 @@ describe('Overview', () => {
     renderOverview();
 
     expect(await screen.findByText('1 synced')).toBeTruthy();
-    expect(cardOf('1 synced').textContent).toContain('3');
+    expect(cardOf('1 synced').querySelector('h4')?.textContent).toBe('3');
   });
 });

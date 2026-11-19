@@ -137,6 +137,19 @@ describe('ApplicationList', () => {
     expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
   });
 
+  it('keeps paging past a page of repeats that has a new cursor', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c2' })
+      .mockResolvedValueOnce({ applications: [appTerraformOutOfSync], cursor: '' });
+
+    renderList();
+
+    expect(await screen.findByText('infra-staging')).toBeTruthy();
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
   it('stops paging when the server cycles through the same cursors', async () => {
     setupConfigured();
     let calls = 0;

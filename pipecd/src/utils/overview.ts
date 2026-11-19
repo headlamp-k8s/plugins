@@ -123,11 +123,21 @@ function zoneName(unix: number): string {
  * The hour a bar covers, e.g. "09–10", so it reads as a span, not a moment.
  * Next to a daylight saving change the zone is added, e.g. "01–02 EDT" and
  * "01–02 EST", so a repeated hour does not show the same label twice.
+ * Both ends are given in the zone the bar starts in. Bars start on the hour of
+ * the current offset, so across a half-hour clock change (Lord Howe Island)
+ * the bars on the other side start at half past, and the minutes are kept:
+ * "01:30–02:30".
  */
 export function hourSpan(unix: number): string {
-  const hour = new Date(unix * 1000).getHours();
-  const pad = (h: number): string => String(h).padStart(2, '0');
-  const span = `${pad(hour)}–${pad((hour + 1) % 24)}`;
+  const start = new Date(unix * 1000);
+  const hour = start.getHours();
+  const minute = start.getMinutes();
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  const end = (hour + 1) % 24;
+  const span =
+    minute === 0
+      ? `${pad(hour)}–${pad(end)}`
+      : `${pad(hour)}:${pad(minute)}–${pad(end)}:${pad(minute)}`;
   const offset = offsetAt(unix);
   const nearChange = offset !== offsetAt(unix - 3600) || offset !== offsetAt(unix + 3600);
   const zone = nearChange ? zoneName(unix) : '';

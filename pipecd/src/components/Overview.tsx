@@ -45,7 +45,6 @@ import {
   getPiped,
   isConfigured,
   isUnimplemented,
-  listApplications,
   listDeployments,
   listPipeds,
   loadConfig,
@@ -54,6 +53,7 @@ import {
 } from '../api/pipecd';
 import type { Application, Deployment, Piped, PipedStatus } from '../types/pipecd';
 import { alertTextSx } from '../utils/alert';
+import { listAllApplications } from '../utils/applications';
 import {
   axisTicks,
   Bucket,
@@ -127,34 +127,6 @@ function errorMessage(err: unknown, t: Translate): string {
 /** Gives up on a request after REQUEST_TIMEOUT_MS, so it cannot keep the page loading. */
 function timed<T>(promise: Promise<T>, timedOut: string): Promise<T> {
   return withTimeout(promise, REQUEST_TIMEOUT_MS, timedOut);
-}
-
-async function fetchAllApplications(
-  config: PipeCDConfig,
-  disabled: boolean,
-  signal: AbortSignal,
-  timedOut: string
-): Promise<Application[]> {
-  // Follow the cursor and skip repeated ids, as on the applications page. A
-  // page with nothing new ends it, so cycling cursors cannot loop forever.
-  const seen = new Set<string>();
-  const collected: Application[] = [];
-  let cursor = '';
-  for (;;) {
-    const resp = await timed(
-      listApplications(config, { cursor: cursor || undefined, disabled, signal }),
-      timedOut
-    );
-    const before = collected.length;
-    for (const app of resp.applications ?? []) {
-      if (seen.has(app.id)) continue;
-      seen.add(app.id);
-      collected.push(app);
-    }
-    if (!resp.cursor || resp.cursor === cursor || collected.length === before) break;
-    cursor = resp.cursor;
-  }
-  return collected;
 }
 
 /**
@@ -281,7 +253,11 @@ async function fetchAllPipeds(
   // Disabled applications are only a way to find more pipeds, so a failure
   // here is reported but does not stop the page.
   let disabledError: unknown = null;
-  const disabledApps = await fetchAllApplications(config, true, signal, timedOut).catch(err => {
+  const disabledApps = await listAllApplications(config, {
+    disabled: true,
+    signal,
+    timedOut,
+  }).catch(err => {
     if (isAbort(err)) throw err;
     disabledError = err;
     return [] as Application[];
@@ -645,7 +621,7 @@ export function Overview(): JSX.Element {
         const now = new Date();
         const timedOut = t('The request timed out.');
         const [apps, deploymentResult, listed] = await Promise.all([
-          fetchAllApplications(config, false, signal, timedOut),
+          listAllApplications(config, { signal, timedOut }),
           fetchDeploymentsSince(config, rangeStart(range, now), signal, timedOut),
           // Settled, so a server without ListPipeds does not fail the page.
           timed(listPipeds(config, signal), timedOut).then(
