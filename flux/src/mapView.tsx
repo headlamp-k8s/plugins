@@ -11,6 +11,7 @@ import {
 import { FluxHelmReleaseDetailView } from './helm-releases/HelmReleaseSingle';
 import { useFluxCheck, useNamespaces } from './helpers';
 import { FluxKustomizationDetailView } from './kustomizations/KustomizationSingle';
+import { buildDependsOnEdges } from './mapDependencies';
 import { store } from './settings';
 import { FluxSourceDetailView } from './sources/SourceSingle';
 
@@ -163,6 +164,8 @@ const helmReleaseSource = {
         }
       });
 
+      edges.push(...buildDependsOnEdges(releases));
+
       return {
         nodes,
         edges,
@@ -287,6 +290,8 @@ const kustomizationSource = {
             edges.push(makeKubeToKubeEdge(release, ociRepository));
           });
       });
+
+      edges.push(...buildDependsOnEdges(kustomizations));
 
       return {
         nodes,

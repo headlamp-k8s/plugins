@@ -1,0 +1,111 @@
+# Sample Kustomizations that use spec.dependsOn, to see the "depends on" edges
+# in the Flux Map. Needs the Flux controllers installed (flux install).
+# Apply with: kubectl apply -f flux/test-files/deploy/depends-on.yaml
+# Remove with: kubectl delete -f flux/test-files/deploy/depends-on.yaml
+#
+# Everything here lives in its own depends-on-* namespaces, so it does not touch
+# existing Flux resources such as flux-system/apps. Each Kustomization deploys
+# podinfo into a namespace of its own, so no two of them own the same objects.
+# The Kustomizations use prune: true, so deleting them also deletes what they
+# deployed. Prefer a disposable cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: depends-on-demo
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: depends-on-team-a
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: depends-on-crds
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: depends-on-infra
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: depends-on-apps
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: podinfo
+  namespace: depends-on-demo
+spec:
+  interval: 10m
+  url: https://github.com/stefanprodan/podinfo
+  ref:
+    branch: master
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crds
+  namespace: depends-on-demo
+spec:
+  interval: 10m
+  path: ./kustomize
+  prune: true
+  targetNamespace: depends-on-crds
+  sourceRef:
+    kind: GitRepository
+    name: podinfo
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infra
+  namespace: depends-on-demo
+spec:
+  interval: 10m
+  path: ./kustomize
+  prune: true
+  targetNamespace: depends-on-infra
+  sourceRef:
+    kind: GitRepository
+    name: podinfo
+  dependsOn:
+    - name: crds
+---
+# Same namespace as the dependent: no namespace needed in the reference.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: depends-on-demo
+spec:
+  interval: 10m
+  path: ./kustomize
+  prune: true
+  targetNamespace: depends-on-apps
+  sourceRef:
+    kind: GitRepository
+    name: podinfo
+  dependsOn:
+    - name: infra
+---
+# Lives in another namespace and depends on one in depends-on-demo.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: team-app
+  namespace: depends-on-team-a
+spec:
+  interval: 10m
+  path: ./kustomize
+  prune: true
+  targetNamespace: depends-on-team-a
+  sourceRef:
+    kind: GitRepository
+    name: podinfo
+    namespace: depends-on-demo
+  dependsOn:
+    - name: infra
+      namespace: depends-on-demo
