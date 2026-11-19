@@ -3,7 +3,11 @@ import type {
   GraphNode,
   GraphSource,
 } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
-import { useMemo } from 'react';
+import { type ComponentType, useMemo } from 'react';
+import BackupDetail from './components/backups/Detail';
+import BslDetail from './components/bsl/Detail';
+import RestoreDetail from './components/restores/Detail';
+import ScheduleDetail from './components/schedules/Detail';
 import { useVeleroNamespace } from './config';
 import {
   backupMapStatus,
@@ -50,11 +54,32 @@ function refOf(object: ScopedObject): MapObjectRef | null {
   };
 }
 
+type DetailProps = { name?: string; namespace?: string; cluster?: string };
+
+/** Shows the existing Velero detail page for the selected map node. */
+function makeDetailsComponent(Detail: ComponentType<DetailProps>): GraphNode['detailsComponent'] {
+  return function NodeDetails({ node }) {
+    const object = node.kubeObject;
+    if (!object) {
+      return null;
+    }
+    return (
+      <Detail name={object.getName()} namespace={object.getNamespace()} cluster={object.cluster} />
+    );
+  };
+}
+
+const ScheduleNodeDetails = makeDetailsComponent(ScheduleDetail);
+const BackupNodeDetails = makeDetailsComponent(BackupDetail);
+const RestoreNodeDetails = makeDetailsComponent(RestoreDetail);
+const StorageNodeDetails = makeDetailsComponent(BslDetail);
+
 function nodeFor(
   object: ScopedObject,
   status: GraphNode['status'],
   weight: number,
-  resourceClass: ResourceClass
+  resourceClass: ResourceClass,
+  detailsComponent: GraphNode['detailsComponent']
 ): GraphNode | null {
   const ref = refOf(object);
   if (!ref) {
@@ -64,6 +89,7 @@ function nodeFor(
     id: ref.uid,
     kubeObject: object as GraphNode['kubeObject'],
     customResourceDefinition: crdName(resourceClass),
+    detailsComponent,
     status,
     weight,
   };
@@ -105,12 +131,28 @@ export const veleroMapSource: GraphSource = {
 
       const nodes = [
         ...scheduleItems.map(item =>
-          nodeFor(item, scheduleMapStatus(item.statusDisplay), 1000, VeleroSchedule)
+          nodeFor(
+            item,
+            scheduleMapStatus(item.statusDisplay),
+            1000,
+            VeleroSchedule,
+            ScheduleNodeDetails
+          )
         ),
-        ...backupItems.map(item => nodeFor(item, backupMapStatus(item.phase), 800, VeleroBackup)),
-        ...restoreItems.map(item => nodeFor(item, backupMapStatus(item.phase), 700, VeleroRestore)),
+        ...backupItems.map(item =>
+          nodeFor(item, backupMapStatus(item.phase), 800, VeleroBackup, BackupNodeDetails)
+        ),
+        ...restoreItems.map(item =>
+          nodeFor(item, backupMapStatus(item.phase), 700, VeleroRestore, RestoreNodeDetails)
+        ),
         ...locationItems.map(item =>
-          nodeFor(item, storageMapStatus(item.phase), 900, VeleroBackupStorageLocation)
+          nodeFor(
+            item,
+            storageMapStatus(item.phase),
+            900,
+            VeleroBackupStorageLocation,
+            StorageNodeDetails
+          )
         ),
       ].filter((item): item is GraphNode => item !== null);
 
