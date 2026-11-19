@@ -829,7 +829,11 @@ function Controllers({ controllers, namespace }) {
           header: t('Namespace'),
           accessorKey: 'metadata.namespace',
           Cell: ({ row: { original: item } }) => (
-            <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
+            <Link
+              routeName="namespace"
+              params={{ name: item.metadata.namespace }}
+              activeCluster={item.cluster}
+            >
               {item.metadata.namespace}
             </Link>
           ),
@@ -871,7 +875,7 @@ function CRDs() {
     return fluxCrds.map(crd => {
       return {
         name: (
-          <Link routeName={'crd'} params={{ name: crd.metadata.name }}>
+          <Link routeName={'crd'} params={{ name: crd.metadata.name }} activeCluster={crd.cluster}>
             {crd.metadata.name}
           </Link>
         ),

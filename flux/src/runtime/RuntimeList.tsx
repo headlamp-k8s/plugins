@@ -59,7 +59,11 @@ export function FluxRunTime() {
               header: t('Namespace'),
               accessorKey: 'metadata.namespace',
               Cell: ({ row: { original: item } }) => (
-                <Link routeName="namespace" params={{ name: item.metadata.namespace }}>
+                <Link
+                  routeName="namespace"
+                  params={{ name: item.metadata.namespace }}
+                  activeCluster={item.cluster}
+                >
                   {item.metadata.namespace}
                 </Link>
               ),

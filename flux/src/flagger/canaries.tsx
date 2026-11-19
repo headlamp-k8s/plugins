@@ -49,6 +49,7 @@ function CanaryList({ canaryResourceClass }) {
       status?: {
         phase?: string;
       };
+      cluster?: string;
     } & KubeCRD
   ] = React.useMemo(() => {
     if (!canaries || !deployments) return null;
@@ -57,12 +58,18 @@ function CanaryList({ canaryResourceClass }) {
       const namespace = canary?.jsonData?.metadata?.namespace;
 
       // Find the original canary deployment
+      // With several clusters selected, a Deployment of the same name can exist
+      // in another cluster, so match the cluster as well.
       const canaryDeployment = deployments.find(
-        d => d.jsonData.metadata.name === targetName && d.jsonData.metadata.namespace === namespace
+        d =>
+          d.cluster === canary.cluster &&
+          d.jsonData.metadata.name === targetName &&
+          d.jsonData.metadata.namespace === namespace
       );
       // Find the primary deployment (with -primary suffix)
       const primaryDeployment = deployments.find(
         d =>
+          d.cluster === canary.cluster &&
           d.jsonData.metadata.name === `${targetName}-primary` &&
           d.jsonData.metadata.namespace === namespace
       );
@@ -84,6 +91,9 @@ function CanaryList({ canaryResourceClass }) {
 
       return {
         ...canary.jsonData,
+        // The row is rebuilt from jsonData, which does not carry the cluster
+        // the Canary was listed from; keep it so the row's links open there.
+        cluster: canary.cluster,
         canaryPodCount: canaryDeployment?.status?.readyReplicas || 0,
         primaryPodCount: primaryDeployment?.status?.readyReplicas || 0,
         hasAbTesting,
@@ -109,6 +119,7 @@ function CanaryList({ canaryResourceClass }) {
                     name: item.metadata.name,
                     namespace: item.metadata.namespace,
                   }}
+                  activeCluster={item.cluster}
                 >
                   <Box alignItems="center" display="flex">
                     <Box mr={0.5}>{item.metadata.name}</Box>
@@ -131,7 +142,11 @@ function CanaryList({ canaryResourceClass }) {
             header: t('Namespace'),
             accessorKey: 'metadata.namespace',
             Cell: ({ row: { original: item } }) => (
-              <Link routeName={'namespace'} params={{ name: item.metadata.namespace }}>
+              <Link
+                routeName={'namespace'}
+                params={{ name: item.metadata.namespace }}
+                activeCluster={item.cluster}
+              >
                 {item.metadata.namespace}
               </Link>
             ),
@@ -144,7 +159,11 @@ function CanaryList({ canaryResourceClass }) {
               const namespace = item?.spec?.targetRef?.namespace || item?.metadata?.namespace;
               const name = item?.spec?.targetRef?.name;
               return (
-                <Link routeName={`${kind.toLowerCase()}`} params={{ name, namespace }}>
+                <Link
+                  routeName={`${kind.toLowerCase()}`}
+                  params={{ name, namespace }}
+                  activeCluster={item.cluster}
+                >
                   {name}
                 </Link>
               );
