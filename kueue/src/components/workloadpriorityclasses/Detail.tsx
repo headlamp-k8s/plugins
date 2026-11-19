@@ -37,7 +37,10 @@ export default function WorkloadPriorityClassDetail() {
                 {
                   id: 'related-workloads',
                   section: (
-                    <RelatedWorkloadsByPriorityClassSection priorityClassName={wpc.metadata.name} />
+                    <RelatedWorkloadsByPriorityClassSection
+                      priorityClassName={wpc.metadata.name}
+                      cluster={wpc.cluster}
+                    />
                   ),
                 },
               ].filter(Boolean)

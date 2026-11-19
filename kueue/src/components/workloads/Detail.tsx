@@ -694,7 +694,7 @@ export default function WorkloadDetail(props: {
                 {
                   name: 'Priority Class',
                   value: workload.isWorkloadPriorityClass
-                    ? renderWorkloadPriorityClassLink(workload.priorityClassName)
+                    ? renderWorkloadPriorityClassLink(workload.priorityClassName, workload.cluster)
                     : workload.priorityClassDisplay,
                 },
                 {

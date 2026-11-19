@@ -70,7 +70,7 @@ export function renderResourceFlavorLink(flavorName?: string, cluster?: string) 
 }
 
 /** Render a WorkloadPriorityClass reference as a detail-page link when present. */
-export function renderWorkloadPriorityClassLink(priorityClassName?: string) {
+export function renderWorkloadPriorityClassLink(priorityClassName?: string, cluster?: string) {
   if (!priorityClassName) {
     return '-';
   }
@@ -79,6 +79,7 @@ export function renderWorkloadPriorityClassLink(priorityClassName?: string) {
     <Link
       routeName={kueueRouteNames.workloadPriorityClassDetail}
       params={{ name: priorityClassName }}
+      activeCluster={cluster}
     >
       {priorityClassName}
     </Link>

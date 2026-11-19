@@ -489,10 +489,12 @@ function RelatedWorkloadsTable({
 /** List Workloads associated with a specific WorkloadPriorityClass. */
 export function RelatedWorkloadsByPriorityClassSection({
   priorityClassName,
+  cluster,
 }: {
   priorityClassName: string;
+  cluster?: string;
 }) {
-  const [workloads, workloadsError] = Workload.useList();
+  const [workloads, workloadsError] = Workload.useList({ cluster });
 
   const relatedWorkloads = useMemo(() => {
     if (!workloads) {
