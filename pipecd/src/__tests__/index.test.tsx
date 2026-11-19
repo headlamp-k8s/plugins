@@ -57,6 +57,14 @@ describe('plugin registration', () => {
     expect(routePaths()).toContain('/pipecd/applications');
   });
 
+  it('registers an Overview entry and route, and opens it from the section', () => {
+    const entries = vi.mocked(registerSidebarEntry).mock.calls.map(call => call[0]);
+
+    expect(entries.find(e => e.name === 'pipecd-overview')?.parent).toBe('pipecd');
+    expect(entries.find(e => e.name === 'pipecd')?.url).toBe('/pipecd/overview');
+    expect(routePaths()).toContain('/pipecd/overview');
+  });
+
   // Custom sidebar icons have to be registered with addIcon and referenced by
   // name, the same way the other plugins in this repository do it.
   it('registers its icon with Iconify before using it', () => {

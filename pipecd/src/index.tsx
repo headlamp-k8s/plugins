@@ -20,6 +20,7 @@ import React from 'react';
 import { ApplicationDetail } from './components/ApplicationDetail';
 import { ApplicationList } from './components/ApplicationList';
 import { DeploymentDetail } from './components/DeploymentDetail';
+import { Overview } from './components/Overview';
 import { SettingsPage } from './components/SettingsPage';
 
 const PIPECD_ICON_NAME = 'pipecd:logo';
@@ -34,10 +35,19 @@ addIcon(PIPECD_ICON_NAME, pipecdIcon);
 
 registerSidebarEntry({
   name: 'pipecd',
-  url: '/pipecd/applications',
+  url: '/pipecd/overview',
   label: 'PipeCD',
   icon: PIPECD_ICON_NAME,
   parent: null,
+  sidebar: 'IN-CLUSTER',
+});
+
+registerSidebarEntry({
+  name: 'pipecd-overview',
+  url: '/pipecd/overview',
+  label: 'Overview',
+  icon: 'mdi:view-dashboard-outline',
+  parent: 'pipecd',
   sidebar: 'IN-CLUSTER',
 });
 
@@ -57,6 +67,15 @@ registerSidebarEntry({
   icon: 'mdi:cog-outline',
   parent: 'pipecd',
   sidebar: 'IN-CLUSTER',
+});
+
+registerRoute({
+  path: '/pipecd/overview',
+  sidebar: 'pipecd-overview',
+  name: 'PipeCDOverview',
+  component: () => <Overview />,
+  exact: true,
+  noAuthRequired: false,
 });
 
 registerRoute({
