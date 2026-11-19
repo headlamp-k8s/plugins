@@ -17,11 +17,11 @@ import {
 export function ChallengeDetail() {
   const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
   return (
     <>
-      {isManagerInstalled ? (
+      {!notInstalled && !isLoading ? (
         <DetailsGrid
           resourceType={Challenge}
           name={name}
@@ -101,7 +101,7 @@ export function ChallengeDetail() {
           }
         />
       ) : (
-        <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+        <NotInstalledBanner isLoading={isLoading} />
       )}
     </>
   );
