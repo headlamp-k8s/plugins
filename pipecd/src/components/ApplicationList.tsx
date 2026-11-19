@@ -119,7 +119,8 @@ export function ApplicationList(): JSX.Element {
         // PipeCD returns a page at a time and hands back a cursor, so follow it
         // until it stops moving. Without this only the newest page is listed,
         // and search and filtering only ever see that page. A page can repeat
-        // an application, so skip ids already collected.
+        // an application, so skip ids already collected, and stop at a page
+        // with nothing new, or a server that cycles cursors never ends.
         const seen = new Set<string>();
         const collected: Application[] = [];
         let cursor = '';
@@ -129,12 +130,13 @@ export function ApplicationList(): JSX.Element {
             REQUEST_TIMEOUT_MS,
             t('The request timed out.')
           );
+          const before = collected.length;
           for (const app of resp.applications ?? []) {
             if (seen.has(app.id)) continue;
             seen.add(app.id);
             collected.push(app);
           }
-          if (!resp.cursor || resp.cursor === cursor || !resp.applications?.length) break;
+          if (!resp.cursor || resp.cursor === cursor || collected.length === before) break;
           cursor = resp.cursor;
         }
         if (signal?.aborted) return;

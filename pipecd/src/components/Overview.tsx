@@ -135,7 +135,8 @@ async function fetchAllApplications(
   signal: AbortSignal,
   timedOut: string
 ): Promise<Application[]> {
-  // Follow the cursor and skip repeated ids, as on the applications page.
+  // Follow the cursor and skip repeated ids, as on the applications page. A
+  // page with nothing new ends it, so cycling cursors cannot loop forever.
   const seen = new Set<string>();
   const collected: Application[] = [];
   let cursor = '';
@@ -144,12 +145,13 @@ async function fetchAllApplications(
       listApplications(config, { cursor: cursor || undefined, disabled, signal }),
       timedOut
     );
+    const before = collected.length;
     for (const app of resp.applications ?? []) {
       if (seen.has(app.id)) continue;
       seen.add(app.id);
       collected.push(app);
     }
-    if (!resp.cursor || resp.cursor === cursor || !resp.applications?.length) break;
+    if (!resp.cursor || resp.cursor === cursor || collected.length === before) break;
     cursor = resp.cursor;
   }
   return collected;
@@ -505,6 +507,9 @@ function DeploymentChart({ buckets, range }: { buckets: Bucket[]; range: TimeRan
                 const total = totals[i];
                 const title = bucketTitle(b.start, range);
                 const label = t('{{time}}: {{count}} deployments', { time: title, count: total });
+                const counts = OUTCOMES.filter(o => b[o] > 0).map(
+                  o => `${outcomeLabels[o]}: ${b[o]}`
+                );
                 return (
                   <Tooltip
                     key={b.start}
@@ -512,17 +517,18 @@ function DeploymentChart({ buckets, range }: { buckets: Bucket[]; range: TimeRan
                     title={
                       <Box>
                         <strong>{label}</strong>
-                        {OUTCOMES.filter(o => b[o] > 0).map(o => (
-                          <Box key={o}>
-                            {outcomeLabels[o]}: {b[o]}
-                          </Box>
+                        {counts.map(c => (
+                          <Box key={c}>{c}</Box>
                         ))}
                       </Box>
                     }
                   >
+                    {/* Focusable, and named with the counts, so the tooltip's
+                        breakdown also reaches keyboard and screen reader users. */}
                     <Box
                       role="img"
-                      aria-label={label}
+                      tabIndex={0}
+                      aria-label={[label, ...counts].join(', ')}
                       sx={{
                         flex: 1,
                         minWidth: 0,
@@ -747,13 +753,12 @@ export function Overview(): JSX.Element {
     return <NotConfigured />;
   }
 
-  // A new lookup may still be running after a refresh, so the old cluster-only
-  // result can hold a piped the refreshed data now lists itself.
+  // A new lookup may still be running, so the old cluster-only result can hold
+  // a piped the refreshed data now lists itself, or one whose pod is gone.
   const listedIds = new Set(data?.pipeds.map(p => p.id));
+  const extraPipeds = clusterOnly.filter(p => inCluster.has(p.id) && !listedIds.has(p.id));
   const pipeds = data
-    ? [...data.pipeds, ...clusterOnly.filter(p => !listedIds.has(p.id))].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      )
+    ? [...data.pipeds, ...extraPipeds].sort((a, b) => a.name.localeCompare(b.name))
     : [];
   const runningHere = pipeds.filter(p => inCluster.get(p.id)?.running).length;
   const notRunningHere = pipeds.filter(p => inCluster.get(p.id)?.running === false).length;

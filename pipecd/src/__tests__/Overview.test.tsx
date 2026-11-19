@@ -599,6 +599,40 @@ describe('Overview', () => {
     expect(rows).toHaveLength(1);
   });
 
+  it('drops a cluster-only piped once its pod is gone', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-old-001', true);
+    let moved = false;
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      // The lookup for the new pod hangs, so only the filter can drop old-vm.
+      if (id === 'piped-new') return new Promise<Piped>(() => {});
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('old-vm');
+    });
+
+    // old-vm's pod is deleted and another piped's pod appears.
+    cluster.pods = [];
+    cluster.configMaps = [];
+    runInCluster('piped-new', true);
+    moved = true;
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+    await waitFor(() => {
+      expect(vi.mocked(pipecdApi.getPiped).mock.calls.some(([, id]) => id === 'piped-new')).toBe(
+        moved
+      );
+    });
+
+    expect(screen.getByRole('table', { name: 'pipecd-pipeds-table' }).textContent).not.toContain(
+      'old-vm'
+    );
+  });
+
   it('reports a cluster piped that could not be looked up', async () => {
     setupConfigured();
     mockSuccess([]);
@@ -774,7 +808,7 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(cardOf('Deployments').textContent).toContain('/ hour');
     });
-    expect(screen.getAllByRole('img', { name: /deployments$/ })).toHaveLength(24);
+    expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(24);
 
     // Each bar is an hour, so it is labelled as a span such as "09–10".
     const hourLabels = screen.getAllByText(/^\d{2}–\d{2}$/);
@@ -782,8 +816,28 @@ describe('Overview', () => {
     const currentHour = new Date().getHours();
     const pad = (h: number): string => String(h).padStart(2, '0');
     expect(
-      screen.getAllByRole('img', { name: /deployments$/ })[23].getAttribute('aria-label')
+      screen.getAllByRole('img', { name: /deployments/ })[23].getAttribute('aria-label')
     ).toContain(`${pad(currentHour)}–${pad((currentHour + 1) % 24)}`);
+  });
+
+  // The breakdown is in a hover tooltip, so the bar itself must carry it for
+  // keyboard and screen reader users.
+  it('lets each bar be focused and names its outcome counts', async () => {
+    setupConfigured();
+    mockSuccess([
+      deployment('d1', 0, 'DEPLOYMENT_SUCCESS'),
+      deployment('d2', 0, 'DEPLOYMENT_SUCCESS'),
+      deployment('d3', 0, 'DEPLOYMENT_FAILURE'),
+    ]);
+
+    renderOverview();
+    await screen.findByText('1 synced');
+
+    const bars = screen.getAllByRole('img', { name: /deployments/ });
+    const today = bars[bars.length - 1];
+    expect(today.getAttribute('tabindex')).toBe('0');
+    // The day comes first, so the counts are heard after it.
+    expect(today.getAttribute('aria-label')).toMatch(/3 deployments, Success: 2, Failure: 1$/);
   });
 
   it('fetches again when the time range changes', async () => {
@@ -800,7 +854,7 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(cardOf('Deployments').textContent).toContain('Last 30 days');
     });
-    expect(screen.getAllByRole('img', { name: /deployments$/ })).toHaveLength(30);
+    expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(30);
     expect(vi.mocked(pipecdApi.listApplications).mock.calls.length).toBeGreaterThan(callsBefore);
   });
 
@@ -817,6 +871,22 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(vi.mocked(pipecdApi.listDeployments).mock.calls.length).toBeGreaterThan(callsBefore);
     });
+  });
+
+  it('stops paging applications when the server cycles cursors', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    let calls = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async (_config, options) => {
+      if (options?.disabled) return { applications: [], cursor: '' };
+      calls++;
+      return { applications: [appKubernetesSynced], cursor: calls % 2 ? 'c1' : 'c2' };
+    });
+
+    renderOverview();
+
+    expect(await screen.findByText('1 synced')).toBeTruthy();
+    expect(calls).toBeLessThan(5);
   });
 
   it('does not count a repeated application twice', async () => {

@@ -137,6 +137,26 @@ describe('ApplicationList', () => {
     expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
   });
 
+  it('stops paging when the server cycles through the same cursors', async () => {
+    setupConfigured();
+    let calls = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async () => {
+      calls++;
+      return {
+        applications: [appKubernetesSynced],
+        cursor: calls % 2 ? 'c1' : 'c2',
+      };
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('loading-skeleton')).toBeNull();
+    });
+    expect(calls).toBeLessThan(5);
+  });
+
   it('shows a status label for each sync state', async () => {
     setupConfigured();
     mockListSuccess();
