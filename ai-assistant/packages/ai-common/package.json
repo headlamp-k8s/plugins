@@ -106,6 +106,7 @@
     "@langchain/mistralai": "^1.0.4",
     "@langchain/ollama": "^1.2.2",
     "@langchain/openai": "^1.2.6",
+    "js-yaml": "^4.1.0",
     "jszip": "^3.10.1",
     "langchain": "^1.2.19",
     "zod": "^4.1.12"
@@ -115,6 +116,7 @@
   },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.6.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "eslint": "^8.57.1",
     "prettier": "^2.8.8",
