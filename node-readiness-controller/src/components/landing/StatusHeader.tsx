@@ -2,28 +2,36 @@ import { Icon } from '@iconify/react';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Chip, Tooltip, Typography } from '@mui/material';
 import React from 'react';
+import type { ControllerHealthResult } from '../../utils/controllerHealth';
 
 interface StatusHeaderProps {
   /** Total number of rules, displayed in the explore button label. */
   totalRules: number;
-  /** Deployment object returned by useGet, or null if unavailable. */
-  deployment: any;
-  /** Error returned by the deployment useGet hook. */
-  deploymentError: any;
+  /** Evaluated controller health status (from lease or deployment fallback). */
+  controllerHealth?: Partial<ControllerHealthResult>;
   /** Callback invoked when the "Explore All Rules" button is clicked. */
   onExploreRules: () => void;
 }
 
 /**
- * Top header bar displaying the CRD API status, optional controller health badge,
+ * Top header bar displaying the CRD API status, controller health badge,
  * and the "Explore All Rules" action button.
  */
 export default function StatusHeader({
   totalRules,
-  deployment,
-  deploymentError,
+  controllerHealth,
   onExploreRules,
 }: StatusHeaderProps) {
+  const isForbidden = controllerHealth?.status === 'forbidden';
+  const isLoading = controllerHealth?.status === 'loading';
+
+  const shouldRenderControllerBadge = !isForbidden && !isLoading;
+
+  const badgeStatus = controllerHealth?.badgeStatus ?? 'warning';
+  const badgeLabel = controllerHealth?.badgeLabel ?? null;
+
+  const tooltipTitle = controllerHealth?.tooltip ?? '';
+
   return (
     <Box
       mb={3}
@@ -58,78 +66,28 @@ export default function StatusHeader({
             borderColor: 'divider',
           }}
         />
-        {/* Controller Deployment Health:
-            - Running: deployment found and readyReplicas > 0
-            - Stopped: deployment found and readyReplicas === 0
-            - Not Detected: deployment not found in default namespace (404)
-            - Omitted: 403 Forbidden (RBAC denied) or still loading
-        */}
-        {(() => {
-          const isForbidden = (deploymentError as any)?.status === 403;
-          if (isForbidden) {
-            return null;
-          }
-
-          if (deployment === null && !deploymentError) {
-            return null;
-          }
-
-          const isNotFound = (deploymentError as any)?.status === 404;
-          const isReady = (deployment?.status?.readyReplicas ?? 0) > 0;
-
-          if (deployment) {
-            return (
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem',
-                    ml: 1,
-                  }}
-                >
-                  Controller:
-                </Typography>
-                <StatusLabel status={isReady ? 'success' : 'error'}>
-                  {isReady ? 'Running' : 'Stopped'}
-                </StatusLabel>
-              </Box>
-            );
-          }
-
-          if (isNotFound) {
-            return (
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem',
-                    ml: 1,
-                  }}
-                >
-                  Controller:
-                </Typography>
-                <Tooltip
-                  title="Controller deployment not detected in default namespace (nrr-system)"
-                  arrow
-                >
-                  <span>
-                    <StatusLabel status="warning">Not Detected</StatusLabel>
-                  </span>
-                </Tooltip>
-              </Box>
-            );
-          }
-
-          return null;
-        })()}
+        {shouldRenderControllerBadge && badgeLabel && (
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                fontSize: '0.75rem',
+                ml: 1,
+              }}
+            >
+              Controller:
+            </Typography>
+            <Tooltip title={tooltipTitle} arrow>
+              <span>
+                <StatusLabel status={badgeStatus}>{badgeLabel}</StatusLabel>
+              </span>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
       <Button
         variant="contained"

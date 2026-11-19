@@ -12,10 +12,10 @@ interface AttentionRuleCardProps {
   failedCount: number;
   /** Number of nodes with taint present (0 for dry-run rules). */
   taintsPresent: number;
-  /** Whether the rule is awaiting controller reconciliation. */
-  isReconciling: boolean;
-  /** Whether the rule has never been evaluated yet (observedGeneration is undefined). */
+  /** Whether the rule is awaiting controller synchronization. */
   isPendingSync?: boolean;
+  /** Whether the rule is fresh and has never been evaluated yet (observedGeneration is undefined). */
+  isFresh?: boolean;
   /** Click handler (typically navigates to the rule detail view). */
   onClick: () => void;
 }
@@ -29,8 +29,8 @@ export default function AttentionRuleCard({
   isDryRun,
   failedCount,
   taintsPresent,
-  isReconciling,
-  isPendingSync,
+  isPendingSync = false,
+  isFresh,
   onClick,
 }: AttentionRuleCardProps) {
   const theme = useTheme();
@@ -104,7 +104,7 @@ export default function AttentionRuleCard({
             <Chip
               label="Dry Run"
               size="small"
-              color="warning"
+              color="default"
               variant="outlined"
               sx={{ flexShrink: 0, height: 22, fontSize: '0.7rem' }}
             />
@@ -148,7 +148,7 @@ export default function AttentionRuleCard({
               </Typography>
             </Box>
           )}
-          {isReconciling && (
+          {isPendingSync && (
             <Box display="flex" alignItems="center" gap={0.75}>
               <Box
                 display="flex"
@@ -162,7 +162,7 @@ export default function AttentionRuleCard({
                 />
               </Box>
               <Typography variant="body2" color="info.main" sx={{ fontWeight: 500 }}>
-                {isPendingSync ? 'Pending controller sync' : 'Spec modified (pending sync)'}
+                {isFresh ? 'Pending controller sync' : 'Spec modified (pending sync)'}
               </Typography>
             </Box>
           )}

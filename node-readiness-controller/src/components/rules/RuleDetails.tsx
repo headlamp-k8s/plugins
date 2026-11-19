@@ -1,4 +1,4 @@
-import { DateLabel, Resource, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { DateLabel, Resource } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip } from '@mui/material';
 import React from 'react';
 import { useParams } from 'react-router-dom';
@@ -27,14 +27,14 @@ export interface RuleDetailSectionItem {
  * @returns Array of section name-value pairs for the details grid.
  */
 export function getRuleDetailSections(rule: NodeReadinessRule | null): RuleDetailSectionItem[] {
-  const spec = rule?.spec ?? rule?.jsonData?.spec;
-  const status = rule?.status ?? rule?.jsonData?.status;
+  const spec = rule?.spec;
+  const status = rule?.status;
   if (!rule || !spec) return [];
 
   const { targeted, satisfied, unsatisfied, failed } = getRuleStats(rule);
-  const enforcementMode = rule.enforcementMode ?? (spec.enforcementMode || 'continuous');
-  const isDryRun = rule.isDryRun ?? Boolean(spec.dryRun);
-  const conditionPolicy = rule.conditionPolicy ?? (spec.conditionPolicy || 'allOf');
+  const enforcementMode = rule.enforcementMode;
+  const isDryRun = rule.isDryRun;
+  const conditionPolicy = rule.conditionPolicy;
 
   const sections: RuleDetailSectionItem[] = [
     {
@@ -52,15 +52,7 @@ export function getRuleDetailSections(rule: NodeReadinessRule | null): RuleDetai
     },
     {
       name: 'Dry-run',
-      value: isDryRun ? (
-        <StatusLabel status="warning" sx={{ fontSize: '0.8125rem', py: 0.25 }}>
-          Yes
-        </StatusLabel>
-      ) : (
-        <StatusLabel status="success" sx={{ fontSize: '0.8125rem', py: 0.25 }}>
-          No
-        </StatusLabel>
-      ),
+      value: <Chip label={isDryRun ? 'Yes' : 'No'} size="small" variant="outlined" />,
     },
     {
       name: 'Condition Policy',
@@ -131,7 +123,7 @@ export default function RuleDetails() {
       withEvents
       extraInfo={getRuleDetailSections}
       extraSections={(rule: NodeReadinessRule | null) => {
-        const spec = rule?.spec ?? rule?.jsonData?.spec;
+        const spec = rule?.spec;
         if (!rule || !spec) return [];
         return [
           {

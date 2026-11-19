@@ -11,7 +11,7 @@ interface MetricCardsGridProps {
   /** Count of rules with at least one failed node evaluation. */
   rulesWithEvaluationErrors: number;
   /** Count of rules where observedGeneration < metadata.generation or observedGeneration is unset. */
-  reconcilingRules: number;
+  pendingSyncRules: number;
   /** Callback invoked when any metric card is clicked. */
   onCardClick: () => void;
 }
@@ -23,7 +23,7 @@ export default function MetricCardsGrid({
   totalRules,
   rulesWithTaintsPresent,
   rulesWithEvaluationErrors,
-  reconcilingRules,
+  pendingSyncRules,
   onCardClick,
 }: MetricCardsGridProps) {
   const theme = useTheme();
@@ -69,7 +69,7 @@ export default function MetricCardsGrid({
       <Grid item xs={12} sm={6} md={3}>
         <MetricCard
           title="Pending Rule Sync"
-          value={reconcilingRules}
+          value={pendingSyncRules}
           caption="Spec modified, awaiting sync"
           icon="mdi:sync"
           iconSize="2.3rem"

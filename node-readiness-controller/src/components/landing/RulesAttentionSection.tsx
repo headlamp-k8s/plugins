@@ -2,17 +2,12 @@ import { Icon } from '@iconify/react';
 import { Box, Card, Grid, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import React from 'react';
+import type { RuleLike } from '../../utils';
+import { getRuleStats, isFreshRule, isRulePendingSync } from '../../utils';
 import AttentionRuleCard from './AttentionRuleCard';
 
-interface AttentionRule {
-  metadata: { name: string };
-  spec?: { dryRun?: boolean };
-  status?: {
-    failedNodes?: Array<{ nodeName: string; reason?: string }>;
-    nodeEvaluations?: Array<{ nodeName: string; taintStatus: string }>;
-    observedGeneration?: number;
-  };
-  jsonData?: { metadata?: { generation?: number } };
+interface AttentionRule extends RuleLike {
+  metadata: { name: string; generation?: number };
 }
 
 interface RulesAttentionSectionProps {
@@ -81,31 +76,24 @@ export default function RulesAttentionSection({
       ) : (
         <Grid container spacing={2} alignItems="stretch">
           {rulesNeedingAttention.map(rule => {
-            const failed = rule.status?.failedNodes || [];
-            const failedNodeNames = new Set(failed.map((f: any) => f.nodeName));
-            const evals = (rule.status?.nodeEvaluations || []).filter(
-              (e: any) => !failedNodeNames.has(e.nodeName)
-            );
-            const gen = rule.jsonData?.metadata?.generation;
-            const obsGen = rule.status?.observedGeneration;
-
+            const stats = getRuleStats(rule);
             const taintsPresent =
-              rule.spec?.dryRun !== true
-                ? evals.filter(e => e.taintStatus === 'Present').length
-                : 0;
-            const isReconciling = gen !== undefined && (obsGen === undefined || obsGen < gen);
-            const isPendingSync = gen !== undefined && obsGen === undefined;
+              !stats.isDryRun && typeof stats.unsatisfied === 'number' ? stats.unsatisfied : 0;
+            const isPendingSync = isRulePendingSync(rule);
+            const isFresh = isFreshRule(rule);
+
+            const ruleName = rule.metadata.name;
 
             return (
-              <Grid item xs={12} sm={6} md={4} key={rule.metadata.name} sx={{ display: 'flex' }}>
+              <Grid item xs={12} sm={6} md={4} key={ruleName} sx={{ display: 'flex' }}>
                 <AttentionRuleCard
-                  name={rule.metadata.name}
-                  isDryRun={rule.spec?.dryRun === true}
-                  failedCount={failed.length}
+                  name={ruleName}
+                  isDryRun={stats.isDryRun}
+                  failedCount={stats.failed}
                   taintsPresent={taintsPresent}
-                  isReconciling={isReconciling}
                   isPendingSync={isPendingSync}
-                  onClick={() => onRuleClick(rule.metadata.name)}
+                  isFresh={isFresh}
+                  onClick={() => onRuleClick(ruleName)}
                 />
               </Grid>
             );
