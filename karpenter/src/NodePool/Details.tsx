@@ -16,6 +16,7 @@ import { DiffEditorDialog } from '../common/resourceEditor';
 import { handleShowDiff } from '../helpers/handleDiff';
 import { getHandleSaveHelper } from '../helpers/handleSave';
 import { renderInstanceRequirements } from '../helpers/instanceRequirements';
+import { parseCpu } from '../helpers/parseCpu';
 import { parseRam } from '../helpers/parseRam';
 import { renderDisruptionBudgets } from '../helpers/renderBudgets';
 import { nodePoolClass } from './List';
@@ -91,8 +92,8 @@ export function NodePoolDetailView(props: { name?: string }) {
         withEvents
         actions={actions()}
         extraInfo={item => {
-          const usedCPU = parseInt(item.jsonData.status?.resources?.cpu || '0');
-          const CPUlimit = parseInt(item.jsonData.spec?.limits?.cpu || '0');
+          const usedCPU = parseCpu(item.jsonData.status?.resources?.cpu || '0');
+          const CPUlimit = parseCpu(item.jsonData.spec?.limits?.cpu || '0');
 
           const usedMemory = parseRam(item.jsonData.status?.resources?.memory || '0');
           const memoryLimit = parseRam(item.jsonData.spec?.limits?.memory || '0');
