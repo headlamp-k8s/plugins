@@ -241,7 +241,7 @@ function LegacyContent({
     return undefined;
   };
   const matchingRule = target.rule ? resolveRule(target.rule) : undefined;
-  const reasonRules = matchingRule ? [matchingRule] : rules;
+  const reasonRules = matchingRule ? [matchingRule] : [];
   const reasons = describeMatchReasons(reasonRules, kind, t);
   const fix = matchingRule ? suggestFix(matchingRule, target) : undefined;
   const pattern = matchingRule?.validate?.pattern;

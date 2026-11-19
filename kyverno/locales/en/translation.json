@@ -220,6 +220,7 @@
   "No evaluated resources yet.": "No evaluated resources yet.",
   "Affected resources (top {{count}}):": "Affected resources (top {{count}}):",
   "More resources not shown. Open the policy detail page to see all.": "More resources not shown. Open the policy detail page to see all.",
+  "No data": "No data",
   "a label selector": "a label selector",
   "a namespace label selector": "a namespace label selector",
   "and": "and",
