@@ -23,7 +23,7 @@ vi.mock('notistack', () => ({
   useSnackbar: () => ({ enqueueSnackbar }),
 }));
 
-import { useArgoOperation } from './useArgoOperation';
+import { useArgoOperation, useArgoOperationMap } from './useArgoOperation';
 
 beforeEach(() => enqueueSnackbar.mockReset());
 
@@ -58,5 +58,39 @@ describe('useArgoOperation', () => {
       'Failed to rollback guestbook: controller rejected operation',
       { variant: 'error' }
     );
+  });
+});
+
+describe('useArgoOperationMap', () => {
+  it('passes the app cluster to the operation', async () => {
+    const operation = vi.fn().mockResolvedValue({});
+    const { result } = renderHook(() => useArgoOperationMap(operation, 'Sync'));
+
+    await act(async () => {
+      await result.current.execute('guestbook', 'argocd', 'cluster-b');
+    });
+
+    expect(operation).toHaveBeenCalledWith('guestbook', 'argocd', 'cluster-b');
+  });
+
+  it('tracks loading per cluster for apps with the same name', async () => {
+    let resolve: (value: unknown) => void = () => {};
+    const operation = vi.fn(() => new Promise(r => (resolve = r)));
+    const { result } = renderHook(() => useArgoOperationMap(operation, 'Sync'));
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.execute('guestbook', 'argocd', 'cluster-b');
+    });
+
+    expect(result.current.isLoading('guestbook', 'argocd', 'cluster-b')).toBe(true);
+    expect(result.current.isLoading('guestbook', 'argocd', 'cluster-a')).toBe(false);
+
+    await act(async () => {
+      resolve({});
+      await pending;
+    });
+
+    expect(result.current.isLoading('guestbook', 'argocd', 'cluster-b')).toBe(false);
   });
 });

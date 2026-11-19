@@ -63,9 +63,15 @@ function applicationApiError(err: unknown, namespace: string): Error {
  * @param name - The name of the Argo CD Application to patch.
  * @param namespace - The namespace where the Application is deployed.
  * @param patch - The JSON merge-patch object to apply to the Application.
+ * @param cluster - The cluster the Application is in. Defaults to the current cluster.
  * @returns A promise resolving to the API response from the Kubernetes server.
  */
-async function mergePatchApplication(name: string, namespace: string, patch: object) {
+async function mergePatchApplication(
+  name: string,
+  namespace: string,
+  patch: object,
+  cluster?: string
+) {
   try {
     return await request(applicationPath(name, namespace), {
       method: 'PATCH',
@@ -73,6 +79,7 @@ async function mergePatchApplication(name: string, namespace: string, patch: obj
         'Content-Type': 'application/merge-patch+json',
       },
       body: JSON.stringify(patch),
+      ...(cluster ? { cluster } : {}),
     });
   } catch (err: unknown) {
     throw applicationApiError(err, namespace);
@@ -80,13 +87,23 @@ async function mergePatchApplication(name: string, namespace: string, patch: obj
 }
 
 /** Writes a sync operation without changing the Application's desired-state spec. */
-function triggerSyncOperation(name: string, namespace: string, sync: Record<string, unknown>) {
-  return mergePatchApplication(name, namespace, {
-    operation: {
-      initiatedBy: { username: 'headlamp' },
-      sync,
+function triggerSyncOperation(
+  name: string,
+  namespace: string,
+  sync: Record<string, unknown>,
+  cluster?: string
+) {
+  return mergePatchApplication(
+    name,
+    namespace,
+    {
+      operation: {
+        initiatedBy: { username: 'headlamp' },
+        sync,
+      },
     },
-  });
+    cluster
+  );
 }
 
 type ApplicationOperationState = {
@@ -155,13 +172,19 @@ async function replaceOperationIfIdle(
  * @param namespace - The namespace the Application lives in (usually "argocd").
  * @param revision - Optional Git revision to sync to. When omitted the
  *   controller resolves the app's configured `targetRevision`.
+ * @param cluster - The cluster the Application is in. Defaults to the current cluster.
  */
-export function syncApplication(name: string, namespace: string, revision?: string) {
+export function syncApplication(
+  name: string,
+  namespace: string,
+  revision?: string,
+  cluster?: string
+) {
   const sync: Record<string, unknown> = {};
   if (revision !== undefined) {
     sync.revision = revision;
   }
-  return triggerSyncOperation(name, namespace, sync);
+  return triggerSyncOperation(name, namespace, sync, cluster);
 }
 
 function getRollbackSources(entry: RevisionHistory): {
@@ -226,17 +249,24 @@ export async function rollbackApplication(
  * @param name - The Application resource name.
  * @param namespace - The namespace the Application lives in (usually "argocd").
  * @param type - The refresh type: "normal" (default) or "hard".
+ * @param cluster - The cluster the Application is in. Defaults to the current cluster.
  */
 export function refreshApplication(
   name: string,
   namespace: string,
-  type: 'normal' | 'hard' = 'normal'
+  type: 'normal' | 'hard' = 'normal',
+  cluster?: string
 ) {
-  return mergePatchApplication(name, namespace, {
-    metadata: {
-      annotations: {
-        'argocd.argoproj.io/refresh': type,
+  return mergePatchApplication(
+    name,
+    namespace,
+    {
+      metadata: {
+        annotations: {
+          'argocd.argoproj.io/refresh': type,
+        },
       },
     },
-  });
+    cluster
+  );
 }
