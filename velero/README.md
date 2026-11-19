@@ -80,7 +80,9 @@ On clusters without CSI/datamover CRDs (or backups that only save manifests), th
 
 ## RBAC
 
-The Headlamp service account (or user token) needs read access to Velero CRDs. Create and pause stay hidden unless the extra write rules are allowed; SelfSubjectAccessReview still checks the signed-in user before those buttons appear.
+Anyone browsing Velero needs read access to the custom resources. Create and pause stay hidden until a SelfSubjectAccessReview allows them for the signed-in user.
+
+These rules are for that user. They are not the permissions of the Velero controller, and the Headlamp service account does not need the write rules.
 
 ```yaml
 rules:
@@ -98,6 +100,12 @@ rules:
   - apiGroups: ['velero.io']
     resources: ['datauploads', 'datadownloads']
     verbs: ['get', 'list', 'watch']
+```
+
+Grant the following only to people who should create a backup, restore, or schedule, or pause a schedule:
+
+```yaml
+rules:
   - apiGroups: ['velero.io']
     resources: ['backups', 'restores', 'schedules']
     verbs: ['create']
