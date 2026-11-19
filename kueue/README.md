@@ -16,6 +16,8 @@ Related Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads are 
 
 Kueue CRDs must be installed in the cluster before the plugin can list resources. See the [Kueue installation guide](https://kueue.sigs.k8s.io/docs/getting-started/installation/) for installation instructions.
 
+When a Kueue page is opened for a cluster without the Kueue API, the plugin explains that Kueue resources are unavailable. Switch to a cluster with Kueue installed, or install Kueue in the selected cluster. If Kueue is installed but your account lacks access, the page shows the existing permissions message instead.
+
 You can check for the `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and `Workload` CRDs and resources with:
 
 ```bash
