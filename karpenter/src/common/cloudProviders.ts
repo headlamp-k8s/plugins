@@ -1,3 +1,5 @@
+import { getReadyStatus } from '../helpers/readyStatus';
+
 export const AWS_DEPLOYMENT_CONFIGS = {
   EKS_AUTOMODE: {
     group: 'eks.amazonaws.com',
@@ -24,11 +26,7 @@ export const AWS_DEPLOYMENT_CONFIGS = {
       {
         id: 'nodeclass-status',
         label: 'Status',
-        getValue: nodeClass => {
-          const conditions = nodeClass.jsonData?.status?.conditions || [];
-          const readyCondition = conditions.find(c => c.type === 'Ready');
-          return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-        },
+        getValue: nodeClass => getReadyStatus(nodeClass),
       },
       {
         id: 'nodeclass-role',
@@ -63,11 +61,7 @@ export const AWS_DEPLOYMENT_CONFIGS = {
       {
         id: 'nodeclass-status',
         label: 'Status',
-        getValue: nodeClass => {
-          const conditions = nodeClass.jsonData?.status?.conditions || [];
-          const readyCondition = conditions.find(c => c.type === 'Ready');
-          return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-        },
+        getValue: nodeClass => getReadyStatus(nodeClass),
       },
       {
         id: 'nodeclass-role',
@@ -102,11 +96,7 @@ export const AWS_DEPLOYMENT_CONFIGS = {
       {
         id: 'nodeclass-status',
         label: 'Status',
-        getValue: nodeClass => {
-          const conditions = nodeClass.jsonData?.status?.conditions || [];
-          const readyCondition = conditions.find(c => c.type === 'Ready');
-          return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-        },
+        getValue: nodeClass => getReadyStatus(nodeClass),
       },
       {
         id: 'nodeclass-role',
@@ -146,11 +136,7 @@ export const CLOUD_PROVIDERS = {
       {
         id: 'nodeclass-status',
         label: 'Status',
-        getValue: nodeClass => {
-          const conditions = nodeClass.jsonData?.status?.conditions || [];
-          const readyCondition = conditions.find(c => c.type === 'Ready');
-          return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-        },
+        getValue: nodeClass => getReadyStatus(nodeClass),
       },
       {
         id: 'nodeclass-role',
@@ -182,11 +168,7 @@ export const CLOUD_PROVIDERS = {
       {
         id: 'nodeclass-status',
         label: 'Status',
-        getValue: nodeClass => {
-          const conditions = nodeClass.jsonData?.status?.conditions || [];
-          const readyCondition = conditions.find(c => c.type === 'Ready');
-          return readyCondition?.status === 'True' ? 'Ready' : 'Not Ready';
-        },
+        getValue: nodeClass => getReadyStatus(nodeClass),
       },
       {
         id: 'nodeclass-maxPods',
