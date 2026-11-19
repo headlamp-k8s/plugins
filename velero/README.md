@@ -38,6 +38,19 @@ Sidebar **Velero → Overview** (`/velero`):
 
 Pinned to the current Headlamp cluster and the configured Velero namespace.
 
+### Phase 6 — Map
+
+Headlamp **Map** includes a **Velero** source, on by default. It draws Schedules, Backups, Restores, and Backup Storage Locations from the configured Velero namespace:
+
+- A Schedule connects to the Backups it created and to the storage location named on its template
+- A Backup connects to that storage location and to Restores that name it
+- A Restore that names a Schedule connects to that Schedule
+- Node color follows the phase: success, warning, or error
+
+Objects in another namespace or cluster are not linked. Volume snapshot locations and datamover objects stay on their detail pages.
+
+Backup and Restore detail pages also show a failure reason, validation errors, and status conditions when Velero reports them. A Backup detail links to its storage location.
+
 ### Phase 4 — Create and manage (write path)
 
 - **Create Backup** / **Create Restore** / **Create Schedule** from the respective list pages (forms adapted from the reasonerjt prototype).
@@ -69,7 +82,9 @@ On clusters without CSI/datamover CRDs (or backups that only save manifests), th
 
 ## RBAC
 
-The Headlamp service account (or user token) needs read access to Velero CRDs:
+Anyone browsing Velero needs read access to the custom resources. Create and pause stay hidden until a SelfSubjectAccessReview allows them for the signed-in user.
+
+These rules are for that user. They are not the permissions of the Velero controller, and the Headlamp service account does not need the write rules.
 
 ```yaml
 rules:
@@ -87,6 +102,18 @@ rules:
   - apiGroups: ['velero.io']
     resources: ['datauploads', 'datadownloads']
     verbs: ['get', 'list', 'watch']
+```
+
+Grant the following only to people who should create a backup, restore, or schedule, or pause a schedule:
+
+```yaml
+rules:
+  - apiGroups: ['velero.io']
+    resources: ['backups', 'restores', 'schedules']
+    verbs: ['create']
+  - apiGroups: ['velero.io']
+    resources: ['schedules']
+    verbs: ['get', 'patch']
 ```
 
 (`datauploads` / `datadownloads` are often under `velero.io/v2alpha1` depending on Velero version.)
@@ -109,6 +136,7 @@ Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
 2. Open sidebar **Velero → Schedules / Backups / Restores** for Phase 2
 3. Open **Storage Locations / Volume Snapshots / Backup Repositories** for Phase 3
 4. Open a CSI/datamover Backup detail to see Pod Volume Backups / Data Uploads when those CRs exist
+5. Open **Map** and leave the **Velero** source enabled to see Schedule, Backup, Restore, and storage links
 
 ## Screenshots
 

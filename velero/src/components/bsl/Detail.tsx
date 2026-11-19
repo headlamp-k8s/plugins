@@ -1,17 +1,22 @@
 import { DetailsGrid, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { useParams } from 'react-router-dom';
 import { VeleroBackupStorageLocation } from '../../resources/storage';
 import { getStorageStatusColor } from '../../utils/status';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
-function BslDetailContent() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+function BslDetailContent(props: { name?: string; namespace?: string; cluster?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const name = props.name ?? params.name;
+  const namespace = props.namespace ?? params.namespace;
+  const cluster = props.cluster || getCluster() || undefined;
 
   return (
     <DetailsGrid
       resourceType={VeleroBackupStorageLocation}
       name={name}
       namespace={namespace}
+      cluster={cluster}
       withEvents
       noDefaultActions
       extraInfo={item => {
@@ -43,10 +48,10 @@ function BslDetailContent() {
 }
 
 /** Phase 3: BSL detail. */
-export default function BslDetail() {
+export default function BslDetail(props: { name?: string; namespace?: string; cluster?: string }) {
   return (
-    <VeleroInstallCheck>
-      <BslDetailContent />
+    <VeleroInstallCheck cluster={props.cluster}>
+      <BslDetailContent {...props} />
     </VeleroInstallCheck>
   );
 }

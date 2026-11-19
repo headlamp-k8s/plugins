@@ -24,12 +24,13 @@ function toError(err: unknown): Error {
  * are retained as `error` so callers can show an access/load failure instead of
  * a false "Velero not detected" empty state.
  */
-export function useVeleroInstalled(): {
+export function useVeleroInstalled(clusterOverride?: string): {
   installed: boolean | null;
   loading: boolean;
   error: Error | null;
 } {
-  const cluster = useCluster();
+  const urlCluster = useCluster();
+  const cluster = clusterOverride || urlCluster;
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
@@ -46,7 +47,7 @@ export function useVeleroInstalled(): {
 
     async function probe() {
       try {
-        await ApiProxy.request('/apis/velero.io/v1', { method: 'GET' });
+        await ApiProxy.request('/apis/velero.io/v1', { method: 'GET', cluster });
         if (!cancelled) {
           setInstalled(true);
           setError(null);

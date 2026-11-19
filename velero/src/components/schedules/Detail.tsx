@@ -1,4 +1,5 @@
 import { DetailsGrid, Link, StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -12,12 +13,16 @@ import { getBackupStatusColor, getScheduleStatusColor } from '../../utils/status
 import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
-function ScheduleDetailContent() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+function ScheduleDetailContent(props: { name?: string; namespace?: string; cluster?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const name = props.name ?? params.name;
+  const namespace = props.namespace ?? params.namespace;
+  const cluster = props.cluster || getCluster() || undefined;
   // Authorize against this Schedule's route ns + name (supports resourceNames RBAC).
   const { loading: accessLoading, canPatchSchedule } = useVeleroAccess({
     namespace,
     name,
+    cluster,
   });
   const [pauseBusy, setPauseBusy] = useState(false);
   const [pauseError, setPauseError] = useState<string | null>(null);
@@ -25,13 +30,14 @@ function ScheduleDetailContent() {
     latestBackupBySchedule,
     loading: backupsLoading,
     error: backupsError,
-  } = useVeleroData(namespace);
+  } = useVeleroData(namespace, cluster);
 
   return (
     <DetailsGrid
       resourceType={VeleroSchedule}
       name={name}
       namespace={namespace}
+      cluster={cluster}
       withEvents
       noDefaultActions
       actions={schedule => {
@@ -166,10 +172,14 @@ function ScheduleDetailContent() {
 }
 
 /** Velero Schedule detail — Phase 2 fields + Phase 4 pause/unpause. */
-export default function ScheduleDetail() {
+export default function ScheduleDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
   return (
-    <VeleroInstallCheck>
-      <ScheduleDetailContent />
+    <VeleroInstallCheck cluster={props.cluster}>
+      <ScheduleDetailContent {...props} />
     </VeleroInstallCheck>
   );
 }

@@ -9,9 +9,11 @@ import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { BackupDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
-function BackupDetailContent() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  const cluster = getCluster() || undefined;
+function BackupDetailContent(props: { name?: string; namespace?: string; cluster?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const name = props.name ?? params.name;
+  const namespace = props.namespace ?? params.namespace;
+  const cluster = props.cluster || getCluster() || undefined;
   const labelSelector = name ? backupNameLabelSelector(name) : undefined;
 
   // CSI / datamover related objects (empty when CRDs are missing on the cluster).
@@ -31,6 +33,7 @@ function BackupDetailContent() {
       resourceType={VeleroBackup}
       name={name}
       namespace={namespace}
+      cluster={cluster}
       withEvents
       noDefaultActions
       extraInfo={backup => {
@@ -64,6 +67,35 @@ function BackupDetailContent() {
             value: backup.includedNamespacesDisplay,
           },
           {
+            name: 'Storage location',
+            value: backup.storageLocation ? (
+              <Link
+                routeName={veleroRouteNames.bslDetail}
+                params={{ namespace: backup.getNamespace(), name: backup.storageLocation }}
+                activeCluster={backup.cluster}
+              >
+                {backup.storageLocation}
+              </Link>
+            ) : (
+              'Velero default'
+            ),
+          },
+          ...(backup.failureReason
+            ? [{ name: 'Failure reason', value: backup.failureReason }]
+            : []),
+          ...(backup.validationErrors.length > 0
+            ? [{ name: 'Validation errors', value: backup.validationErrors.join('; ') }]
+            : []),
+          ...(backup.errors > 0 || backup.warnings > 0
+            ? [
+                { name: 'Errors', value: String(backup.errors) },
+                { name: 'Warnings', value: String(backup.warnings) },
+              ]
+            : []),
+          ...(backup.conditionsDisplay
+            ? [{ name: 'Conditions', value: backup.conditionsDisplay }]
+            : []),
+          {
             name: 'Started',
             value: backup.startTimestamp ? new Date(backup.startTimestamp).toLocaleString() : 'N/A',
           },
@@ -92,10 +124,14 @@ function BackupDetailContent() {
 }
 
 /** Velero Backup detail — Phase 2 fields + Phase 3 CSI/datamover sections. */
-export default function BackupDetail() {
+export default function BackupDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
   return (
-    <VeleroInstallCheck>
-      <BackupDetailContent />
+    <VeleroInstallCheck cluster={props.cluster}>
+      <BackupDetailContent {...props} />
     </VeleroInstallCheck>
   );
 }

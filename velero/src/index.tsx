@@ -1,10 +1,11 @@
 /**
  * Velero plugin entry point — Phase 1 coverage panels, Phase 2 Schedules/Backups/
  * Restores, Phase 3 BSL/VSL/BackupRepository + CSI datamover detail sections,
- * Phase 4 create/pause actions, Phase 5 overview dashboard.
+ * Phase 4 create/pause actions, Phase 5 overview dashboard, Phase 6 map.
  */
 import {
   registerDetailsViewSectionsProcessor,
+  registerMapSource,
   registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
@@ -33,12 +34,14 @@ import ScheduleList from './components/schedules/List';
 import VslDetail from './components/vsl/Detail';
 import VslList from './components/vsl/List';
 import { PLUGIN_NAME } from './config';
+import { veleroMapSource } from './mapView';
 import { Settings } from './settings';
 import { veleroRouteNames, veleroRoutePaths } from './utils/veleroRoutes';
 import { registerVeleroIcon, veleroIconName } from './veleroIcon';
 
 registerPluginSettings(PLUGIN_NAME, Settings, true);
 registerVeleroIcon();
+registerMapSource(veleroMapSource);
 
 // ---- Phase 2–5: sidebar + routes ----
 

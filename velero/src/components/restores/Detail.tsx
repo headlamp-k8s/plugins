@@ -10,9 +10,11 @@ import { veleroRouteNames } from '../../utils/veleroRoutes';
 import { RestoreDataMovementSections } from '../common/DataMovementSections';
 import { VeleroInstallCheck } from '../common/VeleroInstallCheck';
 
-function RestoreDetailContent() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  const cluster = getCluster() || undefined;
+function RestoreDetailContent(props: { name?: string; namespace?: string; cluster?: string }) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const name = props.name ?? params.name;
+  const namespace = props.namespace ?? params.namespace;
+  const cluster = props.cluster || getCluster() || undefined;
   const labelSelector = name ? restoreNameLabelSelector(name) : undefined;
 
   const [pvrs, pvrsError] = VeleroPodVolumeRestore.useList({
@@ -31,6 +33,7 @@ function RestoreDetailContent() {
       resourceType={VeleroRestore}
       name={name}
       namespace={namespace}
+      cluster={cluster}
       withEvents
       noDefaultActions
       extraInfo={restore => {
@@ -94,6 +97,15 @@ function RestoreDetailContent() {
             name: 'Warnings',
             value: String(restore.warnings),
           },
+          ...(restore.failureReason
+            ? [{ name: 'Failure reason', value: restore.failureReason }]
+            : []),
+          ...(restore.validationErrors.length > 0
+            ? [{ name: 'Validation errors', value: restore.validationErrors.join('; ') }]
+            : []),
+          ...(restore.conditionsDisplay
+            ? [{ name: 'Conditions', value: restore.conditionsDisplay }]
+            : []),
           {
             name: 'Started',
             value: restore.startTimestamp
@@ -125,10 +137,14 @@ function RestoreDetailContent() {
 }
 
 /** Velero Restore detail — Phase 2 fields + Phase 3 CSI/datamover sections. */
-export default function RestoreDetail() {
+export default function RestoreDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
   return (
-    <VeleroInstallCheck>
-      <RestoreDetailContent />
+    <VeleroInstallCheck cluster={props.cluster}>
+      <RestoreDetailContent {...props} />
     </VeleroInstallCheck>
   );
 }

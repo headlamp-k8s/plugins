@@ -75,11 +75,16 @@ export interface VeleroDataState {
  * histories for those schedules. The cluster-wide Backups page uses
  * ResourceListView / VeleroBackup.useList separately for the full table.
  */
-export function useVeleroData(namespaceOverride?: string): VeleroDataState {
+export function useVeleroData(
+  namespaceOverride?: string,
+  clusterOverride?: string
+): VeleroDataState {
   const configuredNamespace = useVeleroNamespace();
   const veleroNamespace = namespaceOverride || configuredNamespace;
-  // Detail pages pass namespaceOverride — pin to the viewed cluster as well.
-  const detailCluster = namespaceOverride ? getCluster() || undefined : undefined;
+  // Detail pages pass namespaceOverride — pin to that page's cluster as well.
+  const detailCluster = namespaceOverride
+    ? clusterOverride || getCluster() || undefined
+    : undefined;
   const listOpts = detailCluster
     ? { namespace: veleroNamespace, cluster: detailCluster }
     : { namespace: veleroNamespace };
