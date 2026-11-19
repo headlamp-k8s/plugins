@@ -30,6 +30,17 @@
  *
  */
 
+// The NodePool patterns below are copied from the karpenter.sh_nodepools CRD in
+// Karpenter v1.15.2, so that the editor accepts every value the API server accepts:
+// https://github.com/aws/karpenter-provider-aws/blob/v1.15.2/pkg/apis/crds/karpenter.sh_nodepools.yaml
+
+// spec.disruption.consolidateAfter: a duration such as 30s or 1h30m, or Never.
+const NODEPOOL_CONSOLIDATE_AFTER_PATTERN = '^(([0-9]+(s|m|h))+|Never)$';
+
+// A Kubernetes resource quantity such as 1000, 500m, 1.5, 1000Gi, 1000G or 1e9.
+const RESOURCE_QUANTITY_PATTERN =
+  '^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$';
+
 export const KARPENTER_SCHEMAS = {
   'NodeClass-schema': {
     type: 'object',
@@ -348,7 +359,7 @@ export const KARPENTER_SCHEMAS = {
               },
               consolidateAfter: {
                 type: 'string',
-                pattern: '^[0-9]+(s|m|h)$',
+                pattern: NODEPOOL_CONSOLIDATE_AFTER_PATTERN,
               },
               consolidationPolicy: {
                 type: 'string',
@@ -357,9 +368,10 @@ export const KARPENTER_SCHEMAS = {
           },
           limits: {
             type: 'object',
-            properties: {
-              cpu: { type: 'number', minimum: 0 },
-              memory: { type: 'string', pattern: '^[0-9]+(Gi|Mi)?$' },
+            // Every limit (cpu, memory, nodes, nvidia.com/gpu, ...) is an
+            // int-or-string resource quantity.
+            additionalProperties: {
+              anyOf: [{ type: 'integer' }, { type: 'string', pattern: RESOURCE_QUANTITY_PATTERN }],
             },
           },
           template: {
