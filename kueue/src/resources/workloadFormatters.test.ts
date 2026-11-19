@@ -118,7 +118,8 @@ describe('Workload formatters', () => {
     expect(renderFinishedStatus([{ type: 'Finished', status: 'True' }])).toBe('Yes');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'False' }])).toBe('No');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'Unknown' }])).toBe('Unknown');
-    expect(renderFinishedStatus()).toBe('Unknown');
+    expect(renderFinishedStatus([{ type: 'Admitted', status: 'True' }])).toBe('No');
+    expect(renderFinishedStatus()).toBe('No');
   });
 
   it('derives readable Workload status from Kueue condition types and reasons', () => {
