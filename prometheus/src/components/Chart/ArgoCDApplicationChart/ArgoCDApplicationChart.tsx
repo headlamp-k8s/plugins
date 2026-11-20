@@ -2,7 +2,11 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { blue } from '@mui/material/colors';
 import { alpha, useTheme } from '@mui/material/styles';
 import { fetchMetrics } from '../../../request';
-import { createDataProcessor, createTickTimestampFormatter } from '../../../util';
+import {
+  createDataProcessor,
+  createTickTimestampFormatter,
+  escapePrometheusLabelValue,
+} from '../../../util';
 import Chart from '../Chart/Chart';
 
 interface ArgoCDApplicationMetricChartProps {
@@ -73,10 +77,6 @@ export function ArgoCDApplicationMetricChart(props: ArgoCDApplicationMetricChart
       subPath={props.subPath}
     />
   );
-}
-
-function escapePrometheusLabelValue(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 }
 
 function applicationSelector(namespace: string, name: string) {

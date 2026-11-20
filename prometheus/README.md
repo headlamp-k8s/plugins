@@ -23,6 +23,12 @@ For the charts to be shown, Prometheus must be installed in the cluster.
 You can install Prometheus from Headlamp (desktop version only) by selecting the Apps
 page from the sidebar, searching for "prometheus" and installing the app/chart from the "prometheus-community" repository.
 
+## Knative
+
+For the charts of Knative Services, Revisions and Eventing resources, and the metrics they need,
+see the
+[Knative plugin documentation](../knative/README.md#prometheus-metrics-integration).
+
 ## Tinkerbell Controller Health
 
 For Tinkerbell controller metrics configuration and chart details, see the

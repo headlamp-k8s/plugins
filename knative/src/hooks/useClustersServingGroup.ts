@@ -15,9 +15,9 @@
  */
 import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { useQuery } from '@tanstack/react-query';
-import { REQUEST_TIMEOUT_MS } from '../components/kservices/detail/hooks/restartMachine';
 import { queryClient } from '../queryClient';
 import { isNotFoundError } from '../utils/error';
+import { REQUEST_TIMEOUT_MS } from '../utils/request';
 
 const noClusters: string[] = [];
 
