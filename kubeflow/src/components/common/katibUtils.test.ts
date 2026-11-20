@@ -1,3 +1,4 @@
+import { getKatibMetricValue, KatibMetric } from '../../resources/katibMetric';
 import {
   formatKatibFeasibleSpace,
   getKatibBestTrial,
@@ -21,7 +22,8 @@ function createTrial(options: {
   namespace?: string;
   ownerExperiment?: string;
   labels?: Record<string, string>;
-  metrics?: Array<{ name?: string; value?: string }>;
+  metrics?: KatibMetric[];
+  objectiveType?: string;
   latestConditionType?: string;
   latestConditionStatus?: string;
 }) {
@@ -31,9 +33,11 @@ function createTrial(options: {
     ownerExperiment,
     labels,
     metrics = [],
+    objectiveType = 'maximize',
     latestConditionType,
     latestConditionStatus = 'True',
   } = options;
+  const objective = { objectiveMetricName: 'accuracy', type: objectiveType };
 
   return {
     metadata: {
@@ -50,9 +54,7 @@ function createTrial(options: {
         : [],
     },
     spec: {
-      objective: {
-        objectiveMetricName: 'accuracy',
-      },
+      objective,
     },
     status: {
       observation: {
@@ -71,7 +73,10 @@ function createTrial(options: {
       return ownerExperiment ?? '';
     },
     get objectiveMetricValue() {
-      return metrics.find(metric => metric.name === 'accuracy')?.value ?? '';
+      return getKatibMetricValue(
+        metrics.find(metric => metric.name === 'accuracy'),
+        objective
+      );
     },
     get latestCondition() {
       return latestConditionType
@@ -145,13 +150,39 @@ describe('formatKatibFeasibleSpace', () => {
   });
 });
 
+describe('getKatibMetricValue', () => {
+  const metric = { name: 'accuracy', min: '0.71', max: '0.95', latest: '0.93' };
+
+  it('uses max for maximize, min for minimize and latest otherwise', () => {
+    expect(getKatibMetricValue(metric, { type: 'maximize' })).toBe('0.95');
+    expect(getKatibMetricValue(metric, { type: 'minimize' })).toBe('0.71');
+    expect(getKatibMetricValue(metric, {})).toBe('0.93');
+  });
+
+  it('follows the metric strategy set for the metric', () => {
+    expect(
+      getKatibMetricValue(metric, {
+        type: 'maximize',
+        metricStrategies: [{ name: 'accuracy', value: 'latest' }],
+      })
+    ).toBe('0.93');
+  });
+
+  it('falls back to latest, and to an empty string without a metric', () => {
+    expect(getKatibMetricValue({ name: 'accuracy', latest: '0.8' }, { type: 'maximize' })).toBe(
+      '0.8'
+    );
+    expect(getKatibMetricValue(undefined, { type: 'maximize' })).toBe('');
+  });
+});
+
 describe('trial selection helpers', () => {
   it('returns the objective metric value when the metric name is present', () => {
     const trial = createTrial({
       name: 'trial-a',
       metrics: [
-        { name: 'loss', value: '0.4' },
-        { name: 'accuracy', value: '0.92' },
+        { name: 'loss', min: '0.3', max: '0.9', latest: '0.4' },
+        { name: 'accuracy', min: '0.5', max: '0.92', latest: '0.9' },
       ],
     });
 
@@ -181,15 +212,32 @@ describe('trial selection helpers', () => {
   it('picks the highest metric for maximize objectives', () => {
     const bestTrial = createTrial({
       name: 'trial-best',
-      metrics: [{ name: 'accuracy', value: '0.95' }],
+      metrics: [{ name: 'accuracy', min: '0.6', max: '0.95', latest: '0.94' }],
     });
     const otherTrial = createTrial({
       name: 'trial-other',
-      metrics: [{ name: 'accuracy', value: '0.91' }],
+      metrics: [{ name: 'accuracy', min: '0.6', max: '0.91', latest: '0.9' }],
     });
 
     expect(
       getKatibBestTrial([otherTrial, bestTrial], 'accuracy', 'maximize')?.trial.metadata.name
+    ).toBe('trial-best');
+  });
+
+  it('picks the lowest metric for minimize objectives', () => {
+    const bestTrial = createTrial({
+      name: 'trial-best',
+      objectiveType: 'minimize',
+      metrics: [{ name: 'accuracy', min: '0.12', max: '0.8', latest: '0.15' }],
+    });
+    const otherTrial = createTrial({
+      name: 'trial-other',
+      objectiveType: 'minimize',
+      metrics: [{ name: 'accuracy', min: '0.2', max: '0.7', latest: '0.25' }],
+    });
+
+    expect(
+      getKatibBestTrial([otherTrial, bestTrial], 'accuracy', 'minimize')?.trial.metadata.name
     ).toBe('trial-best');
   });
 
