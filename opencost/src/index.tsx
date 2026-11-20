@@ -99,21 +99,45 @@ const useOpenCostData = () => {
       return;
     }
     setIsLoading(true);
+    // Only the request for the current resource type may touch state or the shared
+    // cache; a late response for a previous type must not overwrite newer data.
+    let cancelled = false;
     const fetchData = async () => {
-      const [namespace, serviceName] = await getServiceDetails();
-      const result = await fetchOpencostData(
-        namespace,
-        serviceName,
-        getDisplayTimespan(),
-        resourceType,
-        true
-      );
-      openCostDataCache = result;
-      setData(result);
-      setIsLoading(false);
+      try {
+        const [namespace, serviceName] = await getServiceDetails();
+        if (cancelled) {
+          return;
+        }
+        const result = await fetchOpencostData(
+          namespace,
+          serviceName,
+          getDisplayTimespan(),
+          resourceType,
+          true
+        );
+        if (cancelled) {
+          return;
+        }
+        openCostDataCache = result;
+        setData(result);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        console.error('Failed to fetch OpenCost data', err);
+        openCostDataCache = null;
+        setData(null);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     };
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [resourceType]);
 
   return { data, isLoading, sharedResourceType: resourceType, setResourceType };

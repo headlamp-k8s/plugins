@@ -52,6 +52,21 @@ export const NoData: Story = {
   },
 };
 
+export const ErrorState: Story = {
+  args: {
+    installed: true,
+    displayTimespan: '24h',
+    tsData: [],
+    displayCurrency: '$',
+    accumulatedData: {},
+    learnMoreLink: 'http://localhost:3000/docs',
+    handleDisplayTimespanChange: (timespan: string) => {
+      console.log(timespan);
+    },
+    error: 'Request to OpenCost URL https://opencost.example.com failed with status 503',
+  },
+};
+
 const accumulatedDataWeek = {
   name: 'pod-name',
   properties: {
