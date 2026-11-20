@@ -394,7 +394,7 @@ export function renderFlavorFungibility(flavorFungibility?: FlavorFungibilityLik
     flavorFungibility.preference ? `Preference: ${flavorFungibility.preference}` : undefined,
   ]
     .filter(Boolean)
-    .join('; ');
+    .join('; ') || '-';
 }
 
 /** Render ClusterQueue status usage or reservations grouped by flavor. */
