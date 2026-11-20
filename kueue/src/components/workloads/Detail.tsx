@@ -21,7 +21,6 @@ import {
 } from '../../resources/workload';
 import {
   findWorkloadCondition,
-  getWorkloadBlocker,
   getWorkloadTimeline,
   renderPodSetRequests,
   renderQueuePosition,
@@ -584,13 +583,7 @@ export function getBlockerSection(
   workload: Workload,
   title = 'Why is this Workload not admitted?'
 ) {
-  const blocker = getWorkloadBlocker(
-    workload.conditions,
-    workload.status.admissionChecks,
-    workload.status.requeueState,
-    workload.spec.active,
-    workload.status.admission
-  );
+  const blocker = workload.blocker;
 
   if (!blocker) {
     return null;
