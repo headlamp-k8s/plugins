@@ -33,7 +33,12 @@
   },
   "headlamp": {
     "i18n": [
-      "en"
+      "en",
+      "de",
+      "es",
+      "fr",
+      "ja",
+      "zh"
     ]
   },
   "overrides": {

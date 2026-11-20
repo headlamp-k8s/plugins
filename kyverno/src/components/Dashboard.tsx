@@ -340,7 +340,9 @@ export function Dashboard() {
               <Box
                 role="img"
                 aria-label={`${t('Compliance by Namespace (Top 10)')}: ${namespaceData
-                  .map(d => `${d.name}: ${d.pass} pass, ${d.failAndError} fail`)
+                  .map(
+                    d => `${d.name}: ${d.pass} ${t('Pass')}, ${d.failAndError} ${t('Fail/Error')}`
+                  )
                   .join('; ')}`}
               >
                 <ResponsiveContainer width="100%" height={300}>
