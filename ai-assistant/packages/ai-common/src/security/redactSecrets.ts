@@ -56,7 +56,7 @@ export function redactSecrets(input: string): string {
   // AWS environment/JSON credential names are explicit because underscores
   // prevent the generic key-name pattern's word boundary from matching them.
   out = out.replace(
-    /"(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)"(\s*:\s*)"[^"]*"/gi,
+    /"(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
   out = out.replace(
@@ -87,7 +87,7 @@ export function redactSecrets(input: string): string {
   // quoted key and value are matched before the unquoted fallback below.
   // e.g. "Authorization": "Bearer eyJ..." → "Authorization": "[REDACTED]"
   out = out.replace(
-    /"(authorization|x-api-key|x-auth-token)"(\s*:\s*)"[^"]*"/gi,
+    /"(authorization|x-api-key|x-auth-token)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
 
@@ -107,9 +107,10 @@ export function redactSecrets(input: string): string {
 
   // Generic credential key/value — JSON-quoted form first.
   // Covers "password": "s3cr3t", "token": "abc 123", etc.
-  // Values in JSON can contain spaces, so match [^"]* rather than \S+.
+  // Values in JSON can contain spaces or escaped characters, so match
+  // escape-aware strings "(?:[^"\\]|\\.)*" rather than [^"]*.
   out = out.replace(
-    /"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer)"(\s*:\s*)"[^"]*"/gi,
+    /"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
 
@@ -457,6 +458,9 @@ function redactSecretYamlDocument(input: string): string {
   return redacted.join('\n');
 }
 
+const CREDENTIAL_PROPERTY_REGEX =
+  /^(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer|authorization|x-api-key|x-auth-token|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)$/i;
+
 /**
  * Returns a deep redacted copy of a JSON-like value.
  *
@@ -470,7 +474,15 @@ export function redactSecretsInValue(value: unknown): unknown {
 
   const copy: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    copy[key] = redactSecretsInValue(item);
+    if (CREDENTIAL_PROPERTY_REGEX.test(key)) {
+      if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        copy[key] = '[REDACTED]';
+      } else {
+        copy[key] = redactSecretsInValue(item);
+      }
+    } else {
+      copy[key] = redactSecretsInValue(item);
+    }
   }
   if (copy.kind === 'Secret') {
     redactSecretDataFieldsInPlace(copy);

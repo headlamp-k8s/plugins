@@ -434,10 +434,30 @@ namespace: default`;
     expect(
       redactSecrets('DefaultEndpointsProtocol=https;AccountKey=abc123DEF456==;Rest=1')
     ).toContain('AccountKey=[REDACTED]');
+    const jsonWithEscapedQuote = JSON.stringify({ password: 'prefix"remaining-secret' });
+    const redactedJson = redactSecrets(jsonWithEscapedQuote);
+    expect(redactedJson).not.toContain('remaining-secret');
+    expect(redactedJson).toContain('"[REDACTED]"');
   });
 });
 
 describe('redactSecretsInValue', () => {
+  it('redacts credential properties structurally even with escaped quotes', () => {
+    const value = {
+      username: 'alice',
+      password: 'prefix"remaining-secret',
+      nested: {
+        api_key: 'key-12345',
+        client_secret: 'sec"ret',
+      },
+    };
+    const out = redactSecretsInValue(value) as any;
+    expect(out.username).toBe('alice');
+    expect(out.password).toBe('[REDACTED]');
+    expect(out.nested.api_key).toBe('[REDACTED]');
+    expect(out.nested.client_secret).toBe('[REDACTED]');
+  });
+
   it('redacts data fields of a parsed Secret object', () => {
     const value = {
       kind: 'Secret',
