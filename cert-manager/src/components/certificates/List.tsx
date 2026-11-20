@@ -36,9 +36,9 @@ export function CertificatesList() {
           },
           getValue: item => item.status?.notAfter ?? '',
           sort: (a, b) => {
-            const dateA = new Date(a.status?.notAfter);
-            const dateB = new Date(b.status?.notAfter);
-            return dateA.getTime() - dateB.getTime();
+            const timeA = a.status?.notAfter ? new Date(a.status.notAfter).getTime() : Infinity;
+            const timeB = b.status?.notAfter ? new Date(b.status.notAfter).getTime() : Infinity;
+            return timeA - timeB;
           },
         },
         'age',
