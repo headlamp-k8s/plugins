@@ -46,7 +46,8 @@ function findCondition(resource: any, type: string): KubeCondition | undefined {
 export function getSubResourceHealth(kind: string, resource: any): SubResourceHealth {
   switch (kind) {
     case 'Deployment': {
-      const desired = resource?.spec?.replicas ?? 0;
+      // Kubernetes defaults spec.replicas to 1 when the field is omitted.
+      const desired = resource?.spec?.replicas ?? 1;
       const ready = resource?.status?.readyReplicas ?? 0;
       return {
         status: desired > 0 && ready >= desired ? 'success' : 'error',
@@ -54,7 +55,7 @@ export function getSubResourceHealth(kind: string, resource: any): SubResourceHe
       };
     }
     case 'StatefulSet': {
-      const desired = resource?.spec?.replicas ?? 0;
+      const desired = resource?.spec?.replicas ?? 1;
       const ready = resource?.status?.readyReplicas ?? 0;
       return {
         status: desired > 0 && ready >= desired ? 'success' : 'error',
@@ -133,7 +134,7 @@ export function getResolvedValues(kind: string, resource: any): string {
     }
     case 'Deployment':
     case 'StatefulSet': {
-      const desired = resource?.spec?.replicas ?? 0;
+      const desired = resource?.spec?.replicas ?? 1;
       const ready = resource?.status?.readyReplicas ?? 0;
       return `replicas: ${ready}/${desired}`;
     }
