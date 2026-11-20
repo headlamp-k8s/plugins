@@ -34,6 +34,14 @@ export interface ObjectEventListProps {
   title: string;
 }
 
+// Event only exposes lastTimestamp through getValue() internally, not as a public
+// property, so reading n1.lastTimestamp directly is always undefined -- this sorted
+// nothing. lastOccurrence is the getter that actually resolves to a real value,
+// including for EventSeries-based repeated events where lastTimestamp is empty.
+export function sortEventsByAge(n1: Event, n2: Event): number {
+  return new Date(n2.lastOccurrence).getTime() - new Date(n1.lastOccurrence).getTime();
+}
+
 export default function CustomObjectEventList(props: ObjectEventListProps) {
   const { t } = useTranslation();
   let fieldSelector = `source=${props.source},involvedObject.kind=${props.kind}`;
@@ -98,8 +106,7 @@ export default function CustomObjectEventList(props: ObjectEventListProps) {
                 />
               );
             },
-            sort: (n1: KubeEvent, n2: KubeEvent) =>
-              new Date(n2.lastTimestamp).getTime() - new Date(n1.lastTimestamp).getTime(),
+            sort: sortEventsByAge,
           },
         ]}
         data={eventList}
