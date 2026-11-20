@@ -289,13 +289,24 @@ function LatencyChart({ data, windowEnd }: { data: ChartDataPoint[]; windowEnd: 
     );
   }
 
-  const pointCount = data.filter(p => p.y !== null).length;
+  const validPoints = data.filter(p => p.y !== null) as { timestamp: number; y: number }[];
+  const pointCount = validPoints.length;
+  const latencySummary =
+    pointCount > 0
+      ? (() => {
+          const msValues = validPoints.map(p => p.y * 1000);
+          const minMs = Math.min(...msValues).toFixed(1);
+          const maxMs = Math.max(...msValues).toFixed(1);
+          const latestMs = msValues[msValues.length - 1].toFixed(1);
+          return `, min ${minMs}ms, max ${maxMs}ms, latest ${latestMs}ms`;
+        })()
+      : '';
   return (
     <Box
       role="img"
       aria-label={`${t('Admission Review Latency (P95, last hour)')}: ${pointCount} ${t(
         'data points'
-      )}`}
+      )}${latencySummary}`}
     >
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={withGapMarkers(data, LATENCY_STEP_SECONDS)} style={{ fontSize: 14 }}>
