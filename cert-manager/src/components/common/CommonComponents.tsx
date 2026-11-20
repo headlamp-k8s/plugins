@@ -5,7 +5,6 @@ import {
   LabelListItem,
   Link,
   NameValueTable,
-  NameValueTableRow,
   SectionBox,
   SimpleTable,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
@@ -177,100 +176,111 @@ export function SecretKeySelectorComponent({ selector, namespace }: SecretKeySel
   );
 }
 
+// Turns a solver field name such as "hostedZoneID" into a column or row label ("Hosted Zone ID").
+function formatSolverFieldName(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+// cert-manager names references to a key in a Secret "...SecretRef" ({ name, key }).
+function isSecretKeySelector(name: string, value: object): value is SecretKeySelector {
+  return name.endsWith('SecretRef') && typeof (value as { name?: unknown }).name === 'string';
+}
+
+interface SolverFieldValueProps {
+  name: string;
+  value: unknown;
+  namespace?: string;
+}
+
+/**
+ * Shows any value of an ACME solver: scalars as text, Secret key references like
+ * the Secret rows elsewhere, and nested objects and lists as tables. Solvers have many
+ * providers (route53, azureDNS, webhook, ...), each with its own nested fields.
+ */
+function SolverFieldValue({ name, value, namespace }: SolverFieldValueProps) {
+  const { t } = useTranslation();
+  const labels: { [key: string]: string } = {
+    email: t('Email'),
+    apiKeySecretRef: t('API Key Secret'),
+    apiTokenSecretRef: t('API Token Secret'),
+  };
+
+  if (value === null || value === undefined || value === '') {
+    return <>-</>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <>-</>;
+    }
+    return (
+      <>
+        {value.map((entry, index) => (
+          <Box key={index} mb={index < value.length - 1 ? 1 : 0}>
+            <SolverFieldValue name={name} value={entry} namespace={namespace} />
+          </Box>
+        ))}
+      </>
+    );
+  }
+
+  if (typeof value === 'object') {
+    if (isSecretKeySelector(name, value)) {
+      return <SecretKeySelectorComponent selector={value} namespace={namespace} />;
+    }
+
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      return <>-</>;
+    }
+    return (
+      <NameValueTable
+        rows={entries.map(([key, entryValue]) => ({
+          name: labels[key] ?? formatSolverFieldName(key),
+          value: <SolverFieldValue name={key} value={entryValue} namespace={namespace} />,
+        }))}
+      />
+    );
+  }
+
+  return <>{String(value)}</>;
+}
+
 interface ACMEChallengeSolverProps {
   solver: ACMEChallengeSolver;
   namespace?: string;
 }
 
 export function ACMEChallengeSolverComponent({ solver, namespace }: ACMEChallengeSolverProps) {
-  const { t } = useTranslation();
-  const cloudflareGetter = (item: any) => {
-    const thisItem = item?.cloudflare;
-
-    if (!thisItem) {
-      return '-';
-    }
-
-    const rows: NameValueTableRow[] = [];
-
-    if (thisItem.email) {
-      rows.push({
-        name: t('Email'),
-        value: thisItem.email,
-      });
-    }
-
-    if (thisItem.apiKeySecretRef) {
-      rows.push({
-        name: t('API Key Secret'),
-        value: (
-          <SecretKeySelectorComponent selector={thisItem.apiKeySecretRef} namespace={namespace} />
-        ),
-      });
-    }
-
-    if (thisItem.apiTokenSecretRef) {
-      rows.push({
-        name: t('API Token Secret'),
-        value: (
-          <SecretKeySelectorComponent selector={thisItem.apiTokenSecretRef} namespace={namespace} />
-        ),
-      });
-    }
-
-    if (rows.length === 0) {
-      return '-';
-    }
-    return <NameValueTable rows={rows} />;
-  };
-
-  const getItemGetter = (key: string) => {
-    if (key === 'cloudflare') {
-      return cloudflareGetter;
-    }
-
-    return (item: any) => {
-      const thisItem = item[key];
-
-      if (thisItem === null || thisItem === undefined) {
-        return '';
-      }
-
-      return thisItem.toString();
-    };
-  };
-
-  if (solver.http01) {
-    const { podTemplate, ...otherIngressFields } = solver.http01.ingress || {};
-    const data = {
-      ...otherIngressFields,
-      // Add podTemplate fields with proper prefixes
-      ...(podTemplate?.spec?.nodeSelector && {
-        'podTemplate.nodeSelector': JSON.stringify(podTemplate.spec.nodeSelector),
-      }),
-    };
-
+  function solverTable(data: { [key: string]: unknown }) {
     return (
       <SimpleTable
         columns={Object.keys(data).map(key => ({
-          label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: getItemGetter(key),
+          label: formatSolverFieldName(key),
+          getter: (item: { [key: string]: unknown }) => (
+            <SolverFieldValue name={key} value={item[key]} namespace={namespace} />
+          ),
         }))}
         data={[data]}
       />
     );
   }
 
+  if (solver.http01) {
+    // An HTTP-01 solver uses either an Ingress or a Gateway API HTTPRoute.
+    const { podTemplate, ...otherFields } =
+      solver.http01.ingress || solver.http01.gatewayHTTPRoute || {};
+    return solverTable({
+      ...otherFields,
+      // Add podTemplate fields with proper prefixes
+      ...(podTemplate?.spec?.nodeSelector && {
+        'podTemplate.nodeSelector': JSON.stringify(podTemplate.spec.nodeSelector),
+      }),
+    });
+  }
+
   if (solver.dns01) {
-    return (
-      <SimpleTable
-        columns={Object.keys(solver.dns01).map(key => ({
-          label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'), // Add spaces before capitals
-          getter: getItemGetter(key),
-        }))}
-        data={[solver.dns01]}
-      />
-    );
+    return solverTable(solver.dns01);
   }
 
   return null;

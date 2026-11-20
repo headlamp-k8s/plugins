@@ -54,7 +54,7 @@ export interface ACMEChallengeSolver {
     dnsZones?: string[];
   };
   dns01?: {
-    provider: string;
+    provider?: string;
     [key: string]: any;
   };
   http01?: {
@@ -63,6 +63,25 @@ export interface ACMEChallengeSolver {
       ingressClassName?: string;
       class?: string;
       name?: string;
+      podTemplate?: {
+        spec: {
+          nodeSelector?: {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+    gatewayHTTPRoute?: {
+      serviceType?: string;
+      labels?: { [key: string]: string };
+      parentRefs?: {
+        name: string;
+        namespace?: string;
+        kind?: string;
+        group?: string;
+        sectionName?: string;
+        port?: number;
+      }[];
       podTemplate?: {
         spec: {
           nodeSelector?: {
