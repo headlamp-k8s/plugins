@@ -77,6 +77,21 @@ Selecting a Broker or Trigger opens its detail page. A Broker's page shows its c
 settings ConfigMap; a Trigger's page shows its Broker, filter, subscriber, and the URI the
 subscriber resolved to. Both show conditions and events.
 
+Users who may create Brokers or Triggers in the cluster get a create button on their list, as on
+Headlamp's own lists. It opens Headlamp's create dialog with a Form tab next to the YAML editor, and
+an edit in either shows in the other:
+
+- The Broker form takes a name, namespace, labels, class, and delivery settings: a dead letter
+  sink, retries, backoff policy and delay, and the timeout of each attempt.
+- The Trigger form takes the Broker, picked from those in the Trigger's namespace, the filter
+  attributes, the subscriber, and the same delivery settings. A subscriber or dead letter sink is a
+  Knative Service, Kubernetes Service, Broker or Channel picked by name, or a URL.
+
+On the Form tab, Apply stays disabled until the required fields are filled in and the Broker or
+Trigger settings pass Knative's own checks. Kubernetes checks the name and labels on Apply. Settings
+the form does not show, such as a Trigger's `spec.filters` or a Broker's `spec.config`, can be set in
+the YAML editor.
+
 The Channel Implementations view lists the channels of every kind in one table: Knative's
 InMemoryChannel and the implementations installed in the cluster, such as KafkaChannel and
 NatsJetStreamChannel, found through the `messaging.knative.dev/subscribable=true` label on their
