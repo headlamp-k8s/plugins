@@ -183,3 +183,113 @@ export interface NodeReadinessRuleObject extends KubeObjectInterface {
   /** Observed status populated by the node-readiness-controller. */
   status?: NodeReadinessRuleStatus;
 }
+
+/**
+ * Overall readiness/availability state of a node evaluated across all rules.
+ */
+export type NodeEvaluationState = 'Available' | 'NotAvailable';
+
+/**
+ * Outcome of evaluating a NodeReadinessRule against a specific node.
+ */
+export type RuleEvaluationStatus = 'Satisfied' | 'Unsatisfied';
+
+/**
+ * Detailed evaluation report of an individual condition within a rule evaluation.
+ */
+export interface ReadinessConditionEvaluation {
+  /** Condition type being evaluated (e.g., 'CNIReady', 'GPUDriverReady'). */
+  type: string;
+  /** Actual condition status observed on the node ('True', 'False', 'Unknown'). */
+  currentStatus: ConditionStatus;
+  /** Required condition status defined in the rule ('True', 'False', 'Unknown'). */
+  requiredStatus: ConditionStatus;
+  /** Fallback status if the condition was missing from the node. */
+  defaultStatus?: ConditionStatus;
+}
+
+/**
+ * Outcome of evaluating an individual NodeReadinessRule against a specific node.
+ */
+export interface RuleEvaluation {
+  /** Name of the evaluated NodeReadinessRule. */
+  ruleName: string;
+  /** UID of the NodeReadinessRule to guard against stale updates. */
+  ruleUID?: string;
+  /** Status indicating whether all rule criteria were satisfied. */
+  ruleStatus: RuleEvaluationStatus;
+  /** Optional status alias for schema compatibility. */
+  status?: RuleEvaluationStatus;
+  /** Observed presence of the managed taint on this node ('Present' or 'Absent'). */
+  taintStatus: TaintStatus;
+  /** Key of the taint managed by this rule. */
+  taintKey?: string;
+  /** Scheduling effect of the taint managed by this rule. */
+  taintEffect?: TaintEffect;
+  /** Condition evaluation policy ('allOf' or 'anyOf'). */
+  conditionPolicy?: ConditionPolicy;
+  /** Enforcement mode ('continuous' or 'bootstrap-only'). */
+  enforcementMode?: EnforcementMode;
+  /** Concise machine-readable reason detailing the primary outcome. */
+  reason?: string;
+  /** Comprehensive human-readable explanation providing further context. */
+  message?: string;
+  /** Detailed condition-by-condition evaluation breakdown. */
+  readinessConditions?: ReadinessConditionEvaluation[];
+  /** RFC3339 timestamp when the controller most recently assessed this rule. */
+  lastEvaluatedAt?: string;
+  /** RFC3339 timestamp when the rule was first assessed against this node. */
+  firstEvaluatedAt?: string;
+  /** RFC3339 timestamp when NRC first observed the taint present on the node. */
+  taintObservedAt?: string;
+  /** RFC3339 timestamp when NRC itself applied the taint in the current lifecycle. */
+  taintAddedAt?: string;
+  /** RFC3339 timestamp when the controller successfully removed the taint. */
+  taintRemovedAt?: string;
+}
+
+/**
+ * Desired specification of a NodeReadinessEvaluation custom resource.
+ */
+export interface NodeReadinessEvaluationSpec {
+  /** Name of the target Kubernetes Node. */
+  nodeName: string;
+}
+
+/**
+ * Observation condition for NodeReadinessEvaluation status.
+ */
+export interface NodeReadinessEvaluationCondition {
+  /** Type of condition (e.g., 'Evaluated', 'Available'). */
+  type: string;
+  /** Status of the condition ('True', 'False', 'Unknown'). */
+  status: ConditionStatus;
+  /** Concise reason for condition transition. */
+  reason?: string;
+  /** Diagnostic human-readable message. */
+  message?: string;
+  /** Timestamp when the condition last transitioned. */
+  lastTransitionTime?: string;
+}
+
+/**
+ * Observed status of a NodeReadinessEvaluation custom resource.
+ */
+export interface NodeReadinessEvaluationStatus {
+  /** Overall readiness evaluation state of the node ('Available' or 'NotAvailable'). */
+  state?: NodeEvaluationState;
+  /** Latest available observations of the node's readiness evaluation state. */
+  conditions?: NodeReadinessEvaluationCondition[];
+  /** Evaluation outcomes for all rules applicable to this node. */
+  rules?: RuleEvaluation[];
+}
+
+/**
+ * Complete KubeObjectInterface representation of a NodeReadinessEvaluation.
+ */
+export interface NodeReadinessEvaluationObject extends KubeObjectInterface {
+  /** Target node specification. */
+  spec: NodeReadinessEvaluationSpec;
+  /** Observed evaluation status populated by the node-readiness-controller. */
+  status?: NodeReadinessEvaluationStatus;
+}

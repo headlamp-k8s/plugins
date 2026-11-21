@@ -4,13 +4,22 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RuleList from './RuleList';
 
-const mockResourceListViewProps = vi.fn();
+const { mockResourceListViewProps, mockUseList } = vi.hoisted(() => ({
+  mockResourceListViewProps: vi.fn(),
+  mockUseList: vi.fn(),
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
-  makeCustomResourceClass: vi.fn().mockReturnValue(class MockCRD {}),
+  makeCustomResourceClass: vi.fn().mockReturnValue(
+    class MockCRD {
+      static useList(...args: any[]) {
+        return mockUseList(...args);
+      }
+    }
+  ),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
@@ -24,6 +33,12 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
       {children}
     </span>
   ),
+  SectionBox: ({ title, children }: any) => (
+    <div data-testid="section-box">
+      <h2>{title}</h2>
+      {children}
+    </div>
+  ),
   CreateResourceButton: () => <button data-testid="create-resource-button">Create</button>,
   ResourceListView: (props: any) => {
     mockResourceListViewProps(props);
@@ -36,6 +51,10 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 }));
 
 describe('RuleList component', () => {
+  beforeEach(() => {
+    mockUseList.mockReturnValue([[], null]);
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -51,6 +70,7 @@ describe('RuleList component', () => {
     expect(lastCall).toBeDefined();
     expect(lastCall.title).toBe('Node Readiness Rules');
     expect(lastCall.id).toBe('nrc-readiness-rules');
+    expect(lastCall.resourceClass).toBeDefined();
   });
 
   it('uses rule.getName() for the name column value and render', () => {
