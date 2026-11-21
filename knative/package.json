@@ -40,7 +40,7 @@
     "headlamp": ">=0.44.0"
   },
   "devDependencies": {
-    "@kinvolk/headlamp-plugin": "^0.14.0",
+    "@kinvolk/headlamp-plugin": "^0.15.0-alpha.1",
     "knip": "^5.68.0"
   },
   "dependencies": {
