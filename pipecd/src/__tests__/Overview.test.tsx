@@ -796,28 +796,33 @@ describe('Overview', () => {
   });
 
   it('shows one bar per hour for the last 24 hours', async () => {
-    setupConfigured();
-    mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS')]);
+    // Labels near a clock change get a zone name ("01–02 EST"), so pin the
+    // clock to mid-January, when no timezone changes its clocks.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 15, 12, 30));
+    try {
+      setupConfigured();
+      mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS')]);
 
-    renderOverview();
-    await screen.findByText('1 synced');
+      renderOverview();
+      await screen.findByText('1 synced');
 
-    fireEvent.mouseDown(screen.getByLabelText('Time range'));
-    fireEvent.click(await screen.findByRole('option', { name: 'Last 24 hours' }));
+      fireEvent.mouseDown(screen.getByLabelText('Time range'));
+      fireEvent.click(await screen.findByRole('option', { name: 'Last 24 hours' }));
 
-    await waitFor(() => {
-      expect(cardOf('Deployments').textContent).toContain('/ hour');
-    });
-    expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(24);
+      await waitFor(() => {
+        expect(cardOf('Deployments').textContent).toContain('/ hour');
+      });
+      expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(24);
 
-    // Each bar is an hour, so it is labelled as a span such as "09–10".
-    const hourLabels = screen.getAllByText(/^\d{2}–\d{2}$/);
-    expect(hourLabels.length).toBe(8);
-    const currentHour = new Date().getHours();
-    const pad = (h: number): string => String(h).padStart(2, '0');
-    expect(
-      screen.getAllByRole('img', { name: /deployments/ })[23].getAttribute('aria-label')
-    ).toContain(`${pad(currentHour)}–${pad((currentHour + 1) % 24)}`);
+      // Each bar is an hour, so it is labelled as a span such as "09–10".
+      expect(screen.getAllByText(/^\d{2}–\d{2}$/)).toHaveLength(8);
+      expect(
+        screen.getAllByRole('img', { name: /deployments/ })[23].getAttribute('aria-label')
+      ).toContain('12–13');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // The breakdown is in a hover tooltip, so the bar itself must carry it for
