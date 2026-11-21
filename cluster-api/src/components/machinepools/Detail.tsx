@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -42,6 +43,7 @@ interface MachinePoolDetailContentPropsWithVersion extends MachinePoolDetailCont
  * @param props - Component properties including optional node from a list.
  */
 export function MachinePoolDetail({ node }: { node?: MachinePoolNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -49,7 +51,7 @@ export function MachinePoolDetail({ node }: { node?: MachinePoolNode }) {
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <MachinePoolDetailContent crName={crName} namespace={namespace} crdName={MachinePool.crdName} />
@@ -66,6 +68,7 @@ function MachinePoolDetailContentWithData({
   crdName,
   VersionedMachinePool,
 }: MachinePoolDetailContentPropsWithVersion) {
+  const { t } = useTranslation();
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
 
   const [item, itemError] = VersionedMachinePool.useGet(crName, namespace ?? undefined);
@@ -73,18 +76,21 @@ function MachinePoolDetailContentWithData({
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading MachinePool {crName}: {itemError?.message}
+        {t('Error loading MachinePool {{crName}}: {{message}}', {
+          crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
-  if (!item) return <Loader title="Loading MachinePool details" />;
+  if (!item) return <Loader title={t('Loading MachinePool details')} />;
   const spec = item.spec;
   const status = item.status;
   const initialization = item.initialization;
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -93,37 +99,37 @@ function MachinePoolDetailContentWithData({
       hide: !crd,
     },
     {
-      name: 'Cluster',
+      name: t('Cluster'),
       value: spec?.clusterName ?? '-',
     },
     {
-      name: 'Replicas',
-      value: renderReplicas(item),
+      name: t('Replicas'),
+      value: renderReplicas(item, t),
       hide: !showReplicas(item),
     },
     {
-      name: 'Phase',
+      name: t('Phase'),
       value: (
         <StatusLabel status={getPhaseStatus(item.status?.phase)}>{item.status?.phase}</StatusLabel>
       ),
       hide: !item.status?.phase,
     },
     {
-      name: 'Bootstrap Initialized',
+      name: t('Bootstrap Initialized'),
       value: initialization?.bootstrapDataSecretCreated ? 'True' : 'False',
       hide: initialization?.bootstrapDataSecretCreated === undefined,
     },
     {
-      name: 'Infrastructure Ready',
+      name: t('Infrastructure Ready'),
       value: initialization?.infrastructureProvisioned ? 'True' : 'False',
       hide: initialization?.infrastructureProvisioned === undefined,
     },
     {
-      name: 'Min Ready Seconds',
+      name: t('Min Ready Seconds'),
       value: spec?.minReadySeconds ?? 0,
     },
     {
-      name: 'Observed Generation',
+      name: t('Observed Generation'),
       value:
         status?.observedGeneration !== undefined
           ? `${status.observedGeneration} / ${item.metadata?.generation ?? '-'}`
@@ -150,7 +156,7 @@ function MachinePoolDetailContentWithData({
           {
             id: 'cluster-api.machine-pool-template',
             section: (
-              <SectionBox title="Machine Template">
+              <SectionBox title={t('Machine Template')}>
                 <TemplateSection item={mp} />
               </SectionBox>
             ),
@@ -180,13 +186,14 @@ function MachinePoolDetailContentWithData({
  * @param props - Component properties.
  */
 function MachinePoolDetailContent(props: MachinePoolDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedMachinePool = useMemo(
     () => (apiVersion ? MachinePool.withApiVersion(apiVersion) : MachinePool),
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
   return (
     <MachinePoolDetailContentWithData
       {...props}

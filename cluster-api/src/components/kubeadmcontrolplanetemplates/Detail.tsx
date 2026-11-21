@@ -1,3 +1,4 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ConditionsSection,
   DetailsGrid,
@@ -34,6 +35,7 @@ interface KCPTemplateNode {
  * @param props - Component properties including optional node from a list.
  */
 export function KubeadmControlPlaneTemplateDetail({ node }: { node?: KCPTemplateNode }) {
+  const { t } = useTranslation();
   const { name: nameParam, namespace: namespaceParam } = useParams<{
     name: string;
     namespace: string;
@@ -41,7 +43,7 @@ export function KubeadmControlPlaneTemplateDetail({ node }: { node?: KCPTemplate
   const crName = nameParam || node?.kubeObject?.metadata?.name;
   const namespace = namespaceParam || node?.kubeObject?.metadata?.namespace;
 
-  if (!crName) return <EmptyContent color="error">Missing resource name</EmptyContent>;
+  if (!crName) return <EmptyContent color="error">{t('Missing resource name')}</EmptyContent>;
 
   return (
     <KubeadmControlPlaneTemplateDetailContent
@@ -75,25 +77,29 @@ interface KCPTemplateDetailWithVersionProps extends KCPTemplateDetailContentProp
 }
 
 function KCPTemplateDetailWithData(props: KCPTemplateDetailWithVersionProps) {
+  const { t } = useTranslation();
   const { crName, namespace, VersionedKCPT, crdName } = props;
   const [crd] = CustomResourceDefinition.useGet(crdName, undefined);
   const [item, itemError] = VersionedKCPT.useGet(crName, namespace ?? undefined);
   if (itemError && !item) {
     return (
       <EmptyContent color="error">
-        Error loading KubeadmControlPlaneTemplate {crName}: {itemError?.message}
+        {t('Error loading KubeadmControlPlaneTemplate {{name}}: {{message}}', {
+          name: crName,
+          message: itemError?.message,
+        })}
       </EmptyContent>
     );
   }
 
-  if (!item) return <Loader title="Loading KubeadmControlPlaneTemplate details" />;
+  if (!item) return <Loader title={t('Loading KubeadmControlPlaneTemplate details')} />;
 
   const templateSpec = item.spec?.template?.spec;
   const kubeadmConfigSpec = templateSpec?.kubeadmConfigSpec;
 
   const extraInfo: NameValueTableRow[] = [
     {
-      name: 'Definition',
+      name: t('Definition'),
       value: (
         <Link routeName="crd" params={{ name: crdName }}>
           {crdName}
@@ -102,22 +108,22 @@ function KCPTemplateDetailWithData(props: KCPTemplateDetailWithVersionProps) {
       hide: !crd,
     },
     {
-      name: 'Rollout Strategy',
+      name: t('Rollout Strategy'),
       value: templateSpec?.rolloutStrategy?.type ?? '-',
       hide: !templateSpec?.rolloutStrategy,
     },
     {
-      name: 'Node Drain Timeout',
+      name: t('Node Drain Timeout'),
       value: templateSpec?.machineTemplate?.nodeDrainTimeout ?? '-',
       hide: !templateSpec?.machineTemplate?.nodeDrainTimeout,
     },
     {
-      name: 'Node Volume Detach Timeout',
+      name: t('Node Volume Detach Timeout'),
       value: templateSpec?.machineTemplate?.nodeVolumeDetachTimeout ?? '-',
       hide: !templateSpec?.machineTemplate?.nodeVolumeDetachTimeout,
     },
     {
-      name: 'Node Deletion Timeout',
+      name: t('Node Deletion Timeout'),
       value: templateSpec?.machineTemplate?.nodeDeletionTimeout ?? '-',
       hide: !templateSpec?.machineTemplate?.nodeDeletionTimeout,
     },
@@ -138,7 +144,7 @@ function KCPTemplateDetailWithData(props: KCPTemplateDetailWithVersionProps) {
                 section: (
                   <KubeadmConfigSection
                     kubeadmConfigSpec={kubeadmConfigSpec}
-                    title="KubeadmConfig Spec"
+                    title={t('KubeadmConfig Spec')}
                   />
                 ),
               },
@@ -154,6 +160,7 @@ function KCPTemplateDetailWithData(props: KCPTemplateDetailWithVersionProps) {
 }
 
 function KubeadmControlPlaneTemplateDetailContent(props: KCPTemplateDetailContentProps) {
+  const { t } = useTranslation();
   const { crdName } = props;
   const apiVersion = useCapiApiVersion(crdName, 'v1beta1');
   const VersionedKCPT = useMemo(
@@ -163,7 +170,7 @@ function KubeadmControlPlaneTemplateDetailContent(props: KCPTemplateDetailConten
         : KubeadmControlPlaneTemplate,
     [apiVersion]
   );
-  if (!apiVersion) return <Loader title="Detecting Cluster API version" />;
+  if (!apiVersion) return <Loader title={t('Detecting Cluster API version')} />;
   return (
     <KCPTemplateDetailWithData {...props} VersionedKCPT={VersionedKCPT} apiVersion={apiVersion} />
   );
