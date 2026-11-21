@@ -22,6 +22,7 @@ const NOW = 1_722_000_000_000; // 2024-07-26T12:40:00Z
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 /** Stands in for i18next's `t`: fills `{{name}}` placeholders and returns the key. */
@@ -114,5 +115,18 @@ describe('logTimestamp', () => {
       true
     );
     expect(logTimestamp(unix)).toContain(`${pad(date.getHours())}:${pad(date.getMinutes())}`);
+  });
+
+  // Pin the offset so the result is the same in every timezone.
+  it('writes the UTC offset with a minus sign west of Greenwich', () => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(300);
+
+    expect(logTimestamp(1_748_422_903)).toMatch(/ -05:00$/);
+  });
+
+  it('writes the UTC offset with a plus sign and minutes east of Greenwich', () => {
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-330);
+
+    expect(logTimestamp(1_748_422_903)).toMatch(/ \+05:30$/);
   });
 });

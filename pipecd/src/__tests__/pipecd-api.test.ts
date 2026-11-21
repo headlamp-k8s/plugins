@@ -23,6 +23,7 @@ const mockClient = {
   getApplication: vi.fn(),
   listDeployments: vi.fn(),
   getDeployment: vi.fn(),
+  listPipeds: vi.fn(),
   listStageLogs: vi.fn(),
   syncApplication: vi.fn(),
   getCommand: vi.fn(),
@@ -44,8 +45,10 @@ import {
   getApplication,
   getCommand,
   isConfigured,
+  isUnimplemented,
   listApplications,
   listDeployments,
+  listPipeds,
   listStageLogs,
   loadConfig,
   PipeCDApiError,
@@ -476,6 +479,58 @@ describe('platform resolution', () => {
     const result = await listDeployments(MOCK_CONFIG);
 
     expect(result.deployments[0].kind).toBe('UNKNOWN');
+  });
+});
+
+describe('listPipeds', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('asks for the status and maps each piped', async () => {
+    mockClient.listPipeds.mockResolvedValue({
+      pipeds: [
+        {
+          id: 'piped-1',
+          name: 'prod',
+          version: 'v0.58.0',
+          disabled: false,
+          startedAt: BigInt(1700000000),
+          status: 1, // ONLINE
+        },
+        {
+          id: 'piped-2',
+          name: 'old',
+          version: '',
+          disabled: true,
+          startedAt: BigInt(0),
+          status: 2,
+        },
+      ],
+    });
+
+    const result = await listPipeds(MOCK_CONFIG);
+
+    expect(mockClient.listPipeds).toHaveBeenCalledWith({ withStatus: true }, { signal: undefined });
+    expect(result).toEqual([
+      {
+        id: 'piped-1',
+        name: 'prod',
+        version: 'v0.58.0',
+        disabled: false,
+        startedAt: 1700000000,
+        status: 'ONLINE',
+      },
+      { id: 'piped-2', name: 'old', version: '', disabled: true, startedAt: 0, status: 'OFFLINE' },
+    ]);
+  });
+
+  it('marks the error from a server that does not have the call', async () => {
+    mockClient.listPipeds.mockRejectedValue(new ConnectError('unknown method', Code.Unimplemented));
+    const unimplemented = await listPipeds(MOCK_CONFIG).catch(err => err);
+    expect(isUnimplemented(unimplemented)).toBe(true);
+
+    mockClient.listPipeds.mockRejectedValue(new ConnectError('no access', Code.PermissionDenied));
+    const denied = await listPipeds(MOCK_CONFIG).catch(err => err);
+    expect(isUnimplemented(denied)).toBe(false);
   });
 });
 

@@ -16,7 +16,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, StrictMode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as pipecdApi from '../api/pipecd';
@@ -120,6 +120,54 @@ describe('ApplicationList', () => {
     expect(await screen.findByText('frontend-prod')).toBeTruthy();
     expect(await screen.findByText('infra-staging')).toBeTruthy();
     expect(await screen.findByText('api-service-prod')).toBeTruthy();
+  });
+
+  it('lists an application only once when a later page repeats it', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({
+        applications: [appKubernetesSynced, appTerraformOutOfSync],
+        cursor: '',
+      });
+
+    renderList();
+    await screen.findByText('infra-staging');
+
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
+  it('keeps paging past a page of repeats that has a new cursor', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c2' })
+      .mockResolvedValueOnce({ applications: [appTerraformOutOfSync], cursor: '' });
+
+    renderList();
+
+    expect(await screen.findByText('infra-staging')).toBeTruthy();
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
+  it('stops paging when the server cycles through the same cursors', async () => {
+    setupConfigured();
+    let calls = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async () => {
+      calls++;
+      return {
+        applications: [appKubernetesSynced],
+        cursor: calls % 2 ? 'c1' : 'c2',
+      };
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('loading-skeleton')).toBeNull();
+    });
+    expect(calls).toBeLessThan(5);
   });
 
   it('shows a status label for each sync state', async () => {
@@ -352,5 +400,267 @@ describe('ApplicationList', () => {
     await waitFor(() => {
       expect(vi.mocked(pipecdApi.listApplications)).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe('ApplicationList request handling', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    pipecdApi.saveConfig({ baseURL: '', apiKey: '' });
+    setupConfigured();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.mocked(pipecdApi.listApplications).mockReset();
+  });
+
+  it('cancels the in-flight request when the list unmounts', async () => {
+    vi.mocked(pipecdApi.listApplications).mockReturnValue(new Promise(() => {}));
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <ApplicationList />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(vi.mocked(pipecdApi.listApplications)).toHaveBeenCalled());
+
+    const signal = vi.mocked(pipecdApi.listApplications).mock.calls[0][1]?.signal;
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+  });
+
+  // A second request cannot start while one is running, so an older response
+  // can never land after a newer one and overwrite its rows.
+  it('disables Refresh while a request is running', async () => {
+    vi.mocked(pipecdApi.listApplications).mockImplementation(() => new Promise(() => {}));
+
+    renderList();
+
+    const button = (await screen.findByRole('button', { name: /Refresh/i })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+  });
+
+  // StrictMode runs the effect twice, so the list cancels its first request
+  // itself. That request then fails with an AbortError, which must not show.
+  it('does not show an error for a request it cancelled itself', async () => {
+    vi.mocked(pipecdApi.listApplications).mockImplementation(
+      (_config, options) =>
+        new Promise((resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            const aborted = new Error('ListApplications was cancelled');
+            aborted.name = 'AbortError';
+            reject(aborted);
+          });
+          setTimeout(() => resolve(mockListResponse), 0);
+        })
+    );
+
+    render(
+      <StrictMode>
+        <MemoryRouter>
+          <ApplicationList />
+        </MemoryRouter>
+      </StrictMode>
+    );
+
+    expect(await screen.findByText('frontend-prod')).toBeTruthy();
+    const signals = vi.mocked(pipecdApi.listApplications).mock.calls.map(c => c[1]?.signal);
+    expect(signals.some(s => s?.aborted)).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+// How a single row copes with the fields PipeCD leaves empty or makes long.
+describe('ApplicationList rows', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    pipecdApi.saveConfig({ baseURL: '', apiKey: '' });
+    setupConfigured();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.mocked(pipecdApi.listApplications).mockReset();
+  });
+
+  function mockOneApp(app: typeof appKubernetesSynced): void {
+    vi.mocked(pipecdApi.listApplications).mockResolvedValue({ applications: [app], cursor: '' });
+  }
+
+  it('falls back to the deployment start time when nothing else is set', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    mockOneApp({
+      ...appKubernetesSynced,
+      syncState: { ...appKubernetesSynced.syncState!, timestamp: 0 },
+      mostRecentSuccessfulDeployment: {
+        ...appKubernetesSynced.mostRecentSuccessfulDeployment!,
+        completedAt: 0,
+        startedAt: now - 3 * 86400,
+      },
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('3d ago')).toBeTruthy();
+  });
+
+  it('shows a dash when the application has never been synced', async () => {
+    mockOneApp({
+      ...appKubernetesSynced,
+      syncState: undefined,
+      mostRecentSuccessfulDeployment: undefined,
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('—')).toBeTruthy();
+  });
+
+  it('shows a dash when the application has no repository', async () => {
+    mockOneApp({ ...appKubernetesSynced, gitPath: undefined });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('—')).toBeTruthy();
+    expect(screen.queryByText('k8s/overlays/prod')).toBeNull();
+  });
+
+  it('shows the config path under the repository', async () => {
+    mockOneApp(appKubernetesSynced);
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('k8s/overlays/prod')).toBeTruthy();
+  });
+
+  it('shows markdown links in the description as plain text', async () => {
+    mockOneApp({
+      ...appKubernetesSynced,
+      description: 'See the [runbook](https://example.com/runbook) first',
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText('See the runbook first')).toBeTruthy();
+  });
+
+  it('cuts a long description short', async () => {
+    mockOneApp({ ...appKubernetesSynced, description: 'a'.repeat(120) });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText(`${'a'.repeat(90)}…`)).toBeTruthy();
+  });
+
+  it('leaves the description out when there is none', async () => {
+    mockOneApp({ ...appKubernetesSynced, description: '' });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    // Only the name link is left in the cell: no empty caption under it.
+    const cell = screen.getByRole('link', { name: 'frontend-prod' }).closest('td');
+    expect(cell?.children).toHaveLength(1);
+  });
+
+  it('cuts a long deployment summary short', async () => {
+    mockOneApp({
+      ...appKubernetesSynced,
+      mostRecentSuccessfulDeployment: {
+        ...appKubernetesSynced.mostRecentSuccessfulDeployment!,
+        summary: 'b'.repeat(80),
+      },
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText(`${'b'.repeat(60)}…`)).toBeTruthy();
+  });
+
+  it('searches the config path as well as the name and repository', async () => {
+    mockListSuccess();
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    await userEvent.type(screen.getByRole('textbox', { name: /Search/i }), 'terraform/staging');
+
+    expect(screen.getByText('infra-staging')).toBeTruthy();
+    expect(screen.queryByText('frontend-prod')).toBeNull();
+  });
+
+  it('ignores case when searching', async () => {
+    mockListSuccess();
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    await userEvent.type(screen.getByRole('textbox', { name: /Search/i }), 'FRONTEND');
+
+    expect(screen.getByText('frontend-prod')).toBeTruthy();
+    expect(screen.queryByText('infra-staging')).toBeNull();
+  });
+
+  it('brings every row back when the search is cleared', async () => {
+    mockListSuccess();
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    const search = screen.getByRole('textbox', { name: /Search/i });
+    await userEvent.type(search, 'frontend');
+    await userEvent.clear(search);
+
+    expect(screen.getByText('infra-staging')).toBeTruthy();
+    expect(screen.getByText('api-service-prod')).toBeTruthy();
+  });
+
+  it('shows when the list was last updated', async () => {
+    mockListSuccess();
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    expect(screen.getByText(/Last updated:/)).toBeTruthy();
+  });
+
+  it('shows the gRPC status code for an API error', async () => {
+    // Built the way the API client builds it.
+    vi.mocked(pipecdApi.listApplications).mockRejectedValue(
+      new pipecdApi.PipeCDApiError(
+        'PipeCD API error calling ListApplications: invalid api key',
+        16,
+        'invalid api key'
+      )
+    );
+
+    renderList();
+
+    expect(await screen.findByText(/API error 16:.*invalid api key/)).toBeTruthy();
+  });
+
+  it('keeps the loaded rows when a refresh fails', async () => {
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce(mockListResponse)
+      .mockRejectedValueOnce(new Error('connection reset'));
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+
+    expect(await screen.findByText(/connection reset/)).toBeTruthy();
+    expect(screen.getByText('frontend-prod')).toBeTruthy();
   });
 });
