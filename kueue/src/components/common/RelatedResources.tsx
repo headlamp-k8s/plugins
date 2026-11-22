@@ -415,21 +415,28 @@ function RelatedWorkloadsTable({
   return (
     <SectionBox title="Related Workloads">
       {loadWarning && <EmptyContent color="text.secondary">{loadWarning}</EmptyContent>}
+      {/* SimpleTable gives every column 1fr by default, which squeezes the Why message
+          to the width of Priority. Size the other columns to their content instead. Its cells
+          hide overflow, so a plain auto column can shrink below its longest word; the
+          min-content minimum keeps names from breaking mid-word. */}
       <SimpleTable
         data={workloads}
         columns={[
           {
             label: 'Name',
+            gridTemplate: 'minmax(min-content, auto)',
             getter: (workload: Workload) => (
               <Link kubeObject={workload}>{workload.metadata.name}</Link>
             ),
           },
           {
             label: 'Namespace',
+            gridTemplate: 'minmax(min-content, auto)',
             getter: (workload: Workload) => workload.metadata.namespace || '-',
           },
           {
             label: 'LocalQueue',
+            gridTemplate: 'minmax(min-content, auto)',
             getter: (workload: Workload) => {
               const workloadNamespace = workload.metadata.namespace;
 
@@ -450,14 +457,17 @@ function RelatedWorkloadsTable({
           },
           {
             label: 'Priority',
+            gridTemplate: 'min-content',
             getter: (workload: Workload) => workload.priorityDisplay,
           },
           {
             label: 'Status',
+            gridTemplate: 'minmax(min-content, auto)',
             getter: (workload: Workload) => workload.statusDisplay,
           },
           {
             label: 'Blocked On',
+            gridTemplate: 'max-content',
             getter: (workload: Workload) => {
               const blocker = getBlocker(workload);
 
@@ -474,6 +484,7 @@ function RelatedWorkloadsTable({
           },
           {
             label: 'Why',
+            gridTemplate: 'minmax(150px, 1fr)',
             getter: (workload: Workload) => {
               const blocker = getBlocker(workload);
               // Kueue's message names the exact cause, so prefer it over the generic explanation.
