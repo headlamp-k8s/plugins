@@ -227,7 +227,7 @@ export function Dashboard() {
               <Box
                 role="img"
                 aria-label={`${t('Results by Status')}: ${statusData
-                  .map(d => `${d.value} ${d.name}`)
+                  .map(d => `${d.value} ${t(d.name)}`)
                   .join(', ')}`}
               >
                 <ResponsiveContainer width="100%" height={300}>
@@ -261,7 +261,7 @@ export function Dashboard() {
               <Box
                 role="img"
                 aria-label={`${t('Results by Severity')}: ${severityData
-                  .map(d => `${d.value} ${d.name}`)
+                  .map(d => `${d.value} ${t(d.name)}`)
                   .join(', ')}`}
               >
                 <ResponsiveContainer width="100%" height={300}>

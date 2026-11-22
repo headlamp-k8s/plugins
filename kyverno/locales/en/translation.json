@@ -52,6 +52,11 @@
   "Warn": "Warn",
   "Error": "Error",
   "Skip": "Skip",
+  "Critical": "Critical",
+  "High": "High",
+  "Medium": "Medium",
+  "Low": "Low",
+  "Info": "Info",
   "Summary": "Summary",
   "kyverno.learnAboutInstalling": "Learn more about <1>installing Kyverno</1>",
   "Kyverno Compliance": "Kyverno Compliance",
@@ -241,5 +246,8 @@
   "warning": "warning",
   "skip": "skip",
   "no data": "no data",
-  "data points": "data points"
+  "data points_one": "{{count}} data point",
+  "data points_other": "{{count}} data points",
+  "data points": "data points",
+  "latency stat summary": "min {{min}}ms, max {{max}}ms, latest {{latest}}ms"
 }

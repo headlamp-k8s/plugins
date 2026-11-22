@@ -298,15 +298,15 @@ function LatencyChart({ data, windowEnd }: { data: ChartDataPoint[]; windowEnd: 
           const minMs = Math.min(...msValues).toFixed(1);
           const maxMs = Math.max(...msValues).toFixed(1);
           const latestMs = msValues[msValues.length - 1].toFixed(1);
-          return `, min ${minMs}ms, max ${maxMs}ms, latest ${latestMs}ms`;
+          return `, ${t('latency stat summary', { min: minMs, max: maxMs, latest: latestMs })}`;
         })()
       : '';
   return (
     <Box
       role="img"
-      aria-label={`${t('Admission Review Latency (P95, last hour)')}: ${pointCount} ${t(
-        'data points'
-      )}${latencySummary}`}
+      aria-label={`${t('Admission Review Latency (P95, last hour)')}: ${t('data points', {
+        count: pointCount,
+      })}${latencySummary}`}
     >
       <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={withGapMarkers(data, LATENCY_STEP_SECONDS)} style={{ fontSize: 14 }}>
