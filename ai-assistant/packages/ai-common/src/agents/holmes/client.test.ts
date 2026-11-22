@@ -194,6 +194,32 @@ describe('holmesClient', () => {
       expect(agent.getThreadId()).toMatch(/^thread-\d+$/);
     });
 
+    it('forwards bearer token in Authorization header when authToken option is provided', () => {
+      const agent = new HolmesAgent('http://localhost:5050', { authToken: 'test-user-id-token' });
+      const harness = privateAgent(agent);
+      // @ts-ignore
+      const headers = (harness.agent as any).options?.headers || (harness.agent as any).headers;
+      expect(headers).toEqual(
+        expect.objectContaining({
+          Authorization: 'Bearer test-user-id-token',
+        })
+      );
+    });
+
+    it('forwards custom headers provided in HolmesAgentOptions', () => {
+      const agent = new HolmesAgent('http://localhost:5050', {
+        headers: { 'X-Custom-Header': 'custom-val' },
+      });
+      const harness = privateAgent(agent);
+      // @ts-ignore
+      const headers = (harness.agent as any).options?.headers || (harness.agent as any).headers;
+      expect(headers).toEqual(
+        expect.objectContaining({
+          'X-Custom-Header': 'custom-val',
+        })
+      );
+    });
+
     it('resets thread with new ID', async () => {
       const agent = new HolmesAgent();
       const firstId = agent.getThreadId();
