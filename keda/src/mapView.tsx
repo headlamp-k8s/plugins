@@ -5,53 +5,11 @@ import { ClusterTriggerAuthenticationDetail } from './components/clustertriggera
 import { ScaledJobDetail } from './components/scaledjobs/Detail';
 import { ScaledObjectDetail } from './components/scaledobjects/Detail';
 import { TriggerAuthenticationDetail } from './components/triggerauthentication/Detail';
+import { findAuthenticationEdges, makeKubeToKubeEdge } from './mapEdges';
 import { ClusterTriggerAuthentication } from './resources/clusterTriggerAuthentication';
 import { ScaledJob } from './resources/scaledjob';
 import { ScaledObject } from './resources/scaledobject';
 import { TriggerAuthentication } from './resources/triggerAuthentication';
-
-export const makeKubeToKubeEdge = (from: any, to: any): any => ({
-  id: `${from.metadata.uid}-${to.metadata.uid}`,
-  source: from.metadata.uid,
-  target: to.metadata.uid,
-});
-
-const findAuthenticationEdges = (
-  sourceObject: ScaledObject | ScaledJob,
-  triggerAuthentications: TriggerAuthentication[],
-  clusterTriggerAuthentications: ClusterTriggerAuthentication[]
-) => {
-  const edges = [];
-  const { triggers } = sourceObject.spec;
-
-  if (!triggers || !triggerAuthentications || !clusterTriggerAuthentications) {
-    return edges;
-  }
-
-  triggers.forEach(trigger => {
-    if (trigger.authenticationRef) {
-      const authRefKind = trigger.authenticationRef.kind || TriggerAuthentication.kind;
-      const authRefName = trigger.authenticationRef.name;
-
-      let auth = null;
-      if (authRefKind === TriggerAuthentication.kind) {
-        auth = triggerAuthentications.find(
-          auth =>
-            auth.metadata.namespace === sourceObject.metadata.namespace &&
-            auth.metadata.name === authRefName
-        );
-      } else if (authRefKind === ClusterTriggerAuthentication.kind) {
-        auth = clusterTriggerAuthentications.find(auth => auth.metadata.name === authRefName);
-      }
-
-      if (auth) {
-        edges.push(makeKubeToKubeEdge(sourceObject, auth));
-      }
-    }
-  });
-
-  return edges;
-};
 
 const triggerAuthenticationSource = {
   id: 'keda-trigger-authentications',

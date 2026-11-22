@@ -1,3 +1,6 @@
+export const TRIGGER_AUTHENTICATION_KIND = 'TriggerAuthentication';
+export const CLUSTER_TRIGGER_AUTHENTICATION_KIND = 'ClusterTriggerAuthentication';
+
 export enum StatusConditionType {
   READY = 'Ready',
   ACTIVE = 'Active',
