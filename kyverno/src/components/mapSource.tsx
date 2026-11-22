@@ -335,7 +335,9 @@ export const kyvernoMapSource = {
               ? 'error'
               : impact.counts.warn > 0
               ? 'warning'
-              : 'success',
+              : impact.counts.pass > 0
+              ? 'success'
+              : undefined,
           data: {
             impact,
             clipped: impact.resources.length > MAX_RESOURCE_NODES_PER_POLICY,

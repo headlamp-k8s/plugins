@@ -263,26 +263,35 @@ type AssociatedReportResult = PolicyReportResult & {
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
+  cluster,
 }: {
   policyName: string;
   policyNamespace?: string;
+  cluster?: string;
 }) {
   return policyNamespace ? (
-    <NamespacedAssociatedReports policyName={policyName} policyNamespace={policyNamespace} />
+    <NamespacedAssociatedReports
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      cluster={cluster}
+    />
   ) : (
-    <ClusterAssociatedReports policyName={policyName} />
+    <ClusterAssociatedReports policyName={policyName} cluster={cluster} />
   );
 }
 
 function NamespacedAssociatedReports({
   policyName,
   policyNamespace,
+  cluster,
 }: {
   policyName: string;
   policyNamespace: string;
+  cluster?: string;
 }) {
   const { items: policyReports, errors: policyReportErrors } = PolicyReport.useList({
     namespace: policyNamespace,
+    cluster,
   });
   return (
     <AssociatedReportsBody
@@ -298,9 +307,17 @@ function NamespacedAssociatedReports({
   );
 }
 
-function ClusterAssociatedReports({ policyName }: { policyName: string }) {
-  const { items: policyReports, errors: prErrors } = PolicyReport.useList();
-  const { items: clusterPolicyReports, errors: cprErrors } = ClusterPolicyReport.useList();
+function ClusterAssociatedReports({
+  policyName,
+  cluster,
+}: {
+  policyName: string;
+  cluster?: string;
+}) {
+  const { items: policyReports, errors: prErrors } = PolicyReport.useList({ cluster });
+  const { items: clusterPolicyReports, errors: cprErrors } = ClusterPolicyReport.useList({
+    cluster,
+  });
   const queryErrors = [...(prErrors ?? []), ...(cprErrors ?? [])];
   return (
     <AssociatedReportsBody
@@ -479,6 +496,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations;
   const labels = policy.jsonData.metadata.labels;
+  const cluster: string | undefined = policy.cluster || undefined;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -537,10 +555,12 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
         policyNamespace={policy.jsonData.metadata.namespace}
         rules={policy.rules}
         autogenRules={policy.status?.autogen?.rules}
+        cluster={cluster}
       />
       <AssociatedReportsSection
         policyName={policy.jsonData.metadata.name}
         policyNamespace={policy.jsonData.metadata.namespace}
+        cluster={cluster}
       />
       <YamlSection jsonData={policy.jsonData} />
     </Box>

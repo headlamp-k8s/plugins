@@ -39,6 +39,7 @@ interface PolicyImpactPanelProps {
   policyNamespace?: string;
   rules: PolicyRule[];
   autogenRules?: PolicyRule[];
+  cluster?: string;
 }
 
 /**
@@ -68,6 +69,7 @@ export function PolicyImpactPanel({
   policyNamespace,
   rules,
   autogenRules,
+  cluster,
 }: PolicyImpactPanelProps) {
   return policyNamespace ? (
     <NamespacedPolicyImpact
@@ -75,9 +77,15 @@ export function PolicyImpactPanel({
       policyNamespace={policyNamespace}
       rules={rules}
       autogenRules={autogenRules}
+      cluster={cluster}
     />
   ) : (
-    <ClusterPolicyImpact policyName={policyName} rules={rules} autogenRules={autogenRules} />
+    <ClusterPolicyImpact
+      policyName={policyName}
+      rules={rules}
+      autogenRules={autogenRules}
+      cluster={cluster}
+    />
   );
 }
 
@@ -86,13 +94,15 @@ function NamespacedPolicyImpact({
   policyNamespace,
   rules,
   autogenRules,
+  cluster,
 }: {
   policyName: string;
   policyNamespace: string;
   rules: PolicyRule[];
   autogenRules?: PolicyRule[];
+  cluster?: string;
 }) {
-  const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace });
+  const policyReportQuery = PolicyReport.useList({ namespace: policyNamespace, cluster });
   return (
     <PolicyImpactPanelBody
       policyName={policyName}
@@ -114,13 +124,15 @@ function ClusterPolicyImpact({
   policyName,
   rules,
   autogenRules,
+  cluster,
 }: {
   policyName: string;
   rules: PolicyRule[];
   autogenRules?: PolicyRule[];
+  cluster?: string;
 }) {
-  const policyReportQuery = PolicyReport.useList();
-  const clusterPolicyReportQuery = ClusterPolicyReport.useList();
+  const policyReportQuery = PolicyReport.useList({ cluster });
+  const clusterPolicyReportQuery = ClusterPolicyReport.useList({ cluster });
   return (
     <PolicyImpactPanelBody
       policyName={policyName}
