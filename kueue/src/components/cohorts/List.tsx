@@ -53,7 +53,8 @@ export default function CohortList() {
             id: 'parentCohort',
             label: 'Parent Cohort',
             getValue: (cohort: Cohort) => cohort.parentNameDisplay,
-            render: (cohort: Cohort) => renderParentCohortLink(cohort.spec.parentName),
+            render: (cohort: Cohort) =>
+              renderParentCohortLink(cohort.spec.parentName, cohort.cluster),
           },
           {
             id: 'clusterQueues',
