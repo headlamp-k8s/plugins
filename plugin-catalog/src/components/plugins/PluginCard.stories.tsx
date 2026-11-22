@@ -54,6 +54,8 @@ Default.args = {
   signed: false,
   production_organizations_count: 0,
   ts: 1708839350,
+  isInstalled: false,
+  isUpdateAvailable: false,
   repository: {
     url: 'https://github.com/yolossn/headlamp-plugins',
     kind: 21,
@@ -84,4 +86,24 @@ NoOfficialOrVerified.args = {
     official: false,
     verified_publisher: false,
   },
+};
+
+export const NotInstalled = Template.bind({});
+NotInstalled.args = {
+  ...Default.args,
+  isInstalled: false,
+};
+
+export const Installed = Template.bind({});
+Installed.args = {
+  ...Default.args,
+  isInstalled: true,
+  isUpdateAvailable: false,
+};
+
+export const UpdateAvailable = Template.bind({});
+UpdateAvailable.args = {
+  ...Default.args,
+  isInstalled: true,
+  isUpdateAvailable: true,
 };
