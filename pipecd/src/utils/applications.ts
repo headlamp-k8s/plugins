@@ -30,11 +30,13 @@ export const MAX_APPLICATION_PAGES = 1000;
  * skipped, because a page can repeat an application. A page of repeats with a
  * new cursor is still followed, since more applications can come after it.
  * Paging stops when the cursor is empty or comes back a second time, so a
- * server that cycles cursors cannot loop forever.
+ * server that cycles cursors cannot loop forever. Reaching MAX_APPLICATION_PAGES
+ * with a cursor still to follow fails with `tooManyPages`, because the list
+ * would be incomplete.
  */
 export async function listAllApplications(
   config: PipeCDConfig,
-  options: { disabled?: boolean; signal?: AbortSignal; timedOut: string }
+  options: { disabled?: boolean; signal?: AbortSignal; timedOut: string; tooManyPages: string }
 ): Promise<Application[]> {
   const seen = new Set<string>();
   const seenCursors = new Set<string>();
@@ -55,9 +57,9 @@ export async function listAllApplications(
       seen.add(app.id);
       collected.push(app);
     }
-    if (!resp.cursor || seenCursors.has(resp.cursor)) break;
+    if (!resp.cursor || seenCursors.has(resp.cursor)) return collected;
     seenCursors.add(resp.cursor);
     cursor = resp.cursor;
   }
-  return collected;
+  throw new Error(options.tooManyPages);
 }

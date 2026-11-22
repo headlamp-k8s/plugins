@@ -647,6 +647,111 @@ describe('Overview', () => {
     expect(await screen.findByText(/could not be loaded: network down/)).toBeTruthy();
   });
 
+  // A wrong key, a key without access or a rate limit says nothing about the
+  // piped, so it must not look like the piped is simply absent.
+  it.each([
+    ['Unauthenticated', 16],
+    ['PermissionDenied', 7],
+    ['ResourceExhausted', 8],
+  ])('reports a cluster piped lookup that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-new', true);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-new') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: denied', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    expect(await screen.findByText(/could not be loaded:.*denied/)).toBeTruthy();
+  });
+
+  // PipeCD answers NotFound for a deleted piped and InvalidArgument for one in
+  // another project. Neither is one of this project's pipeds.
+  it.each([
+    ['NotFound', 5],
+    ['InvalidArgument', 3],
+  ])('quietly leaves out a cluster piped that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-new', true);
+    // Looked up in the same batch, so once it shows the lookup has finished.
+    runInCluster('piped-old-001', true);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-new') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('old-vm');
+    });
+    expect(table.textContent).not.toContain('piped-new');
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
+  });
+
+  // A timed-out lookup must be cancelled, or it stays open and the limit on
+  // lookups at a time no longer holds.
+  it('cancels a piped lookup that times out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      mockSuccess([]);
+      const signals: AbortSignal[] = [];
+      vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id, signal) => {
+        if (id !== 'piped-prod-001') return PIPEDS[id];
+        if (signal) signals.push(signal);
+        return new Promise<Piped>(() => {});
+      });
+
+      renderOverview();
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(
+        await screen.findByText(/Some piped details could not be loaded: The request timed out\./)
+      ).toBeTruthy();
+      expect(signals).toHaveLength(1);
+      expect(signals[0].aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Without ListPipeds every piped is looked up on its own. A large project
+  // must not send all of those requests at once.
+  it('looks up at most five pipeds at a time', async () => {
+    setupConfigured();
+    const ids = Array.from({ length: 12 }, (_, i) => `piped-many-${i}`);
+    mockSuccess(ids.map((id, i) => deployment(`d${i}`, 1, 'DEPLOYMENT_SUCCESS', { pipedId: id })));
+    let active = 0;
+    let most = 0;
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      active++;
+      most = Math.max(most, active);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      active--;
+      return PIPEDS[id] ?? piped(id, id, 'v0.52.0', 1);
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('piped-many-11');
+    });
+    for (const id of ids) {
+      expect(pipecdApi.getPiped).toHaveBeenCalledWith(expect.anything(), id, expect.anything());
+    }
+    expect(most).toBe(5);
+  });
+
   it('also lists pipeds that appear only in deployments', async () => {
     setupConfigured();
     mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS', { pipedId: 'piped-old-001' })]);

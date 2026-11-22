@@ -171,17 +171,20 @@ function isAbort(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
-/** Failures that say nothing about the piped itself, so they are worth reporting. */
-const TRANSIENT_CODES = new Set<number>([
-  Code.Unknown,
-  Code.DeadlineExceeded,
-  Code.Internal,
-  Code.Unavailable,
-]);
+/**
+ * PipeCD answers NotFound for a deleted piped and InvalidArgument for one in
+ * another project, so neither is one of this project's pipeds. Any other
+ * failure (network, server, a wrong key, rate limits) says nothing about the
+ * piped, so it is worth reporting.
+ */
+const NOT_THIS_PROJECT_CODES = new Set<number>([Code.NotFound, Code.InvalidArgument]);
 
-function isTransient(err: unknown): boolean {
-  return !(err instanceof PipeCDApiError) || TRANSIENT_CODES.has(err.status);
+function isReported(err: unknown): boolean {
+  return !(err instanceof PipeCDApiError) || !NOT_THIS_PROJECT_CODES.has(err.status);
 }
+
+/** How many GetPiped calls run at once, so a large project sends no burst. */
+const PIPED_LOOKUP_CONCURRENCY = 5;
 
 function pipedRow(p: Piped, apps: number): PipedRow {
   return {
@@ -206,10 +209,32 @@ async function fetchPipeds(
   signal: AbortSignal,
   timedOut: string
 ): Promise<{ pipeds: PipedRow[]; errors: unknown[] }> {
-  // One failed piped should not hide the others, so settle each call.
-  const results = await Promise.allSettled(
-    ids.map(id => timed(getPiped(config, id, signal), timedOut))
-  );
+  // One failed piped should not hide the others, so settle each call. A few
+  // workers take the ids in turn, and each timeout starts when its call is sent.
+  // Each call has its own signal, so a timeout cancels the request and frees
+  // its place instead of leaving it open.
+  const results: PromiseSettledResult<Piped>[] = new Array(ids.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < ids.length && !signal.aborted) {
+      const i = next++;
+      const call = new AbortController();
+      const cancel = (): void => call.abort();
+      signal.addEventListener('abort', cancel);
+      try {
+        results[i] = {
+          status: 'fulfilled',
+          value: await timed(getPiped(config, ids[i], call.signal), timedOut),
+        };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      } finally {
+        signal.removeEventListener('abort', cancel);
+        call.abort();
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PIPED_LOOKUP_CONCURRENCY, ids.length) }, worker));
   const errors: unknown[] = [];
   const pipeds: PipedRow[] = [];
   results.forEach((result, i) => {
@@ -238,7 +263,8 @@ async function fetchAllPipeds(
   apps: Application[],
   deployments: Deployment[],
   signal: AbortSignal,
-  timedOut: string
+  timedOut: string,
+  tooManyPages: string
 ): Promise<{ pipeds: PipedRow[]; complete: boolean; error: unknown }> {
   // The Apps column counts enabled applications, like the Applications card.
   const counts = knownPipeds(apps, []);
@@ -257,6 +283,7 @@ async function fetchAllPipeds(
     disabled: true,
     signal,
     timedOut,
+    tooManyPages,
   }).catch(err => {
     if (isAbort(err)) throw err;
     disabledError = err;
@@ -620,8 +647,9 @@ export function Overview(): JSX.Element {
       try {
         const now = new Date();
         const timedOut = t('The request timed out.');
+        const tooManyPages = t('The server sent too many pages of applications.');
         const [apps, deploymentResult, listed] = await Promise.all([
-          listAllApplications(config, { signal, timedOut }),
+          listAllApplications(config, { signal, timedOut, tooManyPages }),
           fetchDeploymentsSince(config, rangeStart(range, now), signal, timedOut),
           // Settled, so a server without ListPipeds does not fail the page.
           timed(listPipeds(config, signal), timedOut).then(
@@ -635,7 +663,8 @@ export function Overview(): JSX.Element {
           apps,
           deploymentResult.deployments,
           signal,
-          timedOut
+          timedOut,
+          tooManyPages
         );
         if (signal.aborted) return;
         setData({
@@ -714,12 +743,13 @@ export function Overview(): JSX.Element {
       t('The request timed out.')
     ).then(r => {
       if (controller.signal.aborted) return;
-      // A piped PipeCD rejects belongs to another project or was deleted, so
-      // it is not one of this project's pipeds. A network or server failure
-      // says nothing about that, so report it instead of hiding it silently.
+      // A piped PipeCD reports as not found or invalid belongs to another
+      // project or was deleted, so it is not one of this project's pipeds. A
+      // network, server or key failure says nothing about that, so report it
+      // instead of hiding it silently.
       setClusterOnly(r.pipeds.filter(p => p.known));
-      const transient = r.errors.find(isTransient);
-      setClusterError(transient ? errorMessage(transient, t) : null);
+      const reported = r.errors.find(isReported);
+      setClusterError(reported ? errorMessage(reported, t) : null);
     });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
