@@ -30,6 +30,7 @@ export default function LocalQueueDetail(props: {
       resourceClass={LocalQueue}
       resourceLabel="LocalQueues"
       verb="get"
+      namespace={namespace}
       cluster={cluster}
       accessDescription="Kueue LocalQueues are namespaced user queue resources."
     >
