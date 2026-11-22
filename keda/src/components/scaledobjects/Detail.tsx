@@ -344,7 +344,7 @@ export function ScaledObjectDetail(props: { namespace?: string; name?: string })
                           />
                         ),
                       },
-                      ...(Object.keys(item.spec.advanced.scalingModifiers).length > 0
+                      ...(Object.keys(item.spec.advanced.scalingModifiers ?? {}).length > 0
                         ? [
                             {
                               name: t('Scaling Modifiers'),
