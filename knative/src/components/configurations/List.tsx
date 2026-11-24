@@ -27,7 +27,7 @@ import { getReadinessColumns, NamespacedResourceLink } from '../common/ResourceL
 
 export function ConfigurationsList() {
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
   const showClusterColumn = clusters.length > 1;
   const columns = React.useMemo<
     (ResourceTableColumn<KnativeConfiguration> | 'name' | 'namespace' | 'cluster' | 'age')[]

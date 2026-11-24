@@ -47,6 +47,7 @@ export interface CombinedReportSources {
   reports: PolicyReportSource[];
   loading: boolean;
   error?: unknown;
+  restrictedEphemeralReports?: boolean;
 }
 
 const POLICY_SOURCES_WITHOUT_RULE_IDENTITY = new Set([
@@ -279,4 +280,18 @@ export function combineReportSources(sourceLists: ReportSourceList[]): CombinedR
   const reports = mergeReportResults(sourceLists.flatMap(source => source.items || []));
 
   return { reports, loading, ...(error ? { error } : {}) };
+}
+
+export function combineNamespacedReportSources(
+  durableReports: ReportSourceList,
+  ephemeralReports: ReportSourceList
+): CombinedReportSources {
+  if (getErrorStatus(ephemeralReports.error) === 403 && !durableReports.error) {
+    return {
+      ...combineReportSources([durableReports]),
+      restrictedEphemeralReports: true,
+    };
+  }
+
+  return combineReportSources([durableReports, ephemeralReports]);
 }

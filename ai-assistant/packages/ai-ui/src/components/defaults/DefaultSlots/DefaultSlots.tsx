@@ -251,6 +251,67 @@ export interface DefaultSectionWrapperProps {
   title: string;
   /** Section content. */
   children: React.ReactNode;
+  /** Optional actions displayed beside the section heading. */
+  actions?: React.ReactNode;
+}
+
+/**
+ * Aligns section actions consistently and wraps them on narrow screens.
+ *
+ * @param props - Section action buttons.
+ * @returns Responsive action group.
+ */
+export function SettingsSectionActions({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap',
+        gap: 1,
+        ml: 'auto',
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+/**
+ * Keeps section summaries and staged-save actions below the settings they affect.
+ *
+ * @param props - Summary and optional save/discard actions.
+ * @returns Consistent section footer.
+ */
+export function SettingsSectionFooter({
+  summary,
+  actions,
+}: {
+  summary: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 2,
+        mt: 2,
+        pt: 2,
+        minHeight: 36,
+        borderTop: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Typography component="div" variant="body2" color="text.secondary">
+        {summary}
+      </Typography>
+      {actions && <SettingsSectionActions>{actions}</SettingsSectionActions>}
+    </Box>
+  );
 }
 
 /**
@@ -265,13 +326,62 @@ export interface DefaultSectionWrapperProps {
 export function DefaultSectionWrapper({
   title,
   children,
+  actions,
 }: DefaultSectionWrapperProps): React.ReactElement {
   return (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
-        {title}
-      </Typography>
+    <Box sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        <Typography variant="h6" component="h2">
+          {title}
+        </Typography>
+        {actions && <Box sx={{ ml: 'auto', maxWidth: '100%' }}>{actions}</Box>}
+      </Box>
       {children}
+    </Box>
+  );
+}
+
+/** Props for host-independent name/value settings rows. */
+export interface DefaultSettingsTableProps {
+  /** Setting labels and their controls. */
+  rows: { name: React.ReactNode; value: React.ReactNode }[];
+}
+
+/**
+ * Renders aligned setting labels and controls when the host does not supply a table.
+ *
+ * @param props - Setting labels and controls.
+ * @returns Responsive settings rows.
+ */
+export function DefaultSettingsTable({ rows }: DefaultSettingsTableProps): React.ReactElement {
+  return (
+    <Box>
+      {rows.map((row, index) => (
+        <Box
+          key={index}
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            alignItems: 'center',
+            gap: 2,
+            py: 1.5,
+            borderBottom: index < rows.length - 1 ? '1px solid' : undefined,
+            borderColor: 'divider',
+          }}
+        >
+          <Box>{row.name}</Box>
+          <Box>{row.value}</Box>
+        </Box>
+      ))}
     </Box>
   );
 }

@@ -16,7 +16,7 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
+import { Box, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import {
   Bar,
@@ -30,10 +30,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { configStore } from '../config';
 import { reportSourceErrorMessage } from '../hooks/policyReportSources';
 import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 import { PolicyResultStatus } from '../resources/policyReport';
+import { MetricCard } from './common';
+import { PolicyEngineHealth } from './PolicyEngineHealth';
+
+const useKyvernoConfig = configStore.useConfig();
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -51,31 +56,9 @@ const SEVERITY_COLORS: Record<string, string> = {
   info: '#9e9e9e',
 };
 
-function MetricCard({
-  title,
-  value,
-  color,
-}: {
-  title: string;
-  value: string | number;
-  color?: string;
-}) {
-  return (
-    <Card variant="outlined">
-      <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
-        <Typography variant="h4" sx={{ color: color || 'text.primary', fontWeight: 'bold' }}>
-          {value}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function Dashboard() {
   const { t } = useTranslation();
+  const config = useKyvernoConfig();
   const [clusterPolicies] = KyvernoClusterPolicy.useList();
   const [policies] = KyvernoPolicy.useList();
   const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
@@ -173,6 +156,8 @@ export function Dashboard() {
       .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
   }, [stats.byNamespace]);
 
+  const policyEngineHealth = config?.policyEngineHealthEnabled === true && <PolicyEngineHealth />;
+
   if (reportsError) {
     return (
       <Box sx={{ p: 2 }}>
@@ -183,6 +168,7 @@ export function Dashboard() {
             })}
           </Typography>
         </SectionBox>
+        {policyEngineHealth}
       </Box>
     );
   }
@@ -258,6 +244,8 @@ export function Dashboard() {
           </Grid>
         </Grid>
       </SectionBox>
+
+      {policyEngineHealth}
 
       <Grid container spacing={2}>
         {!isLoading && statusData.length > 0 && (

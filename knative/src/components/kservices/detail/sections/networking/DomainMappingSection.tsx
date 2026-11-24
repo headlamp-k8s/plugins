@@ -19,11 +19,9 @@ import {
   type ResourceTableColumn,
   SectionBox,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { Box, Button, Chip, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { ReadyStatusLabel } from '../../../../../components/common/ReadyStatusLabel';
 import { KnativeDomainMapping, KService } from '../../../../../resources/knative';
 import { ClusterDomainClaim } from '../../../../../resources/knative/clusterDomainClaim';
 import {
@@ -32,6 +30,7 @@ import {
   getClusterDomainClaim,
 } from '../../../../../utils/domain';
 import { useNotify } from '../../../../common/notifications/useNotify';
+import { ReadyCell } from '../../../../common/ResourceListCells';
 import { DomainMappingRowAction } from '../../../../domainmappings/list/header/DomainMappingRowAction';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
 
@@ -41,22 +40,6 @@ type Props = {
   cluster: string;
   kservice: KService;
 };
-
-function getReadyCondition(dm: KnativeDomainMapping): {
-  status: 'True' | 'False' | 'Unknown';
-  reason?: string;
-  message?: string;
-} {
-  const readyCondition = dm.status?.conditions?.find(c => c.type === 'Ready');
-  let status: 'True' | 'False' | 'Unknown' = 'Unknown';
-  if (readyCondition?.status === 'True') status = 'True';
-  else if (readyCondition?.status === 'False') status = 'False';
-  return {
-    status,
-    reason: readyCondition?.reason,
-    message: readyCondition?.message,
-  };
-}
 
 export default function DomainMappingSection({ namespace, serviceName, cluster }: Props) {
   const clusters = [cluster];
@@ -110,7 +93,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
 
   const showClusterColumn = clusters.length > 1;
 
-  const columns: (ResourceTableColumn<KubeObject> | 'cluster' | 'age' | 'name')[] = [
+  const columns: (ResourceTableColumn<KnativeDomainMapping> | 'cluster' | 'age' | 'name')[] = [
     ...(showClusterColumn ? (['cluster'] as const) : []),
     'name',
     {
@@ -118,20 +101,13 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
       label: 'Ready',
       gridTemplate: 'auto',
       disableFiltering: true,
-      getValue: item => {
-        const dm = item as KnativeDomainMapping;
-        return getReadyCondition(dm).status === 'True' ? 1 : 0;
+      getValue: dm => {
+        return dm.readyCondition?.status === 'True' ? 1 : 0;
       },
-      render: item => {
-        const dm = item as KnativeDomainMapping;
-        const ready = getReadyCondition(dm);
-        return (
-          <ReadyStatusLabel status={ready.status} reason={ready.reason} message={ready.message} />
-        );
-      },
+      render: dm => <ReadyCell condition={dm.readyCondition} />,
       sort: (a, b) => {
-        const statusA = getReadyCondition(a as KnativeDomainMapping).status === 'True' ? 1 : 0;
-        const statusB = getReadyCondition(b as KnativeDomainMapping).status === 'True' ? 1 : 0;
+        const statusA = a.readyCondition?.status === 'True' ? 1 : 0;
+        const statusB = b.readyCondition?.status === 'True' ? 1 : 0;
         return statusA - statusB;
       },
     },
@@ -140,12 +116,10 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
       label: 'ClusterDomainClaim',
       gridTemplate: 'auto',
       disableFiltering: true,
-      getValue: item => {
-        const dm = item as KnativeDomainMapping;
+      getValue: dm => {
         return getClusterDomainClaim(dm, clusterDomainClaims, cluster, namespace).state;
       },
-      render: item => {
-        const dm = item as KnativeDomainMapping;
+      render: dm => {
         const { state } = getClusterDomainClaim(dm, clusterDomainClaims, cluster, namespace);
         if (state === 'unknown') {
           return (
@@ -165,10 +139,9 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
     {
       id: 'url',
       label: 'URL',
-      getValue: item => (item as KnativeDomainMapping).readyUrl ?? '',
+      getValue: dm => dm.readyUrl ?? '',
       gridTemplate: 'auto',
-      render: item => {
-        const dm = item as KnativeDomainMapping;
+      render: dm => {
         return dm.readyUrl ? (
           <Typography variant="caption" color="text.secondary">
             <a href={dm.readyUrl} target="_blank" rel="noreferrer">

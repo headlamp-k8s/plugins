@@ -17,6 +17,7 @@
 // Register provider icons for offline use
 import '@headlamp-k8s/ai-ui/icons/iconBundles';
 import { proactiveDiagnosisManager } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
+import { AI_ASSISTANT_ICON_NAME } from '@headlamp-k8s/ai-ui/icons/aiAssistantIcon';
 import {
   registerAppBarAction,
   registerPluginSettings,
@@ -63,6 +64,7 @@ function AIDiagnosisButton({ event }: { event: Event }) {
     const involvedObject = data?.involvedObject ?? { kind: '', name: '', namespace: '' };
 
     const eventDigest = {
+      cluster: event.cluster || undefined,
       uid: eventUid,
       name: data?.metadata?.name || 'unknown',
       type: data?.type || 'Warning',
@@ -91,7 +93,7 @@ function AIDiagnosisButton({ event }: { event: Event }) {
   return (
     <ActionButton
       description={t('Diagnose with AI')}
-      icon="mdi:robot-outline"
+      icon={AI_ASSISTANT_ICON_NAME}
       onClick={handleDiagnose}
     />
   );

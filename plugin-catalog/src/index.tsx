@@ -80,4 +80,4 @@ if (Headlamp.isRunningAsApp()) {
   });
 }
 
-registerPluginSettings('@headlamp-k8s/plugin-catalog', Settings, true);
+registerPluginSettings('@headlamp-k8s/plugin-catalog', Settings);

@@ -75,6 +75,8 @@ export function EditorDialog(props: {
   function handleChartValueFetch(chart: any) {
     const packageID = chartCfg.chartProfile === chartProfile ? chart.name : chart.package_id;
     const packageVersion = selectedVersion?.value ?? chart.version;
+    // Clear an earlier failure, otherwise Install stays disabled even after this fetch works.
+    setChartValuesFetchError(null);
     setChartValuesLoading(true);
     fetchChartValues(packageID, packageVersion)
       .then((response: any) => {

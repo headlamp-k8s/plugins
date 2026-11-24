@@ -18,6 +18,8 @@ import { useMemo } from 'react';
 import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
 import {
+  CombinedReportSources,
+  combineNamespacedReportSources,
   combineReportSources,
   normalizeReportResource,
   PolicyReportSource,
@@ -32,11 +34,7 @@ type PolicyReportResource =
 
 export type { PolicyReportSource } from './policyReportSources';
 
-export interface PolicyReportSources {
-  reports: PolicyReportSource[];
-  loading: boolean;
-  error?: unknown;
-}
+export type PolicyReportSources = CombinedReportSources;
 
 function normalizeReport(report: PolicyReportResource): PolicyReportSource {
   return normalizeReportResource({
@@ -60,27 +58,50 @@ function normalizeSource(items: PolicyReportResource[] | null, error: unknown): 
   };
 }
 
-export function usePolicyReportSources(): PolicyReportSources {
-  const [policyReports, policyReportsError] = PolicyReport.useList();
-  const [clusterPolicyReports, clusterPolicyReportsError] = ClusterPolicyReport.useList();
-  const [ephemeralReports, ephemeralReportsError] = EphemeralReport.useList();
-  const [clusterEphemeralReports, clusterEphemeralReportsError] = ClusterEphemeralReport.useList();
+function useNamespacedReportLists(cluster?: string, namespace?: string) {
+  const [policyReports, policyReportsError] = PolicyReport.useList({ cluster, namespace });
+  const [ephemeralReports, ephemeralReportsError] = EphemeralReport.useList({ cluster, namespace });
+
+  return useMemo(
+    () => ({
+      durable: normalizeSource(policyReports, policyReportsError),
+      ephemeral: normalizeSource(ephemeralReports, ephemeralReportsError),
+    }),
+    [policyReports, policyReportsError, ephemeralReports, ephemeralReportsError]
+  );
+}
+
+/** A namespaced policy only needs reports from its own namespace. */
+export function useNamespacedPolicyReportSources(
+  namespace: string,
+  cluster?: string
+): PolicyReportSources {
+  const { durable, ephemeral } = useNamespacedReportLists(cluster, namespace);
+  return useMemo(() => combineNamespacedReportSources(durable, ephemeral), [durable, ephemeral]);
+}
+
+export function usePolicyReportSources(cluster?: string): PolicyReportSources {
+  const { durable, ephemeral } = useNamespacedReportLists(cluster);
+  const [clusterPolicyReports, clusterPolicyReportsError] = ClusterPolicyReport.useList({
+    cluster,
+  });
+  const [clusterEphemeralReports, clusterEphemeralReportsError] = ClusterEphemeralReport.useList({
+    cluster,
+  });
 
   return useMemo(
     () =>
       combineReportSources([
-        normalizeSource(policyReports, policyReportsError),
+        durable,
         normalizeSource(clusterPolicyReports, clusterPolicyReportsError),
-        normalizeSource(ephemeralReports, ephemeralReportsError),
+        ephemeral,
         normalizeSource(clusterEphemeralReports, clusterEphemeralReportsError),
       ]),
     [
-      policyReports,
-      policyReportsError,
+      durable,
       clusterPolicyReports,
       clusterPolicyReportsError,
-      ephemeralReports,
-      ephemeralReportsError,
+      ephemeral,
       clusterEphemeralReports,
       clusterEphemeralReportsError,
     ]

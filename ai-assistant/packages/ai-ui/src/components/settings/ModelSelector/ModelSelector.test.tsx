@@ -114,7 +114,8 @@ describe('ModelSelector static states', () => {
     expect(screen.getByText('OpenAI')).toBeTruthy();
     expect(screen.getByText('GitHub Copilot')).toBeTruthy();
     expect(screen.getByText('Ollama (llama3)')).toBeTruthy();
-    expect(screen.getByText('Default')).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Default' })).toBeTruthy();
+    expect(screen.getByText('Default', { selector: 'span' })).toBeTruthy();
   });
 
   it('resolves a non-default legacy selection when no selectedConfigId is supplied', () => {
@@ -158,6 +159,18 @@ describe('ModelSelector static states', () => {
     expect(onAutoDetect).toHaveBeenCalledOnce();
   });
 
+  it('places secondary detection before the primary add action in the header', () => {
+    renderSelector(withMultipleProvidersArgs, { onAutoDetect: vi.fn() });
+    const heading = screen.getByRole('heading', { name: 'Configured Providers' });
+    const detect = screen.getByRole('button', { name: 'Auto Detect' });
+    const add = screen.getByRole('button', { name: 'Add Provider' });
+    expect(heading.parentElement?.contains(detect)).toBe(true);
+    expect(heading.parentElement?.contains(add)).toBe(true);
+    expect(detect.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(add.classList.contains('MuiButton-sizeSmall')).toBe(true);
+    expect(detect.classList.contains('MuiButton-sizeSmall')).toBe(true);
+  });
+
   it('exposes busy state for the detecting story', async () => {
     renderSelector(autoDetectingArgs);
 
@@ -198,6 +211,15 @@ describe('ModelSelector static states', () => {
     fireEvent.click(screen.getByText('OpenAI'));
     fireEvent.keyDown(screen.getByText('OpenAI'), { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('renders compact provider rows with accessible management actions', async () => {
+    renderSelector(withMultipleProvidersArgs);
+    const table = screen.getByRole('table', { name: 'Configured Providers' });
+    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    expect(within(table).getAllByRole('button', { name: /^More options for / })).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Select OpenAI' })).toBeNull();
+    await expect(runAxe()).resolves.toEqual([]);
   });
 
   it('handles Space selection and missing change callbacks safely', () => {
@@ -419,6 +441,29 @@ describe('ModelSelector saved configuration actions', () => {
 });
 
 describe('ModelSelector configuration editing', () => {
+  it('preserves a removed model when editing only the configuration name', async () => {
+    const onChange = vi.fn();
+    const options = modelProviders
+      .find(provider => provider.id === 'openai')
+      ?.fields.find(field => field.name === 'model')?.options;
+    expect(options).not.toContain('gpt-4o');
+    renderSelector(withMultipleProvidersArgs, { onChange });
+    await openEditDialog();
+
+    expect(screen.getByDisplayValue('gpt-4o')).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('Give this configuration a name'), {
+      target: { value: 'Renamed configuration' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configId: 'openai-primary',
+        config: expect.objectContaining({ model: 'gpt-4o' }),
+      })
+    );
+  });
+
   it('disables save until required values are present', async () => {
     renderSelector({ ...emptyArgs, savedConfigs: { providers: [], termsAccepted: true } });
     fireEvent.click(screen.getByRole('button', { name: 'Add Provider' }));

@@ -1,4 +1,5 @@
 export const kueueRouteNames = {
+  overview: 'kueue-overview',
   admissionChecksList: 'kueue-admissionchecks-list',
   admissionCheckDetail: 'kueue-admissioncheck-detail',
   cohortsList: 'kueue-cohorts-list',
@@ -14,6 +15,7 @@ export const kueueRouteNames = {
 } as const;
 
 export const kueueRoutePaths = {
+  overview: '/kueue',
   admissionChecksList: '/kueue/admissionchecks',
   admissionCheckDetail: '/kueue/admissionchecks/:name',
   cohortsList: '/kueue/cohorts',

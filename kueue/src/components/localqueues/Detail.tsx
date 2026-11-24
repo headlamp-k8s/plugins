@@ -17,19 +17,26 @@ function getConditionsSection(localQueue: LocalQueue) {
   };
 }
 
-export default function LocalQueueDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function LocalQueueDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={LocalQueue}
       resourceLabel="LocalQueues"
       verb="get"
+      cluster={cluster}
       accessDescription="Kueue LocalQueues are namespaced user queue resources."
     >
       <DetailsGrid
         resourceType={LocalQueue}
         name={name}
+        cluster={cluster}
         namespace={namespace}
         withEvents
         extraInfo={localQueue =>
@@ -37,7 +44,7 @@ export default function LocalQueueDetail() {
             ? [
                 {
                   name: 'ClusterQueue',
-                  value: renderClusterQueueLink(localQueue.clusterQueueName),
+                  value: renderClusterQueueLink(localQueue.clusterQueueName, localQueue.cluster),
                 },
                 {
                   name: 'Stop Policy',
@@ -72,6 +79,7 @@ export default function LocalQueueDetail() {
                     <RelatedWorkloadsSection
                       namespace={localQueue.metadata.namespace}
                       localQueueName={localQueue.metadata.name}
+                      cluster={localQueue.cluster}
                     />
                   ),
                 },

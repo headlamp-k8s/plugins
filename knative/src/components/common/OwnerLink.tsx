@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-import { Link } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { Link, type ResourceTableColumn } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import type { KubeObject, KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { CustomResourceDefinition } from '../../resources/k8s/customResourceDefinition';
 import {
+  CHANNEL_API_GROUP,
+  CHANNEL_IMPLEMENTATION_FAMILY,
   getKnativeCrdName,
+  KnativeBroker,
   KnativeCertificate,
+  KnativeChannel,
+  KnativeChannelImplementation,
   KnativeConfiguration,
   KnativeImage,
   KnativeIngress,
@@ -26,10 +32,14 @@ import {
   KnativePodAutoscaler,
   KnativeRoute,
   KnativeServerlessService,
+  KnativeSubscription,
+  KnativeTrigger,
 } from '../../resources/knative';
+import { getFirstOwner } from '../../resources/knative/resourceData';
 import { EmptyValue, TextValue } from './ResourceListCells';
 
 const ownerResourceClasses = [
+  KnativeBroker,
   KnativeConfiguration,
   KnativeRoute,
   KnativePodAutoscaler,
@@ -38,65 +48,216 @@ const ownerResourceClasses = [
   KnativeIngress,
   KnativeServerlessService,
   KnativeCertificate,
+  KnativeChannel,
+  KnativeSubscription,
+  KnativeTrigger,
 ];
 
+const ownerClassesByGvk = ownerResourceClasses.flatMap(resourceClass =>
+  (Array.isArray(resourceClass.apiVersion)
+    ? resourceClass.apiVersion
+    : [resourceClass.apiVersion]
+  ).map(apiVersion => [`${apiVersion}/${resourceClass.kind}`, resourceClass] as const)
+);
+
 const ownerCrdNames = new Map(
-  ownerResourceClasses.flatMap(resourceClass =>
-    (Array.isArray(resourceClass.apiVersion)
-      ? resourceClass.apiVersion
-      : [resourceClass.apiVersion]
-    ).map(
-      apiVersion =>
-        [`${apiVersion}/${resourceClass.kind}`, getKnativeCrdName(resourceClass)] as const
-    )
-  )
+  ownerClassesByGvk.map(([gvk, resourceClass]) => [gvk, getKnativeCrdName(resourceClass)] as const)
 );
 
 const ownerRouteNames = new Map<string, string>([
   ['serving.knative.dev/v1/Service', 'kserviceDetails'],
   ['serving.knative.dev/v1/Revision', 'revisionDetails'],
-  ['v1/Service', 'service'],
-  ['v1/Secret', 'secret'],
+  ...ownerClassesByGvk
+    .filter(([, resourceClass]) => resourceClass.detailsRoute !== resourceClass.kind)
+    .map(([gvk, resourceClass]) => [gvk, resourceClass.detailsRoute] as const),
+  ['v1/Service', 'Service'],
+  ['v1/Secret', 'Secret'],
+  ['v1/ConfigMap', 'ConfigMap'],
 ]);
 
-function getOwnerCrdName(owner: KubeOwnerReference): string | undefined {
+/** The parts of an object reference needed to link to the object. */
+type ResourceReference = Pick<KubeOwnerReference, 'apiVersion' | 'kind' | 'name'>;
+
+/**
+ * Finds the CRD name of a Knative kind that the plugin links to Headlamp's Custom Resource view.
+ *
+ * @param owner - The referenced object.
+ * @returns The CRD name, for example `routes.serving.knative.dev`, or undefined for other kinds.
+ */
+function getOwnerCrdName(owner: ResourceReference): string | undefined {
   return ownerCrdNames.get(`${owner.apiVersion}/${owner.kind}`);
 }
 
+/**
+ * Links to a channel implementation's page, which names the channel's CRD in its query.
+ *
+ * @param props - The channel, its CRD, where it is, and the text to show.
+ * @returns The link.
+ */
+function ChannelImplementationPageLink({
+  name,
+  crd,
+  namespace,
+  cluster,
+  text,
+}: {
+  /** Name of the channel. */
+  name: string;
+  /** Name of the channel's CRD, such as `kafkachannels.messaging.knative.dev`. */
+  crd: string;
+  /** Namespace of the channel; `default` when it is not set. */
+  namespace?: string;
+  /** Cluster of the channel. */
+  cluster?: string;
+  /** Text to show. */
+  text: string;
+}) {
+  return (
+    <Link
+      routeName={KnativeChannelImplementation.detailsRoute}
+      params={{ namespace: namespace || 'default', name }}
+      search={{ crd }}
+      activeCluster={cluster}
+    >
+      {text}
+    </Link>
+  );
+}
+
+/**
+ * Links to a channel implementation of another project, such as a KafkaChannel or a
+ * NatsJetStreamChannel, using the channel CRD in the cluster that defines its kind. It lists the
+ * cluster's channel CRDs, so it is rendered only for `messaging.knative.dev` kinds the plugin
+ * does not know.
+ *
+ * @param props - The object to link to, where it is, and the text to show.
+ * @returns A link to the channel's page, or the text while the CRDs load, when they cannot be
+ * listed, or when no channel CRD defines the kind.
+ */
+function ChannelImplementationLink({
+  owner,
+  namespace,
+  cluster,
+  text,
+}: {
+  /** The object to link to. */
+  owner: ResourceReference;
+  /** Namespace of the object; `default` when it is not set. */
+  namespace?: string;
+  /** Cluster of the object. */
+  cluster?: string;
+  /** Text to show. */
+  text: string;
+}) {
+  const [crds] = CustomResourceDefinition.useList({
+    cluster,
+    labelSelector: `${CHANNEL_IMPLEMENTATION_FAMILY.labelKey}=true`,
+  });
+  const crd = crds?.find(
+    item =>
+      !CHANNEL_IMPLEMENTATION_FAMILY.excludedCrds?.includes(item.metadata.name) &&
+      item.jsonData.spec.group === CHANNEL_API_GROUP &&
+      item.jsonData.spec.names.kind === owner.kind
+  );
+  if (!crd) return <TextValue value={text} />;
+
+  return (
+    <ChannelImplementationPageLink
+      name={owner.name}
+      crd={crd.metadata.name}
+      namespace={namespace}
+      cluster={cluster}
+      text={text}
+    />
+  );
+}
+
+/**
+ * Links to a referenced object: the plugin's pages for Knative Services and Revisions, for the
+ * Knative kinds whose class names its own detail route, and for channel implementations such as a
+ * KafkaChannel, Headlamp's pages for Services, Secrets and ConfigMaps, and Headlamp's Custom
+ * Resource view for the other Knative kinds the plugin knows.
+ *
+ * @param props - The object to link to, where it is, and the text to show.
+ * @returns A link to the object, its name or label as text when it cannot be linked, or an empty
+ * value when there is no object.
+ */
 export function OwnerLink({
   owner,
   namespace,
   cluster,
+  label,
 }: {
-  owner?: KubeOwnerReference;
+  /** The object to link to. */
+  owner?: ResourceReference;
+  /** Namespace of the object; `default` when it is not set. */
   namespace?: string;
+  /** Cluster of the object. */
   cluster?: string;
+  /** Text to show instead of the object's name. */
+  label?: string;
 }) {
   if (!owner) return <EmptyValue />;
 
+  const text = label || owner.name;
+
   const routeName = ownerRouteNames.get(`${owner.apiVersion}/${owner.kind}`);
-  if (routeName) {
-    return (
-      <Link
-        routeName={routeName}
-        params={{ namespace: namespace || 'default', name: owner.name }}
-        activeCluster={cluster}
-      >
-        {owner.name}
-      </Link>
+  const crd = routeName ? undefined : getOwnerCrdName(owner);
+  if (!routeName && !crd) {
+    if (owner.apiVersion.split('/')[0] !== CHANNEL_API_GROUP) return <TextValue value={text} />;
+    const knativeChannel = CHANNEL_IMPLEMENTATION_FAMILY.fallbackKinds.find(
+      kind => kind.kind === owner.kind
+    );
+    return knativeChannel ? (
+      <ChannelImplementationPageLink
+        name={owner.name}
+        crd={getKnativeCrdName(knativeChannel)}
+        namespace={namespace}
+        cluster={cluster}
+        text={text}
+      />
+    ) : (
+      <ChannelImplementationLink
+        owner={owner}
+        namespace={namespace}
+        cluster={cluster}
+        text={text}
+      />
     );
   }
 
-  const crd = getOwnerCrdName(owner);
-  if (!crd) return <TextValue value={owner.name} />;
-
   return (
     <Link
-      routeName="customresource"
-      params={{ crd, namespace: namespace || 'default', crName: owner.name }}
+      routeName={routeName || 'customresource'}
+      params={{
+        namespace: namespace || 'default',
+        ...(crd ? { crd, crName: owner.name } : { name: owner.name }),
+      }}
       activeCluster={cluster}
     >
-      {owner.name}
+      {text}
     </Link>
   );
+}
+
+/**
+ * Builds a list column that shows the object that created each row, such as the Trigger a Broker
+ * made a Subscription for, or the Channel a KafkaChannel backs: the controlling owner, or else the
+ * first owner.
+ *
+ * @returns A column that sorts and filters by the owner's name and links to the owner.
+ */
+export function ownerColumn<T extends KubeObject>(): ResourceTableColumn<T> {
+  return {
+    id: 'owner',
+    label: 'Owner',
+    getValue: item => getFirstOwner(item.metadata)?.name || '',
+    render: item => (
+      <OwnerLink
+        owner={getFirstOwner(item.metadata)}
+        namespace={item.metadata.namespace}
+        cluster={item.cluster}
+      />
+    ),
+  };
 }

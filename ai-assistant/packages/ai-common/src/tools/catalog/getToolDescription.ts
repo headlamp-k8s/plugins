@@ -24,17 +24,32 @@
 /**
  * Returns a short, human-readable description for a tool.
  *
- * For MCP tools the description is inferred from keyword patterns in the tool
- * name (e.g. "trace" → tracing description). For built-in Kubernetes tools a
- * generic description is returned.
+ * When a `catalogDescription` is provided (sourced from the MCP server's own
+ * tool manifest) it is returned immediately for MCP tools. This ensures that
+ * non-Gadget MCP servers such as Flux or Prometheus display accurate text in
+ * the approval dialog rather than Inspektor-Gadget-specific heuristic text.
  *
- * @param toolName  - The full tool identifier (e.g. `"gadget__trace_open"`).
- * @param isMCPTool - Whether the tool comes from an MCP server.
- * @returns A keyword-specific description or a generic description containing the tool name.
+ * When no catalog description is available the function falls back to keyword
+ * heuristics that work well for Inspektor Gadget tool names.
+ *
+ * @param toolName          - The full tool identifier (e.g. `"gadget__trace_open"`).
+ * @param isMCPTool         - Whether the tool comes from an MCP server.
+ * @param catalogDescription - Optional description from the MCP server manifest.
+ * @returns The catalog description, a keyword-specific description, or a generic fallback.
  */
-export function getToolDescription(toolName: string, isMCPTool: boolean): string {
+export function getToolDescription(
+  toolName: string,
+  isMCPTool: boolean,
+  catalogDescription?: string
+): string {
   if (isMCPTool) {
-    // Check exec/run before trace so 'exec_tracer' gets the exec description
+    // Prefer the description provided by the MCP server's own manifest.
+    if (catalogDescription) {
+      return catalogDescription;
+    }
+
+    // Keyword heuristics — useful when the catalog description is absent.
+    // Check exec/run before trace so 'exec_tracer' gets the exec description.
     if (toolName.includes('exec') || toolName.includes('run')) {
       return 'Executes commands in containers';
     }
@@ -47,7 +62,7 @@ export function getToolDescription(toolName: string, isMCPTool: boolean): string
     if (toolName.includes('top') || toolName.includes('process')) {
       return 'Shows running processes and resource usage';
     }
-    return `Inspektor Gadget debugging tool: ${toolName}`;
+    return `MCP tool: ${toolName}`;
   }
 
   if (toolName.includes('kubernetes')) {

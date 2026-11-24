@@ -37,12 +37,20 @@ function SettingsLink({ children }: { children: React.ReactNode }): React.ReactE
 }
 
 it('forwards chat state and callbacks to the text stream slot', () => {
-  render(<AIChatContent {...withMessagesArgs} TextStreamSlot={TextStreamSlot} />);
+  const beforeMessages = <section>Diagnoses</section>;
+  render(
+    <AIChatContent
+      {...withMessagesArgs}
+      beforeMessages={beforeMessages}
+      TextStreamSlot={TextStreamSlot}
+    />
+  );
 
   expect(screen.getByText('Show me unhealthy pods in the default namespace.')).toBeTruthy();
   expect(screen.queryByRole('alert')).toBeNull();
   expect(textStreamMock).toHaveBeenCalledWith(
     expect.objectContaining({
+      beforeMessages,
       history: withMessagesArgs.history,
       isLoading: false,
       apiError: null,

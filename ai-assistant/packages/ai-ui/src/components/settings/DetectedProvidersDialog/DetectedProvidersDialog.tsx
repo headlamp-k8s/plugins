@@ -129,7 +129,7 @@ export default function DetectedProvidersDialog({
         </DialogContentText>
         {detectedProviders.map((provider, index) => {
           const providerInfo = getProviderById(provider.providerId);
-          const icon = providerInfo?.icon || 'mdi:robot';
+          const icon = providerInfo?.icon || 'mdi:server';
           return (
             <FormControlLabel
               key={`${provider.providerId}-${index}`}

@@ -100,6 +100,20 @@ export interface AdmissionChecksStrategyLike {
   }>;
 }
 
+/**
+ * Combine both ways a ClusterQueue can name its admission checks into one strategy.
+ * v1beta1 also has spec.admissionChecks, a plain list of names that applies to all
+ * flavors; v1beta2 only has spec.admissionChecksStrategy.
+ */
+export function normalizeAdmissionChecksStrategy(
+  strategy?: AdmissionChecksStrategyLike,
+  legacyNames: string[] = []
+): AdmissionChecksStrategyLike {
+  return {
+    admissionChecks: [...(strategy?.admissionChecks || []), ...legacyNames.map(name => ({ name }))],
+  };
+}
+
 /** Flavor fungibility policy for borrowing and preemption decisions. */
 export interface FlavorFungibilityLike {
   /** Policy for whether this ClusterQueue can borrow resources. */
@@ -173,6 +187,20 @@ export function getUniqueFlavorNames(resourceGroups: ResourceGroupLike[]) {
   const names = resourceGroups.flatMap(group => group.flavors?.map(flavor => flavor.name) || []);
 
   return Array.from(new Set(names)).filter(Boolean).sort();
+}
+
+/**
+ * Render the nominal quota a ResourceFlavor gives a ClusterQueue, such as `cpu: 4, memory: 8Gi`.
+ * Returns '-' when the flavor is listed without resources.
+ */
+export function renderFlavorNominalQuota(resourceGroups: ResourceGroupLike[], flavorName: string) {
+  const quotas = resourceGroups
+    .flatMap(group => group.flavors || [])
+    .filter(flavor => flavor.name === flavorName)
+    .flatMap(flavor => flavor.resources || [])
+    .map(resource => `${resource.name}: ${resource.nominalQuota}`);
+
+  return renderStringList(quotas);
 }
 
 /** Render a compact resource group and flavor count for ClusterQueue lists. */
@@ -422,4 +450,78 @@ export function renderConcurrentAdmissionPolicy(policy?: ConcurrentAdmissionPoli
   ].filter(Boolean);
 
   return values.length > 0 ? values.join('; ') : '-';
+}
+
+/** What each Active=False reason means, following Kueue's ClusterQueue inactiveReason. */
+const INACTIVE_REASONS: Record<string, string> = {
+  Terminating: 'The ClusterQueue is being deleted and will not admit new Workloads.',
+  Stopped:
+    'The ClusterQueue has a stopPolicy set, so Kueue does not admit new Workloads from it. With HoldAndDrain, admitted Workloads are evicted too.',
+  FlavorNotFound: 'The ClusterQueue references a ResourceFlavor that does not exist.',
+  AdmissionCheckNotFound: 'The ClusterQueue references an AdmissionCheck that does not exist.',
+  AdmissionCheckInactive:
+    'The ClusterQueue references an AdmissionCheck that is not active, usually because its controller is not running.',
+  MultipleMultiKueueAdmissionChecks: 'A ClusterQueue can use only one MultiKueue AdmissionCheck.',
+  MultiKueueAdmissionCheckAppliedPerFlavor:
+    'A MultiKueue AdmissionCheck must apply to all flavors, so it cannot be limited with onFlavors.',
+  MultiKueueWithProvisioningRequest:
+    'MultiKueue and ProvisioningRequest AdmissionChecks cannot be used on the same ClusterQueue.',
+  TopologyNotFound:
+    'A ResourceFlavor uses Topology Aware Scheduling, but the Topology it names does not exist.',
+};
+
+/** What stops an inactive ClusterQueue from admitting Workloads. */
+export interface ClusterQueueInactiveCauses {
+  /** First reason Kueue reports on the Active condition. */
+  reason?: string;
+  /** Plain explanation of the reason, when it is known. */
+  explanation?: string;
+  /** Kueue's message, which lists every cause. */
+  message?: string;
+  /** Referenced ResourceFlavors that do not exist. */
+  missingFlavors: string[];
+  /** Referenced AdmissionChecks that do not exist. */
+  missingAdmissionChecks: string[];
+  /** Referenced AdmissionChecks whose Active condition is not True. */
+  inactiveAdmissionChecks: string[];
+}
+
+/**
+ * Explain an inactive ClusterQueue, or return null when it is active or not yet evaluated.
+ * Kueue only reports the first cause as the reason, so missing and inactive references are
+ * worked out from the spec against what exists. Pass undefined for a list that is not loaded.
+ */
+export function getClusterQueueInactiveCauses(
+  activeCondition: ClusterQueueConditionLike | undefined,
+  resourceGroups: ResourceGroupLike[],
+  admissionChecksStrategy: AdmissionChecksStrategyLike | undefined,
+  existingFlavors?: string[],
+  existingAdmissionChecks?: { name: string; active: boolean }[]
+): ClusterQueueInactiveCauses | null {
+  if (activeCondition?.status !== 'False') {
+    return null;
+  }
+
+  const checkNames = Array.from(
+    new Set((admissionChecksStrategy?.admissionChecks || []).map(check => check.name))
+  ).sort();
+  const checks = new Map(existingAdmissionChecks?.map(check => [check.name, check.active]));
+
+  return {
+    reason: activeCondition.reason,
+    // Own keys only, so reasons like "constructor" fall back to Kueue's message.
+    explanation:
+      activeCondition.reason &&
+      Object.prototype.hasOwnProperty.call(INACTIVE_REASONS, activeCondition.reason)
+        ? INACTIVE_REASONS[activeCondition.reason]
+        : undefined,
+    message: activeCondition.message,
+    missingFlavors: existingFlavors
+      ? getUniqueFlavorNames(resourceGroups).filter(name => !existingFlavors.includes(name))
+      : [],
+    missingAdmissionChecks: existingAdmissionChecks
+      ? checkNames.filter(name => !checks.has(name))
+      : [],
+    inactiveAdmissionChecks: checkNames.filter(name => checks.get(name) === false),
+  };
 }

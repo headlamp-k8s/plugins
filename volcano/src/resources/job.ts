@@ -1,4 +1,5 @@
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { getTotalReplicas } from '../utils/taskReplicas';
 import { volcanoJobApiVersion } from '../utils/volcanoApi';
 import { volcanoJobTypeLabel } from '../utils/volcanoLabels';
 import { volcanoRoutePaths } from '../utils/volcanoRoutes';
@@ -10,8 +11,8 @@ import { volcanoRoutePaths } from '../utils/volcanoRoutes';
 export interface TaskSpec {
   /** Task name. */
   name: string;
-  /** Number of pods requested for this task. */
-  replicas: number;
+  /** Number of pods requested for this task. Omitted by the API when 0. */
+  replicas?: number;
   /** Minimum available pods required for this task. */
   minAvailable?: number;
   /** Maximum retries before marking this task failed. */
@@ -365,7 +366,7 @@ export class VolcanoJob extends KubeObject<KubeVolcanoJob> {
   }
 
   get replicaCount(): number {
-    return this.spec.tasks?.reduce((total, task) => total + task.replicas, 0) ?? 0;
+    return getTotalReplicas(this.spec.tasks);
   }
 
   get jobType(): string {

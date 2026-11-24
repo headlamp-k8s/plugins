@@ -47,6 +47,7 @@
     "./diagnosis/ProactiveDiagnosisManager": "./src/diagnosis/ProactiveDiagnosisManager.ts",
     "./diagnosis/diagnosisHelpers": "./src/diagnosis/diagnosisHelpers.ts",
     "./icons/iconBundles": "./src/icons/iconBundles.ts",
+    "./icons/aiAssistantIcon": "./src/icons/aiAssistantIcon.ts",
     "./providers/modelProviders": "./src/providers/modelProviders.ts",
     "./formatting/stringFormatting": "./src/formatting/stringFormatting.ts",
     "./formatting/logFormatting": "./src/formatting/logFormatting.ts",
@@ -127,11 +128,11 @@
   },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.6.0",
-    "@vitest/coverage-v8": "4.1.8",
+    "@vitest/coverage-v8": "4.1.12",
     "axe-core": "^4.12.1",
     "eslint": "^8.57.1",
     "prettier": "^2.8.8",
     "typescript": "^5.6.2",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.12"
   }
 }

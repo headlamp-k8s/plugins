@@ -31,7 +31,10 @@ describe('github utilities', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    vi.mocked(Octokit).mockReturnValue(mockOctokit as any);
+    // Vitest 4 calls the mock with `new`, so it needs a function, not an arrow.
+    vi.mocked(Octokit).mockImplementation(function () {
+      return mockOctokit as any;
+    });
     vi.stubEnv('GITHUB_TOKEN', 'mock-token');
   });
 

@@ -1,0 +1,34 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 03-dryrun-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: dry-run-simulation
+spec:
+  dryRun: true
+  enforcementMode: continuous
+  conditionPolicy: anyOf
+  taint:
+    key: readiness.k8s.io/GPUReady
+    value: calibrating
+    effect: PreferNoSchedule
+  nodeSelector:
+    matchExpressions:
+      - key: accelerator
+        operator: In
+        values:
+          - nvidia-a100
+          - nvidia-h100
+  conditions:
+    - type: gpu.nvidia.com/Ready
+      requiredStatus: 'True'
+status:
+  observedGeneration: 1
+  dryRunResults:
+    summary: 'Simulation complete for 8 GPU nodes. 3 nodes would receive taints, 5 nodes are ready.'
+    affectedNodes: 8
+    riskyOperations: 0
+    taintsToAdd: 3
+    taintsToRemove: 0

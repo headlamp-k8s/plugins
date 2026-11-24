@@ -34,6 +34,6 @@ export class ClusterDomainClaim extends KnativeCustomResource<ClusterDomainClaim
    * The namespace that owns this domain.
    */
   get targetNamespace(): string {
-    return this.spec.namespace;
+    return this.spec?.namespace ?? '';
   }
 }

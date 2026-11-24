@@ -4,20 +4,42 @@ import {
   Loader,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useMemo } from 'react';
+import {
+  findAdmissionCheckRule,
+  findUnreadyAdmissionCheckState,
+  renderAdmissionCheckFlavors,
+} from '../../resources/admissionCheckFormatters';
+import { ClusterQueue } from '../../resources/clusterQueue';
+import { renderFlavorNominalQuota } from '../../resources/clusterQueueFormatters';
 import { LocalQueue } from '../../resources/localQueue';
-import { Workload } from '../../resources/workload';
+import { AdmissionCheckState, Workload } from '../../resources/workload';
+import { getWorkloadBlocker, renderText } from '../../resources/workloadFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { renderCohortLink } from './KueueResourceLinks';
+
+interface AdmissionCheckClusterQueueRow {
+  clusterQueue: ClusterQueue;
+  onFlavors?: string[];
+}
+
+interface AdmissionCheckWorkloadRow {
+  workload: Workload;
+  checkState: AdmissionCheckState;
+}
 
 interface RelatedLocalQueuesSectionProps {
   clusterQueueName: string;
+  cluster?: string;
 }
 
 interface RelatedWorkloadsSectionProps {
   clusterQueueName?: string;
   localQueueName?: string;
   namespace?: string;
+  cluster?: string;
 }
 
 function getRelatedClusterQueueWorkloads(
@@ -53,8 +75,11 @@ function renderLoadError(title: string, resourceLabel: string) {
 }
 
 /** List the LocalQueues backed by a ClusterQueue. */
-export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueuesSectionProps) {
-  const [localQueues, error] = LocalQueue.useList();
+export function RelatedLocalQueuesSection({
+  clusterQueueName,
+  cluster,
+}: RelatedLocalQueuesSectionProps) {
+  const [localQueues, error] = LocalQueue.useList({ cluster });
 
   const relatedLocalQueues = useMemo(
     () =>
@@ -103,26 +128,210 @@ export function RelatedLocalQueuesSection({ clusterQueueName }: RelatedLocalQueu
   );
 }
 
+/** List the ClusterQueues that get quota from a ResourceFlavor. */
+export function FlavorClusterQueuesSection({
+  flavorName,
+  cluster,
+}: {
+  flavorName: string;
+  cluster?: string;
+}) {
+  const [clusterQueues, error] = ClusterQueue.useList({ cluster });
+
+  const flavorClusterQueues = useMemo(
+    () =>
+      (clusterQueues || []).filter(clusterQueue =>
+        clusterQueue.referencedFlavorNames.includes(flavorName)
+      ),
+    [clusterQueues, flavorName]
+  );
+
+  if (error) {
+    return renderLoadError('ClusterQueues', 'ClusterQueues');
+  }
+
+  if (!clusterQueues) {
+    return <Loader title="Loading ClusterQueues..." />;
+  }
+
+  return (
+    <SectionBox title="ClusterQueues">
+      <SimpleTable
+        data={flavorClusterQueues}
+        emptyMessage="No ClusterQueue uses this ResourceFlavor."
+        columns={[
+          {
+            label: 'Name',
+            getter: (clusterQueue: ClusterQueue) => (
+              <Link kubeObject={clusterQueue}>{clusterQueue.metadata.name}</Link>
+            ),
+          },
+          {
+            label: 'Nominal Quota',
+            getter: (clusterQueue: ClusterQueue) =>
+              renderFlavorNominalQuota(clusterQueue.resourceGroups, flavorName),
+          },
+          {
+            label: 'Cohort',
+            getter: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
+          },
+          {
+            label: 'Status',
+            getter: (clusterQueue: ClusterQueue) => clusterQueue.statusDisplay,
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
+/** List the ClusterQueues that run an AdmissionCheck. */
+export function AdmissionCheckClusterQueuesSection({
+  checkName,
+  cluster,
+}: {
+  checkName: string;
+  cluster?: string;
+}) {
+  const [clusterQueues, error] = ClusterQueue.useList({ cluster });
+
+  const rows = useMemo(
+    () =>
+      (clusterQueues || []).flatMap(clusterQueue => {
+        const rule = findAdmissionCheckRule(clusterQueue.spec.admissionChecksStrategy, checkName);
+        return rule ? [{ clusterQueue, onFlavors: rule.onFlavors }] : [];
+      }),
+    [clusterQueues, checkName]
+  );
+
+  if (error) {
+    return renderLoadError('ClusterQueues', 'ClusterQueues');
+  }
+
+  if (!clusterQueues) {
+    return <Loader title="Loading ClusterQueues..." />;
+  }
+
+  return (
+    <SectionBox title="ClusterQueues">
+      <SimpleTable
+        data={rows}
+        emptyMessage="No ClusterQueue uses this AdmissionCheck."
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: AdmissionCheckClusterQueueRow) => (
+              <Link kubeObject={row.clusterQueue}>{row.clusterQueue.metadata.name}</Link>
+            ),
+          },
+          {
+            label: 'Flavors',
+            getter: (row: AdmissionCheckClusterQueueRow) =>
+              renderAdmissionCheckFlavors(row.onFlavors),
+          },
+          {
+            label: 'Status',
+            getter: (row: AdmissionCheckClusterQueueRow) => row.clusterQueue.statusDisplay,
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
+/** List the Workloads whose state for an AdmissionCheck is not Ready yet. */
+export function AdmissionCheckWorkloadsSection({
+  checkName,
+  cluster,
+}: {
+  checkName: string;
+  cluster?: string;
+}) {
+  const [workloads, error] = Workload.useList({ cluster });
+
+  const rows = useMemo(
+    () =>
+      (workloads || []).flatMap(workload => {
+        const checkState = findUnreadyAdmissionCheckState(
+          workload.status.admissionChecks,
+          checkName
+        );
+        return checkState ? [{ workload, checkState }] : [];
+      }),
+    [workloads, checkName]
+  );
+
+  if (error) {
+    return renderLoadError('Workloads Waiting on This Check', 'Workloads');
+  }
+
+  if (!workloads) {
+    return <Loader title="Loading Workloads..." />;
+  }
+
+  return (
+    <SectionBox title="Workloads Waiting on This Check">
+      <SimpleTable
+        data={rows}
+        emptyMessage="No Workload is waiting on this AdmissionCheck."
+        columns={[
+          {
+            label: 'Name',
+            getter: (row: AdmissionCheckWorkloadRow) => (
+              <Link kubeObject={row.workload}>{row.workload.metadata.name}</Link>
+            ),
+          },
+          {
+            label: 'Namespace',
+            getter: (row: AdmissionCheckWorkloadRow) => row.workload.metadata.namespace || '-',
+          },
+          {
+            label: 'State',
+            getter: (row: AdmissionCheckWorkloadRow) => renderText(row.checkState.state),
+          },
+          {
+            label: 'Message',
+            getter: (row: AdmissionCheckWorkloadRow) => renderText(row.checkState.message),
+          },
+          {
+            label: 'Last Transition',
+            getter: (row: AdmissionCheckWorkloadRow) =>
+              renderText(row.checkState.lastTransitionTime),
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
 /** List Workloads related to either a ClusterQueue or a LocalQueue. */
 export function RelatedWorkloadsSection({
   clusterQueueName,
   localQueueName,
   namespace,
+  cluster,
 }: RelatedWorkloadsSectionProps) {
   if (localQueueName) {
     return (
-      <RelatedLocalQueueWorkloadsSection localQueueName={localQueueName} namespace={namespace} />
+      <RelatedLocalQueueWorkloadsSection
+        localQueueName={localQueueName}
+        namespace={namespace}
+        cluster={cluster}
+      />
     );
   }
 
-  return <RelatedClusterQueueWorkloadsSection clusterQueueName={clusterQueueName} />;
+  return (
+    <RelatedClusterQueueWorkloadsSection clusterQueueName={clusterQueueName} cluster={cluster} />
+  );
 }
 
 function RelatedClusterQueueWorkloadsSection({
   clusterQueueName,
-}: Pick<RelatedWorkloadsSectionProps, 'clusterQueueName'>) {
-  const [localQueues, localQueuesError] = LocalQueue.useList();
-  const [workloads, workloadsError] = Workload.useList();
+  cluster,
+}: Pick<RelatedWorkloadsSectionProps, 'clusterQueueName' | 'cluster'>) {
+  const [localQueues, localQueuesError] = LocalQueue.useList({ cluster });
+  const [workloads, workloadsError] = Workload.useList({ cluster });
 
   const relatedWorkloads = useMemo(() => {
     if (!workloads) {
@@ -159,8 +368,9 @@ function RelatedClusterQueueWorkloadsSection({
 function RelatedLocalQueueWorkloadsSection({
   localQueueName,
   namespace,
-}: Pick<RelatedWorkloadsSectionProps, 'localQueueName' | 'namespace'>) {
-  const [workloads, workloadsError] = Workload.useList(namespace ? { namespace } : undefined);
+  cluster,
+}: Pick<RelatedWorkloadsSectionProps, 'localQueueName' | 'namespace' | 'cluster'>) {
+  const [workloads, workloadsError] = Workload.useList({ namespace, cluster });
 
   const relatedWorkloads = useMemo(() => {
     if (!workloads) {
@@ -183,6 +393,16 @@ function RelatedLocalQueueWorkloadsSection({
   }
 
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
+}
+
+function getBlocker(workload: Workload) {
+  return getWorkloadBlocker(
+    workload.conditions,
+    workload.status.admissionChecks,
+    workload.status.requeueState,
+    workload.spec.active,
+    workload.status.admission
+  );
 }
 
 function RelatedWorkloadsTable({
@@ -221,6 +441,7 @@ function RelatedWorkloadsTable({
                 <Link
                   routeName={kueueRouteNames.localQueueDetail}
                   params={{ namespace: workloadNamespace, name: workload.queueName }}
+                  activeCluster={workload.cluster}
                 >
                   {workload.queueName}
                 </Link>
@@ -234,6 +455,30 @@ function RelatedWorkloadsTable({
           {
             label: 'Status',
             getter: (workload: Workload) => workload.statusDisplay,
+          },
+          {
+            label: 'Blocked On',
+            getter: (workload: Workload) => {
+              const blocker = getBlocker(workload);
+
+              if (!blocker) {
+                return '-';
+              }
+
+              return (
+                <StatusLabel status={blocker.stage === 'Evicted' ? 'error' : 'warning'}>
+                  {blocker.stage}
+                </StatusLabel>
+              );
+            },
+          },
+          {
+            label: 'Why',
+            getter: (workload: Workload) => {
+              const blocker = getBlocker(workload);
+              // Kueue's message names the exact cause, so prefer it over the generic explanation.
+              return blocker?.message || blocker?.explanation || '-';
+            },
           },
         ]}
       />

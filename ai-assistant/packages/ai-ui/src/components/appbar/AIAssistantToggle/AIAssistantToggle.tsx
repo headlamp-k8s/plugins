@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 
 /** Props for the {@link AIAssistantToggle} component. */
 export interface AIAssistantToggleProps {
@@ -37,7 +38,7 @@ export interface AIAssistantToggleProps {
   /** Callback invoked when the user clicks "Open Settings" in the popover. @returns No value. */
   onConfigure: () => void;
   /** Iconify icon identifier displayed on the toggle button. */
-  icon?: string;
+  icon?: React.ComponentProps<typeof Icon>['icon'];
   /**
    * Optional color override for the icon. When provided, takes precedence
    * over the theme's default text color. Accepts any CSS color string.
@@ -63,7 +64,7 @@ export default function AIAssistantToggle({
   showConfigPrompt,
   onDismissPrompt,
   onConfigure,
-  icon = 'mdi:assistant',
+  icon = AI_ASSISTANT_ICON,
   iconColor,
   tooltipTitle,
 }: AIAssistantToggleProps) {

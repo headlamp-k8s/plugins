@@ -34,6 +34,12 @@ NotInstalled.args = {
   isLoading: false,
 };
 
+export const EventingNotInstalled = Template.bind({});
+EventingNotInstalled.args = {
+  isLoading: false,
+  component: 'eventing',
+};
+
 export const Loading = Template.bind({});
 Loading.args = {
   isLoading: true,

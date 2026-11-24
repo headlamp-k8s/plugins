@@ -10,8 +10,20 @@ import { useMemo } from 'react';
 import { ResourceGraphDefinition } from '../resources/resourceGraphDefinition';
 import { getSubResourceHealth } from '../resources/subResources';
 import { kroRouteNames } from '../utils/kroRoutes';
+import { useIsEmbeddedGraph } from './embeddedGraphContext';
 
 const KRO_OWNED_SELECTOR = 'kro.run/owned=true';
+
+/**
+ * Inside an embedded detail-page graph this source contributes nothing:
+ * the host mounts every registered source there too, and the embedded
+ * sections already watch exactly the resources they show. Listing with
+ * no clusters keeps the hook order fixed while issuing no requests, and
+ * the shared empty result keeps the host from treating the source as
+ * still loading.
+ */
+const NO_CLUSTERS: string[] = [];
+const EMPTY_ELEMENTS: { nodes: GraphNode[]; edges: GraphEdge[] } = { nodes: [], edges: [] };
 
 /**
  * Built-in kinds kro templates commonly create. The global map source
@@ -140,9 +152,16 @@ function makeOwnedKindSource(kind: (typeof OWNED_KINDS)[number]) {
     id: `kro-owned-${kind.toLowerCase()}`,
     label: `${kind}s managed by kro`,
     useData() {
+      const embedded = useIsEmbeddedGraph();
       const resourceClass = (ResourceClasses as Record<string, typeof KubeObject<any>>)[kind];
-      const [items] = resourceClass.useList({ labelSelector: KRO_OWNED_SELECTOR });
+      const [items] = resourceClass.useList({
+        labelSelector: KRO_OWNED_SELECTOR,
+        ...(embedded ? { clusters: NO_CLUSTERS } : {}),
+      });
       return useMemo(() => {
+        if (embedded) {
+          return EMPTY_ELEMENTS;
+        }
         if (!items) {
           return null;
         }
@@ -175,7 +194,7 @@ function makeOwnedKindSource(kind: (typeof OWNED_KINDS)[number]) {
           }
         }
         return { nodes: [...nodesById.values()], edges: [...edgesById.values()] };
-      }, [items]);
+      }, [items, embedded]);
     },
   };
 }
@@ -184,8 +203,12 @@ const rgdSource = {
   id: 'kro-resourcegraphdefinitions',
   label: 'ResourceGraphDefinitions',
   useData() {
-    const [rgds] = ResourceGraphDefinition.useList();
+    const embedded = useIsEmbeddedGraph();
+    const [rgds] = ResourceGraphDefinition.useList(embedded ? { clusters: NO_CLUSTERS } : {});
     return useMemo(() => {
+      if (embedded) {
+        return EMPTY_ELEMENTS;
+      }
       if (!rgds) {
         return null;
       }
@@ -196,7 +219,7 @@ const rgdSource = {
         weight: 900,
       }));
       return { nodes, edges: [] };
-    }, [rgds]);
+    }, [rgds, embedded]);
   },
 };
 

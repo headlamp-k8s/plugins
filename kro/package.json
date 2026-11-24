@@ -1,6 +1,6 @@
 {
   "name": "@headlamp-k8s/kro",
-  "version": "0.1.0-alpha",
+  "version": "0.2.0-alpha",
   "description": "A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances.",
   "scripts": {
     "start": "headlamp-plugin start",
@@ -30,6 +30,9 @@
       "prettier",
       "plugin:jsx-a11y/recommended"
     ]
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.11.2"
   },
   "devDependencies": {
     "@headlamp-k8s/eslint-config": "^0.7.0",

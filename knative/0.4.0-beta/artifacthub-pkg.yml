@@ -1,0 +1,42 @@
+version: 0.4.0-beta
+name: headlamp_knative
+displayName: Knative
+createdAt: "2026-11-08T00:00:00Z"
+logoURL: https://raw.githubusercontent.com/headlamp-k8s/plugins/main/knative/logo.png
+description: A Headlamp UI for managing Knative Serving and inspecting Knative Eventing resources and event destinations.
+changes:
+  - kind: added
+    description: "Add Knative Eventing Broker, Trigger, Channel, and Subscription list views."
+  - kind: added
+    description: "Add Broker and Trigger detail pages with destination links, filters, conditions, and Kubernetes events."
+  - kind: changed
+    description: "Detect Serving and Eventing separately and show the sections installed on the selected cluster."
+  - kind: changed
+    description: "Restart Knative Services through a tracked Deployment rollout, with progress, duplicate-restart guards, failure reporting, and scale-to-zero handling; requires Knative 1.21 or newer."
+  - kind: fixed
+    description: "Distinguish CRD discovery errors from a missing Knative installation."
+  - kind: fixed
+    description: "Handle empty optional fields in Services and Cluster Domain Claims lists."
+  - kind: fixed
+    description: "Restore the live traffic split when Reset is selected."
+  - kind: fixed
+    description: "Remove cleared autoscaling overrides instead of retaining old values."
+  - kind: fixed
+    description: "Release temporary log-download resources after use."
+  - kind: fixed
+    description: "Report Domain Mapping annotation failures and keep Domain Claim matching within the resource's cluster."
+  - kind: added
+    description: "Include the earlier Serving resource-view expansion and grouped navigation from the selected source."
+screenshots:
+  - title: Knative Eventing Brokers
+    url: https://raw.githubusercontent.com/RajPrakash681/plugins/pr-assets/knative/release-notes/screenshots/2-brokers.png
+  - title: Trigger filters and destination
+    url: https://raw.githubusercontent.com/RajPrakash681/plugins/pr-assets/knative/release-notes/screenshots/5-trigger-page.png
+  - title: Knative Service rolling restart
+    url: https://raw.githubusercontent.com/RajPrakash681/plugins/pr-assets/knative/release-notes/screenshots/8-restart-running.png
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/knative-0.4.0-beta/headlamp-k8s-knative-0.4.0-beta.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:475945ae1c77bda102fe1c93557a544836192003f8ca8534cc7be8a40852ef00
+  headlamp/plugin/version-compat: ">=0.44.0"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

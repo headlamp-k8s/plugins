@@ -67,10 +67,12 @@ import ProactiveDiagnosisSection from '@headlamp-k8s/ai-ui/components/assistant/
 import { usePromptWidth } from '@headlamp-k8s/ai-ui/contexts/PromptWidthContext';
 import {
   type DiagnosisStepCallback,
+  type EventDigest,
   ProactiveDiagnosisManager,
   proactiveDiagnosisManager,
 } from '@headlamp-k8s/ai-ui/diagnosis/ProactiveDiagnosisManager';
 import { useProactiveDiagnosis } from '@headlamp-k8s/ai-ui/hooks/useProactiveDiagnosis';
+import { AI_ASSISTANT_ICON } from '@headlamp-k8s/ai-ui/icons/aiAssistantIcon';
 import { useClustersConf, useSelectedClusters } from '@kinvolk/headlamp-plugin/lib/k8s';
 import { getCluster, getClusterGroup } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Button, Grid, Typography } from '@mui/material';
@@ -82,6 +84,7 @@ import { AIInputSection } from './components/assistant/AllInputSection';
 import ContentRenderer from './ContentRenderer';
 import { generateContextDescription } from './context/contextGenerator';
 import EditorDialog from './editordialog';
+import { getHeadlampLink } from './headlampLink';
 import { checkHolmesAgentHealth } from './holmesClient';
 import { HolmesHealthRequestGate } from './holmesHealthRequestGate';
 import { useKubernetesToolUI } from './hooks/useKubernetesToolUI';
@@ -90,6 +93,10 @@ import { createPluginCommandRunner } from './pluginCommandRunner';
 import { getSettingsURL, type PluginConfig, useGlobalState } from './pluginState';
 import { useDynamicPrompts } from './prompts/promptGenerator';
 import { resolveRuntimeProviderConfig } from './resolveRuntimeProviderConfig';
+import {
+  removeToolResultBlocksBeforeHeadings,
+  removeTrailingToolResultBlock,
+} from './toolResultBlocks';
 
 interface HolmesTextEvent {
   /** Streamed message identifier. */
@@ -156,8 +163,21 @@ export default function AIPrompt(props: {
   const proactiveDiagnosisEnabled = pluginSettings.proactiveDiagnosisEnabled === true;
 
   // Proactive diagnosis UI state
-  const { diagnoses, isCycleRunning, scrollToEventUid, clearScrollTarget } =
+  const { diagnoses, isCycleRunning, isPaused, scrollToEventUid, clearScrollTarget } =
     useProactiveDiagnosis();
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
+  const [warningEventCount, setWarningEventCount] = useState<number | null>(null);
+  const [nextCheckAt, setNextCheckAt] = useState<number | null>(null);
+  const [diagnosisCheckError, setDiagnosisCheckError] = useState<string | null>(null);
+  const [isSendQueued, setIsSendQueued] = useState(false);
+  const queuedSendRef = useRef<{ prompt: string; controller: AbortController } | null>(null);
+  useEffect(
+    () => () => {
+      queuedSendRef.current?.controller.abort();
+      queuedSendRef.current = null;
+    },
+    []
+  );
 
   // Chat/agent mode state
   const [chatMode, setChatMode] = React.useState<ChatMode>('chat');
@@ -192,7 +212,19 @@ export default function AIPrompt(props: {
 
   // Effects key off this instead of the array so a new array with the same
   // clusters does not re-trigger event fetching.
-  const clusterNamesKey = clusterNames.join(',');
+  const clusterNamesKey = JSON.stringify(clusterNames);
+  const [diagnosisScope, setDiagnosisScope] = useState(() => ({ key: clusterNamesKey }));
+  const diagnosisScopeRef = useRef(diagnosisScope);
+  diagnosisScopeRef.current = diagnosisScope;
+
+  // Reset before rendering another scope, even if its event read has not completed.
+  if (diagnosisScope.key !== clusterNamesKey) {
+    setDiagnosisScope({ key: clusterNamesKey });
+    setLastCheckedAt(null);
+    setWarningEventCount(null);
+    setNextCheckAt(null);
+    setDiagnosisCheckError(null);
+  }
 
   // Fetch cluster warnings on-demand for context generation (replaces
   // the continuous useClusterWarnings hook).
@@ -210,6 +242,17 @@ export default function AIPrompt(props: {
   // This function is passed to the proactive diagnosis manager so it can call
   // the AI without blocking the user's chat.
   const diagnoseFnRef = useRef<((prompt: string) => Promise<string>) | null>(null);
+  const detachDiagnoseFnRef = useRef<(() => void) | null>(null);
+  const diagnosisOwnerMountedRef = useRef(false);
+  useEffect(() => {
+    diagnosisOwnerMountedRef.current = true;
+    return () => {
+      diagnosisOwnerMountedRef.current = false;
+      detachDiagnoseFnRef.current?.();
+      detachDiagnoseFnRef.current = null;
+      diagnoseFnRef.current = null;
+    };
+  }, []);
   // Track whether the diagnose function is ready (agent or AI manager available)
   const [diagnoseFnReady, setDiagnoseFnReady] = useState(false);
   // Track whether proactive diagnosis is currently running (blocks chat input)
@@ -241,26 +284,46 @@ export default function AIPrompt(props: {
   const proactiveDiagnosisEnabledRef = useRef(proactiveDiagnosisEnabled);
   proactiveDiagnosisEnabledRef.current = proactiveDiagnosisEnabled;
 
-  const runProactiveCycle = useCallback(async () => {
+  const runProactiveCycle = useCallback(async (force = false) => {
     if (!proactiveDiagnosisEnabledRef.current) return;
     if (!diagnoseFnRef.current) return; // Don't run if no AI is available yet
-    if (loadingRef.current || isDiagnosisRunningRef.current) return; // Don't run while user is chatting or another diagnosis is running
+    if (proactiveDiagnosisManager.isPaused()) return;
+    if (loadingRef.current || queuedSendRef.current || isDiagnosisRunningRef.current) return;
 
     // Fetch events on-demand (one-shot API call — no continuous watch)
     const clusters = clusterNamesRef.current;
     if (!clusters || clusters.length === 0) return;
+    const scope = diagnosisScopeRef.current;
 
     try {
       const allWarningEvents = await fetchWarningEventsForClusters(clusters);
-      if (!proactiveDiagnosisEnabledRef.current) return;
+      if (
+        !proactiveDiagnosisEnabledRef.current ||
+        !diagnoseFnRef.current ||
+        scope !== diagnosisScopeRef.current
+      )
+        return;
+      setLastCheckedAt(Date.now());
+      setWarningEventCount(allWarningEvents.length);
+      setDiagnosisCheckError(null);
       if (allWarningEvents.length === 0) return;
+
+      // Chat can start or queue while the event read is pending.
+      if (loadingRef.current || queuedSendRef.current) return;
 
       const topEvents = ProactiveDiagnosisManager.extractTopEvents(allWarningEvents, 3);
       if (topEvents.length > 0) {
-        await proactiveDiagnosisManager.diagnoseEvents(topEvents);
+        await proactiveDiagnosisManager.diagnoseEvents(topEvents, force);
       }
     } catch (err) {
       console.error('[ProactiveDiagnosis] Cycle error:', err);
+      if (
+        !proactiveDiagnosisEnabledRef.current ||
+        !diagnoseFnRef.current ||
+        scope !== diagnosisScopeRef.current
+      )
+        return;
+      setDiagnosisCheckError(err instanceof Error ? err.message : String(err));
     }
   }, []); // stable — reads current values via refs
 
@@ -278,6 +341,10 @@ export default function AIPrompt(props: {
       diagnoseFnRef.current = null;
       setDiagnoseFnReady(false);
       initialCycleRanRef.current = false;
+      setLastCheckedAt(null);
+      setWarningEventCount(null);
+      setNextCheckAt(null);
+      setDiagnosisCheckError(null);
       if (proactiveDiagIntervalRef.current) {
         clearInterval(proactiveDiagIntervalRef.current);
         proactiveDiagIntervalRef.current = null;
@@ -298,6 +365,7 @@ export default function AIPrompt(props: {
     // Track when a diagnosis cycle ends so we can enforce the cooldown
     const handleCycleEnd = () => {
       lastCycleEndRef.current = Date.now();
+      setNextCheckAt(lastCycleEndRef.current + DIAGNOSIS_COOLDOWN_MS);
     };
     proactiveDiagnosisManager.on('cycle-end', handleCycleEnd);
 
@@ -355,14 +423,34 @@ export default function AIPrompt(props: {
   const holmesHealthRequestGateRef = React.useRef(new HolmesHealthRequestGate());
   const userSelectedChatRef = React.useRef(false);
 
+  // Same cluster fallback for reads and confirmed writes (which may omit `cluster`).
+  const resolveTargetCluster = React.useCallback(
+    (targetCluster?: string | null): string | undefined =>
+      targetCluster ||
+      (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : undefined) ||
+      getCluster() ||
+      // Only auto-pick when exactly one cluster is configured; with several, leave
+      // it unset so the caller must choose rather than guessing.
+      (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : undefined) ||
+      undefined,
+    [selectedClusters, clusters]
+  );
+
   const [showEditor, setShowEditor] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState('');
   const [editorTitle, setEditorTitle] = React.useState('');
   const [resourceType, setResourceType] = React.useState('');
   const [isDelete, setIsDelete] = React.useState(false);
+  const [editorCluster, setEditorCluster] = React.useState<string | null>(null);
 
   const handleYamlAction = React.useCallback(
-    (yaml: string, title: string, type: string, isDeleteOp: boolean) => {
+    (
+      yaml: string,
+      title: string,
+      type: string,
+      isDeleteOp: boolean,
+      targetCluster?: string | null
+    ) => {
       // If the title suggests this is a sample/example, don't allow deletion
       const isSampleYaml =
         title.toLowerCase().includes('sample') ||
@@ -390,9 +478,16 @@ export default function AIPrompt(props: {
       setEditorTitle(finalTitle);
       setResourceType(type);
       setIsDelete(actualDelete);
+      setEditorCluster(
+        targetCluster !== undefined
+          ? targetCluster
+          : Object.keys(clusters).length === 1
+          ? resolveTargetCluster() ?? null
+          : null
+      );
       setShowEditor(true);
     },
-    [t]
+    [t, resolveTargetCluster, clusters]
   );
 
   // Initialize active configuration from plugin settings
@@ -650,11 +745,33 @@ export default function AIPrompt(props: {
   // ─── Connect AI manager to proactive diagnosis (fallback for non-agent mode) ──
   // When not in agent mode but an AI config is available, use a LangChain session as fallback.
   // In agent mode, the diagnoseFn is already set by handleToggleAgentMode above.
+  const assistantConfiguration = {
+    activeConfig,
+    selectedModel,
+    enabledTools,
+    mockTools: pluginSettings?.devOptions?.enableMockTools,
+    isAgentMode,
+  };
+  const assistantConfigurationKey = JSON.stringify(assistantConfiguration);
+  const assistantContextRef = useRef({
+    key: assistantConfigurationKey,
+    session: isAgentMode ? holmesAgentRef.current : aiManager,
+  });
+  assistantContextRef.current = {
+    key: assistantConfigurationKey,
+    session: isAgentMode ? holmesAgentRef.current : aiManager,
+  };
+  const diagnosisContextKey = JSON.stringify({
+    ...assistantConfiguration,
+    proactiveDiagnosisEnabled,
+    clusterNamesKey,
+  });
+  const diagnosisContextKeyRef = useRef(diagnosisContextKey);
+  diagnosisContextKeyRef.current = diagnosisContextKey;
   useEffect(() => {
-    let diagnosisGeneration = 0;
     // Only set the LangChain fallback if agent mode is NOT active
     if (proactiveDiagnosisEnabled && !isAgentMode && activeConfig) {
-      const generation = ++diagnosisGeneration;
+      const contextKey = diagnosisContextKey;
       const diagnoseFn = async (
         prompt: string,
         onStep?: DiagnosisStepCallback
@@ -664,7 +781,7 @@ export default function AIPrompt(props: {
             ...activeConfig.config,
             model: selectedModel,
           });
-          if (generation !== diagnosisGeneration) {
+          if (!diagnosisOwnerMountedRef.current || contextKey !== diagnosisContextKeyRef.current) {
             throw new Error('Diagnosis provider configuration changed during credential refresh.');
           }
           // Create an isolated manager instance for this single diagnosis
@@ -684,21 +801,30 @@ export default function AIPrompt(props: {
             timestamp: Date.now(),
           });
           const response = await isolatedManager.userSend(prompt);
+          if (response.error || !response.content) {
+            throw new Error(response.content || t('Diagnosis request returned no analysis.'));
+          }
           onStep?.({
             id: `lc-done-${Date.now()}`,
             content: t('Diagnosis response received'),
             type: 'tool-result',
             timestamp: Date.now(),
           });
-          return response.content || t('No diagnosis available.');
+          return response.content;
         } catch (err: unknown) {
           console.error('[ProactiveDiagnosis] diagnoseFn error:', err);
           throw err;
         }
       };
       diagnoseFnRef.current = diagnoseFn;
-      proactiveDiagnosisManager.setDiagnoseFn(diagnoseFn);
+      const detach = proactiveDiagnosisManager.setDiagnoseFn(diagnoseFn);
+      detachDiagnoseFnRef.current = detach;
       setDiagnoseFnReady(true);
+      return () => {
+        detach();
+        if (diagnoseFnRef.current === diagnoseFn) diagnoseFnRef.current = null;
+        if (detachDiagnoseFnRef.current === detach) detachDiagnoseFnRef.current = null;
+      };
     } else if (!isAgentMode) {
       // No agent and no AI config — clear
       diagnoseFnRef.current = null;
@@ -706,10 +832,8 @@ export default function AIPrompt(props: {
       setDiagnoseFnReady(false);
     }
     // If isAgentMode is true, diagnoseFn is managed by handleToggleAgentMode — don't touch it.
-    return () => {
-      diagnosisGeneration += 1;
-    };
   }, [
+    diagnosisContextKey,
     proactiveDiagnosisEnabled,
     isAgentMode,
     activeConfig,
@@ -717,6 +841,7 @@ export default function AIPrompt(props: {
     enabledTools,
     pluginSettings,
     t,
+    resolveCliSentinels,
   ]);
   // ─── End proactive diagnosis connection ─────────────────────────────
 
@@ -995,20 +1120,21 @@ export default function AIPrompt(props: {
     let cleaned = text;
 
     // Remove 🔧 tool result blocks (🔧 <tool> result: ... up to the next ## heading)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*?(?=\n\s*##)/g, '');
+    cleaned = removeToolResultBlocksBeforeHeadings(cleaned);
     // Also remove standalone 🔧 result blocks at the end (no ## heading follows)
-    cleaned = cleaned.replace(/🔧\s*\S+\s+result:[\s\S]*$/g, '');
+    cleaned = removeTrailingToolResultBlock(cleaned);
 
     // Remove 🔧 tool-start lines
     cleaned = cleaned.replace(/🔧\s*Using Agent tool:.*\n?/g, '');
 
     // If content starts with non-markdown text before a ## heading,
     // check whether it looks like leaked tool/CLI output and strip it
-    const headingMatch = cleaned.match(/(^[\s\S]*?)(\n##\s)/m);
-    if (headingMatch && headingMatch[1]) {
-      const before = headingMatch[1].trim();
+    // Linear equivalent of matching /(^[\s\S]*?)(\n##\s)/m, which always matches at index 0.
+    const headingStart = cleaned.search(/\n##\s/);
+    if (headingStart > 0) {
+      const before = cleaned.slice(0, headingStart).trim();
       if (before && looksLikeToolOutput(before)) {
-        cleaned = cleaned.substring((headingMatch.index ?? 0) + headingMatch[1].length);
+        cleaned = cleaned.substring(headingStart);
       }
     }
 
@@ -1355,7 +1481,7 @@ export default function AIPrompt(props: {
 
         if (proactiveDiagnosisEnabled) {
           diagnoseFnRef.current = agentDiagnoseFn;
-          proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
+          detachDiagnoseFnRef.current = proactiveDiagnosisManager.setDiagnoseFn(agentDiagnoseFn);
           setDiagnoseFnReady(true);
           console.log('[ProactiveDiagnosis] Agent diagnose function ready');
         }
@@ -1608,18 +1734,90 @@ export default function AIPrompt(props: {
     }
   };
 
-  // Same cluster fallback for reads and confirmed writes (which may omit `cluster`).
-  const resolveTargetCluster = React.useCallback(
-    (targetCluster?: string | null): string | undefined =>
-      targetCluster ||
-      (selectedClusters && selectedClusters.length > 0 ? selectedClusters[0] : undefined) ||
-      getCluster() ||
-      // Only auto-pick when exactly one cluster is configured; with several, leave
-      // it unset so the caller must choose rather than guessing.
-      (Object.keys(clusters).length === 1 ? Object.keys(clusters)[0] : undefined) ||
-      undefined,
-    [selectedClusters, clusters]
-  );
+  const handleSendPrompt = async (prompt: string) => {
+    if (loadingRef.current || queuedSendRef.current) return;
+    const ticket = { prompt, controller: new AbortController() };
+    const clusterScope = clusterNamesRef.current.join('\0');
+    const assistantContext = assistantContextRef.current;
+    try {
+      if (proactiveDiagnosisManager.isRunning()) {
+        queuedSendRef.current = ticket;
+        setIsSendQueued(true);
+        await proactiveDiagnosisManager.pauseAndWaitForIdle(ticket.controller.signal);
+        if (queuedSendRef.current !== ticket) return;
+        if (clusterScope !== clusterNamesRef.current.join('\0')) {
+          throw new Error(t('Cluster selection changed. Review and resend your message.'));
+        }
+        if (
+          assistantContext.key !== assistantContextRef.current.key ||
+          assistantContext.session !== assistantContextRef.current.session
+        ) {
+          throw new Error(t('Assistant configuration changed. Review and resend your message.'));
+        }
+        queuedSendRef.current = null;
+        setIsSendQueued(false);
+      }
+      if (isAgentMode) await handleAgentSend(prompt);
+      else await AnalyzeResourceBasedOnPrompt(prompt);
+    } catch (error) {
+      if (ticket.controller.signal.aborted) return;
+      setPromptVal(current => current || prompt);
+      setApiError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (queuedSendRef.current === ticket) {
+        queuedSendRef.current = null;
+        setIsSendQueued(false);
+      }
+    }
+  };
+
+  const handleCancelQueuedSend = () => {
+    const ticket = queuedSendRef.current;
+    ticket?.controller.abort();
+    queuedSendRef.current = null;
+    setIsSendQueued(false);
+    if (ticket) setPromptVal(current => current || ticket.prompt);
+  };
+
+  const handleDiagnosisPauseToggle = async () => {
+    try {
+      if (proactiveDiagnosisManager.isPaused()) {
+        await proactiveDiagnosisManager.resume();
+        await runProactiveCycle();
+      } else {
+        proactiveDiagnosisManager.pause();
+      }
+    } catch (error) {
+      setDiagnosisCheckError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleRetryDiagnosis = async (eventUid: string) => {
+    try {
+      const result = proactiveDiagnosisManager.getDiagnosis(eventUid);
+      if (!result) throw new Error(t('Diagnosis not found'));
+      await proactiveDiagnosisManager.diagnoseSingleEvent(result.event, true);
+    } catch (error) {
+      setDiagnosisCheckError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const handleOpenDiagnosisResource = (event: EventDigest) => {
+    try {
+      if (!event.cluster) throw new Error(t('This diagnosis has no cluster context.'));
+      const query = new URLSearchParams({
+        cluster: event.cluster,
+        kind: event.objectKind,
+        resource: event.objectName,
+        ns: event.objectNamespace,
+      });
+      const link = getHeadlampLink(`https://headlamp/resource-details?${query}`);
+      if (!link.url) throw new Error(t('This resource cannot be opened in Headlamp.'));
+      history.push(link.url);
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   // Function to handle API confirmation dialog confirmation
   const handleApiConfirmation = async (body, resourceInfo) => {
@@ -1742,7 +1940,10 @@ export default function AIPrompt(props: {
     if (openPopup && aiManager) {
       // Only use dynamic prompts as initial suggestions if there's no conversation history
       // If there's conversation history, suggestions will be parsed from the latest AI response
-      const hasConversation = aiManager.history && aiManager.history.length > 0;
+      const hasConversation = aiManager.history.some(
+        message =>
+          (message.role === 'user' || message.role === 'assistant') && !message.isDisplayOnly
+      );
       if (!hasConversation) {
         setSuggestions(dynamicPrompts);
       }
@@ -1874,7 +2075,7 @@ export default function AIPrompt(props: {
           {holmesEnabled && (
             <Button
               variant="outlined"
-              startIcon={<Icon icon="mdi:robot" />}
+              startIcon={<Icon icon={AI_ASSISTANT_ICON} />}
               disabled={agentModeStatus === 'checking'}
               onClick={() => {
                 handleUseHolmes();
@@ -1941,17 +2142,39 @@ export default function AIPrompt(props: {
               minWidth: 0,
             }}
           >
-            {proactiveDiagnosisEnabled && (
-              <ProactiveDiagnosisSection
-                diagnoses={diagnoses}
-                scrollToEventUid={scrollToEventUid}
-                onScrollComplete={clearScrollTarget}
-                isCycleRunning={isCycleRunning}
-                onYamlAction={handleYamlAction}
-                ContentRendererSlot={ContentRenderer}
-              />
-            )}
             <AIChatContent
+              beforeMessages={
+                proactiveDiagnosisEnabled ? (
+                  <ProactiveDiagnosisSection
+                    diagnoses={diagnoses}
+                    scrollToEventUid={scrollToEventUid}
+                    onScrollComplete={clearScrollTarget}
+                    isCycleRunning={isCycleRunning}
+                    isPaused={isPaused}
+                    clusters={clusterNames}
+                    lastCheckedAt={lastCheckedAt}
+                    warningEventCount={warningEventCount}
+                    nextCheckAt={nextCheckAt}
+                    checkError={diagnosisCheckError}
+                    controlsDisabled={loading || isSendQueued}
+                    onPauseToggle={handleDiagnosisPauseToggle}
+                    onCheckAgain={() => runProactiveCycle(true)}
+                    onRetry={handleRetryDiagnosis}
+                    onDismiss={eventUid => {
+                      try {
+                        proactiveDiagnosisManager.dismissDiagnosis(eventUid);
+                      } catch (error) {
+                        setDiagnosisCheckError(
+                          error instanceof Error ? error.message : String(error)
+                        );
+                      }
+                    }}
+                    onOpenResource={handleOpenDiagnosisResource}
+                    onYamlAction={handleYamlAction}
+                    ContentRendererSlot={ContentRenderer}
+                  />
+                ) : undefined
+              }
               history={memoizedHistory}
               isLoading={loading}
               apiError={apiError}
@@ -1974,13 +2197,10 @@ export default function AIPrompt(props: {
             <PromptSuggestions
               suggestions={suggestions}
               apiError={apiError}
-              loading={loading || isDiagnosisRunning}
+              loading={loading || isDiagnosisRunning || isSendQueued}
               onPromptSelect={suggestion => setPromptVal(suggestion.prompt)}
               onPromptSend={suggestion => {
-                if (isDiagnosisRunning) return;
-                AnalyzeResourceBasedOnPrompt(suggestion.prompt).catch(error => {
-                  setApiError(error.message);
-                });
+                handleSendPrompt(suggestion.prompt);
               }}
               onErrorClear={() => setApiError(null)}
             />
@@ -1995,20 +2215,10 @@ export default function AIPrompt(props: {
               isAgentMode={isAgentMode}
               agentModeStatus={agentModeStatus}
               isDiagnosisRunning={isDiagnosisRunning}
+              isSendQueued={isSendQueued}
+              onCancelQueuedSend={handleCancelQueuedSend}
               enabledTools={enabledTools}
-              onSend={prompt => {
-                // Block chat while proactive diagnosis is running
-                if (isDiagnosisRunning) return;
-                if (isAgentMode) {
-                  handleAgentSend(prompt).catch(error => {
-                    setApiError(error.message);
-                  });
-                } else {
-                  AnalyzeResourceBasedOnPrompt(prompt).catch(error => {
-                    setApiError(error.message);
-                  });
-                }
-              }}
+              onSend={handleSendPrompt}
               onStop={handleStopRequest}
               onClearHistory={() => {
                 if (isTestMode) {
@@ -2055,6 +2265,8 @@ export default function AIPrompt(props: {
           yamlContent={editorContent}
           title={editorTitle}
           resourceType={resourceType}
+          targetCluster={editorCluster}
+          availableClusters={Object.keys(clusters)}
           onSuccess={() => {}}
           onFailure={handleOperationFailure}
         />

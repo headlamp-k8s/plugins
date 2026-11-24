@@ -1,0 +1,161 @@
+# Velero plugin for Headlamp
+
+Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
+
+Requires Headlamp 0.23 or newer for the plugin settings registration API.
+
+## What it does
+
+### Phase 1 — Detail coverage panels
+
+Shows whether a workload is covered by a Velero backup schedule — directly on the resource detail page in Headlamp.
+
+- **Deployment, StatefulSet, PVC** detail views — matching schedules (namespace + resource + label filters), cron, next run, last backup status
+- **Namespace** detail view — schedules that _target_ the namespace (namespace include/exclude, and templates that can include namespaced objects). This is not object-level coverage: label selectors are not evaluated against live resources in the namespace.
+- Workload coverage matching uses Schedule template include/exclude filters and label selectors (`matchLabels`, `matchExpressions`, `orLabelSelectors`). Unknown selector operators fail closed (not reported as covered).
+- **Read-only** — no backup or restore actions
+- **Velero not installed** — clear empty state
+
+### Phase 2 — Cluster-wide Velero views
+
+Sidebar entry **Velero** with:
+
+- **Schedules** — cron, status, next run, last backup
+- **Backups** — phase, triggered by schedule or manual, namespace scope
+- **Restores** — backup source, phase, errors/warnings, progress (list/detail inspired by [reasonerjt prototype](https://github.com/reasonerjt/velero-headlamp-plugin))
+
+Coverage panels and schedule views load schedule-owned Backups via a `velero.io/schedule-name` label selector, then keep the latest Backup per schedule client-side (long TTLs can still return large histories). The Backups sidebar list still shows the full Backup table.
+
+### Phase 5 — Backup health overview
+
+Sidebar **Velero → Overview** (`/velero`):
+
+- Counts for Backups / Restores (completed, failed/partial, in progress)
+- Schedule health (active, paused, failed validation)
+- Backup Storage Location table (status / provider / bucket)
+- Recent failed backups and restores tables with links into detail views
+- Quick links to Schedules, Backups, Restores, and Storage Locations
+
+Pinned to the current Headlamp cluster and the configured Velero namespace.
+
+### Phase 6 — Map
+
+Headlamp **Map** includes a **Velero** source, on by default. It draws Schedules, Backups, Restores, and Backup Storage Locations from the configured Velero namespace:
+
+- A Schedule connects to the Backups it created and to the storage location named on its template
+- A Backup connects to that storage location and to Restores that name it
+- A Restore that names a Schedule connects to that Schedule
+- Node color follows the phase: success, warning, or error
+
+Objects in another namespace or cluster are not linked. Volume snapshot locations and datamover objects stay on their detail pages.
+
+Backup and Restore detail pages also show a failure reason, validation errors, and status conditions when Velero reports them. A Backup detail links to its storage location.
+
+### Phase 4 — Create and manage (write path)
+
+- **Create Backup** / **Create Restore** / **Create Schedule** from the respective list pages (forms adapted from the reasonerjt prototype).
+- **Pause / Unpause** on Schedule detail.
+- Creates/patches CRs in the configured Velero namespace (`Settings → Plugins → Velero`), not a hardcoded `velero` namespace.
+- Create / pause actions stay hidden until SelfSubjectAccessReview finishes, and are omitted when it denies `create` / `patch` (pause checks the Schedule’s route namespace and name).
+- Create forms pin lookups/POSTs to the current cluster; namespace fields allow typed values when Namespace discovery is unavailable.
+- Manual fixtures: `test-files/phase4-create-actions.yaml`.
+
+### Phase 3 — Storage + CSI / Datamover visibility
+
+Read-only views aligned with [#939](https://github.com/headlamp-k8s/plugins/issues/939) and Daniel’s CSI+Datamover priority:
+
+- **Storage Locations (BSL)** — provider, bucket, access mode, Available/Unavailable
+- **Volume Snapshots (VSL)** — volume snapshot location provider/config
+- **Backup Repositories** — kopia/restic repos used by datamover / PVB flows
+- **Backup detail** — related **PodVolumeBackup** and **DataUpload** tables when present
+- **Restore detail** — related **PodVolumeRestore** and **DataDownload** tables when present
+
+On clusters without CSI/datamover CRDs (or backups that only save manifests), those tables stay empty — the metadata views still work.
+
+## Plugin settings
+
+**Settings → Plugins → Velero**
+
+| Setting          | Default  | Purpose                                                     |
+| ---------------- | -------- | ----------------------------------------------------------- |
+| Velero namespace | `velero` | Namespace where Velero Schedule / Backup / Restore CRs live |
+
+## RBAC
+
+Anyone browsing Velero needs read access to the custom resources. Create and pause stay hidden until a SelfSubjectAccessReview allows them for the signed-in user.
+
+These rules are for that user. They are not the permissions of the Velero controller, and the Headlamp service account does not need the write rules.
+
+```yaml
+rules:
+  - apiGroups: ['velero.io']
+    resources:
+      - backups
+      - schedules
+      - restores
+      - backupstoragelocations
+      - volumesnapshotlocations
+      - backuprepositories
+      - podvolumebackups
+      - podvolumerestores
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['velero.io']
+    resources: ['datauploads', 'datadownloads']
+    verbs: ['get', 'list', 'watch']
+```
+
+Grant the following only to people who should create a backup, restore, or schedule, or pause a schedule:
+
+```yaml
+rules:
+  - apiGroups: ['velero.io']
+    resources: ['backups', 'restores', 'schedules']
+    verbs: ['create']
+  - apiGroups: ['velero.io']
+    resources: ['schedules']
+    verbs: ['get', 'patch']
+```
+
+(`datauploads` / `datadownloads` are often under `velero.io/v2alpha1` depending on Velero version.)
+
+## Development
+
+```bash
+cd plugins/velero
+npm install
+npm start
+```
+
+Copy the built plugin into Headlamp, or load from this folder per the [plugin development docs](https://headlamp.dev/docs/latest/tutorials/plugin-development/).
+
+## Manual testing
+
+Apply the fixtures under `test-files/` to a cluster with Velero installed, then:
+
+1. Open a Deployment / StatefulSet / Namespace detail page for Phase 1 panels
+2. Open sidebar **Velero → Schedules / Backups / Restores** for Phase 2
+3. Open **Storage Locations / Volume Snapshots / Backup Repositories** for Phase 3
+4. Open a CSI/datamover Backup detail to see Pod Volume Backups / Data Uploads when those CRs exist
+5. Open **Map** and leave the **Velero** source enabled to see Schedule, Backup, Restore, and storage links
+
+## Screenshots
+
+Deployment covered by a Velero schedule (`nginx-demo`):
+
+![Deployment with Velero backup coverage](./screenshots/deployment-covered.png)
+
+StatefulSet covered by a namespace schedule (`web`):
+
+![StatefulSet with Velero backup coverage](./screenshots/statefulset-covered.png)
+
+Deployment detail view with matching test fixtures in the cluster:
+
+![Deployment detail with backup label](./screenshots/deployment-detail.png)
+
+## Tests
+
+```bash
+npm test
+# or, if the wrapper fails on paths with spaces:
+npx vitest run -c node_modules/@kinvolk/headlamp-plugin/config/vite.config.mjs
+```

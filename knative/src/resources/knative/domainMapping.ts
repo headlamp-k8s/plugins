@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { DeleteParameters } from '@kinvolk/headlamp-plugin/lib/k8s/apiProxy';
+import type { ApiClient, DeleteParameters } from '@kinvolk/headlamp-plugin/lib/k8s/apiProxy';
 import type { KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { getSafeUrl } from '../../utils/url';
 import { ClusterDomainClaim } from './clusterDomainClaim';
@@ -69,9 +69,7 @@ export class KnativeDomainMapping extends ConditionedKnativeCustomResource<Domai
     const deleteParams: DeleteParameters | undefined = force
       ? { gracePeriodSeconds: 0 }
       : undefined;
-    const cdcEndpoint = ClusterDomainClaim.apiEndpoint as unknown as {
-      delete: (name: string, deleteParams?: DeleteParameters, cluster?: string) => Promise<any>;
-    };
+    const cdcEndpoint = ClusterDomainClaim.apiEndpoint as ApiClient<KubeObjectInterface>;
     try {
       await cdcEndpoint.delete(host, deleteParams, this.cluster);
     } catch (error: unknown) {

@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-import { KubeObject, type KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KubeCRD } from '@kinvolk/headlamp-plugin/lib/k8s/crd';
 
-interface KubeCustomResourceDefinition extends KubeObjectInterface {
-  spec?: unknown;
-  status?: unknown;
-}
-
-export class CustomResourceDefinition extends KubeObject<KubeCustomResourceDefinition> {
+export class CustomResourceDefinition extends KubeObject<KubeCRD> {
   static kind = 'CustomResourceDefinition';
   static apiName = 'customresourcedefinitions';
   static apiVersion = 'apiextensions.k8s.io/v1';

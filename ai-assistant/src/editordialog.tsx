@@ -1,9 +1,22 @@
-import { clusterAction, useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { clusterAction, K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { apply } from '@kinvolk/headlamp-plugin/lib/ApiProxy';
 import { Dialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { getCluster } from '@kinvolk/headlamp-plugin/lib/Utils';
 import Editor from '@monaco-editor/react';
-import { Box, Button, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography,
+} from '@mui/material';
 import jsYaml from 'js-yaml';
 import { useSnackbar } from 'notistack';
 import React, { useEffect, useState } from 'react';
@@ -15,6 +28,10 @@ type EditorDialogProps = {
   title: string;
   resourceType?: string;
   isDelete?: boolean;
+  /** Null means the assistant could not resolve a target; do not use the current route. */
+  targetCluster?: string | null;
+  /** Available clusters; defaults to the current Headlamp configuration. */
+  availableClusters?: string[];
   onSuccess?: (response: any) => void;
   onFailure?: (error: any, operationType: string, resourceInfo?: any) => void;
 };
@@ -26,13 +43,45 @@ export default function EditorDialog({
   title,
   resourceType = 'Resource',
   isDelete = false,
+  targetCluster,
+  availableClusters,
   onSuccess,
   onFailure,
 }: EditorDialogProps) {
   const [content, setContent] = useState(yamlContent);
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
+  const configuredClusters = K8s.useClustersConf();
+  const clusterNames = availableClusters ?? Object.keys(configuredClusters ?? {});
+  const areClustersLoading = availableClusters === undefined && !configuredClusters;
   const themeName = localStorage.getItem('headlampThemePreference');
+  const clusterLabelId = React.useId();
+  const [editorTarget, setEditorTarget] = useState(() => ({
+    open,
+    cluster: open ? (targetCluster === undefined ? getCluster() : targetCluster) : null,
+  }));
+
+  // Neither navigation nor later chat responses may retarget an open editor.
+  if (editorTarget.open !== open) {
+    setEditorTarget({
+      open,
+      cluster: open
+        ? targetCluster === undefined
+          ? getCluster()
+          : targetCluster
+        : editorTarget.cluster,
+    });
+  }
+  const cluster = editorTarget.cluster;
+  const canApply = Boolean(cluster && clusterNames.includes(cluster));
+  let targetMessage = t('No cluster selected');
+  if (areClustersLoading) {
+    targetMessage = t('Loading clusters...');
+  } else if (cluster) {
+    targetMessage = canApply
+      ? t('Target cluster: {{cluster}}', { cluster })
+      : t('Cluster "{{cluster}}" is not available.', { cluster });
+  }
 
   // Reset content when yamlContent prop changes (e.g. when dialog is opened with new content)
   useEffect(() => {
@@ -50,9 +99,12 @@ export default function EditorDialog({
 
   const handleApply = () => {
     try {
-      const cluster = getCluster();
-      if (!cluster) {
-        throw new Error(t('No cluster selected'));
+      if (!cluster || !canApply) {
+        throw new Error(
+          cluster
+            ? t('Cluster "{{cluster}}" is not available.', { cluster })
+            : t('No cluster selected')
+        );
       }
 
       // Use the current content from state, which contains user edits
@@ -131,6 +183,37 @@ export default function EditorDialog({
         </Box>
       </DialogTitle>
       <DialogContent>
+        <Alert
+          severity={canApply || areClustersLoading ? 'info' : 'warning'}
+          sx={{ mb: 2, overflowWrap: 'anywhere' }}
+        >
+          {targetMessage}
+        </Alert>
+        <FormControl fullWidth sx={{ mb: 2 }} disabled={clusterNames.length === 0}>
+          <InputLabel id={clusterLabelId}>{t('Target cluster')}</InputLabel>
+          <Select<string>
+            labelId={clusterLabelId}
+            label={t('Target cluster')}
+            value={cluster && canApply ? cluster : ''}
+            onChange={event => {
+              const selectedCluster = event.target.value;
+              setEditorTarget(current => ({ ...current, cluster: selectedCluster }));
+            }}
+          >
+            {clusterNames.map(name => (
+              <MenuItem key={name} value={name}>
+                {name}
+              </MenuItem>
+            ))}
+          </Select>
+          <FormHelperText>
+            {areClustersLoading
+              ? t('Loading clusters...')
+              : clusterNames.length === 0
+              ? t('No clusters are configured.')
+              : t('This manifest is applied only to the selected cluster.')}
+          </FormHelperText>
+        </FormControl>
         <Box height="100%">
           <Editor
             value={content}
@@ -154,8 +237,8 @@ export default function EditorDialog({
             </Button>
           </Box>
           <Box>
-            <Button variant="contained" color="primary" onClick={handleApply}>
-              {t('Apply to Cluster')}
+            <Button variant="contained" color="primary" onClick={handleApply} disabled={!canApply}>
+              {cluster && canApply ? t('Apply to {{cluster}}', { cluster }) : t('Apply to Cluster')}
             </Button>
           </Box>
         </Box>

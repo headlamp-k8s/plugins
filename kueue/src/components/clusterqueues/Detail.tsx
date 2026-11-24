@@ -1,16 +1,30 @@
 import {
   ConditionsSection,
+  DateLabel,
   DetailsGrid,
+  Link,
+  NameValueTable,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useParams } from 'react-router-dom';
+import { AdmissionCheck } from '../../resources/admissionCheck';
 import { ClusterQueue, FlavorUsage } from '../../resources/clusterQueue';
-import { getResourceGroupRows, ResourceGroupRow } from '../../resources/clusterQueueFormatters';
+import {
+  getClusterQueueInactiveCauses,
+  getResourceGroupRows,
+  ResourceGroupRow,
+} from '../../resources/clusterQueueFormatters';
+import { ResourceFlavor } from '../../resources/resourceFlavor';
+import type { PendingWorkloadSummaryItem } from '../../resources/workloadFormatters';
+import { kueueRouteNames } from '../../utils/kueueRoutes';
+import { usePendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
   renderCohortLink,
+  renderLocalQueueLink,
   renderResourceFlavorLink,
 } from '../common/KueueResourceLinks';
 import { RelatedLocalQueuesSection, RelatedWorkloadsSection } from '../common/RelatedResources';
@@ -27,7 +41,7 @@ interface FlavorUsageRow {
   borrowed?: string | number;
 }
 
-/** Admission check row from spec.admissionChecksStrategy. */
+/** Admission check row from spec.admissionChecksStrategy or the v1beta1 spec.admissionChecks. */
 interface AdmissionCheckRow {
   /** AdmissionCheck resource name. */
   name: string;
@@ -59,7 +73,7 @@ function getFlavorUsageRows(flavorUsage: FlavorUsage[] = []): FlavorUsageRow[] {
 /** Extract admission checks and their flavor scope from the ClusterQueue spec. */
 function getAdmissionCheckRows(clusterQueue: ClusterQueue): AdmissionCheckRow[] {
   return (
-    clusterQueue.spec.admissionChecksStrategy?.admissionChecks?.map(check => ({
+    clusterQueue.admissionChecksStrategy.admissionChecks?.map(check => ({
       name: check.name,
       flavors: check.onFlavors || [],
     })) || []
@@ -92,7 +106,9 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
             {
               label: 'ResourceFlavor',
               getter: (row: ResourceGroupRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-'
+                  ? '-'
+                  : renderResourceFlavorLink(row.flavor, clusterQueue.cluster),
             },
             {
               label: 'Resource',
@@ -118,7 +134,12 @@ function getResourceGroupsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Build a table section for ClusterQueue status flavor reservations or usage. */
-function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUsage[]) {
+function getFlavorUsageSection(
+  title: string,
+  id: string,
+  flavorUsage?: FlavorUsage[],
+  cluster?: string
+) {
   const rows = getFlavorUsageRows(flavorUsage);
 
   if (rows.length === 0) {
@@ -135,7 +156,7 @@ function getFlavorUsageSection(title: string, id: string, flavorUsage?: FlavorUs
             {
               label: 'ResourceFlavor',
               getter: (row: FlavorUsageRow) =>
-                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor),
+                row.flavor === '-' ? '-' : renderResourceFlavorLink(row.flavor, cluster),
             },
             {
               label: 'Resource',
@@ -173,7 +194,8 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
+              getter: (row: AdmissionCheckRow) =>
+                renderAdmissionCheckLink(row.name, clusterQueue.cluster),
             },
             {
               label: 'ResourceFlavors',
@@ -183,7 +205,7 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
                     {row.flavors.map((flavor, index) => (
                       <span key={flavor}>
                         {index > 0 ? ', ' : ''}
-                        {renderResourceFlavorLink(flavor)}
+                        {renderResourceFlavorLink(flavor, clusterQueue.cluster)}
                       </span>
                     ))}
                   </>
@@ -193,6 +215,148 @@ function getAdmissionChecksSection(clusterQueue: ClusterQueue) {
             },
           ]}
         />
+      </SectionBox>
+    ),
+  };
+}
+
+/**
+ * Pending Workloads in the order Kueue will try them, from the visibility API.
+ * Renders nothing when the API is not served, access is denied, or nothing is pending.
+ */
+function PendingWorkloadsSection(props: { clusterQueue: ClusterQueue }) {
+  const { clusterQueue } = props;
+  const items = usePendingWorkloads(
+    `clusterqueues/${clusterQueue.metadata.name}/pendingworkloads`,
+    clusterQueue.cluster
+  );
+
+  if (!items?.length) {
+    return null;
+  }
+
+  return (
+    <SectionBox title="Pending Workloads in Admission Order">
+      <SimpleTable
+        data={items}
+        columns={[
+          {
+            label: 'Position',
+            getter: (item: PendingWorkloadSummaryItem) => item.positionInClusterQueue + 1,
+          },
+          {
+            label: 'Workload',
+            getter: (item: PendingWorkloadSummaryItem) => (
+              <Link
+                routeName={kueueRouteNames.workloadDetail}
+                params={{ namespace: item.metadata.namespace, name: item.metadata.name }}
+                activeCluster={clusterQueue.cluster}
+              >
+                {item.metadata.name}
+              </Link>
+            ),
+          },
+          {
+            label: 'Namespace',
+            getter: (item: PendingWorkloadSummaryItem) => item.metadata.namespace || '-',
+          },
+          {
+            label: 'LocalQueue',
+            getter: (item: PendingWorkloadSummaryItem) =>
+              renderLocalQueueLink(
+                item.localQueueName,
+                item.metadata.namespace,
+                clusterQueue.cluster
+              ),
+          },
+          {
+            label: 'Priority',
+            getter: (item: PendingWorkloadSummaryItem) => item.priority ?? '-',
+          },
+          {
+            label: 'Age',
+            getter: (item: PendingWorkloadSummaryItem) =>
+              item.metadata.creationTimestamp ? (
+                <DateLabel date={item.metadata.creationTimestamp} format="mini" />
+              ) : (
+                '-'
+              ),
+          },
+        ]}
+      />
+    </SectionBox>
+  );
+}
+
+/** Explain an inactive ClusterQueue, naming every missing or inactive reference. */
+function ClusterQueueInactiveTable(props: { clusterQueue: ClusterQueue }) {
+  const { clusterQueue } = props;
+  // A list that cannot be read reports nothing missing. useList keeps returning its last
+  // list after a refresh fails, so a list with an error is treated as unknown too.
+  const [flavors, flavorsError] = ResourceFlavor.useList({ cluster: clusterQueue.cluster });
+  const [admissionChecks, admissionChecksError] = AdmissionCheck.useList({
+    cluster: clusterQueue.cluster,
+  });
+  const causes = getClusterQueueInactiveCauses(
+    clusterQueue.activeCondition,
+    clusterQueue.resourceGroups,
+    clusterQueue.admissionChecksStrategy,
+    flavorsError ? undefined : flavors?.map(flavor => flavor.metadata.name),
+    admissionChecksError
+      ? undefined
+      : admissionChecks?.map(check => ({
+          name: check.metadata.name,
+          active: check.activeCondition?.status === 'True',
+        }))
+  );
+
+  if (!causes) {
+    return null;
+  }
+
+  return (
+    <NameValueTable
+      rows={[
+        {
+          name: 'Reason',
+          value: <StatusLabel status="warning">{causes.reason || 'Unknown'}</StatusLabel>,
+        },
+        { name: 'What it means', value: causes.explanation, hide: !causes.explanation },
+        { name: 'Kueue message', value: causes.message, hide: !causes.message },
+        // Missing references are plain names, since a link would open a page that does not exist.
+        {
+          name: 'Missing ResourceFlavors',
+          value: causes.missingFlavors.join(', '),
+          hide: !causes.missingFlavors.length,
+        },
+        {
+          name: 'Missing AdmissionChecks',
+          value: causes.missingAdmissionChecks.join(', '),
+          hide: !causes.missingAdmissionChecks.length,
+        },
+        {
+          name: 'Inactive AdmissionChecks',
+          value: causes.inactiveAdmissionChecks.map(name => (
+            <div key={name}>{renderAdmissionCheckLink(name, clusterQueue.cluster)}</div>
+          )),
+          hide: !causes.inactiveAdmissionChecks.length,
+        },
+      ]}
+    />
+  );
+}
+
+/** Build the section explaining why the ClusterQueue cannot admit Workloads. */
+function getInactiveSection(clusterQueue: ClusterQueue) {
+  if (clusterQueue.activeCondition?.status !== 'False') {
+    return null;
+  }
+
+  return {
+    id: 'inactive',
+    section: (
+      <SectionBox title="Why is this ClusterQueue inactive?">
+        <ClusterQueueInactiveTable clusterQueue={clusterQueue} />
       </SectionBox>
     ),
   };
@@ -211,21 +375,28 @@ function getConditionsSection(clusterQueue: ClusterQueue) {
 }
 
 /** Detail view for a cluster-scoped Kueue ClusterQueue resource. */
-export default function ClusterQueueDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function ClusterQueueDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
 
   return (
-    <KueueAdminResourceAccess resourceClass={ClusterQueue} resourceLabel="ClusterQueues" verb="get">
+    <KueueAdminResourceAccess
+      resourceClass={ClusterQueue}
+      resourceLabel="ClusterQueues"
+      verb="get"
+      cluster={cluster}
+    >
       <DetailsGrid
         resourceType={ClusterQueue}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={clusterQueue =>
           clusterQueue
             ? [
                 {
                   name: 'Cohort',
-                  value: renderCohortLink(clusterQueue.spec.cohortName),
+                  value: renderCohortLink(clusterQueue.spec.cohortName, clusterQueue.cluster),
                 },
                 {
                   name: 'Queueing Strategy',
@@ -285,29 +456,42 @@ export default function ClusterQueueDetail() {
         extraSections={clusterQueue =>
           clusterQueue
             ? [
+                getInactiveSection(clusterQueue),
                 getConditionsSection(clusterQueue),
                 getResourceGroupsSection(clusterQueue),
                 getAdmissionChecksSection(clusterQueue),
+                {
+                  id: 'pending-workloads-order',
+                  section: <PendingWorkloadsSection clusterQueue={clusterQueue} />,
+                },
                 getFlavorUsageSection(
                   'Flavor Reservations',
                   'flavor-reservations',
-                  clusterQueue.status.flavorsReservation
+                  clusterQueue.status.flavorsReservation,
+                  clusterQueue.cluster
                 ),
                 getFlavorUsageSection(
                   'Flavor Usage',
                   'flavor-usage',
-                  clusterQueue.status.flavorsUsage
+                  clusterQueue.status.flavorsUsage,
+                  clusterQueue.cluster
                 ),
                 {
                   id: 'related-local-queues',
                   section: (
-                    <RelatedLocalQueuesSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedLocalQueuesSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
                 {
                   id: 'related-workloads',
                   section: (
-                    <RelatedWorkloadsSection clusterQueueName={clusterQueue.metadata.name} />
+                    <RelatedWorkloadsSection
+                      clusterQueueName={clusterQueue.metadata.name}
+                      cluster={clusterQueue.cluster}
+                    />
                   ),
                 },
               ].filter(Boolean)

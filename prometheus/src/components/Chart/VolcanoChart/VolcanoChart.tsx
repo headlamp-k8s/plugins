@@ -37,7 +37,7 @@ interface ChartConfig {
   key: string;
   label: string;
   icon: string;
-  queries: Record<string, string>;
+  queries: Record<string, unknown>;
   component: React.ComponentType<any>;
 }
 
@@ -212,12 +212,21 @@ export function VolcanoChart(props: VolcanoChartProps) {
         return t('Memory');
       case 'podgroups':
         return t('PodGroups');
+      case 'workloads':
+        return t('Workloads');
+      case 'quota-usage':
+        return t('Quota usage');
+      case 'admission-wait':
+        return t('Admission wait');
       default:
         return config.label;
     }
   };
 
-  const currentChartConfig = props.chartConfigs.find(config => config.key === selectedChart);
+  // The selected view can disappear when the configs change (for example a
+  // ClusterQueue losing its resource groups), so fall back to the first one.
+  const currentChartConfig =
+    props.chartConfigs.find(config => config.key === selectedChart) ?? props.chartConfigs[0];
 
   return (
     <SectionBox>
@@ -230,7 +239,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
                   onChange={handleChartVariantChange}
                   size="small"
                   aria-label={t('metric chooser')}
-                  value={selectedChart}
+                  value={currentChartConfig?.key}
                   exclusive
                 >
                   {props.chartConfigs.map(config => (

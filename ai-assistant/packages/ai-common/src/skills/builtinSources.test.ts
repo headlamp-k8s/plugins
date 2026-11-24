@@ -21,6 +21,11 @@ import {
   AKS_SKILLS_REPO_URL,
   AKS_SKILLS_SHA256,
   createAksSkillsSource,
+  createInspektorGadgetSkillsSource,
+  INSPEKTOR_GADGET_SKILLS_PATH,
+  INSPEKTOR_GADGET_SKILLS_REF,
+  INSPEKTOR_GADGET_SKILLS_REPO_URL,
+  INSPEKTOR_GADGET_SKILLS_SHA256,
   reconcileBuiltinSkillSources,
 } from './builtinSources';
 import { DEFAULT_SKILLS_CONFIG, getSkillSourceIdentity, SkillsConfig } from './config';
@@ -51,7 +56,53 @@ describe('createAksSkillsSource', () => {
   });
 });
 
+describe('createInspektorGadgetSkillsSource', () => {
+  it('enables the pinned upstream skills directory with integrity verification', () => {
+    const source = createInspektorGadgetSkillsSource();
+    expect(source).toEqual({
+      type: 'git',
+      url: 'https://github.com/inspektor-gadget/inspektor-gadget',
+      path: 'skills',
+      ref: '47d8e5176a46fd906bc3585bbf9f4786cc440576',
+      sha256: INSPEKTOR_GADGET_SKILLS_SHA256,
+      includeReferences: true,
+      enabled: true,
+    });
+    expect(isValidGitUrl(source.url)).toBe(true);
+    expect(isPinnedRef(source.ref!)).toBe(true);
+    expect(source.sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('returns independent source objects', () => {
+    const source = createInspektorGadgetSkillsSource();
+    source.enabled = false;
+    expect(createInspektorGadgetSkillsSource().enabled).toBe(true);
+  });
+});
+
 describe('reconcileBuiltinSkillSources', () => {
+  it('adds Gadget skills alongside an already seeded AKS source', () => {
+    const config = { ...emptyConfig(), sources: [createAksSkillsSource()] };
+    const result = reconcileBuiltinSkillSources(
+      config,
+      [createAksSkillsSource(), createInspektorGadgetSkillsSource()],
+      { [IDENTITY]: { ref: AKS_SKILLS_REF, sha256: AKS_SKILLS_SHA256 } }
+    );
+    expect(result.config.sources).toEqual([
+      createAksSkillsSource(),
+      createInspektorGadgetSkillsSource(),
+    ]);
+    expect(
+      result.state[
+        getSkillSourceIdentity({
+          type: 'git',
+          url: INSPEKTOR_GADGET_SKILLS_REPO_URL,
+          path: INSPEKTOR_GADGET_SKILLS_PATH,
+        })
+      ]
+    ).toEqual({ ref: INSPEKTOR_GADGET_SKILLS_REF, sha256: INSPEKTOR_GADGET_SKILLS_SHA256 });
+  });
+
   it('adds the built-in source on a fresh configuration', () => {
     const result = reconcileBuiltinSkillSources(emptyConfig(), [createAksSkillsSource()]);
 

@@ -17,25 +17,12 @@
 import { NameValueTable, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import React from 'react';
-import { KService } from '../../../../../resources/knative';
+import { annNumOrClear, annStrOrClear, KService } from '../../../../../resources/knative';
+import { errorDetail, withDetail } from '../../../../../utils/error';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
-
-type AutoscalingDefaults = {
-  concurrencyTarget: number;
-  targetUtilizationPercentage: number;
-  rpsTarget: number;
-  containerConcurrency: number;
-  minScale: number;
-  maxScale: number;
-  maxScaleLimit?: number;
-  initialScale: number;
-  allowZeroInitialScale: boolean;
-  scaleDownDelay: string;
-  stableWindow: string;
-  activationScaleDefault: number;
-};
+import type { AutoscalingDefaults } from './AutoscalingSettings';
 
 /**
  * Represents the fallback scale bound constraints utilized when explicit values are left blank by the user.
@@ -146,13 +133,28 @@ export default function ScaleBoundsSection({
     if (!isValid() || !cluster) return;
     try {
       setSaving(true);
+
+      const prevAnns = kservice.spec.template.metadata?.annotations ?? {};
+
       const patchBody = KService.buildAutoscalingPatch({
-        minScale: minScale === '' ? undefined : Number(minScale),
-        maxScale: maxScale === '' ? undefined : Number(maxScale),
-        initialScale: initialScale === '' ? undefined : Number(initialScale),
-        activationScale: activationScale === '' ? undefined : Number(activationScale),
-        scaleDownDelay: scaleDownDelay === '' ? undefined : scaleDownDelay,
-        stableWindow: stableWindow === '' ? undefined : stableWindow,
+        minScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/min-scale', minScale),
+        maxScale: annNumOrClear(prevAnns, 'autoscaling.knative.dev/max-scale', maxScale),
+        initialScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/initial-scale',
+          initialScale
+        ),
+        activationScale: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/activation-scale',
+          activationScale
+        ),
+        scaleDownDelay: annStrOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/scale-down-delay',
+          scaleDownDelay
+        ),
+        stableWindow: annStrOrClear(prevAnns, 'autoscaling.knative.dev/window', stableWindow),
       });
 
       if (patchBody) {
@@ -161,9 +163,7 @@ export default function ScaleBoundsSection({
 
       notifySuccess('Scale bounds updated');
     } catch (err: unknown) {
-      const error = err as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(withDetail('Failed to update settings', errorDetail(err)));
     } finally {
       setSaving(false);
     }

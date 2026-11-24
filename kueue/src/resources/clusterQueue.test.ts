@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getClusterQueueInactiveCauses,
   getResourceGroupRows,
   getUniqueFlavorNames,
+  normalizeAdmissionChecksStrategy,
   renderClusterQueueStatus,
+  renderFlavorNominalQuota,
   renderLabelSelector,
   renderResourceGroupsSummary,
 } from './clusterQueueFormatters';
@@ -25,6 +28,36 @@ describe('ClusterQueue formatters', () => {
 
     expect(renderResourceGroupsSummary(resourceGroups)).toBe('2 groups, 3 flavors');
     expect(getUniqueFlavorNames(resourceGroups)).toEqual(['default', 'spot']);
+  });
+
+  it('renders the nominal quota one flavor gives across resource groups', () => {
+    const resourceGroups = [
+      {
+        coveredResources: ['cpu', 'memory'],
+        flavors: [
+          {
+            name: 'default',
+            resources: [
+              { name: 'cpu', nominalQuota: '8' },
+              { name: 'memory', nominalQuota: '16Gi' },
+            ],
+          },
+          { name: 'spot', resources: [{ name: 'cpu', nominalQuota: '16' }] },
+        ],
+      },
+      {
+        coveredResources: ['nvidia.com/gpu'],
+        flavors: [{ name: 'default', resources: [{ name: 'nvidia.com/gpu', nominalQuota: 2 }] }],
+      },
+      { coveredResources: ['pods'], flavors: [{ name: 'empty' }] },
+    ];
+
+    expect(renderFlavorNominalQuota(resourceGroups, 'default')).toBe(
+      'cpu: 8, memory: 16Gi, nvidia.com/gpu: 2'
+    );
+    expect(renderFlavorNominalQuota(resourceGroups, 'spot')).toBe('cpu: 16');
+    expect(renderFlavorNominalQuota(resourceGroups, 'empty')).toBe('-');
+    expect(renderFlavorNominalQuota(resourceGroups, 'missing')).toBe('-');
   });
 
   it('flattens resource groups for detail tables', () => {
@@ -90,5 +123,82 @@ describe('ClusterQueue formatters', () => {
         matchExpressions: [{ key: 'environment', operator: 'In', values: ['dev', 'prod'] }],
       })
     ).toBe('environment In (dev, prod)');
+  });
+
+  it('explains an inactive ClusterQueue from its spec and the existing resources', () => {
+    const groups = [
+      { flavors: [{ name: 'default' }, { name: 'missing-flavor' }] },
+      { flavors: [{ name: 'default' }] },
+    ];
+    const strategy = {
+      admissionChecks: [{ name: 'prov' }, { name: 'missing-check' }, { name: 'down' }],
+    };
+    const condition = {
+      type: 'Active',
+      status: 'False' as const,
+      reason: 'Stopped',
+      message:
+        "Can't admit new workloads: is stopped, references missing ResourceFlavor(s): missing-flavor.",
+    };
+
+    expect(
+      getClusterQueueInactiveCauses(
+        condition,
+        groups,
+        strategy,
+        ['default'],
+        [
+          { name: 'prov', active: true },
+          { name: 'down', active: false },
+        ]
+      )
+    ).toEqual({
+      reason: 'Stopped',
+      explanation:
+        'The ClusterQueue has a stopPolicy set, so Kueue does not admit new Workloads from it. With HoldAndDrain, admitted Workloads are evicted too.',
+      message: condition.message,
+      missingFlavors: ['missing-flavor'],
+      missingAdmissionChecks: ['missing-check'],
+      inactiveAdmissionChecks: ['down'],
+    });
+
+    // Lists that are not loaded (or not readable) report nothing missing.
+    expect(
+      getClusterQueueInactiveCauses({ ...condition, reason: 'Novel' }, groups, strategy)
+    ).toMatchObject({ explanation: undefined, missingFlavors: [], missingAdmissionChecks: [] });
+    expect(
+      getClusterQueueInactiveCauses({ ...condition, reason: 'constructor' }, groups, strategy)
+        ?.explanation
+    ).toBeUndefined();
+
+    expect(
+      getClusterQueueInactiveCauses({ type: 'Active', status: 'True' }, groups, strategy)
+    ).toBeNull();
+    expect(getClusterQueueInactiveCauses(undefined, groups, strategy)).toBeNull();
+  });
+
+  it('reads the v1beta1 admissionChecks list as checks on all flavors', () => {
+    const legacy = normalizeAdmissionChecksStrategy(undefined, ['prov', 'missing-check']);
+    expect(legacy).toEqual({ admissionChecks: [{ name: 'prov' }, { name: 'missing-check' }] });
+
+    expect(
+      normalizeAdmissionChecksStrategy({ admissionChecks: [{ name: 'a', onFlavors: ['gpu'] }] }, [
+        'b',
+      ])
+    ).toEqual({ admissionChecks: [{ name: 'a', onFlavors: ['gpu'] }, { name: 'b' }] });
+    expect(normalizeAdmissionChecksStrategy()).toEqual({ admissionChecks: [] });
+
+    expect(
+      getClusterQueueInactiveCauses(
+        { type: 'Active', status: 'False', reason: 'AdmissionCheckNotFound' },
+        [{ flavors: [{ name: 'default' }] }],
+        legacy,
+        ['default'],
+        [{ name: 'prov', active: false }]
+      )
+    ).toMatchObject({
+      missingAdmissionChecks: ['missing-check'],
+      inactiveAdmissionChecks: ['prov'],
+    });
   });
 });

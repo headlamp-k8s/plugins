@@ -15,13 +15,13 @@
  */
 
 import { Router } from '@kinvolk/headlamp-plugin/lib';
+import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/k8s/KubeObject';
 
-type KnativeResourceClass = {
-  kind: string;
-  apiName: string;
-  apiVersion: string | string[];
-  isNamespaced: boolean;
-};
+/** What the links to Headlamp's Custom Resource views need of a Knative resource class. */
+export type KnativeResourceClass = Pick<
+  KubeObjectClass,
+  'kind' | 'apiName' | 'apiVersion' | 'isNamespaced'
+>;
 
 export function getKnativeCrdName(resourceClass: KnativeResourceClass): string {
   const apiVersion = Array.isArray(resourceClass.apiVersion)

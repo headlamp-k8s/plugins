@@ -14,6 +14,7 @@ import ContentRenderer from './ContentRenderer';
 import EditorDialog from './editordialog';
 
 const TextStreamContainer = React.memo(function TextStreamContainer({
+  beforeMessages,
   history,
   isLoading,
   apiError,
@@ -26,6 +27,7 @@ const TextStreamContainer = React.memo(function TextStreamContainer({
 }: Omit<TextStreamContainerProps, 'ContentRendererSlot' | 'EditorDialogSlot'>) {
   return (
     <TextStreamContainerBase
+      beforeMessages={beforeMessages}
       history={history}
       isLoading={isLoading}
       apiError={apiError}

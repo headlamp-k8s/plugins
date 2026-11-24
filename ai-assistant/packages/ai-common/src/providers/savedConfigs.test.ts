@@ -15,6 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { getProviderFields } from './catalog';
 import {
   deleteProviderConfig,
   getActiveConfig,
@@ -27,6 +28,25 @@ import {
 
 describe('ProviderConfigManager', () => {
   describe('getSavedConfigurations', () => {
+    it.each([
+      ['copilot', 'gpt-4o'],
+      ['openai', 'gpt-4.1'],
+      ['azure', 'o3'],
+      ['gemini', 'gemini-2.5-pro'],
+      ['mistral', 'mistral-medium-3-5'],
+    ])('preserves the saved %s model %s after its suggestion is removed', (providerId, model) => {
+      const options = getProviderFields(providerId).find(field => field.name === 'model')?.options;
+      expect(options).toBeDefined();
+      expect(options).not.toContain(model);
+      const data = {
+        providers: [{ id: 'existing', providerId, config: { apiKey: 'test-key', model } }],
+        defaultProviderIndex: 0,
+        termsAccepted: true,
+      };
+
+      expect(getSavedConfigurations(data)).toEqual(data);
+    });
+
     it('returns empty providers for null or undefined data', () => {
       expect(getSavedConfigurations(null)).toEqual({ providers: [] });
       expect(getSavedConfigurations(undefined)).toEqual({ providers: [] });

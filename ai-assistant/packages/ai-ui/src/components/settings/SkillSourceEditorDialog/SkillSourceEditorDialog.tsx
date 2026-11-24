@@ -145,6 +145,9 @@ export default function SkillSourceEditorDialog({
       const normalizedPath = normalizeSkillSourcePath(path);
       if (normalizedPath) entry.path = normalizedPath;
       if (sha256.trim()) entry.sha256 = sha256.trim().toLowerCase();
+      if (source?.includeReferences !== undefined) {
+        entry.includeReferences = source.includeReferences;
+      }
     }
     onSave(entry);
   };

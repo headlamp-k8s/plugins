@@ -22,9 +22,17 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 export interface MatchSelectorEntry {
   resources?: {
     kinds?: string[];
+    // Kyverno still supports this singular form alongside the plural `names` below (both are
+    // real fields on the Go ResourceDescription type, confirmed against
+    // api/kyverno/v1/match_resources_types.go), a single exact name instead of a pattern list.
+    name?: string;
     names?: string[];
     namespaces?: string[];
     operations?: string[];
+    // A resource-level annotation restriction, confirmed on the real ResourceDescription type
+    // alongside kinds/names/namespaces above, not to be confused with `selector` (a label
+    // selector) below.
+    annotations?: Record<string, string>;
     selector?: Record<string, unknown>;
     namespaceSelector?: Record<string, unknown>;
   };
@@ -39,6 +47,40 @@ export interface MatchSelectorEntry {
 export interface MatchSelector {
   any?: MatchSelectorEntry[];
   all?: MatchSelectorEntry[];
+  // The direct form: resource/user constraints set straight on match/exclude
+  // instead of wrapped in any/all. Kyverno deprecates this in favor of
+  // any/all but it's still real and still supported, confirmed against the
+  // actual MatchResources Go type (api/kyverno/v1/match_resources_types.go),
+  // which embeds ResourceDescription directly, serialized as `resources`,
+  // identical in shape to a single any/all entry (ResourceFilter embeds the
+  // same ResourceDescription).
+  resources?: MatchSelectorEntry['resources'];
+}
+
+// Confirmed against Kyverno's Go source (api/kyverno/v1/rule_types.go,
+// ForEachValidation). Each entry iterates a JMESPath list expression and
+// applies a nested validate block to each element.
+export interface ForEachValidation {
+  list?: string;
+  context?: unknown[];
+  preconditions?: unknown;
+  pattern?: unknown;
+  anyPattern?: unknown[];
+  deny?: unknown;
+  elementScope?: boolean;
+  foreach?: ForEachValidation[];
+}
+
+// Confirmed against Kyverno's Go source (api/kyverno/v1/rule_types.go,
+// ForEachMutation). Each entry iterates a JMESPath list and applies a patch
+// to each element.
+export interface ForEachMutation {
+  list?: string;
+  context?: unknown[];
+  preconditions?: unknown;
+  patchStrategicMerge?: unknown;
+  patchesJson6902?: string;
+  foreach?: ForEachMutation[];
 }
 
 export interface PolicyRule {
@@ -49,6 +91,7 @@ export interface PolicyRule {
     message?: string;
     pattern?: unknown;
     anyPattern?: unknown[];
+    foreach?: ForEachValidation[];
     deny?: unknown;
     cel?: unknown;
     podSecurity?: {
@@ -58,7 +101,10 @@ export interface PolicyRule {
     failureAction?: string;
     [key: string]: unknown;
   };
-  mutate?: Record<string, unknown>;
+  mutate?: {
+    foreach?: ForEachMutation[];
+    [key: string]: unknown;
+  };
   generate?: Record<string, unknown>;
   verifyImages?: unknown[];
   context?: unknown[];
@@ -162,4 +208,23 @@ export class KyvernoClusterPolicy extends KyvernoPolicyBase {
   static apiName = 'clusterpolicies';
   static apiVersion = 'kyverno.io/v1';
   static isNamespaced = false;
+}
+
+// Derives the effective enforcement action from a policy spec.
+// Rule-level validate.failureAction overrides the spec-level action. Resolve
+// each validation rule's effective action before checking agreement; differing
+// actions produce 'Mixed', and the fallback action defaults to 'Audit'.
+// Kyverno accepts lowercase 'audit'/'enforce' as equivalent to 'Audit'/'Enforce';
+// normalize before comparing so they don't produce a false 'Mixed'.
+export function effectiveEnforcementAction(spec: KyvernoPolicySpec | undefined): string {
+  const normalize = (a: string) => (a === 'enforce' ? 'Enforce' : a === 'audit' ? 'Audit' : a);
+  const fallback = normalize(spec?.validationFailureAction ?? 'Audit');
+  const ruleActions = new Set(
+    (spec?.rules ?? [])
+      .filter(r => r.validate)
+      .map(r => normalize(r.validate!.failureAction ?? fallback))
+  );
+  if (ruleActions.size === 1) return [...ruleActions][0];
+  if (ruleActions.size > 1) return 'Mixed';
+  return fallback;
 }

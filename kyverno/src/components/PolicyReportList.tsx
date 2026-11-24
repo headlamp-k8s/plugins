@@ -19,7 +19,7 @@ import { Activity, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Link as MuiLink } from '@mui/material';
 import { PolicyReport } from '../resources/policyReport';
-import { SummaryChips } from './common';
+import { SummaryChips, tableRemountKey } from './common';
 import { ReportViewer } from './ReportViewer';
 
 function openReportActivity(item: PolicyReport) {
@@ -38,15 +38,16 @@ function openReportActivity(item: PolicyReport) {
 }
 
 export function PolicyReportList() {
-  const { t } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   return (
     <ResourceListView
+      key={tableRemountKey(ready, i18n?.language)}
       title={t('Policy Reports')}
       resourceClass={PolicyReport}
       columns={[
         {
           id: 'name',
-          label: 'Name',
+          label: t('Name'),
           getValue: item => item.jsonData.metadata.name,
           render: item => (
             <MuiLink

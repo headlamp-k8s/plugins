@@ -30,7 +30,7 @@ it('renders nothing while suggestions are loading', () => {
   expect(container.childElementCount).toBe(0);
 });
 
-it('keeps selecting and sending as distinct accessible actions and passes axe', async () => {
+it('inserts a reviewable draft without an adjacent immediate-send action and passes axe', async () => {
   const onPromptSelect = vi.fn();
   const onPromptSend = vi.fn();
   const onErrorClear = vi.fn();
@@ -47,15 +47,15 @@ it('keeps selecting and sending as distinct accessible actions and passes axe', 
   const suggestion = defaultPromptSuggestionsArgs.suggestions[0];
 
   fireEvent.click(screen.getByRole('button', { name: suggestion.label }));
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
 
   expect(onPromptSelect).toHaveBeenCalledWith(suggestion);
-  expect(onPromptSend).toHaveBeenCalledWith(suggestion);
+  expect(onPromptSend).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: /Send suggestion/ })).toBeNull();
   expect(onErrorClear).not.toHaveBeenCalled();
   await expect(runAxe()).resolves.toEqual([]);
 });
 
-it('recognizes content-filter errors case-insensitively and clears before sending', () => {
+it('clears content-filter errors before inserting a suggestion for review', () => {
   const calls: string[] = [];
   const suggestion = contentFilterErrorArgs.suggestions[1];
   render(
@@ -63,13 +63,13 @@ it('recognizes content-filter errors case-insensitively and clears before sendin
       {...contentFilterErrorArgs}
       apiError="Blocked by Content Filter policy"
       onErrorClear={() => calls.push('clear')}
-      onPromptSend={selected => calls.push(`send:${selected.prompt}`)}
+      onPromptSelect={selected => calls.push(`select:${selected.prompt}`)}
     />
   );
 
   expect(screen.getByText('Try one of these safe Kubernetes questions instead:')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
-  expect(calls).toEqual(['clear', `send:${suggestion.prompt}`]);
+  fireEvent.click(screen.getByRole('button', { name: suggestion.label }));
+  expect(calls).toEqual(['clear', `select:${suggestion.prompt}`]);
 });
 
 it('does not show filter guidance or clear unrelated API errors', () => {
@@ -84,6 +84,6 @@ it('does not show filter guidance or clear unrelated API errors', () => {
   );
 
   expect(screen.queryByText('Try one of these safe Kubernetes questions instead:')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: `Send suggestion: ${suggestion.label}` }));
+  fireEvent.click(screen.getByRole('button', { name: suggestion.label }));
   expect(onErrorClear).not.toHaveBeenCalled();
 });

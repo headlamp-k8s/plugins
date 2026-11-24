@@ -21,7 +21,7 @@ import {
   SectionBox,
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import type { KubeContainerStatus } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import Pod from '@kinvolk/headlamp-plugin/lib/k8s/pod';
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import { useLocation } from 'react-router-dom';
@@ -29,21 +29,6 @@ import { KService } from '../../../../../resources/knative';
 
 type KServiceSectionProps = {
   kservice: KService;
-};
-
-type PodContainerStatus = {
-  name: string;
-  restartCount?: number;
-  state?: {
-    waiting?: { reason?: string; message?: string };
-    running?: { startedAt?: string };
-    terminated?: {
-      reason?: string;
-      exitCode?: number;
-      startedAt?: string;
-      finishedAt?: string;
-    };
-  };
 };
 
 function getRevisionSuffix(serviceName: string, revisionLabelValue: string) {
@@ -67,7 +52,13 @@ function getPodStatus(pod: Pod): '' | 'success' | 'warning' | 'error' {
   return '';
 }
 
-function getContainerDisplayStatus(container: PodContainerStatus) {
+/**
+ * Works out how to show a container's state.
+ *
+ * @param container - The container's status from its Pod.
+ * @returns The colour of the state, and a tooltip that describes it.
+ */
+function getContainerDisplayStatus(container: KubeContainerStatus) {
   const state = container.state || {};
   let color = 'grey';
   let label = 'Unknown';
@@ -121,7 +112,7 @@ function makePodStatusLabel(pod: Pod) {
   const { reason, message } = pod.getDetailedStatus();
   const status = getPodStatus(pod);
 
-  const containerStatuses = (pod.status?.containerStatuses ?? []) as PodContainerStatus[];
+  const containerStatuses = pod.status?.containerStatuses ?? [];
   const containerIndicators =
     containerStatuses.length > 0 ? (
       <Box display="flex" gap={0.5}>
@@ -193,21 +184,19 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
     return aOrder - bOrder || a.localeCompare(b);
   });
 
-  const columns: (ResourceTableColumn<KubeObject> | 'name' | 'age')[] = [
+  const columns: (ResourceTableColumn<Pod> | 'name' | 'age')[] = [
     'name',
     {
       id: 'revision',
       label: 'Revision',
       gridTemplate: 'min-content',
       disableFiltering: true,
-      getValue: item => {
-        const pod = item as unknown as Pod;
+      getValue: pod => {
         const revisionLabel = pod.metadata.labels?.['serving.knative.dev/revision'];
         if (!revisionLabel || !serviceName) return '';
         return getRevisionSuffix(serviceName, revisionLabel).toLowerCase();
       },
-      render: item => {
-        const pod = item as unknown as Pod;
+      render: pod => {
         const revisionLabel = pod.metadata.labels?.['serving.knative.dev/revision'];
         const revisionSuffix =
           revisionLabel && serviceName ? getRevisionSuffix(serviceName, revisionLabel) : null;
@@ -236,14 +225,12 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
       label: 'Ready',
       gridTemplate: 'min-content',
       disableFiltering: true,
-      getValue: item => {
-        const pod = item as unknown as Pod;
+      getValue: pod => {
         const { readyContainers, totalContainers } = pod.getDetailedStatus();
         if (!totalContainers) return 0;
         return readyContainers / totalContainers;
       },
-      render: item => {
-        const pod = item as unknown as Pod;
+      render: pod => {
         const { readyContainers, totalContainers } = pod.getDetailedStatus();
         return (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
@@ -251,10 +238,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
           </Box>
         );
       },
-      sort: (a, b) => {
-        const aPod = a as unknown as Pod;
-        const bPod = b as unknown as Pod;
-
+      sort: (aPod, bPod) => {
         const aStatus = aPod.getDetailedStatus();
         const bStatus = bPod.getDetailedStatus();
 
@@ -275,19 +259,18 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
       label: 'Restarts',
       gridTemplate: 'min-content',
       disableFiltering: true,
-      getValue: item => (item as unknown as Pod).getDetailedStatus().restarts ?? 0,
-      render: item => (item as unknown as Pod).getDetailedStatus().restarts ?? 0,
+      getValue: pod => pod.getDetailedStatus().restarts ?? 0,
+      render: pod => pod.getDetailedStatus().restarts ?? 0,
     },
     {
       id: 'status',
       label: 'Status',
       gridTemplate: 'min-content',
       filterVariant: 'multi-select',
-      getValue: item => {
-        const pod = item as unknown as Pod;
+      getValue: pod => {
         return pod.getDetailedStatus().reason || pod.status?.phase || 'Unknown';
       },
-      render: item => makePodStatusLabel(item as unknown as Pod),
+      render: makePodStatusLabel,
     },
     'age',
   ];
@@ -302,7 +285,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
   // For Pods, getListLink() points to the Pods list, which navigates away from the Knative UI.
   // Override getListLink() per item so Evict keeps the user on this KService page.
   const podsForTable = pods?.map(pod => {
-    (pod as unknown as { getListLink?: () => string }).getListLink = () => pathname;
+    pod.getListLink = () => pathname;
     return pod;
   });
 
@@ -337,7 +320,7 @@ export function PodsSection({ kservice }: KServiceSectionProps) {
             Namespace or KService name is missing.
           </Typography>
         ) : (
-          <ResourceTable.default
+          <ResourceTable.default<typeof Pod>
             id="knative-kservice-pods"
             columns={columns}
             data={podsForTable ?? null}

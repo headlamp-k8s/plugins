@@ -5,15 +5,17 @@ import {
 } from '@kinvolk/headlamp-plugin/lib';
 import { ActionButton, EditorDialog } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
+import type { HeaderAction } from '@kinvolk/headlamp-plugin/lib/redux/actionButtonsSlice';
 import { Chip, Tooltip } from '@mui/material';
 import { useState } from 'react';
+import { areFluxManagedActionsAllowed, store } from '../settings';
 
 const FLUX_OWNERSHIP_LABELS = ['kustomize.toolkit.fluxcd.io/name', 'helm.toolkit.fluxcd.io/name'];
 
 // Ephemeral resources that Flux will recreate, so deleting/editing them is fine.
 const EPHEMERAL_KINDS = new Set(['Pod', 'Job', 'Event']);
 
-function isManagedByFlux(resource: KubeObject | null): boolean {
+export function isManagedByFlux(resource: KubeObject | null): boolean {
   if (!resource) {
     return false;
   }
@@ -54,50 +56,77 @@ function ViewYAMLButton({ item }: { item: KubeObject }) {
   );
 }
 
-function FluxManagedIndicator() {
+function FluxManagedIndicator({ actionsAllowed }: { actionsAllowed: boolean }) {
   const { t } = useTranslation();
   return (
     <Tooltip
-      title={t(
-        'This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.'
-      )}
+      title={
+        actionsAllowed
+          ? t(
+              'This resource is managed by Flux. Changes made here may be reverted on the next reconciliation.'
+            )
+          : t(
+              'This resource is managed by Flux. Some actions are hidden because changes would be reverted by Flux.'
+            )
+      }
     >
-      <Chip label={t('Flux managed')} size="small" variant="outlined" color="primary" />
+      <Chip
+        label={t('Flux managed')}
+        size="small"
+        variant="outlined"
+        color={actionsAllowed ? 'warning' : 'primary'}
+      />
     </Tooltip>
   );
 }
 
+export function processFluxHeaderActions(
+  resource: KubeObject | null,
+  headerActions: HeaderAction[],
+  allowMutatingActions: boolean
+): HeaderAction[] {
+  if (!resource || !isManagedByFlux(resource)) {
+    return headerActions;
+  }
+
+  const kind = resource.jsonData?.kind;
+  if (kind && EPHEMERAL_KINDS.has(kind)) {
+    return headerActions;
+  }
+
+  const indicator = {
+    id: FLUX_MANAGED_ACTION_ID,
+    action: <FluxManagedIndicator actionsAllowed={allowMutatingActions} />,
+  };
+
+  if (allowMutatingActions) {
+    return [...headerActions, indicator];
+  }
+
+  // Built on each call rather than at module load so the enum is guaranteed to be initialized.
+  const mutatingActions = new Set<string>([
+    DetailsViewDefaultHeaderActions.DELETE,
+    DetailsViewDefaultHeaderActions.EDIT,
+    DetailsViewDefaultHeaderActions.SCALE,
+    'rollback',
+  ]);
+
+  const filtered = headerActions.filter(action => !mutatingActions.has(action.id));
+
+  const viewAction = {
+    id: FLUX_VIEW_YAML_ACTION_ID,
+    action: <ViewYAMLButton item={resource} />,
+  };
+
+  return [...filtered, viewAction, indicator];
+}
+
 export function registerFluxHeaderActionsProcessor() {
-  registerDetailsViewHeaderActionsProcessor((resource, headerActions) => {
-    if (!resource || !isManagedByFlux(resource)) {
-      return headerActions;
-    }
-
-    const kind = resource.jsonData?.kind;
-    if (kind && EPHEMERAL_KINDS.has(kind)) {
-      return headerActions;
-    }
-
-    // Resolved inside the callback so the enum is guaranteed to be initialized.
-    const mutatingActions = new Set<string>([
-      DetailsViewDefaultHeaderActions.DELETE,
-      DetailsViewDefaultHeaderActions.EDIT,
-      DetailsViewDefaultHeaderActions.SCALE,
-      'rollback',
-    ]);
-
-    const filtered = headerActions.filter(action => !mutatingActions.has(action.id));
-
-    const viewAction = {
-      id: FLUX_VIEW_YAML_ACTION_ID,
-      action: <ViewYAMLButton item={resource} />,
-    };
-
-    const indicator = {
-      id: FLUX_MANAGED_ACTION_ID,
-      action: <FluxManagedIndicator />,
-    };
-
-    return [...filtered, viewAction, indicator];
-  });
+  registerDetailsViewHeaderActionsProcessor((resource, headerActions) =>
+    processFluxHeaderActions(
+      resource,
+      headerActions,
+      !!resource && areFluxManagedActionsAllowed(store.get(), resource.cluster)
+    )
+  );
 }

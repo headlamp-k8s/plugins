@@ -24,9 +24,14 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { useMemo } from 'react';
 import { policyIdentity, reportSourceErrorMessage } from '../hooks/policyReportSources';
-import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
+import {
+  PolicyReportSources,
+  useNamespacedPolicyReportSources,
+  usePolicyReportSources,
+} from '../hooks/usePolicyReportSources';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -34,13 +39,15 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import { PolicyReportResult } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { POLICY_REPORT_SOURCE, PolicyReportResult } from '../resources/policyReport';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { PolicyImpactPanel } from './PolicyImpactPanel';
 
 interface PolicyViewerProps {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
+  cluster?: string;
 }
 
 // Well-known Kyverno annotation keys
@@ -123,112 +130,204 @@ function YamlSection({ jsonData }: { jsonData: KyvernoPolicyInterface }) {
 }
 
 function ConditionsSection({ conditions }: { conditions?: PolicyCondition[] }) {
-  const { t, ready: translationsReady } = useTranslation();
-  if (!conditions || conditions.length === 0) return null;
+  const { i18n, ready, t } = useTranslation();
 
-  if (!translationsReady) {
-    return (
-      <SectionBox title="Conditions">
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={24} />
-        </Box>
-      </SectionBox>
-    );
-  }
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
+  const typeHeader = t('Type');
+  const statusHeader = t('Status');
+  const reasonHeader = t('Reason');
+  const messageHeader = t('Message');
+  const lastTransitionHeader = t('Last Transition');
+
+  const columns = useMemo(
+    () => [
+      {
+        header: typeHeader,
+        id: 'type',
+        accessorFn: (c: PolicyCondition) => c.type,
+      },
+      {
+        header: statusHeader,
+        id: 'status',
+        accessorFn: (c: PolicyCondition) => c.status,
+        Cell: ({ row }: { row: { original: PolicyCondition } }) => (
+          <Chip
+            label={row.original.status}
+            color={
+              row.original.status === 'True'
+                ? 'success'
+                : row.original.status === 'False'
+                ? 'error'
+                : 'default'
+            }
+            size="small"
+          />
+        ),
+      },
+      {
+        header: reasonHeader,
+        id: 'reason',
+        accessorFn: (c: PolicyCondition) => c.reason || '-',
+      },
+      {
+        header: messageHeader,
+        id: 'message',
+        accessorFn: (c: PolicyCondition) => c.message || '-',
+      },
+      {
+        header: lastTransitionHeader,
+        id: 'lastTransition',
+        accessorFn: (c: PolicyCondition) => c.lastTransitionTime || '-',
+      },
+    ],
+    [typeHeader, statusHeader, reasonHeader, messageHeader, lastTransitionHeader]
+  );
+
+  if (!conditions || conditions.length === 0) return null;
 
   return (
     <SectionBox title={t('Conditions')}>
-      <Table
-        columns={[
-          { header: t('Type'), accessorFn: (c: PolicyCondition) => c.type },
-          {
-            header: t('Status'),
-            accessorFn: (c: PolicyCondition) => c.status,
-            Cell: ({ row }: { row: { original: PolicyCondition } }) => (
-              <Chip
-                label={row.original.status}
-                color={
-                  row.original.status === 'True'
-                    ? 'success'
-                    : row.original.status === 'False'
-                    ? 'error'
-                    : 'default'
-                }
-                size="small"
-              />
-            ),
-          },
-          { header: t('Reason'), accessorFn: (c: PolicyCondition) => c.reason || '-' },
-          { header: t('Message'), accessorFn: (c: PolicyCondition) => c.message || '-' },
-          {
-            header: t('Last Transition'),
-            accessorFn: (c: PolicyCondition) => c.lastTransitionTime || '-',
-          },
-        ]}
-        data={conditions}
-      />
+      <Table key={tableRemountKey(ready, i18n?.language)} columns={columns} data={conditions} />
     </SectionBox>
   );
 }
 
 function RulesTable({ rules }: { rules: PolicyRule[] }) {
-  const { t, ready: translationsReady } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
 
-  if (!translationsReady) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-        <CircularProgress size={24} />
-      </Box>
-    );
-  }
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
+  const nameHeader = t('Name');
+  const typeHeader = t('Type');
+  const matchKindsHeader = t('Match Kinds');
+  const messageHeader = t('Message');
+
+  const columns = useMemo(
+    () => [
+      {
+        header: nameHeader,
+        id: 'name',
+        accessorFn: (r: PolicyRule) => r.name,
+      },
+      {
+        header: typeHeader,
+        id: 'type',
+        accessorFn: (r: PolicyRule) => ruleType(r),
+        Cell: ({ row }: { row: { original: PolicyRule } }) => (
+          <Chip label={ruleType(row.original)} size="small" variant="outlined" />
+        ),
+      },
+      {
+        header: matchKindsHeader,
+        id: 'matchKinds',
+        accessorFn: (r: PolicyRule) => matchKinds(r),
+      },
+      {
+        header: messageHeader,
+        id: 'message',
+        accessorFn: (r: PolicyRule) => r.validate?.message || '-',
+      },
+    ],
+    [nameHeader, typeHeader, matchKindsHeader, messageHeader]
+  );
 
   return (
     <Table
-      columns={[
-        { header: t('Name'), accessorFn: (r: PolicyRule) => r.name },
-        {
-          header: t('Type'),
-          accessorFn: (r: PolicyRule) => ruleType(r),
-          Cell: ({ row }: { row: { original: PolicyRule } }) => (
-            <Chip label={ruleType(row.original)} size="small" variant="outlined" />
-          ),
-        },
-        { header: t('Match Kinds'), accessorFn: (r: PolicyRule) => matchKinds(r) },
-        { header: t('Message'), accessorFn: (r: PolicyRule) => r.validate?.message || '-' },
-      ]}
+      key={tableRemountKey(ready, i18n?.language)}
+      columns={columns}
       data={rules}
       emptyMessage={t('No rules defined.')}
     />
   );
 }
 
+type ReportResourceRef = NonNullable<PolicyReportResult['resources']>[number];
+
+type AssociatedReportResult = PolicyReportResult & {
+  reportName: string;
+  reportNamespace?: string;
+  reportScope?: ReportResourceRef;
+};
+
+// A namespaced Policy can only match resources in its own namespace.
+// Mount a separate reader so namespace-scoped users never need a cluster-wide list.
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
+  cluster,
 }: {
   policyName: string;
   policyNamespace?: string;
+  cluster?: string;
 }) {
-  const { t, ready: translationsReady } = useTranslation();
-  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
+  return policyNamespace ? (
+    <NamespacedAssociatedReports
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      cluster={cluster}
+    />
+  ) : (
+    <ClusterAssociatedReports policyName={policyName} cluster={cluster} />
+  );
+}
 
-  if (reportsError) {
+function NamespacedAssociatedReports({
+  policyName,
+  policyNamespace,
+  cluster,
+}: {
+  policyName: string;
+  policyNamespace: string;
+  cluster?: string;
+}) {
+  const reportSources = useNamespacedPolicyReportSources(policyNamespace, cluster);
+  return (
+    <AssociatedReportsBody
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      reportSources={reportSources}
+    />
+  );
+}
+
+function ClusterAssociatedReports({
+  policyName,
+  cluster,
+}: {
+  policyName: string;
+  cluster?: string;
+}) {
+  const reportSources = usePolicyReportSources(cluster);
+  return <AssociatedReportsBody policyName={policyName} reportSources={reportSources} />;
+}
+
+function AssociatedReportsBody({
+  policyName,
+  policyNamespace,
+  reportSources: { reports, loading, error, restrictedEphemeralReports },
+}: {
+  policyName: string;
+  policyNamespace?: string;
+  reportSources: PolicyReportSources;
+}) {
+  const { t, ready } = useTranslation();
+  const title = ready ? t('Associated Report Results') : 'Associated Report Results';
+  if (error) {
     return (
-      <SectionBox title={t('Associated Report Results')}>
-        <Typography color="error">
+      <SectionBox title={title}>
+        <Typography color="error" variant="body2" sx={{ py: 1 }}>
           {t('Failed to load policy reports: {{error}}', {
-            error: reportSourceErrorMessage(reportsError),
+            error: reportSourceErrorMessage(error),
           })}
         </Typography>
       </SectionBox>
     );
   }
 
-  if (reportsLoading || !translationsReady) {
+  if (loading || !ready) {
     return (
-      <SectionBox
-        title={translationsReady ? t('Associated Report Results') : 'Associated Report Results'}
-      >
+      <SectionBox title={title}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
@@ -236,54 +335,112 @@ function AssociatedReportsSection({
     );
   }
 
-  const matchingResults: (PolicyReportResult & { reportName: string; reportNamespace?: string })[] =
-    [];
-  const expectedPolicy = policyIdentity(policyName, policyNamespace);
+  const qualifiedName = policyIdentity(policyName, policyNamespace);
+  const matchingResults: AssociatedReportResult[] = [];
 
   for (const report of reports) {
     for (const result of report.results) {
-      if (result.policy === expectedPolicy) {
+      // Every Kyverno policy engine reports through the same PolicyReport
+      // CRD, so a legacy namespaced Policy and a same-named CEL policy can
+      // both produce a result with this qualifiedName. `source` is what
+      // actually disambiguates which engine produced it (see
+      // POLICY_REPORT_SOURCE in policyReport.ts).
+      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
           reportName: report.metadata.name,
           reportNamespace: report.metadata.namespace,
+          reportScope: report.scope,
         });
       }
     }
   }
 
   return (
-    <SectionBox title={`${t('Associated Report Results')} (${matchingResults.length})`}>
-      <Table
-        columns={[
-          { header: t('Rule'), accessorFn: (r: PolicyReportResult) => r.rule || '-' },
-          {
-            header: t('Result'),
-            accessorFn: (r: PolicyReportResult) => r.result,
-            Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
-              <ResultStatusChip status={row.original.result} />
-            ),
-          },
-          {
-            header: t('Severity'),
-            accessorFn: (r: PolicyReportResult) => r.severity || '',
-            Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
-              <SeverityChip severity={row.original.severity} />
-            ),
-          },
-          {
-            header: t('Resource'),
-            accessorFn: (r: PolicyReportResult) =>
-              r.resources
-                ?.map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
-                .join(', ') || '-',
-          },
-          { header: t('Message'), accessorFn: (r: PolicyReportResult) => r.message || '-' },
-        ]}
-        data={matchingResults}
-        emptyMessage={t('No report results found for this policy.')}
-      />
+    <SectionBox
+      title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}
+    >
+      {restrictedEphemeralReports && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t('Some results may be missing because you do not have access to ephemeral reports.')}
+        </Alert>
+      )}
+      <AssociatedReportsTable results={matchingResults} />
     </SectionBox>
+  );
+}
+
+function AssociatedReportsTable({ results }: { results: AssociatedReportResult[] }) {
+  const { i18n, ready, t } = useTranslation();
+
+  // See ViolationsView/common.tsx for why headers are computed once and the
+  // table is remounted via key once translations are ready.
+  const ruleHeader = t('Rule');
+  const resultHeader = t('Result');
+  const severityHeader = t('Severity');
+  const resourceHeader = t('Resource');
+  const messageHeader = t('Message');
+
+  const columns = useMemo(
+    () => [
+      {
+        header: ruleHeader,
+        id: 'rule',
+        accessorFn: (r: PolicyReportResult) => r.rule || '-',
+      },
+      {
+        header: resultHeader,
+        id: 'result',
+        accessorFn: (r: PolicyReportResult) => r.result,
+        Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+          <ResultStatusChip status={row.original.result} />
+        ),
+      },
+      {
+        header: severityHeader,
+        id: 'severity',
+        accessorFn: (r: PolicyReportResult) => r.severity || '',
+        Cell: ({ row }: { row: { original: PolicyReportResult } }) => (
+          <SeverityChip severity={row.original.severity} />
+        ),
+      },
+      {
+        header: resourceHeader,
+        id: 'resource',
+        // Background-scan reports put the resource identity on the report's
+        // `scope` rather than per-result `resources[]` (see the `ingest`
+        // comment in policyImpact.ts), so fall back to it when `resources`
+        // is empty instead of rendering '-' for an otherwise-known resource.
+        accessorFn: (r: AssociatedReportResult) => {
+          const refs =
+            r.resources && r.resources.length > 0
+              ? r.resources
+              : r.reportScope
+              ? [r.reportScope]
+              : [];
+          return (
+            refs
+              .map(res => `${res.namespace ? res.namespace + '/' : ''}${res.kind}/${res.name}`)
+              .join(', ') || '-'
+          );
+        },
+      },
+      {
+        header: messageHeader,
+        id: 'message',
+        accessorFn: (r: PolicyReportResult) => r.message || '-',
+      },
+    ],
+    [ruleHeader, resultHeader, severityHeader, resourceHeader, messageHeader]
+  );
+
+  return (
+    <Table
+      key={tableRemountKey(ready, i18n?.language)}
+      columns={columns}
+      data={results}
+      emptyMessage={t('No report results found for this policy.')}
+    />
   );
 }
 
@@ -291,6 +448,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations;
   const labels = policy.jsonData.metadata.labels;
+  const cluster: string | undefined = policy.cluster || undefined;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -341,22 +499,30 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
       <KyvernoMetadataSection annotations={annotations} />
       <LabelsSection labels={labels} />
       <ConditionsSection conditions={policy.jsonData.status?.conditions} />
-      <SectionBox title={`${t('Rules')} (${policy.rules.length})`}>
+      <SectionBox title={t('Rules ({{count}})', { count: policy.rules.length })}>
         <RulesTable rules={policy.rules} />
       </SectionBox>
+      <PolicyImpactPanel
+        policyName={policy.jsonData.metadata.name}
+        policyNamespace={policy.jsonData.metadata.namespace}
+        rules={policy.rules}
+        autogenRules={policy.status?.autogen?.rules}
+        cluster={cluster}
+      />
       <AssociatedReportsSection
         policyName={policy.jsonData.metadata.name}
         policyNamespace={policy.jsonData.metadata.namespace}
+        cluster={cluster}
       />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
 }
 
-export function PolicyViewer({ name, namespace, isClusterScoped }: PolicyViewerProps) {
+export function PolicyViewer({ name, namespace, isClusterScoped, cluster }: PolicyViewerProps) {
   const { t } = useTranslation();
   const ResourceClass = isClusterScoped ? KyvernoClusterPolicy : KyvernoPolicy;
-  const [policy, error] = ResourceClass.useGet(name, namespace);
+  const [policy, error] = ResourceClass.useGet(name, namespace, cluster ? { cluster } : undefined);
 
   if (error) {
     return (

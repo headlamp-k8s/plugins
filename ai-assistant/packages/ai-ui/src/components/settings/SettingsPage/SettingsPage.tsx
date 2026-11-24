@@ -46,9 +46,26 @@ import {
   type ProviderSettings,
   type SavedConfigurations,
 } from '@headlamp-k8s/ai-common/providers/savedConfigs';
-import { Box, Button, Divider, FormControlLabel, Switch, Typography } from '@mui/material';
+import { Icon } from '@iconify/react';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Switch,
+  Typography,
+} from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  DefaultSectionWrapper,
+  type DefaultSectionWrapperProps,
+  DefaultSettingsTable,
+  type DefaultSettingsTableProps,
+} from '../../defaults/DefaultSlots/DefaultSlots';
 import { AIToolsSettings, type ToolInfo } from '../AIToolsSettings/AIToolsSettings';
 import { AutoDetectProvider, useAutoDetect } from '../AutoDetectProvider/AutoDetectProvider';
 import {
@@ -63,6 +80,10 @@ import type { SkillDisplayInfo, SkillLoadProgress } from '../SkillsViewerDialog/
 
 /** Props for the {@link SettingsPage} component. */
 export interface SettingsPageProps {
+  /** Optional host section layout, including section-header actions. */
+  SectionWrapper?: React.ComponentType<DefaultSectionWrapperProps>;
+  /** Optional host name/value table for setting labels and controls. */
+  SettingsTable?: React.ComponentType<DefaultSettingsTableProps>;
   // --- Provider config ---
 
   /** Current saved configurations. */
@@ -193,6 +214,8 @@ function resolveActiveConfiguration(
  * @returns Composed AI Assistant settings UI.
  */
 export function SettingsPage({
+  SectionWrapper = DefaultSectionWrapper,
+  SettingsTable = DefaultSettingsTable,
   savedConfigs,
   onConfigsChange,
   onTermsAccept,
@@ -224,6 +247,7 @@ export function SettingsPage({
   onDevOptionsChange,
 }: SettingsPageProps) {
   const { t } = useTranslation();
+  const settingsId = React.useId();
   const normalizedSavedConfigs = React.useMemo(
     () => getSavedConfigurations(savedConfigs),
     [savedConfigs]
@@ -321,127 +345,10 @@ export function SettingsPage({
   };
 
   return (
-    <Box width={'100%'}>
-      <Typography variant="body1" sx={{ mb: 3 }}>
-        {t(
-          'This plugin is in early development and is not yet ready for production use. Using it may incur costs from the AI provider! Use at your own risk.'
-        )}
-      </Typography>
-
-      {/* Preview Feature Toggle */}
-      {onPreviewChange && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Box sx={{ mb: 3, ml: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={previewEnabled ?? true}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onPreviewChange(e.target.checked)
-                  }
-                  color="primary"
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body1">{t('Preview Features')}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {t('Enable preview features including the AI assistant button in the app bar')}
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-        </>
-      )}
-
-      {/* Proactive Diagnosis Toggle */}
-      {onProactiveDiagnosisChange && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Box sx={{ mb: 3, ml: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={proactiveDiagnosisEnabled}
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    onProactiveDiagnosisChange(event.target.checked)
-                  }
-                  color="primary"
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body1">{t('Proactive Diagnosis (preview)')}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {t('Periodically diagnose warning and error events with AI')}
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-        </>
-      )}
-
-      {/* Test mode section */}
-      {onTestModeChange && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Box sx={{ mb: 3, ml: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={Boolean(isTestMode)}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    onTestModeChange(e.target.checked)
-                  }
-                  color="primary"
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant="body1">{t('Test Mode')}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {t(
-                      'Enable test mode to manually input AI responses and see how they render in the chat window'
-                    )}
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-
-          {onResetPopover && (
-            <Box sx={{ mb: 3, ml: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="body1">{t('Configuration Popover')}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {hasShownConfigPopover
-                      ? t('The configuration popover has been shown and dismissed')
-                      : t(
-                          'The configuration popover will show when no AI providers are configured'
-                        )}
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={onResetPopover}
-                  disabled={!hasShownConfigPopover}
-                >
-                  {t('Reset')}
-                </Button>
-              </Box>
-            </Box>
-          )}
-
-          <Divider sx={{ my: 3 }} />
-        </>
-      )}
-
-      {/* Model provider selection */}
+    <Box width="100%" sx={{ pt: 2 }}>
+      <Alert severity="warning" sx={{ mb: 3 }}>
+        {t('The AI assistant is in preview. AI provider usage may incur costs.')}
+      </Alert>
       <ModelSelector
         selectedConfigId={activeConfiguration.configId}
         selectedProvider={activeConfiguration.providerId}
@@ -454,6 +361,7 @@ export function SettingsPage({
         onAutoDetect={cliDetectionEnabled ? autoDetect.handleAutoDetect : undefined}
         autoDetecting={autoDetect.autoDetecting}
         commandRunner={cliDetectionEnabled ? commandRunner ?? undefined : undefined}
+        SectionWrapper={SectionWrapper}
       />
       {cliDetectionEnabled && (
         <AutoDetectProvider
@@ -467,24 +375,91 @@ export function SettingsPage({
         />
       )}
 
-      {/* AI Tools Section */}
-      {tools && isToolEnabledFn && onToolToggle && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <AIToolsSettings
-            tools={tools}
-            isToolEnabled={isToolEnabledFn}
-            onToolToggle={onToolToggle}
+      {(onPreviewChange || onProactiveDiagnosisChange) && (
+        <SectionWrapper title={t('Features')}>
+          <SettingsTable
+            rows={[
+              ...(onPreviewChange
+                ? [
+                    {
+                      name: (
+                        <Box>
+                          <Typography id={`${settingsId}-preview-label`}>
+                            {t('Preview Features')}
+                          </Typography>
+                          <Typography
+                            id={`${settingsId}-preview-description`}
+                            variant="body2"
+                            color="text.secondary"
+                          >
+                            {t(
+                              'Enable preview features including the AI assistant button in the app bar'
+                            )}
+                          </Typography>
+                        </Box>
+                      ),
+                      value: (
+                        <Switch
+                          checked={previewEnabled ?? true}
+                          onChange={event => onPreviewChange(event.target.checked)}
+                          inputProps={{
+                            'aria-labelledby': `${settingsId}-preview-label`,
+                            'aria-describedby': `${settingsId}-preview-description`,
+                          }}
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+              ...(onProactiveDiagnosisChange
+                ? [
+                    {
+                      name: (
+                        <Box>
+                          <Typography id={`${settingsId}-diagnosis-label`}>
+                            {t('Proactive Diagnosis (preview)')}
+                          </Typography>
+                          <Typography
+                            id={`${settingsId}-diagnosis-description`}
+                            variant="body2"
+                            color="text.secondary"
+                          >
+                            {t('Periodically diagnose warning and error events with AI')}
+                          </Typography>
+                        </Box>
+                      ),
+                      value: (
+                        <Switch
+                          checked={proactiveDiagnosisEnabled}
+                          onChange={event => onProactiveDiagnosisChange(event.target.checked)}
+                          inputProps={{
+                            'aria-labelledby': `${settingsId}-diagnosis-label`,
+                            'aria-describedby': `${settingsId}-diagnosis-description`,
+                          }}
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
           />
-        </>
+        </SectionWrapper>
       )}
-
-      {/* MCP Servers Section */}
-      <Divider sx={{ my: 3 }} />
-      <MCPSettings isRunningAsApp={isRunningAsApp} configStore={configStore} />
-
-      {/* Skills Section */}
-      <Divider sx={{ my: 3 }} />
+      {tools && isToolEnabledFn && onToolToggle && (
+        <AIToolsSettings
+          tools={tools}
+          isToolEnabled={isToolEnabledFn}
+          onToolToggle={onToolToggle}
+          SectionWrapper={SectionWrapper}
+          SettingsTable={SettingsTable}
+        />
+      )}
+      <MCPSettings
+        isRunningAsApp={isRunningAsApp}
+        configStore={configStore}
+        SectionWrapper={SectionWrapper}
+        SettingsTable={SettingsTable}
+      />
       <SkillSettings
         configStore={configStore}
         checkPathExists={checkPathExists}
@@ -493,37 +468,116 @@ export function SettingsPage({
         filesystemSkillsEnabled={false}
         loadSkills={loadSkills}
         onSkillsLoadComplete={onSkillsLoadComplete}
+        SectionWrapper={SectionWrapper}
       />
-
-      {/* Holmes Agent Section */}
       {onHolmesConfigChange && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <HolmesAgentSettings
-            config={savedConfigs}
-            onConfigChange={onHolmesConfigChange}
-            defaultNamespace={defaultHolmesNamespace}
-            defaultServiceName={defaultHolmesServiceName}
-            defaultPort={defaultHolmesPort}
-          />
-        </>
+        <HolmesAgentSettings
+          config={savedConfigs}
+          onConfigChange={onHolmesConfigChange}
+          defaultNamespace={defaultHolmesNamespace}
+          defaultServiceName={defaultHolmesServiceName}
+          defaultPort={defaultHolmesPort}
+          SectionWrapper={SectionWrapper}
+        />
       )}
-
-      {/* Developer Options Section */}
-      {devOptions && onDevOptionsChange && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <DeveloperSettings
-            devOptions={devOptions}
-            onDevOptionsChange={onDevOptionsChange}
-            savedConfigs={normalizedSavedConfigs}
-            onConfigsChange={onConfigsChange}
-          />
-        </>
+      {(onTestModeChange || (devOptions && onDevOptionsChange)) && (
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}
+        >
+          <AccordionSummary
+            id={`${settingsId}-advanced-header`}
+            aria-controls={`${settingsId}-advanced-content`}
+            expandIcon={<Icon icon="mdi:chevron-down" aria-hidden="true" />}
+          >
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, minWidth: 0 }}
+            >
+              <Typography component="h2" variant="h6">
+                {t('Advanced')}
+              </Typography>
+              {isTestMode && <Chip size="small" color="warning" label={t('Test mode enabled')} />}
+              {Object.values(devOptions ?? {}).some(value => value === true) && (
+                <Chip size="small" color="warning" label={t('Developer overrides enabled')} />
+              )}
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            {onTestModeChange && (
+              <SettingsTable
+                rows={[
+                  {
+                    name: (
+                      <Box>
+                        <Typography id={`${settingsId}-test-label`}>{t('Test Mode')}</Typography>
+                        <Typography
+                          id={`${settingsId}-test-description`}
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {t(
+                            'Enable test mode to manually input AI responses and see how they render in the chat window'
+                          )}
+                        </Typography>
+                      </Box>
+                    ),
+                    value: (
+                      <Switch
+                        checked={Boolean(isTestMode)}
+                        onChange={event => onTestModeChange(event.target.checked)}
+                        inputProps={{
+                          'aria-labelledby': `${settingsId}-test-label`,
+                          'aria-describedby': `${settingsId}-test-description`,
+                        }}
+                      />
+                    ),
+                  },
+                  ...(onResetPopover
+                    ? [
+                        {
+                          name: (
+                            <Box>
+                              <Typography>{t('Configuration Popover')}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {hasShownConfigPopover
+                                  ? t('The configuration popover has been shown and dismissed')
+                                  : t(
+                                      'The configuration popover will show when no AI providers are configured'
+                                    )}
+                              </Typography>
+                            </Box>
+                          ),
+                          value: (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={onResetPopover}
+                              disabled={!hasShownConfigPopover}
+                            >
+                              {t('Reset')}
+                            </Button>
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            )}
+            {devOptions && onDevOptionsChange && (
+              <Box sx={{ mt: onTestModeChange ? 3 : 0 }}>
+                <DeveloperSettings
+                  devOptions={devOptions}
+                  onDevOptionsChange={onDevOptionsChange}
+                  savedConfigs={normalizedSavedConfigs}
+                  onConfigsChange={onConfigsChange}
+                  collapsible={false}
+                />
+              </Box>
+            )}
+          </AccordionDetails>
+        </Accordion>
       )}
-
-      {/* Bottom divider */}
-      <Divider sx={{ my: 3 }} />
     </Box>
   );
 }

@@ -114,7 +114,7 @@ function TrafficDisplayWithService({ revision }: { revision: KRevision }) {
 export function RevisionDetail() {
   const { name, namespace } = useParams<{ namespace: string; name: string }>();
   const clusters = useClusters();
-  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled(clusters);
+  const { isKnativeInstalled, isKnativeCheckLoading } = useKnativeInstalled('serving', clusters);
 
   if (!isKnativeInstalled) {
     return <NotInstalledBanner isLoading={isKnativeCheckLoading} />;

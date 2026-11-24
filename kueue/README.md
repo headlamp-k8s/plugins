@@ -16,6 +16,8 @@ Related Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads are 
 
 Kueue CRDs must be installed in the cluster before the plugin can list resources. See the [Kueue installation guide](https://kueue.sigs.k8s.io/docs/getting-started/installation/) for installation instructions.
 
+When a Kueue page is opened for a cluster without the Kueue API, the plugin explains that Kueue resources are unavailable. Switch to a cluster with Kueue installed, or install Kueue in the selected cluster. If Kueue is installed but your account lacks access, the page shows the existing permissions message instead.
+
 You can check for the `Cohort`, `ClusterQueue`, `LocalQueue`, `ResourceFlavor`, and `Workload` CRDs and resources with:
 
 ```bash
@@ -33,6 +35,53 @@ kubectl get resourceflavors
 kubectl get workloads -A
 kubectl get workload <name> -n <namespace> -o yaml
 ```
+
+## Permissions
+
+The plugin only reads from the cluster. Before it loads a page, it asks the API server whether the current user can `list` the resource (list pages) or `get` it (detail pages), across the whole cluster. When the answer is no, the page shows an access message instead.
+
+| Resource                                                         | API group                   | Scope     | Verbs                  | Used by                                                        |
+| ---------------------------------------------------------------- | --------------------------- | --------- | ---------------------- | -------------------------------------------------------------- |
+| `clusterqueues`, `cohorts`, `resourceflavors`, `admissionchecks` | `kueue.x-k8s.io`            | Cluster   | `get`, `list`, `watch` | Their pages, the Map and related resource links                |
+| `localqueues`, `workloads`                                       | `kueue.x-k8s.io`            | Namespace | `get`, `list`, `watch` | Their pages, the Map and the Kueue columns and section on Jobs |
+| `clusterqueues/pendingworkloads`                                 | `visibility.kueue.x-k8s.io` | Cluster   | `get`                  | Pending Workloads on the ClusterQueue page                     |
+| `localqueues/pendingworkloads`                                   | `visibility.kueue.x-k8s.io` | Namespace | `get`                  | Queue position on the Workload page                            |
+| `events`                                                         | core                        | Namespace | `list`, `watch`        | Events on detail pages                                         |
+
+The built-in `view` role, bound in one namespace, covers the LocalQueues, Workloads and queue positions there, but none of the cluster-scoped resources. The access check for LocalQueues and Workloads is also made across the whole cluster, so such a user sees the access message on those pages too.
+
+To give a user read access to every page, bind them to a ClusterRole like this one:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kueue-headlamp-viewer
+rules:
+  - apiGroups: ['kueue.x-k8s.io']
+    resources:
+      - clusterqueues
+      - cohorts
+      - resourceflavors
+      - admissionchecks
+      - localqueues
+      - workloads
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['visibility.kueue.x-k8s.io']
+    resources:
+      - clusterqueues/pendingworkloads
+      - localqueues/pendingworkloads
+    verbs: ['get']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['list', 'watch']
+```
+
+```bash
+kubectl create clusterrolebinding kueue-headlamp-viewer --clusterrole=kueue-headlamp-viewer --user=<user>
+```
+
+When the visibility API is not served or the user cannot read it, the pending Workloads list and queue position are left out and the rest of the page still loads.
 
 ## Test Files
 
@@ -53,6 +102,81 @@ kubectl get workloads -A
 ```
 
 After applying the examples, open `Kueue` > `Cohorts`, `Kueue` > `ClusterQueues`, `Kueue` > `LocalQueues`, `Kueue` > `ResourceFlavors`, or `Kueue` > `Workloads` in Headlamp.
+
+### Scenarios
+
+`test-files/scenarios/` sets up Workloads in the states the plugin explains, including the error conditions. Each scenario has its own namespace, ClusterQueue and LocalQueue, and only needs `test-files/deploy/resourceflavor-default.yaml` to be applied first. Remove a scenario with `kubectl delete -f test-files/scenarios/<name>/`.
+
+- `waiting-for-quota`: `kubectl apply -f test-files/scenarios/waiting-for-quota/`. One of `job-a` and `job-b` is admitted and the other is blocked on Waiting for quota. `too-big-job` is also blocked there, since it asks for more than the ClusterQueue has.
+- `admission-checks`: `kubectl apply -f test-files/scenarios/admission-checks/`. The `admission-checks` ClusterQueue is inactive because the `scenario-approval` AdmissionCheck is not Active, so `needs-approval-job` is Inadmissible. Mark the check Active (below) and `needs-approval-job` is blocked on Admission checks. Approve it (below) and it is admitted.
+- `deactivated`: `kubectl apply -f test-files/scenarios/deactivated/`, wait for `deactivated-job` to be admitted, then deactivate the Workload (below). `deactivated-job` is Deactivated, with an eviction in its timeline.
+- `preemption`: `kubectl apply -f test-files/scenarios/preemption/scenario.yaml`, wait for `low-priority-job` to be admitted, then `kubectl apply -f test-files/scenarios/preemption/high-priority-job.yaml`. `high-priority-job` is admitted, and `low-priority-job` is Evicted by preemption, requeued, and waits for quota.
+- `inadmissible`: `kubectl apply -f test-files/scenarios/inadmissible/`. `held-queue-job` uses a stopped ClusterQueue and `missing-queue-job` a LocalQueue that does not exist. Both are blocked on Waiting for quota with reason Inadmissible, and Kueue's message names the cause.
+- `owners`: `kubectl apply -f test-files/scenarios/owners/`. Workloads owned by a Job and by a plain Pod, with links to their owners on the Workload detail page. Needs Kueue's `pod` integration enabled.
+
+Commands for the manual steps:
+
+```bash
+# admission-checks: play the AdmissionCheck controller and mark the check Active
+kubectl patch admissioncheck scenario-approval --subresource=status --type=merge \
+  -p '{"status":{"conditions":[{"type":"Active","status":"True","reason":"Active","message":"Marked Active by hand","lastTransitionTime":"2026-01-01T00:00:00Z"}]}}'
+
+# admission-checks: approve the Workload
+kubectl -n kueue-admission-checks get workloads.kueue.x-k8s.io -o name | \
+  xargs -I{} kubectl -n kueue-admission-checks patch {} --subresource=status --type=json \
+  -p '[{"op":"replace","path":"/status/admissionChecks/0/state","value":"Ready"}]'
+
+# deactivated: wait for the Workload to be admitted, then deactivate it
+kubectl -n kueue-deactivated wait workloads.kueue.x-k8s.io --all --for=condition=Admitted --timeout=60s
+kubectl -n kueue-deactivated get workloads.kueue.x-k8s.io -o name | \
+  xargs -I{} kubectl -n kueue-deactivated patch {} --type=merge -p '{"spec":{"active":false}}'
+```
+
+## Troubleshooting a Pending Workload
+
+When a Job submitted to Kueue does not start, follow it from the Job to the queue that is holding it back. The screenshots follow a Job that requests 64 CPUs from a ClusterQueue with a nominal quota of 1 CPU.
+
+1. **Job.** Open the Job in `Workloads` > `Jobs`. The Jobs list has `Queue` and `Kueue Status` columns, and the Job detail page has a `Kueue` section with its LocalQueue, its Workload and the Workload's status. The same section shows on any other resource with the `kueue.x-k8s.io/queue-name` label, such as a Pod, JobSet or RayJob. If the section is missing, the Job has no `kueue.x-k8s.io/queue-name` label, so Kueue is not managing it. If the Workload shows `Not created yet`, Kueue has not picked up the Job; check that the LocalQueue exists in the Job's namespace.
+
+   ```bash
+   kubectl get job <name> -n <namespace> -o jsonpath='{.metadata.labels.kueue\.x-k8s\.io/queue-name}'
+   kubectl get workloads -n <namespace> -l kueue.x-k8s.io/job-uid=$(kubectl get job <name> -n <namespace> -o jsonpath='{.metadata.uid}')
+   ```
+
+   <img src="docs/troubleshooting-job.png" alt="Job detail page with the Kueue section and the Why is this Workload not admitted? section" width="800">
+
+2. **Workload.** Open the Workload from the Job's `Kueue` section, or find it in `Kueue` > `Workloads`, where the `Blocked On` column shows the stage for each Workload. The `Why is this Workload not admitted?` section on the Workload page (also shown on the Job page) names the stage it is waiting at, the reason Kueue reported, what that reason means and Kueue's own message:
+
+   - `Not evaluated`: Kueue has not tried to reserve quota yet. The Workload is usually queued behind others.
+   - `Waiting for quota`: Kueue has not reserved quota for it yet. This is not always a quota shortage: a stopped or inactive queue, missing configuration or waiting for other Workloads' pods to be ready also keep it here. Read the reason and Kueue's message for the cause before changing any quota.
+   - `Admission checks`: quota is reserved but admission checks are not `Ready`. `Blocking admission checks` lists them; open each one from `Kueue` > `AdmissionChecks`.
+   - `Topology assignment`: quota is reserved but Kueue is still placing the pods for a topology-aware request.
+   - `Evicted`: the Workload was evicted, for example by preemption or an AdmissionCheck requesting a retry, which can happen before admission while quota is reserved. When Kueue backs off before requeueing it, `Next retry` shows when.
+   - `Deactivated`: `spec.active` is false, or Kueue is about to set it, so Kueue will not admit the Workload.
+
+   The `Lifecycle` section shows which stages it has passed and how long it has waited at the current one.
+
+   ```bash
+   kubectl get workload <name> -n <namespace> -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+   ```
+
+   <img src="docs/troubleshooting-workloads.png" alt="Kueue Workloads list with the Blocked On column" width="800">
+
+3. **LocalQueue.** Follow the `Queue` link. The LocalQueue page shows its ClusterQueue, its `Stop Policy`, its `Status` and how many Workloads are pending, reserving quota and admitted. A `Stop Policy` of `Hold`, or a `Status` of `Inactive`, stops Kueue from admitting new Workloads from the queue, but Workloads that are already admitted keep running. `HoldAndDrain` also evicts the admitted ones. The Conditions section says why a queue is inactive.
+
+   ```bash
+   kubectl get localqueue <name> -n <namespace> -o yaml
+   ```
+
+   <img src="docs/troubleshooting-localqueue.png" alt="LocalQueue page with its ClusterQueue, Stop Policy, Workload counts and Status" width="800">
+
+4. **ClusterQueue.** Follow the `ClusterQueue` link. Compare `Resource Groups`, which shows the nominal quota and borrowing limit per ResourceFlavor and resource, with `Flavor Reservations` and `Flavor Usage`, which show how much of it is taken. If the quota is used up, the Workload waits until running Workloads finish, or until the ClusterQueue can borrow from its `Cohort`. `Pending Workloads` counts every Workload waiting across all of its LocalQueues, and the ClusterQueue has its own `Stop Policy` and `Status`.
+
+   ```bash
+   kubectl get clusterqueue <name> -o yaml
+   ```
+
+   <img src="docs/troubleshooting-clusterqueue.png" alt="ClusterQueue page showing a nominal quota of 1 CPU" width="800">
 
 ## Development
 

@@ -1,0 +1,29 @@
+# Exercises suggestFix(rule.validate.deny with conditions) path.
+# A ConfigMap with data.env == "prod" is denied in the drilldown-test namespace
+# (simulates an environment guard: prod workloads should not land in test namespaces).
+# Expected drill-down fix text: "Review those conditions and adjust the resource
+# so they evaluate to false..."
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: dd-deny-prod-in-test
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: deny-prod-config
+      match:
+        any:
+          - resources:
+              kinds:
+                - ConfigMap
+              namespaces:
+                - drilldown-test
+      validate:
+        message: "ConfigMaps with data.env=prod must not be created in drilldown-test."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.data.env }}"
+                operator: Equals
+                value: "prod"

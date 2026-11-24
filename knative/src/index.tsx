@@ -25,28 +25,40 @@ import {
   registerSidebarEntryFilter,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { BrokerDetail } from './components/brokers/Detail';
+import {
+  CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  ChannelImplementationDetail,
+} from './components/channelimplementations/Detail';
+import { ChannelDetail } from './components/channels/Detail';
 import { KServiceDetail } from './components/kservices/Detail';
 import { RevisionDetail } from './components/revisions/Detail';
-import { isKnativeInstalled } from './isKnativeInstalled';
+import { SOURCE_DETAILS_PATH, SourceDetail } from './components/sources/Detail';
+import { SubscriptionDetail } from './components/subscriptions/Detail';
+import { TriggerDetail } from './components/triggers/Detail';
+import { isKnativeComponentInstalled } from './isKnativeInstalled';
 import { registerKnativeIcon } from './knativeIcon';
 import { getKnativeListRouteComponent } from './listRoutes';
 import { KnativeInternalResourceGlance, knativePluginSource } from './mapView';
 import { knativeNavigationItems, knativeNavigationSections } from './navigation';
+import { queryClient } from './queryClient';
 import { filterReadOnlyKnativeHeaderActions } from './readOnlyResources';
+import {
+  KnativeBroker,
+  KnativeChannel,
+  KnativeChannelImplementation,
+  KnativeSource,
+  KnativeSubscription,
+  KnativeTrigger,
+} from './resources/knative';
+import { createSidebarGate } from './sidebarGating';
 
 registerKnativeIcon();
 registerDetailsViewHeaderActionsProcessor((resource, actions) =>
   filterReadOnlyKnativeHeaderActions(resource, actions)
 );
-
-const queryClient = new QueryClient();
-
-const knativeSidebarParents = new Set([
-  'knative',
-  ...knativeNavigationSections.map(section => section.name),
-]);
 
 function withQueryClient(Component: React.ComponentType) {
   return React.memo(function WithQueryClient() {
@@ -58,50 +70,20 @@ function withQueryClient(Component: React.ComponentType) {
   });
 }
 
-// Track whether Knative CRDs exist per cluster to hide sidebar.
-const knativeInstalledByCluster: Record<string, boolean> = {};
-const lastCheckedAt: Record<string, number> = {};
-const inFlight: Record<string, boolean> = {};
-const CHECK_TTL_MS = 30 * 1000;
-
-/**
- * Checks if Knative is installed on the given cluster using the shared
- * installed check.
- *
- * @param cluster The name of the cluster to check.
- */
-async function checkKnativeInstalled(cluster: string) {
-  const now = Date.now();
-  const fresh = now - (lastCheckedAt[cluster] ?? 0) < CHECK_TTL_MS;
-  if (inFlight[cluster] || fresh) {
-    return;
-  }
-  inFlight[cluster] = true;
-  knativeInstalledByCluster[cluster] = await isKnativeInstalled([cluster]);
-  lastCheckedAt[cluster] = Date.now();
-  inFlight[cluster] = false;
-}
-
-registerSidebarEntryFilter(entry => {
-  if (entry.name !== 'knative' && !knativeSidebarParents.has(entry.parent ?? '')) {
-    return entry;
-  }
-
-  const cluster = Utils.getCluster() ?? '';
-  void checkKnativeInstalled(cluster);
-
-  if (knativeInstalledByCluster[cluster] === false) {
-    return null;
-  }
-  return entry;
-});
+// Hide Knative sidebar entries whose component is not installed on the cluster.
+registerSidebarEntryFilter(
+  createSidebarGate({
+    getCluster: () => Utils.getCluster() ?? '',
+    isInstalled: isKnativeComponentInstalled,
+  })
+);
 
 registerSidebarEntry({
   parent: null,
   name: 'knative',
   label: 'Knative',
   icon: 'custom:knative',
-  url: '/knative/services',
+  url: knativeNavigationItems[0].path,
 });
 
 knativeNavigationSections.forEach(section => {
@@ -137,6 +119,48 @@ registerRoute({
   component: withQueryClient(RevisionDetail),
 });
 
+registerRoute({
+  path: '/knative/brokers/:namespace/:name',
+  sidebar: 'knative-brokers',
+  name: KnativeBroker.detailsRoute,
+  component: withQueryClient(BrokerDetail),
+});
+
+registerRoute({
+  path: '/knative/triggers/:namespace/:name',
+  sidebar: 'knative-triggers',
+  name: KnativeTrigger.detailsRoute,
+  component: withQueryClient(TriggerDetail),
+});
+
+registerRoute({
+  path: '/knative/channels/:namespace/:name',
+  sidebar: 'knative-channels',
+  name: KnativeChannel.detailsRoute,
+  component: withQueryClient(ChannelDetail),
+});
+
+registerRoute({
+  path: CHANNEL_IMPLEMENTATION_DETAILS_PATH,
+  sidebar: 'knative-channel-implementations',
+  name: KnativeChannelImplementation.detailsRoute,
+  component: withQueryClient(ChannelImplementationDetail),
+});
+
+registerRoute({
+  path: SOURCE_DETAILS_PATH,
+  sidebar: 'knative-sources',
+  name: KnativeSource.detailsRoute,
+  component: withQueryClient(SourceDetail),
+});
+
+registerRoute({
+  path: '/knative/subscriptions/:namespace/:name',
+  sidebar: 'knative-subscriptions',
+  name: KnativeSubscription.detailsRoute,
+  component: withQueryClient(SubscriptionDetail),
+});
+
 knativeNavigationItems.forEach(item => {
   const component = getKnativeListRouteComponent(item.routeName);
   registerRoute({
@@ -161,6 +185,19 @@ const knativeKindIconKinds = [
   'networking.internal.knative.dev/Ingress',
   'networking.internal.knative.dev/ServerlessService',
   'networking.internal.knative.dev/Certificate',
+  'eventing.knative.dev/Broker',
+  'eventing.knative.dev/Trigger',
+  'messaging.knative.dev/Channel',
+  'messaging.knative.dev/Subscription',
+  'messaging.knative.dev/InMemoryChannel',
+  'messaging.knative.dev/KafkaChannel',
+  'messaging.knative.dev/NatsJetStreamChannel',
+  'sources.knative.dev/ApiServerSource',
+  'sources.knative.dev/ContainerSource',
+  'sources.knative.dev/PingSource',
+  'sources.knative.dev/SinkBinding',
+  'sources.knative.dev/IntegrationSource',
+  'sources.knative.dev/KafkaSource',
 ];
 
 knativeKindIconKinds.forEach(kind => {

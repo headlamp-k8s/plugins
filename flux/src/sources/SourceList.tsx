@@ -1,5 +1,9 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { Link, SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
+import {
+  Link,
+  SectionBox,
+  SectionFilterHeader,
+} from '@kinvolk/headlamp-plugin/lib/components/common';
 import type { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 import { useFilterFunc } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React from 'react';
@@ -154,7 +158,7 @@ function FluxSource(props: FluxSourceCustomResourceRendererProps) {
   }
 
   return (
-    <SectionBox title={title}>
+    <SectionBox title={<SectionFilterHeader title={title} />}>
       <Table
         data={resources}
         columns={columns}

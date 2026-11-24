@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { redactSecrets } from '@headlamp-k8s/ai-common/security/redactSecrets';
 import {
   isLogRequest,
   isSpecificResourceRequestHelper,
@@ -68,6 +69,24 @@ export const handleActualApiRequest = async (
     });
   }
 
+  const recordMutationFailure = (content: string) => {
+    const redactedContent = redactSecrets(content);
+    aiManager.history.push(
+      {
+        error: true,
+        role: 'tool',
+        cluster,
+        content: redactedContent,
+        alreadyDisplayed: true,
+      },
+      {
+        error: true,
+        role: 'assistant',
+        content: redactedContent,
+      }
+    );
+  };
+
   // For POST operations
   if (method.toUpperCase() === 'POST' && body) {
     // Parse resource first, fail fast
@@ -86,15 +105,11 @@ export const handleActualApiRequest = async (
             jsonError: jsonError.message,
           }
         );
+        recordMutationFailure(t('Error parsing resource: {{message}}', { message: parsingError }));
         if (onFailure) {
           const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
           onFailure(new Error(parsingError), 'POST', parsedResourceInfo);
         }
-        aiManager.history.push({
-          error: true,
-          role: 'assistant',
-          content: t('Error parsing resource: {{message}}', { message: parsingError }),
-        });
         return;
       }
     }
@@ -110,6 +125,7 @@ export const handleActualApiRequest = async (
               const response = await apply(resource, cluster);
               aiManager.history.push({
                 role: 'tool',
+                cluster,
                 content: t('{{resourceType}} {{name}} created successfully.', {
                   resourceType: resource.kind || t('Resource'),
                   name: response.metadata.name,
@@ -132,6 +148,11 @@ export const handleActualApiRequest = async (
                 })
               );
             } catch (apiError) {
+              const errorMessage = t('Failed to create {{resourceType}}: {{message}}', {
+                resourceType: resource?.kind || t('resource'),
+                message: apiError.message,
+              });
+              recordMutationFailure(errorMessage);
               // Call the failure callback if provided
               if (onFailure) {
                 const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
@@ -141,10 +162,7 @@ export const handleActualApiRequest = async (
               resolve(
                 JSON.stringify({
                   error: true,
-                  message: t('Failed to create {{resourceType}}: {{message}}', {
-                    resourceType: resource.kind || t('resource'),
-                    message: apiError.message,
-                  }),
+                  message: errorMessage,
                 })
               );
             }
@@ -164,19 +182,16 @@ export const handleActualApiRequest = async (
       });
       return response;
     } catch (clusterActionError) {
+      recordMutationFailure(
+        t('Error setting up cluster action: {{message}}', {
+          message: clusterActionError.message,
+        })
+      );
       // Handle cluster action setup errors
       if (onFailure) {
         const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
         onFailure(clusterActionError, 'POST', parsedResourceInfo);
       }
-
-      aiManager.history.push({
-        error: true,
-        role: 'assistant',
-        content: t('Error setting up cluster action: {{message}}', {
-          message: clusterActionError.message,
-        }),
-      });
     }
   }
 
@@ -191,14 +206,12 @@ export const handleActualApiRequest = async (
       const parsingError = t('Failed to parse resource identifier: {{message}}', {
         message: parseError.message,
       });
+      recordMutationFailure(
+        t('Error parsing resource identifier: {{message}}', { message: parsingError })
+      );
       if (onFailure) {
         onFailure(new Error(parsingError), 'DELETE', {});
       }
-      aiManager.history.push({
-        error: true,
-        role: 'assistant',
-        content: t('Error parsing resource identifier: {{message}}', { message: parsingError }),
-      });
       return;
     }
 
@@ -217,6 +230,7 @@ export const handleActualApiRequest = async (
 
       aiManager.history.push({
         role: 'tool',
+        cluster,
         success: true,
         content: t('{{kind}} {{name}} deleted successfully.', {
           kind: resourceIdentifier.kind,
@@ -229,15 +243,13 @@ export const handleActualApiRequest = async (
         onSuccess(resourceIdentifier, 'DELETE', resourceIdentifier);
       }
     } catch (apiError) {
+      recordMutationFailure(
+        t('Error deleting resource: {{message}}', { message: apiError.message })
+      );
       // Handle API errors specifically
       if (onFailure) {
         onFailure(apiError, 'DELETE', resourceIdentifier);
       }
-      aiManager.history.push({
-        error: true,
-        role: 'assistant',
-        content: t('Error deleting resource: {{message}}', { message: apiError.message }),
-      });
     }
   }
 
@@ -259,15 +271,11 @@ export const handleActualApiRequest = async (
             jsonError: jsonError.message,
           }
         );
+        recordMutationFailure(t('Error parsing patch: {{message}}', { message: parsingError }));
         if (onFailure) {
           const parsedResourceInfo = resourceInfo ? JSON.parse(resourceInfo) : {};
           onFailure(new Error(parsingError), 'PUT', parsedResourceInfo);
         }
-        aiManager.history.push({
-          error: true,
-          role: 'assistant',
-          content: t('Error parsing patch: {{message}}', { message: parsingError }),
-        });
         return;
       }
     }
@@ -280,14 +288,12 @@ export const handleActualApiRequest = async (
       const resourceParsingError = t('Failed to parse resource info: {{message}}', {
         message: parseError.message,
       });
+      recordMutationFailure(
+        t('Error parsing resource info: {{message}}', { message: resourceParsingError })
+      );
       if (onFailure) {
         onFailure(new Error(resourceParsingError), 'PUT', {});
       }
-      aiManager.history.push({
-        error: true,
-        role: 'assistant',
-        content: t('Error parsing resource info: {{message}}', { message: resourceParsingError }),
-      });
       return;
     }
 
@@ -336,6 +342,7 @@ export const handleActualApiRequest = async (
             aiManager.history.push({
               success: true,
               role: 'tool',
+              cluster,
               content: t('{{resourceIdentifier}} updated successfully with patch applied.', {
                 resourceIdentifier,
               }),
@@ -346,20 +353,16 @@ export const handleActualApiRequest = async (
               onSuccess(response, 'PATCH', parsedResourceInfo);
             }
           } catch (apiError) {
+            const errorMessage = t('Error updating resource: {{message}}', {
+              message: apiError.message,
+            });
+            recordMutationFailure(errorMessage);
             // Handle API-specific errors (PATCH failures)
             if (onFailure) {
               onFailure(apiError, 'PATCH', parsedResourceInfo);
             }
 
             console.error('Error in PATCH API operations:', apiError);
-            const errorMessage = t('Error updating resource: {{message}}', {
-              message: apiError.message,
-            });
-            aiManager.history.push({
-              error: true,
-              role: 'assistant',
-              content: errorMessage,
-            });
           }
         },
         {
@@ -376,20 +379,16 @@ export const handleActualApiRequest = async (
         }
       );
     } catch (clusterActionError) {
+      const errorMessage = t('Error setting up update operation: {{message}}', {
+        message: clusterActionError.message,
+      });
+      recordMutationFailure(errorMessage);
       // Handle cluster action setup errors
       if (onFailure) {
         onFailure(clusterActionError, 'PATCH', parsedResourceInfo);
       }
 
       console.error('Error setting up cluster action:', clusterActionError);
-      const errorMessage = t('Error setting up update operation: {{message}}', {
-        message: clusterActionError.message,
-      });
-      aiManager.history.push({
-        error: true,
-        role: 'assistant',
-        content: errorMessage,
-      });
     }
   }
 
@@ -459,6 +458,15 @@ export const handleActualApiRequest = async (
           (apiError.message?.includes('Bad Request') && cleanedUrl.includes('/log')) ||
           apiError.message?.includes('choose one of'))
       ) {
+        const recordLogGuidance = (content: string) => {
+          const guidance = { error: false, role: 'assistant', content };
+          aiManager.history.push(
+            { error: false, role: 'tool', cluster, content: redactSecrets(content) },
+            guidance
+          );
+          return JSON.stringify(guidance);
+        };
+
         // Extract pod name and available containers from error message
         const podMatch = apiError.message.match(/for pod ([^,]+)/);
         const containersMatch = apiError.message.match(/choose one of: \[([^\]]+)\]/);
@@ -475,17 +483,7 @@ export const handleActualApiRequest = async (
             }
           );
 
-          aiManager.history.push({
-            error: false,
-            role: 'assistant',
-            content: errorContent,
-          });
-
-          return JSON.stringify({
-            error: false,
-            role: 'assistant',
-            content: errorContent,
-          });
+          return recordLogGuidance(errorContent);
         } else {
           // If we can't parse the specific error but know it's a log request with Bad Request
           // Extract pod name from URL and suggest getting pod details
@@ -498,17 +496,7 @@ export const handleActualApiRequest = async (
               { podName }
             );
 
-            aiManager.history.push({
-              error: false,
-              role: 'assistant',
-              content: errorContent,
-            });
-
-            return JSON.stringify({
-              error: false,
-              role: 'assistant',
-              content: errorContent,
-            });
+            return recordLogGuidance(errorContent);
           }
         }
       }
@@ -524,6 +512,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         error: true,
         role: 'tool',
+        cluster,
         content: errorContent,
       });
       return JSON.stringify({
@@ -543,6 +532,8 @@ export const handleActualApiRequest = async (
         // Fallback: if not a Response object, treat as string
         logText = String(response);
       }
+      // Logs routinely contain tokens/credentials printed by the workload.
+      logText = redactSecrets(logText);
 
       // Extract resource information from URL for better log button display
       const extractResourceFromUrl = (url: string) => {
@@ -627,6 +618,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
+        cluster,
         content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
       });
 
@@ -700,7 +692,8 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        cluster,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
@@ -712,7 +705,8 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        cluster,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
@@ -724,7 +718,8 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
-        content: formattedResponse,
+        cluster,
+        content: redactSecrets(formattedResponse),
       });
 
       // Call the success callback if provided
@@ -737,6 +732,7 @@ export const handleActualApiRequest = async (
       aiManager.history.push({
         success: true,
         role: 'tool',
+        cluster,
         content: formattedResponse,
       });
 

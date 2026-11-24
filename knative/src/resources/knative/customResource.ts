@@ -23,7 +23,8 @@ import {
 export { getKnativeCrdName } from './customResourceLinks';
 
 /**
- * Routes CRD instances to Headlamp's standard Custom Resource list and detail views.
+ * Routes CRD instances to Headlamp's standard Custom Resource list and detail views, unless the
+ * class names its own plugin routes in `detailsRoute` and `listRoute`.
  */
 export abstract class KnativeCustomResource<T extends KubeObjectInterface> extends KubeObject<T> {
   get metadata() {
@@ -38,7 +39,16 @@ export abstract class KnativeCustomResource<T extends KubeObjectInterface> exten
     return this.jsonData.status;
   }
 
+  /**
+   * Builds the link to this resource's detail page.
+   *
+   * @returns The URL of the class's own detail route when it has one, otherwise of Headlamp's
+   * Custom Resource detail view.
+   */
   getDetailsLink(): string {
+    if (this.detailsRoute !== this._class().kind) {
+      return super.getDetailsLink();
+    }
     return getKnativeCustomResourceDetailsLink({
       resourceClass: this._class(),
       name: this.getName(),
@@ -47,7 +57,16 @@ export abstract class KnativeCustomResource<T extends KubeObjectInterface> exten
     });
   }
 
+  /**
+   * Builds the link to the list of resources of this kind.
+   *
+   * @returns The URL of the class's own list route when it has one, otherwise of Headlamp's
+   * Custom Resource list view.
+   */
   getListLink(): string {
+    if (this.listRoute !== this._class().apiName) {
+      return super.getListLink();
+    }
     return getKnativeCustomResourceListLink({
       resourceClass: this._class(),
       cluster: this.cluster,

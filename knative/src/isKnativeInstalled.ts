@@ -14,53 +14,71 @@
  * limitations under the License.
  */
 
+import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import { CustomResourceDefinition } from './resources/k8s/customResourceDefinition';
+import { isNotFoundError } from './utils/error';
+import { withTimeout } from './utils/request';
 
-const KNATIVE_SERVING_KSERVICE_CRD_NAME = 'services.serving.knative.dev';
+/**
+ * Knative components install independently of each other, so a cluster may
+ * serve Serving, Eventing, both, or neither. Anything that depends on Knative
+ * being present has to say which component it needs.
+ */
+export type KnativeComponent = 'serving' | 'eventing';
 
-function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
-  return new Promise(resolve => {
-    let cancelFn: (() => void) | null = null;
-    let settled = false;
+/**
+ * A CRD that is present whenever the component is installed, used to detect it.
+ *
+ * Serving is detected through Service because it is the resource the plugin is
+ * built around. Eventing is detected through Broker for the same reason: it is
+ * part of the core Eventing install rather than an optional add-on.
+ */
+const COMPONENT_CRD_NAME: Record<KnativeComponent, string> = {
+  serving: 'services.serving.knative.dev',
+  eventing: 'brokers.eventing.knative.dev',
+};
 
-    function settle(result: boolean) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve(result);
-      if (cancelFn) {
-        cancelFn();
-      }
-    }
-
-    const request = CustomResourceDefinition.apiGet(
-      () => settle(true),
-      crdName,
-      undefined,
-      () => settle(false),
-      { cluster }
+/**
+ * Checks whether a CRD exists in a cluster with one request. It reads the CRD once instead of
+ * watching it, so that no watch stays open after the answer.
+ *
+ * @param cluster - The cluster to check.
+ * @param crdName - The name of the CRD.
+ * @returns False when the cluster answers 404. Any other failure (403, 5xx, network, or no
+ * answer within two minutes) does not prove that the CRD is absent, so it returns true.
+ */
+async function hasCrdInCluster(cluster: string, crdName: string): Promise<boolean> {
+  const { apiVersion, apiName } = CustomResourceDefinition;
+  try {
+    await withTimeout(
+      ApiProxy.clusterRequest(`/apis/${apiVersion}/${apiName}/${crdName}`, { cluster }),
+      `reading CRD ${crdName}`
     );
-
-    request()
-      .then(cancel => {
-        cancelFn = cancel;
-      })
-      .catch(() => {
-        settle(false);
-      });
-  });
+    return true;
+  } catch (err) {
+    return !isNotFoundError(err);
+  }
 }
 
-export async function isKnativeInstalled(clusters: string[]): Promise<boolean> {
+/**
+ * Checks whether a single Knative component is installed.
+ *
+ * @param component - The Knative component to look for.
+ * @param clusters - The clusters to check.
+ * @returns True when the component is present in every given cluster.
+ */
+export async function isKnativeComponentInstalled(
+  component: KnativeComponent,
+  clusters: string[]
+): Promise<boolean> {
   if (!clusters || clusters.length === 0) {
     return false;
   }
 
-  const results = await Promise.all(
-    clusters.map(cluster => hasCrdInCluster(cluster, KNATIVE_SERVING_KSERVICE_CRD_NAME))
-  );
+  const crdName = COMPONENT_CRD_NAME[component];
 
-  // Consider Knative "installed" only if it exists in all selected clusters.
+  const results = await Promise.all(clusters.map(cluster => hasCrdInCluster(cluster, crdName)));
+
+  // Consider the component "installed" only if it exists in all selected clusters.
   return results.every(Boolean);
 }

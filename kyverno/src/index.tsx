@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   registerAppBarAction,
+  registerKindIcon,
+  registerKubeObjectGlance,
+  registerMapSource,
+  registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
 } from '@kinvolk/headlamp-plugin/lib';
@@ -23,6 +28,10 @@ import {
   DeletingPolicyList,
   GeneratingPolicyList,
   MutatingPolicyList,
+  NamespacedDeletingPolicyList,
+  NamespacedGeneratingPolicyList,
+  NamespacedMutatingPolicyList,
+  NamespacedValidatingPolicyList,
   ValidatingPolicyList,
 } from './components/CELPolicyList';
 import { CleanupPolicyList, ClusterCleanupPolicyList } from './components/CleanupPolicyList';
@@ -31,16 +40,22 @@ import { ClusterPolicyReportList } from './components/ClusterPolicyReportList';
 import { ComplianceBadge } from './components/ComplianceBadge';
 import { CRDGroup, CRDGuard } from './components/CRDGuard';
 import { Dashboard } from './components/Dashboard';
-import { ImageValidatingPolicyList } from './components/ImageValidatingPolicyList';
+import {
+  ImageValidatingPolicyList,
+  NamespacedImageValidatingPolicyList,
+} from './components/ImageValidatingPolicyList';
 import { KyvernoReportList } from './components/KyvernoReportList';
+import { kyvernoMapSource, KyvernoPolicyGlance } from './components/mapSource';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
+import { Settings } from './components/Settings';
 import { ViolationsView } from './components/ViolationsView';
 import { registerKyvernoIcon } from './kyvernoIcon';
 import { ClusterEphemeralReport, EphemeralReport } from './resources/kyvernoReports';
 
 registerKyvernoIcon();
+registerPluginSettings('@headlamp-k8s/kyverno', Settings, true);
 
 interface KyvernoPageOptions {
   /** Sidebar entry id; also reused as the route name. */
@@ -61,6 +76,11 @@ interface KyvernoPageOptions {
   component: () => JSX.Element;
   /** Required Kyverno CRD group — wraps the component in CRDGuard. */
   requires?: CRDGroup;
+  /** Specific policies.kyverno.io/v1 resource name additionally required (see CRDGuard). */
+  requiresResource?: string;
+  /** Kind label and minimum version interpolated into CRDGuard's own translated message. */
+  requiresResourceLabel?: string;
+  requiresResourceVersion?: string;
 }
 
 // Centralises the sidebar + route pair that every Kyverno page needs so each
@@ -76,10 +96,22 @@ export function registerKyvernoPage({
   icon,
   component,
   requires,
+  requiresResource,
+  requiresResourceLabel,
+  requiresResourceVersion,
 }: KyvernoPageOptions) {
   registerSidebarEntry({ name, url: url ?? path, parent, label, icon });
   const wrapped = requires
-    ? () => <CRDGuard requires={requires}>{component()}</CRDGuard>
+    ? () => (
+        <CRDGuard
+          requires={requires}
+          requiresResource={requiresResource}
+          requiresResourceLabel={requiresResourceLabel}
+          requiresResourceVersion={requiresResourceVersion}
+        >
+          {component()}
+        </CRDGuard>
+      )
     : component;
   registerRoute({ path, sidebar: name, name, exact, component: wrapped });
 }
@@ -172,6 +204,66 @@ registerKyvernoPage({
   path: '/kyverno/imagevalidatingpolicies',
   requires: 'cel',
   component: () => <ImageValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Validating Policies',
+  path: '/kyverno/namespacedvalidatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedvalidatingpolicies',
+  requiresResourceLabel: 'NamespacedValidatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedValidatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedMutatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Mutating Policies',
+  path: '/kyverno/namespacedmutatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedmutatingpolicies',
+  requiresResourceLabel: 'NamespacedMutatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedMutatingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedGeneratingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Generating Policies',
+  path: '/kyverno/namespacedgeneratingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedgeneratingpolicies',
+  requiresResourceLabel: 'NamespacedGeneratingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedGeneratingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedDeletingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Deleting Policies',
+  path: '/kyverno/namespaceddeletingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespaceddeletingpolicies',
+  requiresResourceLabel: 'NamespacedDeletingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedDeletingPolicyList />,
+});
+
+registerKyvernoPage({
+  name: 'NamespacedImageValidatingPolicies',
+  parent: 'KyvernoPolicies',
+  label: 'Namespaced Image Validating Policies',
+  path: '/kyverno/namespacedimagevalidatingpolicies',
+  requires: 'cel',
+  requiresResource: 'namespacedimagevalidatingpolicies',
+  requiresResourceLabel: 'NamespacedImageValidatingPolicy',
+  requiresResourceVersion: '1.17',
+  component: () => <NamespacedImageValidatingPolicyList />,
 });
 
 registerKyvernoPage({
@@ -270,3 +362,33 @@ registerKyvernoPage({
 
 // --- App Bar ---
 registerAppBarAction(ComplianceBadge);
+
+// --- Map view ---
+// Register kind icons scoped to kyverno.io so only Kyverno's ClusterPolicy and
+// Policy CRDs get this logo, not unrelated CRDs that share the same kind name.
+// SDK 0.13 types don't expose the optional apiGroup parameter; cast to allow it.
+type KindIconFn = (
+  kind: string,
+  def: { icon: JSX.Element; color: string },
+  apiGroup?: string
+) => void;
+(registerKindIcon as KindIconFn)(
+  'ClusterPolicy',
+  { icon: <Icon icon="kyverno:logo" />, color: '#326CE5' },
+  'kyverno.io'
+);
+(registerKindIcon as KindIconFn)(
+  'Policy',
+  { icon: <Icon icon="kyverno:logo" />, color: '#326CE5' },
+  'kyverno.io'
+);
+
+// Hover glance for ClusterPolicy and Policy nodes anywhere in the Map.
+registerKubeObjectGlance({
+  id: 'kyverno-policy-glance',
+  component: KyvernoPolicyGlance,
+});
+
+// Register Kyverno policies (ClusterPolicy + Policy) as Map view nodes,
+// with edges to the resources each policy has evaluated.
+registerMapSource(kyvernoMapSource);

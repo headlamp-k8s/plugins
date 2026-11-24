@@ -16,6 +16,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | | [@yolossn](https://github.com/yolossn) |
 | [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). | [@mboersma](https://github.com/mboersma) [@ChayanDass](https://github.com/ChayanDass) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
+| [hubble](./hubble) | See the network traffic Cilium Hubble records between pods. | Alpha. | [@9p-tech](https://github.com/9p-tech) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
 | [kueue](./kueue) | A UI for viewing Kueue Cohorts, ClusterQueues, LocalQueues, ResourceFlavors, and Workloads. | 0.1.0-alpha. | |
@@ -24,11 +25,13 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [kro](./kro) | A UI for viewing kro (Kube Resource Orchestrator) ResourceGraphDefinitions and their instances. | Alpha. | [@danbruno101](https://github.com/danbruno101) |
 | [kyverno](./kyverno) | A UI for viewing and managing Kyverno policies and reports. | | [@joaquimrocha](https://github.com/joaquimrocha), [@itvi-1234](https://github.com/itvi-1234) |
 | [minikube](./minikube) | A UI for minikube, for running Kubernetes locally. | | [@illume](https://github.com/illume) |
+| [node-readiness-controller](./node-readiness-controller) | A UI for Node Readiness Controller resources. | 0.1.0-alpha. Tracks [kubernetes-sigs/node-readiness-controller#327](https://github.com/kubernetes-sigs/node-readiness-controller/issues/327). | [@vishnukothakapu](https://github.com/vishnukothakapu), [@AnuragThePathak](https://github.com/AnuragThePathak), [@ajaysundark](https://github.com/ajaysundark) |
 | [opencost](./opencost) | See the costs of your workloads in Headlamp. | | [@yolossn](https://github.com/yolossn) |
 | [plugin-catalog](./plugin-catalog) | Install Headlamp plugins with one click. | Shipped with Headlamp desktop builds by default. |[@yolossn](https://github.com/yolossn) |
 | [prometheus](./prometheus) | Provides a Prometheus-powered chart in the details views of workloads. | Needs Prometheus installed in the cluster for the chart to be shown. Shipped with Headlamp desktop and CI builds by default. | [@yolossn](https://github.com/yolossn) |
 | [radius](./radius) | Visualize and manage Radius applications. |  | [@filipevrevez](https://github.com/filipevrevez) |
 | [strimzi](./strimzi) | The Strimzi plugin for Headlamp, based on the [original](https://github.com/cesaroangelo/strimzi-headlamp) strimzi-headlamp project. | [Demo](https://www.youtube.com/watch?v=MNt28s6b5d8) | [@cesaroangelo](https://github.com/cesaroangelo), [@krrish-sehgal](https://github.com/krrish-sehgal) |
+| [velero](./velero) | Shows Velero backup schedule coverage on workload/namespace detail views, plus cluster-wide Schedules, Backups, and Restores. | Read-only Phase 1 + Phase 2. Tracks [kubernetes-sigs/headlamp#5198](https://github.com/kubernetes-sigs/headlamp/issues/5198) and [plugins#939](https://github.com/headlamp-k8s/plugins/issues/939). | [@Pragati5-DEBUG](https://github.com/Pragati5-DEBUG) |
 | [volcano](./volcano) | Visualize and manage Volcano jobs. |  | [@mahmoudmagdy1-1](https://github.com/mahmoudmagdy1-1) |
 
 ## External plugins
@@ -56,6 +59,12 @@ Please see [headlamp plugins on Artifact Hub](https://artifacthub.io/packages/se
 ## Development
 
 For examples of plugins created for learning and documentation purposes, please refer to the [examples folder](https://github.com/headlamp-k8s/headlamp/tree/main/plugins#plugins) in Headlamp's repository.
+
+## Releases
+
+See [Preparing signed plugin releases](docs/releases.md) for the Actions-based
+build, signature and provenance attachments, Artifact Hub metadata handoff,
+and download verification.
 
 ## License
 

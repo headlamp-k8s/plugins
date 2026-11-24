@@ -14,15 +14,89 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   formatSkillsForPrompt,
+  getSkillContent,
+  getSkillContentSizeBytes,
   parseCopilotInstructionsFile,
   ParsedSkill,
   parseFrontMatter,
+  parseMarkdownFile,
   parseSimpleYaml,
   parseSkillFile,
 } from './parseSkill';
+
+describe('verified skill references', () => {
+  it('renders companion guidance and counts every UTF-8 byte against the prompt budget', () => {
+    const skill = parseSkillFile('---\nname: gadget\ndescription: Guide\n---\nBody', 'SKILL.md');
+    skill.references = [
+      { path: 'references/install.md', content: 'Ask before deploying: é.', contentSizeBytes: 25 },
+    ];
+    const content = getSkillContent(skill);
+    expect(content).toBe('Body\n\n## Reference: references/install.md\n\nAsk before deploying: é.');
+    const size = new TextEncoder().encode(content).byteLength;
+    expect(getSkillContentSizeBytes(skill)).toBe(size);
+    expect(formatSkillsForPrompt([skill], size)).toContain(content);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(formatSkillsForPrompt([skill], size - 1)).toBe('');
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe('parseMarkdownFile', () => {
+  it('loads Kubernetes-style documentation without requiring skill metadata', () => {
+    const raw = `---
+title: Kubernetes Components
+content_type: concept
+description: >
+  Components of a Kubernetes cluster.
+---
+## Control Plane
+
+The control plane manages the cluster.`;
+    expect(parseMarkdownFile(raw, 'overview/components.md')).toEqual({
+      metadata: {
+        name: 'Kubernetes Components',
+        description: 'Documentation: Kubernetes Components',
+      },
+      content: '## Control Plane\n\nThe control plane manages the cluster.',
+      contentSizeBytes: 56,
+      source: 'overview/components.md',
+    });
+  });
+
+  it('preserves explicit skill metadata and strict SKILL.md validation', () => {
+    const raw = '---\nname: original\ndescription: Skill description\ntitle: Page\n---\nBody';
+    expect(parseMarkdownFile(raw, 'guide.md')).toEqual(parseSkillFile(raw, 'guide.md'));
+    expect(() => parseSkillFile('---\ntitle: Page\n---\nBody', 'SKILL.md')).toThrow(
+      "missing required 'name'"
+    );
+    expect(() => parseMarkdownFile('---\nname: 42\ntitle: Page\n---\nBody', 'guide.md')).toThrow(
+      "missing required 'name'"
+    );
+  });
+
+  it.each(['', '---\ntitle: 42\n---\nBody', '---\ntitle: " "\n---\nBody', '# Notes'])(
+    'does not promote untitled or malformed Markdown to a skill: %s',
+    raw => {
+      expect(() => parseMarkdownFile(raw, 'guide.md')).toThrow();
+    }
+  );
+
+  it('rejects empty documentation and enforces the UTF-8 byte limit', () => {
+    expect(() => parseMarkdownFile('---\ntitle: Index\n---\n', '_index.md')).toThrow(
+      'has no content'
+    );
+    const raw = '---\ntitle: Page\n---\néé';
+    expect(parseMarkdownFile(raw, 'guide.md', 4).contentSizeBytes).toBe(4);
+    expect(() => parseMarkdownFile(raw, 'guide.md', 3)).toThrow('exceeding the 3 byte limit');
+  });
+});
 
 describe('parseFrontMatter', () => {
   it('should parse valid front-matter with --- delimiters', () => {
@@ -73,6 +147,60 @@ description: minimal
 });
 
 describe('parseSimpleYaml', () => {
+  it('folds upstream skill descriptions without treating their colons or comments as metadata', () => {
+    expect(
+      parseSimpleYaml([
+        'name: troubleshooting',
+        'description: >-',
+        '  Debug live workloads',
+        '  with eBPF: discover the actual flags.',
+        '  # Keep this text in the description.',
+        'version: 1.0.0',
+      ])
+    ).toEqual({
+      name: 'troubleshooting',
+      description:
+        'Debug live workloads with eBPF: discover the actual flags. # Keep this text in the description.',
+      version: '1.0.0',
+    });
+  });
+
+  it('preserves paragraphs and more-indented lines while stripping trailing scalar whitespace', () => {
+    expect(
+      parseSimpleYaml([
+        'description: >-',
+        '',
+        '  First paragraph.',
+        '',
+        '  Second paragraph.',
+        '    indented example',
+        '  Final line.',
+        '',
+        '',
+        'tags: [kubernetes]',
+      ])
+    ).toEqual({
+      description: '\nFirst paragraph.\nSecond paragraph.\n  indented example\nFinal line.',
+      tags: ['kubernetes'],
+    });
+    expect(parseSimpleYaml(['description: >-', '', 'name: empty'])).toEqual({
+      description: '',
+      name: 'empty',
+    });
+    expect(
+      parseSimpleYaml([
+        'description: >-',
+        '  First paragraph.',
+        '',
+        '    indented example',
+        '',
+        '  Final paragraph.',
+      ])
+    ).toEqual({
+      description: 'First paragraph.\n\n  indented example\n\nFinal paragraph.',
+    });
+  });
+
   it('should parse flat key-value pairs', () => {
     const lines = ['name: my-skill', 'version: 1.0.0', 'author: Test'];
     const result = parseSimpleYaml(lines);
@@ -134,6 +262,15 @@ describe('parseSimpleYaml', () => {
 });
 
 describe('parseSkillFile', () => {
+  it('loads a folded troubleshooting description as usable routing text', () => {
+    const skill = parseSkillFile(
+      '---\nname: gadget\ndescription: >-\n  Trace DNS failures\n  and connection resets with eBPF.\n---\nDiscover flags before tracing.',
+      'skills/gadget/SKILL.md'
+    );
+    expect(skill.metadata.description).toBe('Trace DNS failures and connection resets with eBPF.');
+    expect(skill.content).toBe('Discover flags before tracing.');
+  });
+
   const validSkillMd = `---
 name: test-skill
 description: A test skill for unit testing

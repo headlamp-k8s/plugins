@@ -1,5 +1,4 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Button, Grid, Link, Paper, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useHistory } from 'react-router-dom';
@@ -32,7 +31,7 @@ const DismissButton = styled(Button)(({ theme }) => ({
  */
 export function PrometheusNotFoundBanner() {
   const { t } = useTranslation();
-  const cluster = useCluster();
+  const cluster = K8s.useCluster();
   const history = useHistory();
 
   return (

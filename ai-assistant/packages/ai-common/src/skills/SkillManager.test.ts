@@ -17,7 +17,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SKILLS_CONFIG, SkillsConfig } from './config';
 import { getSkillIdentity } from './config';
-import type { ParsedSkill } from './parseSkill';
+import { getSkillContentSizeBytes, type ParsedSkill } from './parseSkill';
 import type { EmbeddingSkillRouter } from './routing/EmbeddingSkillRouter';
 import { DEFAULT_ROUTER_CONFIG } from './routing/KeywordSkillRouter';
 import { SkillFileSystem } from './SkillLoader';
@@ -65,6 +65,111 @@ description: Second skill
 Content for skill two`;
 
 describe('SkillManager', () => {
+  it('keeps sibling playbooks when only Linux is enabled or selected by routing', async () => {
+    const linux =
+      '---\nname: linux\ndescription: Linux troubleshooting\n---\nRead `../kubernetes/references/domain.md`.';
+    const fetchFiles = vi.fn(
+      async () =>
+        new Map([
+          ['linux/SKILL.md', linux],
+          [
+            'kubernetes/SKILL.md',
+            '---\nname: kubernetes\ndescription: Kubernetes troubleshooting\n---\nCluster guidance.',
+          ],
+          ['kubernetes/references/domain.md', 'Shared diagnostic playbook.'],
+        ])
+    );
+    const remoteConfig: SkillsConfig = {
+      ...DEFAULT_SKILLS_CONFIG,
+      sources: [
+        {
+          type: 'git',
+          url: 'https://github.com/owner/repo',
+          ref: 'v1.0.0',
+          enabled: true,
+          includeReferences: true,
+        },
+      ],
+    };
+    const manager = new SkillManager(createMockFs({}), { fetchFiles });
+    const skills = await manager.loadAllSkills(remoteConfig);
+    const linuxSkill = skills.find(skill => skill.metadata.name === 'linux')!;
+    const kubernetesSkill = skills.find(skill => skill.metadata.name === 'kubernetes')!;
+    const linuxOnly = {
+      ...remoteConfig,
+      disabledSkills: [getSkillIdentity(kubernetesSkill)],
+    };
+    expect(await manager.getRoutedSkillsPromptText('Linux', linuxOnly)).toContain(
+      'Shared diagnostic playbook.'
+    );
+    const size = getSkillContentSizeBytes(linuxSkill);
+    const routerConfig = { ...DEFAULT_ROUTER_CONFIG, maxSkills: 1, maxTotalBytes: size };
+    const prompt = await manager.getRoutedSkillsPromptText('Linux', remoteConfig, routerConfig);
+    expect(prompt).toContain('Shared diagnostic playbook.');
+    expect(prompt).not.toContain('Cluster guidance.');
+    expect(
+      await manager.getRoutedSkillsPromptText('Linux', remoteConfig, {
+        ...routerConfig,
+        maxTotalBytes: size - 1,
+      })
+    ).toBe('');
+  });
+
+  it('separates reference-enabled caches and retains companions across managers', async () => {
+    const fetchFiles = vi.fn(
+      async () =>
+        new Map([
+          ['SKILL.md', SKILL_1],
+          ['references/install.md', 'Ask before installing the privileged DaemonSet.'],
+        ])
+    );
+    const entries = new Map<string, ParsedSkill[]>();
+    const cache: SkillCache = {
+      get: async key => structuredClone(entries.get(key) ?? null),
+      set: async (key, skills) => {
+        entries.set(key, structuredClone(skills));
+      },
+    };
+    const remoteConfig: SkillsConfig = {
+      ...DEFAULT_SKILLS_CONFIG,
+      sources: [
+        { type: 'git', url: 'https://github.com/owner/repo', ref: 'v1.0.0', enabled: true },
+      ],
+    };
+    const first = new SkillManager(createMockFs({}), { fetchFiles });
+    first.setSkillCache(cache);
+    const [withoutReferences] = await first.loadAllSkills(remoteConfig);
+    expect(withoutReferences.references).toBeUndefined();
+    entries.set(
+      JSON.stringify({
+        type: 'git',
+        url: 'https://github.com/owner/repo',
+        ref: 'v1.0.0',
+        path: '',
+        sha256: '',
+        includeReferences: true,
+        maxSkillSizeBytes: remoteConfig.maxSkillSizeBytes,
+      }),
+      [{ ...withoutReferences, references: [] }]
+    );
+    const withReferences: SkillsConfig = {
+      ...remoteConfig,
+      sources: remoteConfig.sources.map(source => ({ ...source, includeReferences: true })),
+    };
+    const [skill] = await first.loadAllSkills(withReferences);
+    expect(skill.references).toHaveLength(1);
+    const second = new SkillManager(createMockFs({}), { fetchFiles });
+    second.setSkillCache(cache);
+    expect((await second.loadAllSkills(withReferences))[0].references).toEqual(skill.references);
+    expect(fetchFiles).toHaveBeenCalledTimes(2);
+    expect(await second.getRoutedSkillsPromptText('install', withReferences)).toContain(
+      'Ask before installing the privileged DaemonSet.'
+    );
+    expect(second.getSkillsSummary(withReferences).totalSizeBytes).toBe(
+      getSkillContentSizeBytes(skill)
+    );
+  });
+
   let manager: SkillManager;
   let config: SkillsConfig;
 

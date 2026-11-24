@@ -17,6 +17,7 @@
 import {
   DEFAULT_MAX_TOTAL_SKILL_SIZE_BYTES,
   formatSkillsForPrompt,
+  getSkillContentSizeBytes,
   ParsedSkill,
 } from '../parseSkill';
 
@@ -273,10 +274,11 @@ export function routeSkills(
   for (const { skill, score } of scored) {
     if (selected.length >= config.maxSkills) break;
     if (score < config.minScore) break;
-    if (totalBytes + skill.contentSizeBytes > config.maxTotalBytes) continue;
+    const contentSizeBytes = getSkillContentSizeBytes(skill);
+    if (totalBytes + contentSizeBytes > config.maxTotalBytes) continue;
 
     selected.push(skill);
-    totalBytes += skill.contentSizeBytes;
+    totalBytes += contentSizeBytes;
   }
 
   return selected;

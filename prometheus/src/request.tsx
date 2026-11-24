@@ -64,7 +64,7 @@ export enum KubernetesType {
   services = 'services',
 }
 
-type PrometheusEndpoint = {
+export type PrometheusEndpoint = {
   type: KubernetesType;
   name: string | undefined;
   namespace: string | undefined;
@@ -93,63 +93,161 @@ function createPrometheusEndpoint(
   };
 }
 
+export interface SearchStrategyStepResult {
+  sequence: number;
+  strategyId: PrometheusSearchStrategyId;
+  resourceType: KubernetesType;
+  labelSelector: string;
+  /** Whether a resource with the label was found, reachable or not. */
+  matched: boolean;
+  matchedResource?: {
+    name: string;
+    namespace: string;
+    /** The ports that were tried. */
+    ports: string[];
+    /** The port Prometheus answered a query on, if any. */
+    reachablePort?: string;
+  };
+  error?: string;
+}
+
+export interface DiscoveryIntrospectionResult {
+  steps: SearchStrategyStepResult[];
+  finalEndpoint: PrometheusEndpoint;
+}
+
+export type PrometheusSearchStrategyId =
+  | 'customPod'
+  | 'customService'
+  | 'standardPod'
+  | 'standardService';
+
+export const PROMETHEUS_SEARCH_STRATEGIES: {
+  id: PrometheusSearchStrategyId;
+  resourceType: KubernetesType;
+  labelSelector: string;
+}[] = [
+  { id: 'customPod', resourceType: KubernetesType.pods, labelSelector: CUSTOM_HEADLAMP_LABEL },
+  {
+    id: 'customService',
+    resourceType: KubernetesType.services,
+    labelSelector: CUSTOM_HEADLAMP_LABEL,
+  },
+  {
+    id: 'standardPod',
+    resourceType: KubernetesType.pods,
+    labelSelector: COMMON_PROMETHEUS_POD_LABEL,
+  },
+  {
+    id: 'standardService',
+    resourceType: KubernetesType.services,
+    labelSelector: COMMON_PROMETHEUS_SERVICE_LABEL,
+  },
+];
+
 /**
  * Returns the first Prometheus pod or service that fits our search and is reachable.
  * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the first reachable Prometheus pod/service or none if none are reachable.
  */
 export async function isPrometheusInstalled(): Promise<PrometheusEndpoint> {
-  // Search by a custom label for a pod
-  const podSearchSpecificResponse = await searchKubernetesByLabel(
-    KubernetesType.pods,
-    CUSTOM_HEADLAMP_LABEL
-  );
-  if (podSearchSpecificResponse.type !== KubernetesType.none) {
-    return podSearchSpecificResponse;
-  }
+  return discoverPrometheus();
+}
 
-  // Search by a custom label for a service
-  const serviceSearchSpecificResponse = await searchKubernetesByLabel(
-    KubernetesType.services,
-    CUSTOM_HEADLAMP_LABEL
-  );
-  if (serviceSearchSpecificResponse.type !== KubernetesType.none) {
-    return serviceSearchSpecificResponse;
-  }
+/**
+ * Runs the autodetection search and returns each step it took.
+ * A failed search ends it, the same way it ends autodetection.
+ * @param {string} [cluster] - The cluster to search. Defaults to the current cluster.
+ * @param {function} [onStep] - Called with each step as soon as it completes.
+ * @returns {Promise<DiscoveryIntrospectionResult>} - The steps and the endpoint that was found, if any.
+ */
+export async function inspectPrometheusDiscovery(
+  cluster?: string,
+  onStep?: (step: SearchStrategyStepResult) => void
+): Promise<DiscoveryIntrospectionResult> {
+  const steps: SearchStrategyStepResult[] = [];
+  const recordStep = (step: SearchStrategyStepResult) => {
+    steps.push(step);
+    onStep?.(step);
+  };
 
-  // Search by common label for a pod
-  const podSearchResponse = await searchKubernetesByLabel(
-    KubernetesType.pods,
-    COMMON_PROMETHEUS_POD_LABEL
-  );
-  if (podSearchResponse.type !== KubernetesType.none) {
-    return podSearchResponse;
+  try {
+    const finalEndpoint = await discoverPrometheus(cluster, recordStep);
+    return { steps, finalEndpoint };
+  } catch {
+    // The failed step, with its error, has already been recorded.
+    return { steps, finalEndpoint: createPrometheusEndpoint() };
   }
+}
 
-  // Search by common label for a service
-  const serviceSearchResponse = await searchKubernetesByLabel(
-    KubernetesType.services,
-    COMMON_PROMETHEUS_SERVICE_LABEL
-  );
-  if (serviceSearchResponse.type !== KubernetesType.none) {
-    return serviceSearchResponse;
+/**
+ * Tries each search strategy in order and returns the first reachable Prometheus.
+ * @param {string} [cluster] - The cluster to search. Defaults to the current cluster.
+ * @param {function} [onStep] - Called with each step as soon as it completes.
+ * @returns {Promise<PrometheusEndpoint>} - The first reachable Prometheus pod/service or none.
+ * @throws If a search request fails.
+ */
+async function discoverPrometheus(
+  cluster?: string,
+  onStep?: (step: SearchStrategyStepResult) => void
+): Promise<PrometheusEndpoint> {
+  for (const [index, strategy] of PROMETHEUS_SEARCH_STRATEGIES.entries()) {
+    const step: SearchStrategyStepResult = {
+      sequence: index + 1,
+      strategyId: strategy.id,
+      resourceType: strategy.resourceType,
+      labelSelector: strategy.labelSelector,
+      matched: false,
+    };
+
+    let search: LabelSearchResult;
+    try {
+      search = await searchKubernetesByLabel(
+        strategy.resourceType,
+        strategy.labelSelector,
+        cluster
+      );
+    } catch (err) {
+      step.error = err instanceof Error ? err.message : String(err);
+      onStep?.(step);
+      throw err;
+    }
+
+    if (search.resource) {
+      step.matched = true;
+      step.matchedResource = { ...search.resource, reachablePort: search.endpoint.port };
+    }
+    onStep?.(step);
+
+    if (search.endpoint.type !== KubernetesType.none) {
+      return search.endpoint;
+    }
   }
 
   // No Prometheus pod or service found
   return createPrometheusEndpoint();
 }
 
+type LabelSearchResult = {
+  /** The reachable Prometheus, or none. */
+  endpoint: PrometheusEndpoint;
+  /** The resource that had the label, whether it was reachable or not. */
+  resource?: { name: string; namespace: string; ports: string[] };
+};
+
 /**
  * Searches for a Kubernetes resource by label and tests if Prometheus is reachable.
  * @param {KubernetesType} kubernetesType - The type of Kubernetes resource.
  * @param {string} labelSelector - The label selector to search for.
- * @returns {Promise<PrometheusEndpoint>} - A promise that resolves to the Prometheus endpoint or none if none are reachable.
+ * @param {string} [cluster] - The cluster to search. Defaults to the current cluster.
+ * @returns {Promise<LabelSearchResult>} - A promise that resolves to the reachable Prometheus endpoint (or none) and the resource that had the label, if any.
  */
 async function searchKubernetesByLabel(
   kubernetesType: KubernetesType,
-  labelSelector: string
-): Promise<PrometheusEndpoint> {
+  labelSelector: string,
+  cluster?: string
+): Promise<LabelSearchResult> {
   if (kubernetesType === KubernetesType.none) {
-    return createPrometheusEndpoint();
+    return { endpoint: createPrometheusEndpoint() };
   }
 
   const queryParams = new URLSearchParams();
@@ -157,10 +255,11 @@ async function searchKubernetesByLabel(
 
   const searchResponse = await request(`/api/v1/${kubernetesType}?${queryParams}`, {
     method: 'GET',
+    ...clusterParam(cluster),
   });
 
   if (!searchResponse?.kind || ['PodList', 'ServiceList'].indexOf(searchResponse.kind) === -1) {
-    return createPrometheusEndpoint();
+    return { endpoint: createPrometheusEndpoint() };
   }
 
   const searchResponseTyped = searchResponse as KubernetesSearchResponse;
@@ -168,12 +267,17 @@ async function searchKubernetesByLabel(
   if (searchResponseTyped.items?.length > 0) {
     const metadata = searchResponseTyped.items[0].metadata;
     if (!metadata) {
-      return createPrometheusEndpoint();
+      return { endpoint: createPrometheusEndpoint() };
     }
 
     const prometheusName = metadata.name;
     const prometheusNamespace = metadata.namespace;
     const prometheusPorts = getPrometheusPortsFromResponse(searchResponseTyped);
+    const resource = {
+      name: prometheusName,
+      namespace: prometheusNamespace,
+      ports: prometheusPorts,
+    };
 
     const testResults = await Promise.all(
       prometheusPorts.map(async prometheusPort => {
@@ -181,7 +285,8 @@ async function searchKubernetesByLabel(
           kubernetesType,
           prometheusName,
           prometheusNamespace,
-          prometheusPort
+          prometheusPort,
+          cluster
         );
         return {
           prometheusPort,
@@ -192,17 +297,31 @@ async function searchKubernetesByLabel(
 
     for (const result of testResults) {
       if (result.testSuccess) {
-        return createPrometheusEndpoint(
-          kubernetesType,
-          prometheusName,
-          prometheusNamespace,
-          result.prometheusPort
-        );
+        return {
+          endpoint: createPrometheusEndpoint(
+            kubernetesType,
+            prometheusName,
+            prometheusNamespace,
+            result.prometheusPort
+          ),
+          resource,
+        };
       }
     }
+
+    return { endpoint: createPrometheusEndpoint(), resource };
   }
 
-  return createPrometheusEndpoint();
+  return { endpoint: createPrometheusEndpoint() };
+}
+
+/**
+ * Request options that send a request to the given cluster.
+ * Without a cluster, the request goes to the current cluster.
+ * @param {string} [cluster] - The cluster name.
+ */
+function clusterParam(cluster?: string): { cluster?: string } {
+  return cluster ? { cluster } : {};
 }
 
 /**
@@ -248,12 +367,14 @@ function getPrometheusPortsFromResponse(response: KubernetesSearchResponse): str
  * @param {string} prometheusName - The name of the Prometheus pod or service.
  * @param {string} prometheusNamespace - The namespace of the Prometheus pod or service.
  * @param {string} prometheusPort - The port of the Prometheus pod or service.
+ * @param {string} [cluster] - The cluster to query. Defaults to the current cluster.
  */
 async function testPrometheusQuery(
   kubernetesType: KubernetesType,
   prometheusName: string,
   prometheusNamespace: string,
-  prometheusPort: string
+  prometheusPort: string,
+  cluster?: string
 ): Promise<boolean> {
   const queryParams = new URLSearchParams();
   queryParams.append('query', 'up');
@@ -266,6 +387,7 @@ async function testPrometheusQuery(
     from: start - 86400,
     to: start,
     step: 300,
+    cluster,
   })
     .then(() => {
       return true;
@@ -285,6 +407,7 @@ async function testPrometheusQuery(
  * @param {number} data.from - The start time for the query (Unix timestamp).
  * @param {number} data.to - The end time for the query (Unix timestamp).
  * @param {number} data.step - The step size for the query (in seconds).
+ * @param {string} [data.cluster] - The cluster to query. Defaults to the current cluster.
  * @returns {Promise<object>} - A promise that resolves to the fetched metrics data.
  * @throws {Error} - Throws an error if the request fails.
  */
@@ -295,6 +418,7 @@ export async function fetchMetrics(data: {
   to: number;
   step: number;
   subPath?: string;
+  cluster?: string;
 }): Promise<object> {
   const params = new URLSearchParams();
   if (data.from) {
@@ -325,6 +449,7 @@ export async function fetchMetrics(data: {
   const response = await request(url, {
     method: 'GET',
     isJSON: false,
+    ...clusterParam(data.cluster),
   });
   if (response.status === 200) {
     return response.json();

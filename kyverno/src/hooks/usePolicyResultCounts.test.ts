@@ -18,6 +18,7 @@ import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClusterEphemeralReport, EphemeralReport } from '../resources/kyvernoReports';
 import { ClusterPolicyReport, PolicyReport } from '../resources/policyReport';
+import { useNamespacedPolicyReportSources, usePolicyReportSources } from './usePolicyReportSources';
 import { usePolicyResultCounts } from './usePolicyResultCounts';
 
 vi.mock('../resources/kyvernoReports', () => ({
@@ -67,13 +68,19 @@ function report(results: { policy: string; result: 'fail' | 'pass'; rule: string
   };
 }
 
-describe('usePolicyResultCounts', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(EphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
-    vi.mocked(ClusterEphemeralReport.useList).mockReturnValue(resolvedList([]) as any);
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  for (const reportClass of [
+    PolicyReport,
+    ClusterPolicyReport,
+    EphemeralReport,
+    ClusterEphemeralReport,
+  ]) {
+    vi.mocked(reportClass.useList).mockReturnValue(resolvedList([]) as any);
+  }
+});
 
+describe('usePolicyResultCounts', () => {
   it('stops loading once a list settles with an error', () => {
     // Regression: loading used to be derived from `items === null`, which never
     // becomes non-null for an errored list, leaving callers on a spinner forever.
@@ -165,5 +172,65 @@ describe('usePolicyResultCounts', () => {
       fail: 2,
       total: 2,
     });
+  });
+});
+
+describe('scoped policy report sources', () => {
+  it('queries only namespaced report kinds for a namespaced policy', () => {
+    const scope = { namespace: 'default', cluster: 'policy-cluster' };
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      resolvedList([
+        report([{ policy: 'default/require-labels', result: 'fail', rule: 'labels' }]),
+      ]) as any
+    );
+
+    const { result } = renderHook(() =>
+      useNamespacedPolicyReportSources(scope.namespace, scope.cluster)
+    );
+
+    expect(PolicyReport.useList).toHaveBeenCalledWith(scope);
+    expect(EphemeralReport.useList).toHaveBeenCalledWith(scope);
+    expect(ClusterPolicyReport.useList).not.toHaveBeenCalled();
+    expect(ClusterEphemeralReport.useList).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.reports[0].summary).toEqual({ fail: 1 });
+  });
+
+  it('queries all report kinds from the cluster that owns a cluster policy', () => {
+    const cluster = 'policy-cluster';
+    renderHook(() => usePolicyReportSources(cluster));
+
+    expect(PolicyReport.useList).toHaveBeenCalledWith({ cluster, namespace: undefined });
+    expect(EphemeralReport.useList).toHaveBeenCalledWith({ cluster, namespace: undefined });
+    expect(ClusterPolicyReport.useList).toHaveBeenCalledWith({ cluster });
+    expect(ClusterEphemeralReport.useList).toHaveBeenCalledWith({ cluster });
+  });
+
+  it('keeps readable durable results when access to ephemeral reports is forbidden', () => {
+    vi.mocked(PolicyReport.useList).mockReturnValue(
+      resolvedList([
+        report([{ policy: 'default/require-labels', result: 'pass', rule: 'labels' }]),
+      ]) as any
+    );
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      erroredList({ status: 403, message: 'forbidden' }) as any
+    );
+
+    const { result } = renderHook(() => useNamespacedPolicyReportSources('default'));
+
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.restrictedEphemeralReports).toBe(true);
+    expect(result.current.reports[0].summary).toEqual({ pass: 1 });
+  });
+
+  it('still reports a forbidden error when no durable report source is available', () => {
+    const accessError = { status: 403, message: 'forbidden' };
+    vi.mocked(PolicyReport.useList).mockReturnValue(erroredList() as any);
+    vi.mocked(EphemeralReport.useList).mockReturnValue(erroredList(accessError) as any);
+
+    const { result } = renderHook(() => useNamespacedPolicyReportSources('default'));
+
+    expect(result.current.error).toBe(accessError);
+    expect(result.current.restrictedEphemeralReports).toBeUndefined();
   });
 });

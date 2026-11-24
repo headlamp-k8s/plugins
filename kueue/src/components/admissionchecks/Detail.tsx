@@ -2,6 +2,10 @@ import { ConditionsSection, DetailsGrid } from '@kinvolk/headlamp-plugin/lib/com
 import { useParams } from 'react-router-dom';
 import { AdmissionCheck } from '../../resources/admissionCheck';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import {
+  AdmissionCheckClusterQueuesSection,
+  AdmissionCheckWorkloadsSection,
+} from '../common/RelatedResources';
 
 /** Build the standard Headlamp conditions section for AdmissionCheck status. */
 function getConditionsSection(admissionCheck: AdmissionCheck) {
@@ -15,18 +19,21 @@ function getConditionsSection(admissionCheck: AdmissionCheck) {
   };
 }
 
-export default function AdmissionCheckDetail() {
-  const { name } = useParams<{ name: string }>();
+export default function AdmissionCheckDetail(props: { name?: string; cluster?: string }) {
+  const params = useParams<{ name: string }>();
+  const { name = params.name, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={AdmissionCheck}
       resourceLabel="AdmissionChecks"
       verb="get"
+      cluster={cluster}
     >
       <DetailsGrid
         resourceType={AdmissionCheck}
         name={name}
+        cluster={cluster}
         withEvents
         extraInfo={admissionCheck =>
           admissionCheck
@@ -51,7 +58,29 @@ export default function AdmissionCheckDetail() {
             : []
         }
         extraSections={admissionCheck =>
-          admissionCheck ? [getConditionsSection(admissionCheck)].filter(Boolean) : []
+          admissionCheck
+            ? [
+                getConditionsSection(admissionCheck),
+                {
+                  id: 'admission-check-cluster-queues',
+                  section: (
+                    <AdmissionCheckClusterQueuesSection
+                      checkName={admissionCheck.metadata.name}
+                      cluster={admissionCheck.cluster}
+                    />
+                  ),
+                },
+                {
+                  id: 'admission-check-workloads',
+                  section: (
+                    <AdmissionCheckWorkloadsSection
+                      checkName={admissionCheck.metadata.name}
+                      cluster={admissionCheck.cluster}
+                    />
+                  ),
+                },
+              ].filter(Boolean)
+            : []
         }
       />
     </KueueAdminResourceAccess>

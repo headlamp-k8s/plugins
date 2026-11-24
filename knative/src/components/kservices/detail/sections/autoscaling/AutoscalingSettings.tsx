@@ -28,7 +28,8 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
-import { KService } from '../../../../../resources/knative';
+import { annNumOrClear, KService, specNumOrClear } from '../../../../../resources/knative';
+import { errorDetail, withDetail } from '../../../../../utils/error';
 import { useNotify } from '../../../../common/notifications/useNotify';
 import { useKServiceEditMode } from '../../hooks/useKServiceEditMode';
 import { useKServicePermissions } from '../../permissions/KServicePermissionsProvider';
@@ -143,8 +144,7 @@ export default function AutoscalingSettings({
       const n = Number(hard);
       if (!Number.isInteger(n) || n < 0) return false;
     }
-    if (metric) {
-      if (target === '') return false;
+    if (target !== '') {
       const t = Number(target);
       if (!Number.isFinite(t) || t <= 0) return false;
     }
@@ -159,12 +159,25 @@ export default function AutoscalingSettings({
     if (!isValid() || !cluster) return;
     try {
       setSaving(true);
-      const metricToSave = metric ? (metric as 'concurrency' | 'rps') : undefined;
+
+      const prevAnns = kservice.spec.template?.metadata?.annotations ?? {};
+      const prevHard = kservice.spec.template?.spec?.containerConcurrency;
+
+      const metricToSave: 'concurrency' | 'rps' | null | undefined = metric
+        ? (metric as 'concurrency' | 'rps')
+        : 'autoscaling.knative.dev/metric' in prevAnns
+        ? null
+        : undefined;
+
       const patchBody = KService.buildAutoscalingPatch({
         metric: metricToSave,
-        target: target === '' ? undefined : Number(target),
-        targetUtilization: util === '' ? undefined : Number(util),
-        containerConcurrency: hard === '' ? undefined : Number(hard),
+        target: annNumOrClear(prevAnns, 'autoscaling.knative.dev/target', target),
+        targetUtilization: annNumOrClear(
+          prevAnns,
+          'autoscaling.knative.dev/target-utilization-percentage',
+          util
+        ),
+        containerConcurrency: specNumOrClear(prevHard, hard),
       });
 
       if (patchBody) {
@@ -173,9 +186,7 @@ export default function AutoscalingSettings({
 
       notifySuccess('Autoscaling updated');
     } catch (err: unknown) {
-      const error = err as { message?: string } | undefined;
-      const detail = error?.message?.trim();
-      notifyError(detail ? `Failed to update settings: ${detail}` : 'Failed to update settings');
+      notifyError(withDetail('Failed to update settings', errorDetail(err)));
     } finally {
       setSaving(false);
     }
@@ -272,10 +283,9 @@ export default function AutoscalingSettings({
                         ? `Per-revision soft limit target (default: ${resolvedDefaultTarget})`
                         : 'Per-revision soft limit target'
                       : resolvedDefaultTarget !== undefined
-                      ? `Disabled when Metric is unset (default: ${resolvedDefaultTarget})`
-                      : 'Disabled when Metric is unset'
+                      ? `Optional; blank uses the cluster default (${resolvedDefaultTarget})`
+                      : 'Optional; blank uses the cluster default'
                   }
-                  disabled={!metric}
                   sx={{ maxWidth: 400 }}
                 />
               ),

@@ -1,0 +1,28 @@
+# Namespaced Policy: require an "owner" label on Pods in map-source-test.
+# This is intentionally namespaced (kind: Policy, not ClusterPolicy) to verify
+# that the Map source correctly groups it under the map-source-test namespace
+# and calls collectPolicyImpact with the policyNamespace argument.
+# One of the workloads in 04 satisfies ms-require-app-label but NOT this policy
+# (has "app" but no "owner"), exercising the deduplication path: that Pod
+# appears as a single resource node with two incoming edges -- one from each policy.
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: ms-require-owner-label
+  namespace: map-source-test
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-owner-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Every Pod must carry an 'owner' label."
+        pattern:
+          metadata:
+            labels:
+              owner: "?*"

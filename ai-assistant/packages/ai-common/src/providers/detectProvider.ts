@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { DEFAULT_COPILOT_MODEL } from './catalog';
 import type { ProviderSettings, StoredProviderConfig } from './savedConfigs';
 
 /**
@@ -251,6 +252,7 @@ export async function detectCopilotChatModels(
  */
 const COPILOT_MODEL_PRIORITY: string[] = [
   'claude-opus',
+  'gpt-6',
   'gpt-5',
   'claude-sonnet',
   'gpt-4',
@@ -265,20 +267,20 @@ const COPILOT_MODEL_PRIORITY: string[] = [
  * IDs are matched case-insensitively by priority substring.
  *
  * @param models - Available Copilot chat models in catalog order.
- * @returns Highest-priority ID, first catalog ID, or `gpt-4o` when empty.
+ * @returns Highest-priority ID, first catalog ID, or the default model when empty.
  */
 export function pickBestCopilotChatModel(models: CopilotModelEntry[]): string {
   for (const priority of COPILOT_MODEL_PRIORITY) {
     const match = models.find(m => m.id.toLowerCase().includes(priority));
     if (match) return match.id;
   }
-  return models.length > 0 ? models[0].id : 'gpt-4o';
+  return models.length > 0 ? models[0].id : DEFAULT_COPILOT_MODEL;
 }
 
 /**
  * Full Copilot detection flow: token → validation → model catalog → best model.
  *
- * Catalog failure falls back to `gpt-4o`; unavailable or invalid credentials
+ * Catalog failure falls back to the catalog default; unavailable or invalid credentials
  * prevent detection. The stored API key is the CLI-refresh sentinel.
  *
  * @param commandRunner - Host-provided command executor.

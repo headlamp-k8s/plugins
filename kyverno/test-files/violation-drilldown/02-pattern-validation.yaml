@@ -1,0 +1,26 @@
+# Exercises suggestFix(rule.validate.pattern) path.
+# A Pod without the required 'app' label will fail this rule.
+# Expected drill-down fix text: "Update the manifest so every field matches the
+# pattern, then re-apply it."
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: dd-require-app-label
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-app-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - drilldown-test
+      validate:
+        message: "validation error: the 'app' label is required on all Pods in drilldown-test."
+        pattern:
+          metadata:
+            labels:
+              app: "?*"

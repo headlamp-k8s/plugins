@@ -12,7 +12,8 @@
     "src/**/__tests__/**",
     "src/**/*.test.*",
     "src/**/*.spec.*",
-    "src/**/*.stories.*"
+    "src/**/*.stories.*",
+    "src/**/*Fixtures.ts"
   ],
   "ignoreDependencies": [
     "react",

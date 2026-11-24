@@ -1,9 +1,14 @@
 import {
   ConditionsSection,
   DetailsGrid,
+  NameValueTable,
   SectionBox,
   SimpleTable,
+  StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
+import { formatDuration, localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
+import { Box, Step, StepLabel, Stepper, Tooltip, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   AdmissionCheckState,
@@ -15,17 +20,24 @@ import {
   WorkloadSchedulingStatsEviction,
 } from '../../resources/workload';
 import {
+  findWorkloadCondition,
+  getWorkloadBlocker,
+  getWorkloadTimeline,
   renderPodSetRequests,
+  renderQueuePosition,
   renderResourceList,
   renderStringMap,
   renderText,
   renderTopologyAssignment,
+  WorkloadTimelineStep,
 } from '../../resources/workloadFormatters';
+import { usePendingWorkloads } from '../../utils/kueueVisibility';
 import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
 import {
   renderAdmissionCheckLink,
   renderClusterQueueLink,
   renderLocalQueueLink,
+  renderOwnerReferenceLinks,
 } from '../common/KueueResourceLinks';
 
 /** Row rendered for Workload spec.podSets. */
@@ -298,7 +310,8 @@ function getAdmissionChecksSection(workload: Workload) {
           columns={[
             {
               label: 'Name',
-              getter: (row: AdmissionCheckRow) => renderAdmissionCheckLink(row.name),
+              getter: (row: AdmissionCheckRow) =>
+                renderAdmissionCheckLink(row.name, workload.cluster),
             },
             {
               label: 'State',
@@ -421,6 +434,213 @@ function getSchedulingStatsSection(workload: Workload) {
   };
 }
 
+/** Caption under a lifecycle step: when it was reached and how long after the step before. */
+function renderTimelineCaption(step: WorkloadTimelineStep) {
+  const duration = step.durationMs !== undefined ? formatDuration(step.durationMs) : undefined;
+
+  switch (step.state) {
+    case 'done':
+    case 'failed':
+      return [
+        step.time && localeDate(step.time),
+        step.durationMs === 0 && `Same time as ${step.durationFrom}`,
+        !!step.durationMs && `${duration} after ${step.durationFrom}`,
+        step.state === 'failed' && step.reason,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    case 'current':
+      return [
+        duration ? `Waiting ${duration} since ${step.durationFrom}` : 'Waiting',
+        step.reason && `Reason: ${step.reason}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    case 'deactivated':
+      return 'Paused: Workload is deactivated';
+    case 'skipped':
+      return 'Not reached';
+    case 'untracked':
+      return 'Not reported by Kueue';
+    default:
+      return '';
+  }
+}
+
+/** Current time in milliseconds, advanced every second while `ticking` is set. */
+function useNow(ticking: boolean) {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!ticking) {
+      return;
+    }
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [ticking]);
+
+  return now;
+}
+
+/** Draw the Workload's lifecycle from its conditions. */
+function WorkloadLifecycle({ workload }: { workload: Workload }) {
+  // A pending Workload can go a long time without watch updates, so the wait keeps counting.
+  const ticking = findWorkloadCondition(workload.conditions, 'Finished')?.status !== 'True';
+  const now = useNow(ticking);
+  const { steps, eviction } = getWorkloadTimeline(
+    workload.metadata.creationTimestamp,
+    workload.conditions,
+    workload.spec.active,
+    now
+  );
+  const activeStep = steps.findIndex(step => step.state === 'current');
+
+  return (
+    <SectionBox title="Lifecycle">
+      <Stepper activeStep={activeStep === -1 ? steps.length : activeStep} alternativeLabel>
+        {steps.map(step => (
+          <Step
+            key={step.label}
+            completed={step.state === 'done' || step.state === 'failed'}
+            disabled={['skipped', 'untracked', 'pending'].includes(step.state)}
+          >
+            <Tooltip title={step.message || ''}>
+              <StepLabel
+                error={step.state === 'failed'}
+                optional={
+                  <Typography variant="caption" sx={{ whiteSpace: 'pre-line' }}>
+                    {renderTimelineCaption(step)}
+                  </Typography>
+                }
+              >
+                {step.label}
+              </StepLabel>
+            </Tooltip>
+          </Step>
+        ))}
+      </Stepper>
+      {eviction && (
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'baseline' }}>
+          <StatusLabel status="warning">Evicted</StatusLabel>
+          <Typography variant="body2">
+            {[
+              eviction.lastTransitionTime && localeDate(eviction.lastTransitionTime),
+              eviction.reason,
+              eviction.message,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Typography>
+        </Box>
+      )}
+    </SectionBox>
+  );
+}
+
+/** Build the section that draws the Workload's lifecycle. */
+function getTimelineSection(workload: Workload) {
+  return { id: 'lifecycle', section: <WorkloadLifecycle workload={workload} /> };
+}
+
+/**
+ * Ask Kueue's visibility API where a pending Workload sits in its queues. The list is
+ * reread periodically, so the position follows Workloads ahead of it being admitted or deleted.
+ * Returns null when the API is not served, access is denied, or the Workload is not listed.
+ */
+function useQueuePosition(workload: Workload, enabled: boolean) {
+  const { name, namespace } = workload.metadata;
+  const queueName = workload.queueName;
+  const items = usePendingWorkloads(
+    enabled && queueName && namespace
+      ? `namespaces/${namespace}/localqueues/${queueName}/pendingworkloads`
+      : null,
+    // The Job panel can show a Workload from another cluster than the current one.
+    workload.cluster
+  );
+
+  return items && renderQueuePosition(items, name, namespace);
+}
+
+/** Blocker rows plus the Workload's queue position, which needs a request of its own. */
+function WorkloadBlockerTable(props: {
+  workload: Workload;
+  inQueue: boolean;
+  rows: { name: string; value: React.ReactNode; hide?: boolean }[];
+}) {
+  const { workload, inQueue, rows } = props;
+  const position = useQueuePosition(workload, inQueue);
+  const [stage, ...rest] = rows;
+
+  return (
+    <NameValueTable
+      rows={[stage, { name: 'Queue position', value: position, hide: !position }, ...rest]}
+    />
+  );
+}
+
+/** Build the section explaining what is stopping the Workload from being admitted. */
+export function getBlockerSection(
+  workload: Workload,
+  title = 'Why is this Workload not admitted?'
+) {
+  const blocker = getWorkloadBlocker(
+    workload.conditions,
+    workload.status.admissionChecks,
+    workload.status.requeueState,
+    workload.spec.active,
+    workload.status.admission
+  );
+
+  if (!blocker) {
+    return null;
+  }
+
+  const rows = [
+    {
+      name: 'Stage',
+      value: (
+        <StatusLabel status={blocker.stage === 'Evicted' ? 'error' : 'warning'}>
+          {blocker.stage}
+        </StatusLabel>
+      ),
+    },
+    { name: 'Reason', value: blocker.reason, hide: !blocker.reason },
+    { name: 'What it means', value: blocker.explanation, hide: !blocker.explanation },
+    { name: 'Kueue message', value: blocker.message, hide: !blocker.message },
+    {
+      name: 'Blocking admission checks',
+      value: blocker.pendingAdmissionChecks.map(check => (
+        <div key={check.name}>
+          {renderAdmissionCheckLink(check.name, workload.cluster)}: {check.state || 'Pending'}
+          {check.message ? ` (${check.message})` : ''}
+        </div>
+      )),
+      hide: blocker.pendingAdmissionChecks.length === 0,
+    },
+    {
+      name: 'Next retry',
+      // DateLabel is relative-only and renders future times as <invalid>.
+      value: blocker.requeueAt && new Date(blocker.requeueAt).toLocaleString(),
+      hide: !blocker.requeueAt,
+    },
+  ];
+
+  return {
+    id: 'blocker',
+    section: (
+      <SectionBox title={title}>
+        <WorkloadBlockerTable
+          workload={workload}
+          // Only Workloads still waiting for quota are listed by the visibility API.
+          inQueue={blocker.stage === 'Not evaluated' || blocker.stage === 'Waiting for quota'}
+          rows={rows}
+        />
+      </SectionBox>
+    ),
+  };
+}
+
 /** Build the standard Headlamp conditions section for Workload status. */
 function getConditionsSection(workload: Workload) {
   if (!workload.conditions.length) {
@@ -433,19 +653,26 @@ function getConditionsSection(workload: Workload) {
   };
 }
 
-export default function WorkloadDetail() {
-  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+export default function WorkloadDetail(props: {
+  name?: string;
+  namespace?: string;
+  cluster?: string;
+}) {
+  const params = useParams<{ namespace: string; name: string }>();
+  const { name = params.name, namespace = params.namespace, cluster } = props;
 
   return (
     <KueueAdminResourceAccess
       resourceClass={Workload}
       resourceLabel="Workloads"
       verb="get"
+      cluster={cluster}
       accessDescription="Kueue Workloads are namespaced user workload resources."
     >
       <DetailsGrid
         resourceType={Workload}
         name={name}
+        cluster={cluster}
         namespace={namespace}
         withEvents
         extraInfo={workload =>
@@ -453,7 +680,11 @@ export default function WorkloadDetail() {
             ? [
                 {
                   name: 'Queue',
-                  value: renderLocalQueueLink(workload.queueName, workload.metadata.namespace),
+                  value: renderLocalQueueLink(
+                    workload.queueName,
+                    workload.metadata.namespace,
+                    workload.cluster
+                  ),
                 },
                 {
                   name: 'Priority',
@@ -469,7 +700,11 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Owner References',
-                  value: workload.ownerReferencesDisplay,
+                  value: renderOwnerReferenceLinks(
+                    workload.metadata.ownerReferences,
+                    workload.metadata.namespace,
+                    workload.cluster
+                  ),
                 },
                 {
                   name: 'Pod Sets',
@@ -493,7 +728,7 @@ export default function WorkloadDetail() {
                 },
                 {
                   name: 'Assigned ClusterQueue',
-                  value: renderClusterQueueLink(workload.admissionClusterQueue),
+                  value: renderClusterQueueLink(workload.admissionClusterQueue, workload.cluster),
                 },
                 {
                   name: 'Assigned ResourceFlavors',
@@ -529,6 +764,8 @@ export default function WorkloadDetail() {
         extraSections={workload =>
           workload
             ? [
+                getTimelineSection(workload),
+                getBlockerSection(workload),
                 getConditionsSection(workload),
                 getPodSetsSection(workload),
                 getAdmissionSection(workload),

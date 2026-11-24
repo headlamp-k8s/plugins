@@ -18,6 +18,7 @@ import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/components/common';
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControl,
@@ -30,13 +31,19 @@ import {
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { reportSourceErrorMessage } from '../hooks/policyReportSources';
-import { PolicyReportSource, usePolicyReportSources } from '../hooks/usePolicyReportSources';
+import {
+  PolicyReportSource as AggregatedReport,
+  usePolicyReportSources,
+} from '../hooks/usePolicyReportSources';
+import { DrillDownTarget } from '../resources/policyImpact';
 import {
   PolicyReportInterface,
   PolicyReportResult,
+  PolicyReportSource,
   PolicyResultStatus,
 } from '../resources/policyReport';
-import { ResultStatusChip, SeverityChip } from './common';
+import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
+import { ViolationDrillDown } from './ViolationDrillDown';
 
 type GroupBy = 'none' | 'policy' | 'namespace' | 'kind';
 
@@ -47,7 +54,7 @@ interface ViolationEntry extends PolicyReportResult {
 
 const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
 
-function collectViolations(reports: PolicyReportSource[]): ViolationEntry[] {
+function collectViolations(reports: AggregatedReport[]): ViolationEntry[] {
   const violations: ViolationEntry[] = [];
 
   for (const report of reports) {
@@ -138,56 +145,130 @@ function StatusFilterChips({
   );
 }
 
+function entryToTarget(v: ViolationEntry): DrillDownTarget {
+  const resource = v.resources?.[0] ?? v.scope;
+  return {
+    policy: v.policy,
+    source: v.source as PolicyReportSource | undefined,
+    rule: v.rule,
+    kind: resource?.kind,
+    apiVersion: resource?.apiVersion,
+    name: resource?.name,
+    namespace: resource?.namespace ?? v.reportNamespace,
+    message: v.message,
+    severity: v.severity,
+    status: v.result,
+  };
+}
+
 export function ViolationsView() {
-  const { t, ready: translationsReady } = useTranslation();
+  const { i18n, ready, t } = useTranslation();
   const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
+  const [drillDownTarget, setDrillDownTarget] = useState<DrillDownTarget | null>(null);
 
-  // These definitions are cheap, and rebuilding them also keeps translated
-  // labels current if the active language changes.
-  const violationColumns = [
-    {
-      header: t('Resource'),
-      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
-    },
-    {
-      header: t('Kind'),
-      accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
-    },
-    {
-      header: t('Namespace'),
-      accessorFn: (v: ViolationEntry) =>
-        v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
-    },
-    {
-      header: t('Policy'),
-      accessorFn: (v: ViolationEntry) => v.policy,
-    },
-    {
-      header: t('Rule'),
-      accessorFn: (v: ViolationEntry) => v.rule || '-',
-    },
-    {
-      header: t('Severity'),
-      accessorFn: (v: ViolationEntry) => v.severity || '',
-      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-        <SeverityChip severity={row.original.severity} />
-      ),
-    },
-    {
-      header: t('Result'),
-      accessorFn: (v: ViolationEntry) => v.result,
-      Cell: ({ row }: { row: { original: ViolationEntry } }) => (
-        <ResultStatusChip status={row.original.result} />
-      ),
-    },
-    {
-      header: t('Message'),
-      accessorFn: (v: ViolationEntry) => v.message || '-',
-    },
-  ];
+  // Each header string is computed once and reused for both `header` and the
+  // column id, rather than calling t() twice per column. The column array is
+  // memoized on those header strings specifically, not on `t` itself (whose
+  // reference doesn't change when the translation backend finishes loading,
+  // so depending on it directly would never actually refresh anything). The
+  // id itself stays a stable, semantic string though, see tableRemountKey in
+  // common.tsx for why: Headlamp memoizes header cells by id alone, so a
+  // blank pre-translation label would otherwise stick around even once the
+  // real translation arrives, fixed by remounting the table via key once
+  // translations are ready instead of changing the id. Body cells here
+  // render resource data, not translated labels, so they aren't affected.
+  const resourceHeader = t('Resource');
+  const kindHeader = t('Kind');
+  const namespaceHeader = t('Namespace');
+  const policyHeader = t('Policy');
+  const ruleHeader = t('Rule');
+  const severityHeader = t('Severity');
+  const resultHeader = t('Result');
+  const messageHeader = t('Message');
+  const detailsHeader = t('Details');
+
+  const violationColumns = useMemo(
+    () => [
+      {
+        header: resourceHeader,
+        id: 'resource',
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.name || v.scope?.name || '-',
+      },
+      {
+        header: kindHeader,
+        id: 'kind',
+        accessorFn: (v: ViolationEntry) => v.resources?.[0]?.kind || v.scope?.kind || '-',
+      },
+      {
+        header: namespaceHeader,
+        id: 'namespace',
+        accessorFn: (v: ViolationEntry) =>
+          v.resources?.[0]?.namespace || v.scope?.namespace || v.reportNamespace || '-',
+      },
+      {
+        header: policyHeader,
+        id: 'policy',
+        accessorFn: (v: ViolationEntry) => v.policy,
+      },
+      {
+        header: ruleHeader,
+        id: 'rule',
+        accessorFn: (v: ViolationEntry) => v.rule || '-',
+      },
+      {
+        header: severityHeader,
+        id: 'severity',
+        accessorFn: (v: ViolationEntry) => v.severity || '',
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <SeverityChip severity={row.original.severity} />
+        ),
+      },
+      {
+        header: resultHeader,
+        id: 'result',
+        accessorFn: (v: ViolationEntry) => v.result,
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <ResultStatusChip status={row.original.result} />
+        ),
+      },
+      {
+        header: messageHeader,
+        id: 'message',
+        accessorFn: (v: ViolationEntry) => v.message || '-',
+      },
+      {
+        header: detailsHeader,
+        id: 'details',
+        // accessorFn returns the rule name so the column is sortable; the Cell renders the button.
+        accessorFn: (v: ViolationEntry) => v.rule ?? '',
+        Cell: ({ row }: { row: { original: ViolationEntry } }) => (
+          <Button
+            size="small"
+            variant="outlined"
+            aria-label={t('Open violation details')}
+            onClick={() => setDrillDownTarget(entryToTarget(row.original))}
+          >
+            {detailsHeader}
+          </Button>
+        ),
+      },
+    ],
+    [
+      resourceHeader,
+      kindHeader,
+      namespaceHeader,
+      policyHeader,
+      ruleHeader,
+      severityHeader,
+      resultHeader,
+      messageHeader,
+      detailsHeader,
+      setDrillDownTarget,
+    ]
+  );
 
   const allViolations = useMemo(() => collectViolations(reports), [reports]);
 
@@ -221,9 +302,10 @@ export function ViolationsView() {
     return Array.from(set).sort();
   }, [allViolations]);
 
+  const title = ready ? t('Violations') : 'Violations';
   if (reportsError) {
     return (
-      <SectionBox title={t('Violations')}>
+      <SectionBox title={title}>
         <Typography color="error">
           {t('Failed to load policy reports: {{error}}', {
             error: reportSourceErrorMessage(reportsError),
@@ -233,11 +315,9 @@ export function ViolationsView() {
     );
   }
 
-  // Headlamp's Table captures its initial column labels, so do not mount it
-  // with the empty strings returned while plugin translations initialize.
-  if (reportsLoading || !translationsReady) {
+  if (reportsLoading || !ready) {
     return (
-      <SectionBox title={translationsReady ? t('Violations') : 'Violations'}>
+      <SectionBox title={title}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -249,7 +329,8 @@ export function ViolationsView() {
 
   return (
     <Box sx={{ p: 2 }}>
-      <SectionBox title={`${t('Violations')} (${filteredViolations.length})`}>
+      <ViolationDrillDown target={drillDownTarget} onClose={() => setDrillDownTarget(null)} />
+      <SectionBox title={t('Violations ({{count}})', { count: filteredViolations.length })}>
         <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <StatusFilterChips
             selected={statusFilter}
@@ -300,11 +381,21 @@ export function ViolationsView() {
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {group} ({entries.length})
                 </Typography>
-                <Table columns={violationColumns} data={entries} rowsPerPage={[25, 50, 100]} />
+                <Table
+                  key={tableRemountKey(ready, i18n?.language)}
+                  columns={violationColumns}
+                  data={entries}
+                  rowsPerPage={[25, 50, 100]}
+                />
               </Box>
             ))
         ) : (
-          <Table columns={violationColumns} data={filteredViolations} rowsPerPage={[25, 50, 100]} />
+          <Table
+            key={tableRemountKey(ready, i18n?.language)}
+            columns={violationColumns}
+            data={filteredViolations}
+            rowsPerPage={[25, 50, 100]}
+          />
         )}
       </SectionBox>
     </Box>

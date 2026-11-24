@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import JSZip from 'jszip';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,7 +34,11 @@ test.describe.serial('AI Assistant on KWOK', () => {
 
     await page.goto('/settings/plugins/%40headlamp-k8s%2Fai-assistant');
 
-    await expect(page.getByText('Developer Options', { exact: true })).toBeVisible();
+    const advanced = page.getByRole('button', { name: /^Advanced/ });
+    await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+    await expect(
+      page.getByRole('heading', { name: 'Developer Options', exact: true })
+    ).toBeHidden();
     await expect(page.getByRole('heading', { name: 'No Configured Providers' })).toBeVisible();
 
     const previewFeatures = page.getByRole('checkbox', { name: 'Preview Features' });
@@ -51,13 +54,23 @@ test.describe.serial('AI Assistant on KWOK', () => {
     await previewFeatures.check();
     await expect(page.getByRole('button', { name: 'AI Assistant' })).toBeVisible();
 
-    await page.getByText('Developer Options', { exact: true }).click();
+    await advanced.click();
+    await expect(advanced).toHaveAttribute('aria-expanded', 'true');
     await page.getByRole('checkbox', { name: 'Mock Testing Model' }).check();
 
     await expect(page.getByRole('checkbox', { name: 'Mock Testing Model' })).toBeChecked();
     await expect(page.getByRole('heading', { name: 'Configured Providers' })).toBeVisible();
     await expect(page.getByText('Mock Testing Model', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Default', { exact: true })).toBeVisible();
+    const mockProviderRow = page
+      .getByRole('table', { name: 'Configured Providers' })
+      .getByRole('row')
+      .filter({
+        has: page.getByRole('button', {
+          name: 'More options for Mock Testing Model',
+          exact: true,
+        }),
+      });
+    await expect(mockProviderRow.getByRole('cell', { name: 'Default', exact: true })).toBeVisible();
 
     const fakeMCP = page.getByRole('checkbox', { name: 'Fake MCP Server' });
     await fakeMCP.check();
@@ -65,6 +78,8 @@ test.describe.serial('AI Assistant on KWOK', () => {
       .poll(() => page.evaluate(() => localStorage.getItem('pluginConfigs')))
       .toContain('"enableFakeMCP":true');
     await page.reload();
+    await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+    await advanced.click();
     await expect(fakeMCP).toBeChecked();
     await page.screenshot({
       path: path.join(screenshotsDir, '10-mock-mcp-settings.png'),
@@ -178,6 +193,7 @@ Inspect pod status, recent events, and container logs before recommending a fix.
       .getByRole('complementary', { name: 'AI Assistant panel' })
       .getByRole('button', { name: 'Close' })
       .click();
+    await advanced.click();
     await page.getByRole('checkbox', { name: 'Mock Testing Agent' }).check();
     await expect(page.getByRole('checkbox', { name: 'Mock Testing Agent' })).toBeChecked();
 
@@ -218,6 +234,7 @@ Inspect pod status, recent events, and container logs before recommending a fix.
       .getByRole('button', { name: 'Close' })
       .click();
     await page.goto('/settings/plugins/%40headlamp-k8s%2Fai-assistant');
+    await advanced.click();
     await page.getByRole('checkbox', { name: 'Mock Testing Model' }).uncheck();
     await page.getByRole('checkbox', { name: 'Mock Testing Agent' }).uncheck();
     await expect(page.getByRole('heading', { name: 'No Configured Providers' })).toBeVisible();
@@ -251,7 +268,7 @@ Inspect pod status, recent events, and container logs before recommending a fix.
     }
 
     await page.goto('/settings/plugins/%40headlamp-k8s%2Fai-assistant');
-    await page.getByText('Developer Options', { exact: true }).click();
+    await page.getByRole('button', { name: /^Advanced/ }).click();
     await page.getByRole('checkbox', { name: 'Mock Testing Model' }).check();
     await page.getByRole('checkbox', { name: /Test Mode/ }).check();
     await page.getByRole('button', { name: 'AI Assistant' }).click();

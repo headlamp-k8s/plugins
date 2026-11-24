@@ -16,7 +16,7 @@
 
 import { cosineSimilarity } from '../../embeddings/cosineSimilarity';
 import type { EmbeddingProvider } from '../../embeddings/EmbeddingProvider';
-import { formatSkillsForPrompt, ParsedSkill } from '../parseSkill';
+import { formatSkillsForPrompt, getSkillContentSizeBytes, ParsedSkill } from '../parseSkill';
 import {
   DEFAULT_ROUTER_CONFIG,
   routeSkills,
@@ -253,10 +253,11 @@ export class EmbeddingSkillRouter {
     for (const { skill, score } of scored) {
       if (selected.length >= config.maxSkills) break;
       if (score < config.minScore) break;
-      if (totalBytes + skill.contentSizeBytes > config.maxTotalBytes) continue;
+      const contentSizeBytes = getSkillContentSizeBytes(skill);
+      if (totalBytes + contentSizeBytes > config.maxTotalBytes) continue;
 
       selected.push(skill);
-      totalBytes += skill.contentSizeBytes;
+      totalBytes += contentSizeBytes;
     }
 
     return selected;

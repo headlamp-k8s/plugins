@@ -34,6 +34,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AI_ASSISTANT_ICON } from '../../../icons/aiAssistantIcon';
 
 /** Props for {@link InlineToolConfirmation}. */
 export interface InlineToolConfirmationProps {
@@ -453,20 +454,19 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
             {/* Show intelligent fill indicator */}
             {processedArgs.intelligentFills[fieldName] && (
               <Tooltip
-                title={t('AI-suggested: {{reason}} (Confidence: {{confidence}}%)', {
+                title={t('AI-suggested: {{reason}}. Review this value before approval.', {
                   reason: processedArgs.intelligentFills[fieldName].reason,
-                  confidence: Math.round(
-                    processedArgs.intelligentFills[fieldName].confidence * 100
-                  ),
                 })}
                 placement="top"
               >
                 <Chip
-                  label={t('AI-filled')}
+                  label={t('AI-suggested')}
                   size="small"
-                  color="success"
+                  color="info"
                   variant="outlined"
-                  icon={<Icon icon="mdi:brain" style={{ fontSize: 14 }} />}
+                  icon={
+                    <Icon icon={AI_ASSISTANT_ICON} style={{ fontSize: 14 }} aria-hidden="true" />
+                  }
                 />
               </Tooltip>
             )}
@@ -491,12 +491,12 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
               <Typography variant="caption">
                 <strong>{t('AI Analysis:')}</strong>{' '}
                 {processedArgs.intelligentFills[fieldName].reason}
-                {processedArgs.intelligentFills[fieldName].confidence < 0.8 && (
+                {
                   <>
                     {' '}
                     • <em>{t('Please verify this value')}</em>
                   </>
-                )}
+                }
               </Typography>
             </Alert>
           )}
@@ -587,9 +587,13 @@ const InlineToolConfirmation: React.FC<InlineToolConfirmationProps> = ({
       <CardContent sx={{ pb: 1 }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Icon icon="mdi:shield-check" style={{ color: theme.palette.primary.main }} />
+          <Icon
+            icon="mdi:shield-outline"
+            style={{ color: theme.palette.primary.main }}
+            aria-hidden="true"
+          />
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-            {t('Tool Execution Required')}
+            {t('Review tool actions')}
           </Typography>
           <Chip
             label={t('{{count}} tool', { count: toolCalls.length })}

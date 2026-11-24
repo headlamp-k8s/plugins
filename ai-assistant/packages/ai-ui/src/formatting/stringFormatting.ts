@@ -12,3 +12,22 @@ export function formatString(template: string, ...args: unknown[]): string {
     return value === undefined ? match : String(value);
   });
 }
+
+/**
+ * Converts a name into a filesystem-safe file name segment.
+ *
+ * Unsafe character runs become `-`, and leading/trailing dashes are trimmed
+ * with loops because `/^-+|-+$/g` is quadratic on long dash runs.
+ *
+ * @param name - Name to sanitize.
+ * @param fallback - Value returned when nothing safe remains.
+ * @returns Safe file name segment, or `fallback`.
+ */
+export function toSafeFileName(name: string, fallback: string): string {
+  const replaced = name.replace(/[^a-zA-Z0-9._-]+/g, '-');
+  let start = 0;
+  let end = replaced.length;
+  while (start < end && replaced[start] === '-') start++;
+  while (end > start && replaced[end - 1] === '-') end--;
+  return replaced.slice(start, end) || fallback;
+}

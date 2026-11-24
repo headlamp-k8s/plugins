@@ -47,10 +47,28 @@ describe('getToolDescription', () => {
       expect(desc).toContain('containers');
     });
 
-    it('returns generic Inspektor Gadget fallback for unknown MCP tools', () => {
+    it('returns a generic MCP fallback for unknown MCP tools (no catalog description)', () => {
       const desc = getToolDescription('gadget__some_unknown_tool', true);
-      expect(desc).toContain('Inspektor Gadget');
+      expect(desc).toContain('MCP tool');
       expect(desc).toContain('gadget__some_unknown_tool');
+      expect(desc).not.toContain('Inspektor Gadget');
+    });
+
+    it('prefers the catalog description over keyword heuristics when provided', () => {
+      // A Flux tool whose name contains 'run' would normally match the exec/run heuristic,
+      // but a catalog description provided by the MCP server should win.
+      const desc = getToolDescription(
+        'flux__run_reconcile',
+        true,
+        'Reconcile a Flux Kustomization object'
+      );
+      expect(desc).toBe('Reconcile a Flux Kustomization object');
+    });
+
+    it('falls through to keyword heuristics when catalogDescription is an empty string', () => {
+      // An empty string is falsy, so the keyword heuristics should still apply.
+      const desc = getToolDescription('gadget__trace_open', true, '');
+      expect(desc).toContain('Traces');
     });
   });
 

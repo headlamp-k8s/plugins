@@ -1,11 +1,14 @@
 import type { KubeOwnerReference } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { describe, expect, it } from 'vitest';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
+import type { KueueCondition } from './clusterQueue';
 import type { PodSet, WorkloadConditionLike } from './workload';
 import {
   findWorkloadCondition,
   getAdmissionFlavorNames,
+  getWorkloadBlocker,
   getWorkloadDetailRouteParams,
+  getWorkloadTimeline,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
   renderAdmissionSummary,
@@ -19,6 +22,7 @@ import {
   renderPriority,
   renderPriorityClassName,
   renderQueueName,
+  renderQueuePosition,
   renderReclaimablePodsSummary,
   renderRequeueState,
   renderResourceList,
@@ -26,6 +30,8 @@ import {
   renderText,
   renderTopologyAssignment,
   renderWorkloadStatus,
+  resolveAccumulatedPastExecutionTimeSeconds,
+  resolvePriorityClassName,
 } from './workloadFormatters';
 
 describe('Workload formatters', () => {
@@ -55,6 +61,39 @@ describe('Workload formatters', () => {
     expect(renderPriorityClassName()).toBe('-');
   });
 
+  it('resolves priority class name from either the v1beta2 or v1beta1 Workload shape', () => {
+    expect(resolvePriorityClassName({ priorityClassRef: { name: 'high-priority' } })).toBe(
+      'high-priority'
+    );
+    expect(resolvePriorityClassName({ priorityClassName: 'high-priority' })).toBe('high-priority');
+    expect(
+      resolvePriorityClassName({
+        priorityClassRef: { name: 'v1beta2-priority' },
+        priorityClassName: 'v1beta1-priority',
+      })
+    ).toBe('v1beta2-priority');
+    expect(resolvePriorityClassName({})).toBeUndefined();
+  });
+
+  it('resolves accumulated past execution time from either the v1beta2 or v1beta1 Workload shape', () => {
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExecutionTimeSeconds: 120 })
+    ).toBe(120);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExexcutionTimeSeconds: 120 })
+    ).toBe(120);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({ accumulatedPastExexcutionTimeSeconds: 0 })
+    ).toBe(0);
+    expect(
+      resolveAccumulatedPastExecutionTimeSeconds({
+        accumulatedPastExecutionTimeSeconds: 200,
+        accumulatedPastExexcutionTimeSeconds: 100,
+      })
+    ).toBe(200);
+    expect(resolveAccumulatedPastExecutionTimeSeconds({})).toBeUndefined();
+  });
+
   it('finds Workload conditions by type', () => {
     const conditions: WorkloadConditionLike[] = [
       { type: 'QuotaReserved', status: 'True' },
@@ -69,14 +108,12 @@ describe('Workload formatters', () => {
     expect(findWorkloadCondition(conditions, 'Finished')).toBeUndefined();
   });
 
-  it('derives admitted and finished display values from admission and conditions', () => {
-    expect(renderAdmittedStatus({ clusterQueue: 'sample-cluster-queue' })).toBe('Yes');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'True' }])).toBe('Yes');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'False' }])).toBe('No');
-    expect(renderAdmittedStatus(undefined, [{ type: 'Admitted', status: 'Unknown' }])).toBe(
-      'Unknown'
-    );
-    expect(renderAdmittedStatus()).toBe('Unknown');
+  it('derives admitted and finished display values from conditions', () => {
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'True' }])).toBe('Yes');
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'False' }])).toBe('No');
+    expect(renderAdmittedStatus([{ type: 'QuotaReserved', status: 'True' }])).toBe('No');
+    expect(renderAdmittedStatus([{ type: 'Admitted', status: 'Unknown' }])).toBe('Unknown');
+    expect(renderAdmittedStatus()).toBe('No');
 
     expect(renderFinishedStatus([{ type: 'Finished', status: 'True' }])).toBe('Yes');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'False' }])).toBe('No');
@@ -104,12 +141,35 @@ describe('Workload formatters', () => {
         true
       )
     ).toBe('Running');
-    expect(renderWorkloadStatus([{ type: 'Admitted', status: 'True' }], true)).toBe('Admitted');
     expect(
-      renderWorkloadStatus([], true, {
-        clusterQueue: 'sample-cluster-queue',
-      })
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'True' },
+        ],
+        true
+      )
+    ).toBe('Waiting for replacement pods');
+    expect(
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'PodsReady', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'True' },
+        ],
+        true
+      )
+    ).toBe('Running');
+    expect(
+      renderWorkloadStatus(
+        [
+          { type: 'Admitted', status: 'True' },
+          { type: 'WaitingForReplacementPods', status: 'False' },
+        ],
+        true
+      )
     ).toBe('Admitted');
+    expect(renderWorkloadStatus([{ type: 'Admitted', status: 'True' }], true)).toBe('Admitted');
     expect(renderWorkloadStatus([{ type: 'QuotaReserved', status: 'True' }], true)).toBe('Pending');
     expect(renderWorkloadStatus([{ type: 'Requeued', status: 'True' }], true)).toBe('Pending');
     expect(renderWorkloadStatus([{ type: 'Admitted', status: 'False' }], true)).toBe('Pending');
@@ -314,6 +374,417 @@ describe('Workload formatters', () => {
     expect(getWorkloadDetailRouteParams(undefined, undefined)).toEqual({
       namespace: '',
       name: '',
+    });
+  });
+
+  it('explains what is blocking a Workload from admission', () => {
+    const condition = (
+      type: string,
+      status: WorkloadConditionLike['status'],
+      reason?: string,
+      message?: string
+    ): WorkloadConditionLike => ({
+      type,
+      status,
+      reason,
+      message,
+    });
+
+    expect(getWorkloadBlocker([condition('Finished', 'True')])).toBeNull();
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'True')])
+    ).toBeNull();
+
+    expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
+    ).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('Evicted', 'True', 'Deactivated')], [], undefined, false)?.stage
+    ).toBe('Deactivated');
+    expect(
+      getWorkloadBlocker(
+        [condition('Evicted', 'True', 'DeactivatedDueToAdmissionCheck', 'check rejected')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'bad-check', state: 'Pending', message: 'Reset to Pending after eviction' },
+        ],
+        undefined,
+        false
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'DeactivatedDueToAdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [
+        { name: 'bad-check', state: 'Pending', message: 'Reset to Pending after eviction' },
+      ],
+    });
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('Admitted', 'True'),
+          condition('DeactivationTarget', 'True', 'AdmissionCheck', 'check rejected'),
+        ],
+        [{ name: 'bad-check', state: 'Rejected' }]
+      )
+    ).toMatchObject({
+      stage: 'Deactivated',
+      reason: 'AdmissionCheck',
+      message: 'check rejected',
+      pendingAdmissionChecks: [{ name: 'bad-check', state: 'Rejected' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'False', 'NoMatchingFlavor', 'no flavor fits'),
+      ])
+    ).toMatchObject({
+      stage: 'Waiting for quota',
+      reason: 'NoMatchingFlavor',
+      message: 'no flavor fits',
+      explanation: expect.stringContaining('ResourceFlavor'),
+    });
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'SomethingNew')])?.explanation
+    ).toBeUndefined();
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'slow-check', state: 'Pending' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Admission checks',
+      explanation: expect.stringContaining('AdmissionCheck'),
+      pendingAdmissionChecks: [{ name: 'slow-check', state: 'Pending' }],
+    });
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'True'),
+        condition('Admitted', 'False', 'UnsatisfiedChecks'),
+      ])?.explanation
+    ).toContain('AdmissionCheck');
+
+    expect(
+      getWorkloadBlocker([
+        condition('QuotaReserved', 'True'),
+        condition('Admitted', 'False', 'PendingDelayedTopologyRequests'),
+      ])
+    ).toMatchObject({
+      stage: 'Topology assignment',
+      explanation: expect.stringContaining('topology'),
+      pendingAdmissionChecks: [],
+    });
+
+    const delayedAdmission = {
+      clusterQueue: 'cq',
+      podSetAssignments: [{ name: 'main', delayedTopologyRequest: 'Pending' as const }],
+    };
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [{ name: 'ready-check', state: 'Ready' }],
+        undefined,
+        undefined,
+        delayedAdmission
+      )?.stage
+    ).toBe('Topology assignment');
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True')],
+        [{ name: 'slow-check', state: 'Pending' }],
+        undefined,
+        undefined,
+        delayedAdmission
+      )?.stage
+    ).toBe('Admission checks');
+
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'False', 'Waiting')])?.explanation
+    ).toContain('ready');
+
+    expect(
+      getWorkloadBlocker(
+        [
+          condition('QuotaReserved', 'False', 'Pending'),
+          condition('Evicted', 'True', 'PodsReadyTimeout', 'pods not ready'),
+        ],
+        [],
+        { count: 2, requeueAt: '2026-09-29T10:00:00Z' }
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      reason: 'PodsReadyTimeout',
+      requeueAt: '2026-09-29T10:00:00Z',
+    });
+
+    expect(
+      getWorkloadBlocker(
+        [condition('QuotaReserved', 'True'), condition('Evicted', 'True', 'AdmissionCheck')],
+        [
+          { name: 'ready-check', state: 'Ready' },
+          { name: 'retry-check', state: 'Retry' },
+        ]
+      )
+    ).toMatchObject({
+      stage: 'Evicted',
+      pendingAdmissionChecks: [{ name: 'retry-check', state: 'Retry' }],
+    });
+  });
+
+  describe('getWorkloadTimeline', () => {
+    const created = '2026-09-29T05:00:00Z';
+    const now = new Date('2026-09-29T06:00:00Z').getTime();
+    const at = (
+      type: string,
+      status: KueueCondition['status'],
+      lastTransitionTime: string,
+      reason?: string
+    ): KueueCondition => ({ type, status, lastTransitionTime, reason });
+    const states = (conditions: KueueCondition[]) =>
+      getWorkloadTimeline(created, conditions, undefined, now).steps.map(step => step.state);
+
+    it('marks a Workload with no conditions as waiting for quota since creation', () => {
+      const { steps, eviction } = getWorkloadTimeline(created, [], undefined, now);
+
+      expect(steps.map(step => step.label)).toEqual([
+        'Created',
+        'Quota reserved',
+        'Admitted',
+        'Pods ready',
+        'Finished',
+      ]);
+      expect(steps.map(step => step.state)).toEqual([
+        'done',
+        'current',
+        'pending',
+        'pending',
+        'pending',
+      ]);
+      expect(steps[1].durationMs).toBe(60 * 60 * 1000);
+      expect(eviction).toBeUndefined();
+    });
+
+    it('times each stage from the one before it', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:01:00Z'),
+          at('PodsReady', 'True', '2026-09-29T05:03:00Z'),
+          at('Finished', 'True', '2026-09-29T05:10:00Z', 'Succeeded'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps.map(step => step.state)).toEqual(['done', 'done', 'done', 'done', 'done']);
+      expect(steps.map(step => step.durationMs)).toEqual([
+        undefined,
+        60 * 1000,
+        0,
+        2 * 60 * 1000,
+        7 * 60 * 1000,
+      ]);
+    });
+
+    it('waits on Admitted while admission checks are pending', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:30:00Z'),
+          at('PodsReady', 'False', '2026-09-29T05:00:00Z', 'WaitForStart'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps.map(step => step.state)).toEqual([
+        'done',
+        'done',
+        'current',
+        'pending',
+        'pending',
+      ]);
+      expect(steps[2].durationMs).toBe(30 * 60 * 1000);
+      expect(steps[2].durationFrom).toBe('Quota reserved');
+    });
+
+    it('marks a failed Workload and the stages it never reached', () => {
+      expect(
+        states([
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:01:00Z'),
+          at('PodsReady', 'False', '2026-09-29T05:01:00Z', 'WaitForStart'),
+          at('Finished', 'True', '2026-09-29T05:02:00Z', 'Failed'),
+        ])
+      ).toEqual(['done', 'done', 'done', 'skipped', 'failed']);
+    });
+
+    it('marks a Workload that failed to start as failed', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:01:00Z'),
+          at('PodsReady', 'False', '2026-09-29T05:01:00Z', 'WaitForStart'),
+          at('Finished', 'True', '2026-09-29T05:02:00Z', 'FailedToStart'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps[4]).toMatchObject({ state: 'failed', reason: 'FailedToStart' });
+    });
+
+    it('moves on to Finished when Kueue reports no PodsReady condition', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:30:00Z'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps.map(step => step.state)).toEqual([
+        'done',
+        'done',
+        'done',
+        'untracked',
+        'current',
+      ]);
+      expect(steps[4]).toMatchObject({ durationMs: 30 * 60 * 1000, durationFrom: 'Admitted' });
+    });
+
+    it('keeps Pods ready reached when a recovering Workload then fails', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:01:00Z'),
+          at('PodsReady', 'False', '2026-09-29T05:40:00Z', 'WaitForRecovery'),
+          at('Finished', 'True', '2026-09-29T05:50:00Z', 'Failed'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps.map(step => step.state)).toEqual(['done', 'done', 'done', 'done', 'failed']);
+      expect(steps[3].time).toBeUndefined();
+      expect(steps[4]).toMatchObject({ durationMs: 49 * 60 * 1000, durationFrom: 'Admitted' });
+    });
+
+    it('counts the wait from the eviction once the Workload is back in the queue', () => {
+      const { steps, eviction } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'False', '2026-09-29T05:45:00Z', 'Pending'),
+          at('Evicted', 'True', '2026-09-29T05:45:00Z', 'PodsReadyTimeout'),
+          at('Admitted', 'False', '2026-09-29T05:45:00Z', 'NoReservation'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps[1]).toMatchObject({
+        state: 'current',
+        reason: 'Pending',
+        durationMs: 15 * 60 * 1000,
+        durationFrom: 'Evicted',
+      });
+      expect(eviction?.reason).toBe('PodsReadyTimeout');
+    });
+
+    it('counts a recovery wait from when the Pods lost readiness', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [
+          at('QuotaReserved', 'True', '2026-09-29T05:01:00Z'),
+          at('Admitted', 'True', '2026-09-29T05:01:00Z'),
+          at('PodsReady', 'False', '2026-09-29T05:59:00Z', 'WaitForRecovery'),
+        ],
+        undefined,
+        now
+      );
+
+      expect(steps[3]).toMatchObject({
+        state: 'current',
+        reason: 'WaitForRecovery',
+        durationMs: 60 * 1000,
+        durationFrom: 'readiness loss',
+      });
+    });
+
+    it('ignores durations that would run backwards', () => {
+      const { steps } = getWorkloadTimeline(
+        created,
+        [at('QuotaReserved', 'True', '2026-09-29T04:00:00Z')],
+        undefined,
+        now
+      );
+
+      expect(steps[1].durationMs).toBeUndefined();
+    });
+
+    it('marks the stage a deactivated Workload stopped at instead of waiting on it', () => {
+      const conditions = [at('QuotaReserved', 'True', '2026-09-29T05:01:00Z')];
+
+      const { steps } = getWorkloadTimeline(created, conditions, false, now);
+      expect(steps.map(step => step.state)).toEqual([
+        'done',
+        'done',
+        'deactivated',
+        'pending',
+        'pending',
+      ]);
+      expect(steps[2].durationMs).toBeUndefined();
+
+      expect(
+        getWorkloadTimeline(
+          created,
+          [...conditions, at('DeactivationTarget', 'True', '2026-09-29T05:30:00Z')],
+          true,
+          now
+        ).steps[2].state
+      ).toBe('deactivated');
+    });
+  });
+
+  describe('renderQueuePosition', () => {
+    const items = [
+      {
+        metadata: { name: 'head', namespace: 'team-a' },
+        positionInClusterQueue: 0,
+        positionInLocalQueue: 0,
+      },
+      {
+        metadata: { name: 'tail', namespace: 'team-a' },
+        positionInClusterQueue: 2,
+        positionInLocalQueue: 1,
+      },
+    ];
+
+    it('reports one-based positions in both queues', () => {
+      expect(renderQueuePosition(items, 'head', 'team-a')).toBe(
+        '1 in its LocalQueue, 1 in its ClusterQueue'
+      );
+      expect(renderQueuePosition(items, 'tail', 'team-a')).toBe(
+        '2 in its LocalQueue, 3 in its ClusterQueue'
+      );
+    });
+
+    it('returns null when the Workload is not listed', () => {
+      expect(renderQueuePosition(items, 'tail', 'team-b')).toBeNull();
+      expect(renderQueuePosition(items, 'missing', 'team-a')).toBeNull();
+      expect(renderQueuePosition(undefined, 'head', 'team-a')).toBeNull();
     });
   });
 });
