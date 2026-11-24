@@ -459,6 +459,23 @@ function yamlObjectKinds(lines: string[]): {
   let dashColumn: number | null = null;
 
   for (const line of lines) {
+    // A `-` alone on its line starts an item whose key column is the one of
+    // its first key, on the next line.
+    const dashOnlyMatch = line.match(/^(\s*)-\s*$/);
+    if (dashOnlyMatch) {
+      const lineIndent = dashOnlyMatch[1].length;
+      if (
+        itemsColumn !== null &&
+        (dashColumn === null ? lineIndent >= itemsColumn : lineIndent === dashColumn)
+      ) {
+        dashColumn = lineIndent;
+        kinds.push(null);
+        keyColumns.push(null);
+        current = kinds.length - 1;
+      }
+      objectOfLine.push(current);
+      continue;
+    }
     const keyMatch = line.match(/^(\s*)(-\s+)?([^\s#].*)$/);
     if (keyMatch) {
       const isItem = keyMatch[2] !== undefined;

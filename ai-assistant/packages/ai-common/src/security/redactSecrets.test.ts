@@ -583,6 +583,34 @@ namespace: default`;
     expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"settings"}}');
   });
 
+  it('redacts a List item that starts with a dash on its own line', () => {
+    const list = [
+      'apiVersion: v1',
+      'kind: List',
+      'items:',
+      '-',
+      '  apiVersion: v1',
+      '  kind: Secret',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"data":{"DATABASE_URL":"cG9zdGdyZXM6Ly8="},"kind":"Secret"}',
+      '    name: db',
+      '-',
+      '  apiVersion: v1',
+      '  kind: ConfigMap',
+      '  metadata:',
+      '    annotations:',
+      '      kubectl.kubernetes.io/last-applied-configuration: |',
+      '        {"kind":"ConfigMap","metadata":{"name":"settings"}}',
+      '    name: settings',
+    ].join('\n');
+    const out = redactSecrets(list);
+    expect(out).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(out).toContain('{"kind":"ConfigMap","metadata":{"name":"settings"}}');
+    expect(out).toContain('    name: db');
+  });
+
   it('redacts the last-applied-configuration annotation of a CRLF YAML Secret', () => {
     const secret = [
       'apiVersion: v1',
