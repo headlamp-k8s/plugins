@@ -1,0 +1,53 @@
+# Sample workloads that trigger reports for the policies above.
+#
+# ms-pod-pass: has both "app" and "owner" labels.
+#   - ms-require-app-label   -> pass   (green node, one incoming edge)
+#   - ms-require-owner-label -> pass   (green node from the Policy side)
+#
+# ms-pod-no-owner: has "app" but no "owner" label.
+#   - ms-require-app-label   -> pass
+#   - ms-require-owner-label -> fail
+#   This Pod exercises the deduplication path: it appears as ONE resource node
+#   in the Map with two edges coming in (one from each policy).
+#
+# ms-pod-no-labels: has neither label.
+#   - ms-require-app-label   -> fail   (red node)
+#   - ms-require-owner-label -> fail
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ms-pod-pass
+  namespace: map-source-test
+  labels:
+    app: ms-test
+    owner: team-a
+spec:
+  containers:
+    - name: sleep
+      image: busybox:1.35
+      command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ms-pod-no-owner
+  namespace: map-source-test
+  labels:
+    app: ms-test
+spec:
+  containers:
+    - name: sleep
+      image: busybox:1.35
+      command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ms-pod-no-labels
+  namespace: map-source-test
+spec:
+  containers:
+    - name: sleep
+      image: busybox:1.35
+      command: ["sleep", "3600"]

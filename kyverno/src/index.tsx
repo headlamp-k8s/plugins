@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+import { Icon } from '@iconify/react';
 import {
   registerAppBarAction,
+  registerKindIcon,
+  registerKubeObjectGlance,
+  registerMapSource,
   registerPluginSettings,
   registerRoute,
   registerSidebarEntry,
@@ -41,6 +45,7 @@ import {
   NamespacedImageValidatingPolicyList,
 } from './components/ImageValidatingPolicyList';
 import { KyvernoReportList } from './components/KyvernoReportList';
+import { kyvernoMapSource, KyvernoPolicyGlance } from './components/mapSource';
 import { PolicyExceptionList } from './components/PolicyExceptionList';
 import { PolicyList } from './components/PolicyList';
 import { PolicyReportList } from './components/PolicyReportList';
@@ -357,3 +362,33 @@ registerKyvernoPage({
 
 // --- App Bar ---
 registerAppBarAction(ComplianceBadge);
+
+// --- Map view ---
+// Register kind icons scoped to kyverno.io so only Kyverno's ClusterPolicy and
+// Policy CRDs get this logo, not unrelated CRDs that share the same kind name.
+// SDK 0.13 types don't expose the optional apiGroup parameter; cast to allow it.
+type KindIconFn = (
+  kind: string,
+  def: { icon: JSX.Element; color: string },
+  apiGroup?: string
+) => void;
+(registerKindIcon as KindIconFn)(
+  'ClusterPolicy',
+  { icon: <Icon icon="kyverno:logo" />, color: '#326CE5' },
+  'kyverno.io'
+);
+(registerKindIcon as KindIconFn)(
+  'Policy',
+  { icon: <Icon icon="kyverno:logo" />, color: '#326CE5' },
+  'kyverno.io'
+);
+
+// Hover glance for ClusterPolicy and Policy nodes anywhere in the Map.
+registerKubeObjectGlance({
+  id: 'kyverno-policy-glance',
+  component: KyvernoPolicyGlance,
+});
+
+// Register Kyverno policies (ClusterPolicy + Policy) as Map view nodes,
+// with edges to the resources each policy has evaluated.
+registerMapSource(kyvernoMapSource);

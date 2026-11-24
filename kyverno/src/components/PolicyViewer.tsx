@@ -46,6 +46,7 @@ interface PolicyViewerProps {
   name: string;
   namespace?: string;
   isClusterScoped?: boolean;
+  cluster?: string;
 }
 
 // Well-known Kyverno annotation keys
@@ -262,25 +263,36 @@ type AssociatedReportResult = PolicyReportResult & {
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
+  cluster,
 }: {
   policyName: string;
   policyNamespace?: string;
+  cluster?: string;
 }) {
   return policyNamespace ? (
-    <NamespacedAssociatedReports policyName={policyName} policyNamespace={policyNamespace} />
+    <NamespacedAssociatedReports
+      policyName={policyName}
+      policyNamespace={policyNamespace}
+      cluster={cluster}
+    />
   ) : (
-    <ClusterAssociatedReports policyName={policyName} />
+    <ClusterAssociatedReports policyName={policyName} cluster={cluster} />
   );
 }
 
 function NamespacedAssociatedReports({
   policyName,
   policyNamespace,
+  cluster,
 }: {
   policyName: string;
   policyNamespace: string;
+  cluster?: string;
 }) {
-  const { items: policyReports } = PolicyReport.useList({ namespace: policyNamespace });
+  const { items: policyReports, errors: policyReportErrors } = PolicyReport.useList({
+    namespace: policyNamespace,
+    cluster,
+  });
   return (
     <AssociatedReportsBody
       policyName={policyName}
@@ -290,19 +302,30 @@ function NamespacedAssociatedReports({
       // holds results for cluster-scoped resources, a namespaced Policy can't match any, so an
       // empty list here is the real, complete answer, not a placeholder waiting on a request.
       clusterPolicyReports={[]}
+      queryErrors={policyReportErrors}
     />
   );
 }
 
-function ClusterAssociatedReports({ policyName }: { policyName: string }) {
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+function ClusterAssociatedReports({
+  policyName,
+  cluster,
+}: {
+  policyName: string;
+  cluster?: string;
+}) {
+  const { items: policyReports, errors: prErrors } = PolicyReport.useList({ cluster });
+  const { items: clusterPolicyReports, errors: cprErrors } = ClusterPolicyReport.useList({
+    cluster,
+  });
+  const queryErrors = [...(prErrors ?? []), ...(cprErrors ?? [])];
   return (
     <AssociatedReportsBody
       policyName={policyName}
       policyNamespace={undefined}
       policyReports={policyReports}
       clusterPolicyReports={clusterPolicyReports}
+      queryErrors={queryErrors.length > 0 ? queryErrors : null}
     />
   );
 }
@@ -312,13 +335,29 @@ function AssociatedReportsBody({
   policyNamespace,
   policyReports,
   clusterPolicyReports,
+  queryErrors,
 }: {
   policyName: string;
   policyNamespace?: string;
   policyReports: PolicyReport[] | null;
   clusterPolicyReports: ClusterPolicyReport[] | null;
+  queryErrors?: Array<{ message: string }> | null;
 }) {
   const { t } = useTranslation();
+
+  // Surface the first fetch error instead of spinning forever. Without this,
+  // a namespaced-only RBAC identity that is forbidden the PolicyReport list
+  // gets items === null indefinitely and the section never leaves the spinner.
+  const firstError = queryErrors?.find(Boolean);
+  if (firstError && (policyReports === null || clusterPolicyReports === null)) {
+    return (
+      <SectionBox title={t('Associated Report Results')}>
+        <Typography color="error" variant="body2" sx={{ py: 1 }}>
+          {firstError.message}
+        </Typography>
+      </SectionBox>
+    );
+  }
 
   // Wait for BOTH streams before rendering — otherwise we'd briefly show a
   // partial result set as soon as the first list resolves.
@@ -457,6 +496,7 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
   const { t } = useTranslation();
   const annotations = policy.jsonData.metadata.annotations;
   const labels = policy.jsonData.metadata.labels;
+  const cluster: string | undefined = policy.cluster || undefined;
 
   return (
     <Box sx={{ p: 2 }}>
@@ -514,20 +554,23 @@ function PolicyContent({ policy }: { policy: KyvernoPolicy | KyvernoClusterPolic
         policyName={policy.jsonData.metadata.name}
         policyNamespace={policy.jsonData.metadata.namespace}
         rules={policy.rules}
+        autogenRules={policy.status?.autogen?.rules}
+        cluster={cluster}
       />
       <AssociatedReportsSection
         policyName={policy.jsonData.metadata.name}
         policyNamespace={policy.jsonData.metadata.namespace}
+        cluster={cluster}
       />
       <YamlSection jsonData={policy.jsonData} />
     </Box>
   );
 }
 
-export function PolicyViewer({ name, namespace, isClusterScoped }: PolicyViewerProps) {
+export function PolicyViewer({ name, namespace, isClusterScoped, cluster }: PolicyViewerProps) {
   const { t } = useTranslation();
   const ResourceClass = isClusterScoped ? KyvernoClusterPolicy : KyvernoPolicy;
-  const [policy, error] = ResourceClass.useGet(name, namespace);
+  const [policy, error] = ResourceClass.useGet(name, namespace, cluster ? { cluster } : undefined);
 
   if (error) {
     return (
