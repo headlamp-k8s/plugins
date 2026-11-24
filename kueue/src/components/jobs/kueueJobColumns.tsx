@@ -37,7 +37,7 @@ export const processJobsTableColumns: TableColumnsProcessor['processor'] = ({ id
     {
       id: QUEUE_COLUMN_ID,
       label: 'Queue',
-      gridTemplate: 'min-content',
+      gridTemplate: 'auto',
       getValue: (job: KubeObject) => getQueueName(job) ?? '',
       render: (job: KubeObject) =>
         renderLocalQueueLink(getQueueName(job), job.metadata.namespace, job.cluster),
@@ -45,7 +45,7 @@ export const processJobsTableColumns: TableColumnsProcessor['processor'] = ({ id
     {
       id: STATUS_COLUMN_ID,
       label: 'Kueue Status',
-      gridTemplate: 'min-content',
+      gridTemplate: 'auto',
       // The status comes from a Workload fetched in the cell, so it cannot be sorted or filtered.
       sort: false,
       disableFiltering: true,
