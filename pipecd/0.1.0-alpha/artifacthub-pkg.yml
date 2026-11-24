@@ -44,6 +44,6 @@ changes:
 annotations:
   headlamp/plugin/archive-url: >-
     https://github.com/headlamp-k8s/plugins/releases/download/pipecd-0.1.0-alpha/headlamp-k8s-pipecd-0.1.0-alpha.tar.gz
-  # Add headlamp/plugin/archive-checksum from the signed Actions build before merging this metadata.
+  headlamp/plugin/archive-checksum: SHA256:5bf27d6f09728902d60cd1069201cfb5c952209da8ebdc3812334ff7bfc4b46b
   headlamp/plugin/version-compat: ">=0.35"
   headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
