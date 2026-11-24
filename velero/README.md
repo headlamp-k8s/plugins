@@ -2,7 +2,8 @@
 
 Contextual Velero backup coverage for Headlamp ([issue #5198](https://github.com/kubernetes-sigs/headlamp/issues/5198)).
 
-Requires Headlamp 0.23 or newer for the plugin settings registration API.
+Requires Headlamp 0.31 or newer for the Map extension and cluster-scoped
+authorization APIs.
 
 ## What it does
 
@@ -82,7 +83,10 @@ On clusters without CSI/datamover CRDs (or backups that only save manifests), th
 
 ## RBAC
 
-Anyone browsing Velero needs read access to the custom resources. Create and pause stay hidden until a SelfSubjectAccessReview allows them for the signed-in user.
+Anyone browsing Velero needs read access to the custom resources. Create and pause
+stay hidden while SelfSubjectAccessReview runs and on explicit denial. If the
+review fails, the controls are shown and Kubernetes still enforces permissions
+on the create or patch request.
 
 These rules are for that user. They are not the permissions of the Velero controller, and the Headlamp service account does not need the write rules.
 
