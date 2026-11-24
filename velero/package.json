@@ -1,7 +1,7 @@
 {
   "name": "@headlamp-k8s/velero",
-  "version": "0.1.0-alpha",
-  "description": "Headlamp plugin for Velero — Phase 1 coverage panels on Deployment/StatefulSet/PVC/Namespace detail views, plus Phase 2 Schedules, Backups, and Restores sidebar views (read-only)",
+  "version": "0.2.0-alpha",
+  "description": "Headlamp plugin for Velero backup coverage, backup and restore creation, schedule management, storage and data movement details, health overview, and resource map",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
