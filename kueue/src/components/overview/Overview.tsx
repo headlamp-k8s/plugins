@@ -1,17 +1,21 @@
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { ClusterQueue } from '../../resources/clusterQueue';
 import { Workload } from '../../resources/workload';
-import KueueAdminResourceAccess from '../common/KueueAdminResourceAccess';
+import KueueAdminResourceAccess, {
+  KueueInstallationGate,
+} from '../common/KueueAdminResourceAccess';
 import { renderCohortLink } from '../common/KueueResourceLinks';
 
 export default function KueueOverview() {
+  // One installation gate for the page, so a cluster without Kueue gets one empty state.
   return (
-    <>
+    <KueueInstallationGate>
       <KueueAdminResourceAccess
         resourceClass={Workload}
         resourceLabel="Workloads"
         verb="list"
         accessDescription="Kueue Workloads are namespaced user workload resources."
+        installationChecked
       >
         <ResourceListView
           title="Blocked Workloads"
@@ -45,6 +49,7 @@ export default function KueueOverview() {
         resourceClass={ClusterQueue}
         resourceLabel="ClusterQueues"
         verb="list"
+        installationChecked
       >
         <ResourceListView
           title="ClusterQueues"
@@ -77,6 +82,6 @@ export default function KueueOverview() {
           ]}
         />
       </KueueAdminResourceAccess>
-    </>
+    </KueueInstallationGate>
   );
 }
