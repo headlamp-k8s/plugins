@@ -25,6 +25,7 @@ vi.mock('../api/pipecd', async importOriginal => {
 });
 
 const CONFIG = { baseURL: 'https://pipecd.example.com', apiKey: 'key' };
+const MESSAGES = { timedOut: 'timed out', tooManyPages: 'too many pages' };
 
 describe('listAllApplications', () => {
   afterEach(() => {
@@ -37,7 +38,7 @@ describe('listAllApplications', () => {
       .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c2' })
       .mockResolvedValueOnce({ applications: [appTerraformOutOfSync], cursor: '' });
 
-    const apps = await listAllApplications(CONFIG, { timedOut: 'timed out' });
+    const apps = await listAllApplications(CONFIG, MESSAGES);
 
     expect(apps.map(a => a.id)).toEqual([appKubernetesSynced.id, appTerraformOutOfSync.id]);
   });
@@ -49,21 +50,36 @@ describe('listAllApplications', () => {
       return { applications: [appKubernetesSynced], cursor: calls % 2 ? 'c1' : 'c2' };
     });
 
-    await listAllApplications(CONFIG, { timedOut: 'timed out' });
+    await listAllApplications(CONFIG, MESSAGES);
 
     expect(calls).toBe(3);
   });
 
-  it('gives up after a page limit when every cursor is new', async () => {
+  // A partial list must not pass for the whole one.
+  it('fails after the page limit when the server still has more', async () => {
     let calls = 0;
     vi.mocked(pipecdApi.listApplications).mockImplementation(async () => {
       calls++;
       return { applications: [appKubernetesSynced], cursor: `c${calls}` };
     });
 
-    const apps = await listAllApplications(CONFIG, { timedOut: 'timed out' });
-
+    await expect(listAllApplications(CONFIG, MESSAGES)).rejects.toThrow('too many pages');
     expect(calls).toBe(MAX_APPLICATION_PAGES);
-    expect(apps).toHaveLength(1);
+  });
+
+  it('returns the list when the last page arrives right at the limit', async () => {
+    let calls = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async () => {
+      calls++;
+      return {
+        applications:
+          calls === MAX_APPLICATION_PAGES ? [appTerraformOutOfSync] : [appKubernetesSynced],
+        cursor: calls === MAX_APPLICATION_PAGES ? '' : `c${calls}`,
+      };
+    });
+
+    const apps = await listAllApplications(CONFIG, MESSAGES);
+
+    expect(apps.map(a => a.id)).toEqual([appKubernetesSynced.id, appTerraformOutOfSync.id]);
   });
 });

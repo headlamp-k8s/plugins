@@ -16,7 +16,13 @@
 
 import { addIcon } from '@iconify/react';
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { ApplicationDetail } from '../components/ApplicationDetail';
+import { ApplicationList } from '../components/ApplicationList';
+import { DeploymentDetail } from '../components/DeploymentDetail';
+import { Overview } from '../components/Overview';
+import { SettingsPage } from '../components/SettingsPage';
 
 vi.mock('@iconify/react', () => ({
   addIcon: vi.fn(),
@@ -33,6 +39,20 @@ import '../index';
 
 function sidebarEntryNames(): string[] {
   return vi.mocked(registerSidebarEntry).mock.calls.map(call => call[0].name);
+}
+
+function sidebarEntry(name: string) {
+  return vi
+    .mocked(registerSidebarEntry)
+    .mock.calls.map(call => call[0])
+    .find(entry => entry.name === name);
+}
+
+function route(path: string) {
+  return vi
+    .mocked(registerRoute)
+    .mock.calls.map(call => call[0])
+    .find(r => r.path === path);
 }
 
 function routePaths(): string[] {
@@ -83,5 +103,60 @@ describe('plugin registration', () => {
     expect(vi.mocked(addIcon).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(registerSidebarEntry).mock.invocationCallOrder[0]
     );
+  });
+
+  it('adds PipeCD as a top-level entry in the cluster sidebar', () => {
+    const root = sidebarEntry('pipecd');
+
+    expect(root?.parent).toBeNull();
+    expect(root?.sidebar).toBe('IN-CLUSTER');
+  });
+
+  it.each([
+    ['pipecd-overview', '/pipecd/overview'],
+    ['pipecd-applications', '/pipecd/applications'],
+    ['pipecd-settings', '/pipecd/settings'],
+  ])('nests %s under PipeCD, pointing at %s', (name, url) => {
+    const entry = sidebarEntry(name);
+
+    expect(entry?.parent).toBe('pipecd');
+    expect(entry?.url).toBe(url);
+    expect(entry?.sidebar).toBe('IN-CLUSTER');
+  });
+
+  // Each sidebar entry must point at a registered route, or clicking it lands
+  // on Headlamp's not-found page.
+  it('registers a route for every sidebar link', () => {
+    const urls = vi.mocked(registerSidebarEntry).mock.calls.map(call => call[0].url);
+
+    for (const url of urls) {
+      expect(route(url as string)).toBeDefined();
+    }
+  });
+
+  it.each([
+    ['/pipecd/overview', 'pipecd-overview', Overview],
+    ['/pipecd/applications', 'pipecd-applications', ApplicationList],
+    ['/pipecd/settings', 'pipecd-settings', SettingsPage],
+    ['/pipecd/applications/:id', 'pipecd-applications', ApplicationDetail],
+    ['/pipecd/deployments/:id', 'pipecd-applications', DeploymentDetail],
+  ])('routes %s to its page and highlights %s', (path, sidebar, page) => {
+    const r = route(path);
+
+    expect(r?.sidebar).toBe(sidebar);
+    expect(r?.exact).toBe(true);
+    expect((r?.component as () => ReactElement)().type).toBe(page);
+  });
+
+  it('keeps every route behind authentication', () => {
+    for (const call of vi.mocked(registerRoute).mock.calls) {
+      expect(call[0].noAuthRequired).toBe(false);
+    }
+  });
+
+  it('gives every route a unique name', () => {
+    const names = vi.mocked(registerRoute).mock.calls.map(call => call[0].name);
+
+    expect(new Set(names).size).toBe(names.length);
   });
 });

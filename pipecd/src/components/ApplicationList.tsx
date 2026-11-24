@@ -121,6 +121,7 @@ export function ApplicationList(): JSX.Element {
         const collected = await listAllApplications(config, {
           signal,
           timedOut: t('The request timed out.'),
+          tooManyPages: t('The server sent too many pages of applications.'),
         });
         if (signal?.aborted) return;
         setApps(collected);

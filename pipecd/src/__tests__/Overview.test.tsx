@@ -31,7 +31,17 @@ import {
 
 // What the cluster holds for the piped label. Empty means no piped runs in it,
 // which is also what a cluster that forbids listing pods looks like.
-const cluster = vi.hoisted(() => ({ pods: [] as unknown[], configMaps: [] as unknown[] }));
+// `unlabelled` holds ConfigMaps without the chart labels, which only a lookup by
+// name finds.
+const cluster = vi.hoisted(() => ({
+  pods: [] as unknown[],
+  configMaps: [] as unknown[],
+  unlabelled: [] as unknown[],
+  // True while the labelled ConfigMap list has not arrived yet.
+  configMapsLoading: false,
+  // Each ConfigMap looked up by name, as `namespace/name`.
+  gets: [] as string[],
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   useTranslation: () => ({
@@ -41,15 +51,28 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   K8s: {
     ResourceClasses: {
       Pod: { useList: () => [cluster.pods.map(jsonData => ({ jsonData })), null] },
-      ConfigMap: { useList: () => [cluster.configMaps.map(jsonData => ({ jsonData })), null] },
+      ConfigMap: {
+        useList: () => [
+          cluster.configMapsLoading ? null : cluster.configMaps.map(jsonData => ({ jsonData })),
+          null,
+        ],
+        useGet: (name: string, namespace: string) => {
+          cluster.gets.push(`${namespace}/${name}`);
+          const found = [...cluster.configMaps, ...cluster.unlabelled].find(cm => {
+            const { metadata } = cm as { metadata: { name: string; namespace: string } };
+            return metadata.name === name && metadata.namespace === namespace;
+          });
+          return [found ? { jsonData: found } : null, null];
+        },
+      },
     },
   },
 }));
 
 /** Puts a piped pod for `pipedId` into the mocked cluster. */
-function runInCluster(pipedId: string, ready: boolean): void {
+function runInCluster(pipedId: string, ready: boolean, labelled = true): void {
   const name = `piped-${cluster.pods.length}`;
-  cluster.configMaps.push({
+  (labelled ? cluster.configMaps : cluster.unlabelled).push({
     metadata: { name, namespace: 'piped' },
     data: { 'piped-config.yaml': `kind: Piped\nspec:\n  pipedID: ${pipedId}\n` },
   });
@@ -160,6 +183,9 @@ describe('Overview', () => {
     pipecdApi.saveConfig({ baseURL: '', apiKey: '' });
     cluster.pods = [];
     cluster.configMaps = [];
+    cluster.unlabelled = [];
+    cluster.configMapsLoading = false;
+    cluster.gets = [];
     // An older server, unless a test says otherwise.
     vi.mocked(pipecdApi.listPipeds).mockRejectedValue(
       new pipecdApi.PipeCDApiError('unknown method ListPipeds', 12, '')
@@ -411,6 +437,35 @@ describe('Overview', () => {
     expect(screen.getByText('1 not running')).toBeTruthy();
   });
 
+  // The chart can use an existing ConfigMap (config.create=false), which need not
+  // carry the chart's labels.
+  it('finds a piped whose ConfigMap has no labels', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-prod-001', true, false);
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    const row = [...table.querySelectorAll('tr')].find(r => r.textContent?.includes('prod'))!;
+    await waitFor(() => {
+      expect(row.textContent).toContain('Running');
+    });
+    expect(screen.getByText('1 running in this cluster')).toBeTruthy();
+  });
+
+  it('does not look up ConfigMaps by name before the label search returns', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-prod-001', true);
+    cluster.configMapsLoading = true;
+
+    renderOverview();
+
+    await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(cluster.gets).toEqual([]);
+  });
+
   // A piped can run with no application or deployment yet; the cluster is the
   // only place that shows it exists.
   it('also lists a piped found only in the cluster', async () => {
@@ -647,6 +702,111 @@ describe('Overview', () => {
     expect(await screen.findByText(/could not be loaded: network down/)).toBeTruthy();
   });
 
+  // A wrong key, a key without access or a rate limit says nothing about the
+  // piped, so it must not look like the piped is simply absent.
+  it.each([
+    ['Unauthenticated', 16],
+    ['PermissionDenied', 7],
+    ['ResourceExhausted', 8],
+  ])('reports a cluster piped lookup that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-new', true);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-new') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: denied', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    expect(await screen.findByText(/could not be loaded:.*denied/)).toBeTruthy();
+  });
+
+  // PipeCD answers NotFound for a deleted piped and InvalidArgument for one in
+  // another project. Neither is one of this project's pipeds.
+  it.each([
+    ['NotFound', 5],
+    ['InvalidArgument', 3],
+  ])('quietly leaves out a cluster piped that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-new', true);
+    // Looked up in the same batch, so once it shows the lookup has finished.
+    runInCluster('piped-old-001', true);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-new') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('old-vm');
+    });
+    expect(table.textContent).not.toContain('piped-new');
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
+  });
+
+  // A timed-out lookup must be cancelled, or it stays open and the limit on
+  // lookups at a time no longer holds.
+  it('cancels a piped lookup that times out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      setupConfigured();
+      mockSuccess([]);
+      const signals: AbortSignal[] = [];
+      vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id, signal) => {
+        if (id !== 'piped-prod-001') return PIPEDS[id];
+        if (signal) signals.push(signal);
+        return new Promise<Piped>(() => {});
+      });
+
+      renderOverview();
+      await vi.advanceTimersByTimeAsync(31000);
+
+      expect(
+        await screen.findByText(/Some piped details could not be loaded: The request timed out\./)
+      ).toBeTruthy();
+      expect(signals).toHaveLength(1);
+      expect(signals[0].aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Without ListPipeds every piped is looked up on its own. A large project
+  // must not send all of those requests at once.
+  it('looks up at most five pipeds at a time', async () => {
+    setupConfigured();
+    const ids = Array.from({ length: 12 }, (_, i) => `piped-many-${i}`);
+    mockSuccess(ids.map((id, i) => deployment(`d${i}`, 1, 'DEPLOYMENT_SUCCESS', { pipedId: id })));
+    let active = 0;
+    let most = 0;
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      active++;
+      most = Math.max(most, active);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      active--;
+      return PIPEDS[id] ?? piped(id, id, 'v0.52.0', 1);
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    await waitFor(() => {
+      expect(table.textContent).toContain('piped-many-11');
+    });
+    for (const id of ids) {
+      expect(pipecdApi.getPiped).toHaveBeenCalledWith(expect.anything(), id, expect.anything());
+    }
+    expect(most).toBe(5);
+  });
+
   it('also lists pipeds that appear only in deployments', async () => {
     setupConfigured();
     mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS', { pipedId: 'piped-old-001' })]);
@@ -655,6 +815,48 @@ describe('Overview', () => {
 
     const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
     expect(table.textContent).toContain('old-vm');
+  });
+
+  // A recent deployment can name a piped that was since deleted or moved to
+  // another project. It is not one of this project's pipeds.
+  it.each([
+    ['NotFound', 5],
+    ['InvalidArgument', 3],
+  ])('leaves out a deployment piped that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS', { pipedId: 'piped-gone' })]);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-gone') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(table.textContent).toContain('prod');
+    expect(table.textContent).not.toContain('piped-gone');
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
+  });
+
+  // Its applications still point at it, so dropping the row would leave the
+  // Apps column short with nothing to say why.
+  it('keeps a piped that applications use even when it is not found', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-gcp-001') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', 5, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(table.textContent).toContain('piped-gcp-001');
+    expect(screen.getByText(/Some piped details could not be loaded/)).toBeTruthy();
   });
 
   it('still lists a piped whose details fail to load', async () => {
@@ -796,28 +998,33 @@ describe('Overview', () => {
   });
 
   it('shows one bar per hour for the last 24 hours', async () => {
-    setupConfigured();
-    mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS')]);
+    // Labels near a clock change get a zone name ("01–02 EST"), so pin the
+    // clock to mid-January, when no timezone changes its clocks.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 0, 15, 12, 30));
+    try {
+      setupConfigured();
+      mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS')]);
 
-    renderOverview();
-    await screen.findByText('1 synced');
+      renderOverview();
+      await screen.findByText('1 synced');
 
-    fireEvent.mouseDown(screen.getByLabelText('Time range'));
-    fireEvent.click(await screen.findByRole('option', { name: 'Last 24 hours' }));
+      fireEvent.mouseDown(screen.getByLabelText('Time range'));
+      fireEvent.click(await screen.findByRole('option', { name: 'Last 24 hours' }));
 
-    await waitFor(() => {
-      expect(cardOf('Deployments').textContent).toContain('/ hour');
-    });
-    expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(24);
+      await waitFor(() => {
+        expect(cardOf('Deployments').textContent).toContain('/ hour');
+      });
+      expect(screen.getAllByRole('img', { name: /deployments/ })).toHaveLength(24);
 
-    // Each bar is an hour, so it is labelled as a span such as "09–10".
-    const hourLabels = screen.getAllByText(/^\d{2}–\d{2}$/);
-    expect(hourLabels.length).toBe(8);
-    const currentHour = new Date().getHours();
-    const pad = (h: number): string => String(h).padStart(2, '0');
-    expect(
-      screen.getAllByRole('img', { name: /deployments/ })[23].getAttribute('aria-label')
-    ).toContain(`${pad(currentHour)}–${pad((currentHour + 1) % 24)}`);
+      // Each bar is an hour, so it is labelled as a span such as "09–10".
+      expect(screen.getAllByText(/^\d{2}–\d{2}$/)).toHaveLength(8);
+      expect(
+        screen.getAllByRole('img', { name: /deployments/ })[23].getAttribute('aria-label')
+      ).toContain('12–13');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // The breakdown is in a hover tooltip, so the bar itself must carry it for
