@@ -21,6 +21,7 @@ import {
   PIPED_LABEL_SELECTOR,
   pipedIdFromConfig,
   type PodLike,
+  unlistedConfigMaps,
 } from '../utils/pipedPods';
 
 // The shape the PipeCD Helm chart writes.
@@ -132,5 +133,34 @@ describe('clusterPipeds', () => {
     );
 
     expect(result.size).toBe(0);
+  });
+});
+
+describe('unlistedConfigMaps', () => {
+  it('lists the ConfigMaps pods mount that are not in the list, once each', () => {
+    const result = unlistedConfigMaps(
+      [
+        pod('piped-1', 'piped', 'piped', RUNNING),
+        pod('piped-2', 'piped', 'own-config', RUNNING),
+        pod('piped-3', 'piped', 'own-config', RUNNING),
+        pod('piped-4', 'other', 'piped', RUNNING),
+      ],
+      [configMap('piped', 'piped', CONFIG)]
+    );
+
+    expect(result).toEqual([
+      { namespace: 'piped', name: 'own-config' },
+      { namespace: 'other', name: 'piped' },
+    ]);
+  });
+
+  it('skips a pod that already mounts a listed ConfigMap', () => {
+    const withExtras: PodLike = {
+      metadata: { name: 'piped-1', namespace: 'piped' },
+      spec: { volumes: [{ configMap: { name: 'piped' } }, { configMap: { name: 'ca-bundle' } }] },
+      status: RUNNING,
+    };
+
+    expect(unlistedConfigMaps([withExtras], [configMap('piped', 'piped', CONFIG)])).toEqual([]);
   });
 });

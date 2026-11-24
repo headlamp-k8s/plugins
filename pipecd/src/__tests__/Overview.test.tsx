@@ -31,7 +31,17 @@ import {
 
 // What the cluster holds for the piped label. Empty means no piped runs in it,
 // which is also what a cluster that forbids listing pods looks like.
-const cluster = vi.hoisted(() => ({ pods: [] as unknown[], configMaps: [] as unknown[] }));
+// `unlabelled` holds ConfigMaps without the chart labels, which only a lookup by
+// name finds.
+const cluster = vi.hoisted(() => ({
+  pods: [] as unknown[],
+  configMaps: [] as unknown[],
+  unlabelled: [] as unknown[],
+  // True while the labelled ConfigMap list has not arrived yet.
+  configMapsLoading: false,
+  // Each ConfigMap looked up by name, as `namespace/name`.
+  gets: [] as string[],
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   useTranslation: () => ({
@@ -41,15 +51,28 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   K8s: {
     ResourceClasses: {
       Pod: { useList: () => [cluster.pods.map(jsonData => ({ jsonData })), null] },
-      ConfigMap: { useList: () => [cluster.configMaps.map(jsonData => ({ jsonData })), null] },
+      ConfigMap: {
+        useList: () => [
+          cluster.configMapsLoading ? null : cluster.configMaps.map(jsonData => ({ jsonData })),
+          null,
+        ],
+        useGet: (name: string, namespace: string) => {
+          cluster.gets.push(`${namespace}/${name}`);
+          const found = [...cluster.configMaps, ...cluster.unlabelled].find(cm => {
+            const { metadata } = cm as { metadata: { name: string; namespace: string } };
+            return metadata.name === name && metadata.namespace === namespace;
+          });
+          return [found ? { jsonData: found } : null, null];
+        },
+      },
     },
   },
 }));
 
 /** Puts a piped pod for `pipedId` into the mocked cluster. */
-function runInCluster(pipedId: string, ready: boolean): void {
+function runInCluster(pipedId: string, ready: boolean, labelled = true): void {
   const name = `piped-${cluster.pods.length}`;
-  cluster.configMaps.push({
+  (labelled ? cluster.configMaps : cluster.unlabelled).push({
     metadata: { name, namespace: 'piped' },
     data: { 'piped-config.yaml': `kind: Piped\nspec:\n  pipedID: ${pipedId}\n` },
   });
@@ -160,6 +183,9 @@ describe('Overview', () => {
     pipecdApi.saveConfig({ baseURL: '', apiKey: '' });
     cluster.pods = [];
     cluster.configMaps = [];
+    cluster.unlabelled = [];
+    cluster.configMapsLoading = false;
+    cluster.gets = [];
     // An older server, unless a test says otherwise.
     vi.mocked(pipecdApi.listPipeds).mockRejectedValue(
       new pipecdApi.PipeCDApiError('unknown method ListPipeds', 12, '')
@@ -409,6 +435,35 @@ describe('Overview', () => {
     expect(row('staging').textContent).toContain('—');
     expect(screen.getByText('1 running in this cluster')).toBeTruthy();
     expect(screen.getByText('1 not running')).toBeTruthy();
+  });
+
+  // The chart can use an existing ConfigMap (config.create=false), which need not
+  // carry the chart's labels.
+  it('finds a piped whose ConfigMap has no labels', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-prod-001', true, false);
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    const row = [...table.querySelectorAll('tr')].find(r => r.textContent?.includes('prod'))!;
+    await waitFor(() => {
+      expect(row.textContent).toContain('Running');
+    });
+    expect(screen.getByText('1 running in this cluster')).toBeTruthy();
+  });
+
+  it('does not look up ConfigMaps by name before the label search returns', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    runInCluster('piped-prod-001', true);
+    cluster.configMapsLoading = true;
+
+    renderOverview();
+
+    await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(cluster.gets).toEqual([]);
   });
 
   // A piped can run with no application or deployment yet; the cluster is the
@@ -760,6 +815,48 @@ describe('Overview', () => {
 
     const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
     expect(table.textContent).toContain('old-vm');
+  });
+
+  // A recent deployment can name a piped that was since deleted or moved to
+  // another project. It is not one of this project's pipeds.
+  it.each([
+    ['NotFound', 5],
+    ['InvalidArgument', 3],
+  ])('leaves out a deployment piped that fails with %s', async (_name, code) => {
+    setupConfigured();
+    mockSuccess([deployment('d1', 1, 'DEPLOYMENT_SUCCESS', { pipedId: 'piped-gone' })]);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-gone') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', code, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(table.textContent).toContain('prod');
+    expect(table.textContent).not.toContain('piped-gone');
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
+  });
+
+  // Its applications still point at it, so dropping the row would leave the
+  // Apps column short with nothing to say why.
+  it('keeps a piped that applications use even when it is not found', async () => {
+    setupConfigured();
+    mockSuccess([]);
+    vi.mocked(pipecdApi.getPiped).mockImplementation(async (_config, id) => {
+      if (id === 'piped-gcp-001') {
+        throw new pipecdApi.PipeCDApiError('PipeCD API error calling GetPiped: gone', 5, '');
+      }
+      return PIPEDS[id];
+    });
+
+    renderOverview();
+
+    const table = await screen.findByRole('table', { name: 'pipecd-pipeds-table' });
+    expect(table.textContent).toContain('piped-gcp-001');
+    expect(screen.getByText(/Some piped details could not be loaded/)).toBeTruthy();
   });
 
   it('still lists a piped whose details fail to load', async () => {
