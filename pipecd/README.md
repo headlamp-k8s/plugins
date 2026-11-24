@@ -2,6 +2,8 @@
 
 > **Status: alpha.** This plugin is new and still changing.
 
+Requires Headlamp 0.35 or newer for the plugin translation API.
+
 [PipeCD](https://pipecd.dev/) is a continuous delivery tool for Kubernetes,
 Terraform, Cloud Run, Lambda and ECS. This plugin shows your PipeCD
 applications inside Headlamp, so you can check what was deployed without

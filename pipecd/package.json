@@ -1,7 +1,7 @@
 {
   "name": "@headlamp-k8s/pipecd",
-  "version": "0.1.0",
-  "description": "A UI for viewing PipeCD application sync status and deployment history alongside your Kubernetes resources",
+  "version": "0.1.0-alpha",
+  "description": "A Headlamp UI for PipeCD pipeds, applications, deployments, pipeline stage logs, and application sync",
   "scripts": {
     "start": "headlamp-plugin start",
     "build": "headlamp-plugin build",
