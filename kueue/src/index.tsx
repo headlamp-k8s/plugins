@@ -18,6 +18,8 @@ import { processJobsTableColumns } from './components/jobs/kueueJobColumns';
 import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
+import MultiKueueConfigDetail from './components/multikueueconfigs/Detail';
+import MultiKueueConfigList from './components/multikueueconfigs/List';
 import KueueOverview from './components/overview/Overview';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
@@ -69,6 +71,13 @@ registerSidebarEntry({
   name: 'kueue-localqueues',
   label: 'LocalQueues',
   url: kueueRoutePaths.localQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-multikueueconfigs',
+  label: 'MultiKueueConfigs',
+  url: kueueRoutePaths.multiKueueConfigsList,
 });
 
 registerSidebarEntry({
@@ -155,6 +164,22 @@ registerRoute({
   name: kueueRouteNames.localQueueDetail,
   exact: true,
   component: () => <LocalQueueDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigsList,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigsList,
+  exact: true,
+  component: () => <MultiKueueConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigDetail,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigDetail,
+  exact: true,
+  component: () => <MultiKueueConfigDetail />,
 });
 
 registerRoute({
