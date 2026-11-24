@@ -35,6 +35,44 @@ describe('getSubResourceHealth', () => {
     expect(getSubResourceHealth('Job', { status: { active: 1 } }).label).toBe('Running');
   });
 
+  it('maps each state of a Ready condition separately', () => {
+    const withReady = (status?: string) => ({
+      status: { conditions: [{ type: 'Ready', ...(status === undefined ? {} : { status }) }] },
+    });
+
+    expect(getSubResourceHealth('Widget', withReady('True'))).toEqual({
+      status: 'success',
+      label: 'Ready',
+    });
+    expect(getSubResourceHealth('Widget', withReady('False'))).toEqual({
+      status: 'error',
+      label: 'Not Ready',
+    });
+    // Unknown means still reconciling, not failed.
+    expect(getSubResourceHealth('Widget', withReady('Unknown'))).toEqual({
+      status: 'warning',
+      label: 'Reconciling',
+    });
+    // A Ready condition with no status yet is treated the same way.
+    expect(getSubResourceHealth('Widget', withReady())).toEqual({
+      status: 'warning',
+      label: 'Reconciling',
+    });
+  });
+
+  it('finds the Ready condition among other conditions', () => {
+    expect(
+      getSubResourceHealth('Widget', {
+        status: {
+          conditions: [
+            { type: 'Synced', status: 'True' },
+            { type: 'Ready', status: 'Unknown' },
+          ],
+        },
+      })
+    ).toEqual({ status: 'warning', label: 'Reconciling' });
+  });
+
   it('uses a Ready condition when present, else "Created", and never throws on junk', () => {
     expect(
       getSubResourceHealth('Widget', {

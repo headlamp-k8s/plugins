@@ -100,10 +100,16 @@ export function getSubResourceHealth(kind: string, resource: any): SubResourceHe
       // otherwise resources like ConfigMap/Service/Role are healthy by existing.
       const ready = findCondition(resource, 'Ready');
       if (ready) {
-        return {
-          status: ready.status === 'True' ? 'success' : 'error',
-          label: ready.status === 'True' ? 'Ready' : 'Not Ready',
-        };
+        // Conditions are tri-state. Only False means the resource is not
+        // ready; Unknown means the controller has not decided yet, so it is
+        // shown as in progress like the other kinds above, not as an error.
+        if (ready.status === 'True') {
+          return { status: 'success', label: 'Ready' };
+        }
+        if (ready.status === 'False') {
+          return { status: 'error', label: 'Not Ready' };
+        }
+        return { status: 'warning', label: 'Reconciling' };
       }
       return { status: 'success', label: 'Created' };
     }
