@@ -7,7 +7,18 @@ switching to the PipeCD console.
 
 ## Current state
 
-The plugin adds a PipeCD section to the sidebar with Applications and Settings.
+The plugin adds a PipeCD section to the sidebar with Overview, Applications and
+Settings.
+
+The Overview page opens first. It shows counts for pipeds, applications and
+deployments, the change failure rate, a chart of deployments over the last 24
+hours or 7, 14 or 30 days, a list of pipeds and the newest deployments. Click a
+deployment to open it.
+
+The full piped list, with online and offline status, needs a PipeCD server newer
+than v0.58.0. On an older server the Overview shows only the pipeds that have an
+application or a recent deployment. If a piped runs in the cluster Headlamp is
+showing, the Overview also says whether its pod is running.
 
 The Applications page lists your applications with their sync status, platform,
 last synced time and Git repository. You can search by name or repository, and

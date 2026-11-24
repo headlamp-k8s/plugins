@@ -122,6 +122,54 @@ describe('ApplicationList', () => {
     expect(await screen.findByText('api-service-prod')).toBeTruthy();
   });
 
+  it('lists an application only once when a later page repeats it', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({
+        applications: [appKubernetesSynced, appTerraformOutOfSync],
+        cursor: '',
+      });
+
+    renderList();
+    await screen.findByText('infra-staging');
+
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
+  it('keeps paging past a page of repeats that has a new cursor', async () => {
+    setupConfigured();
+    vi.mocked(pipecdApi.listApplications)
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c1' })
+      .mockResolvedValueOnce({ applications: [appKubernetesSynced], cursor: 'c2' })
+      .mockResolvedValueOnce({ applications: [appTerraformOutOfSync], cursor: '' });
+
+    renderList();
+
+    expect(await screen.findByText('infra-staging')).toBeTruthy();
+    expect(screen.getAllByText('frontend-prod')).toHaveLength(1);
+  });
+
+  it('stops paging when the server cycles through the same cursors', async () => {
+    setupConfigured();
+    let calls = 0;
+    vi.mocked(pipecdApi.listApplications).mockImplementation(async () => {
+      calls++;
+      return {
+        applications: [appKubernetesSynced],
+        cursor: calls % 2 ? 'c1' : 'c2',
+      };
+    });
+
+    renderList();
+    await screen.findByText('frontend-prod');
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('loading-skeleton')).toBeNull();
+    });
+    expect(calls).toBeLessThan(5);
+  });
+
   it('shows a status label for each sync state', async () => {
     setupConfigured();
     mockListSuccess();
