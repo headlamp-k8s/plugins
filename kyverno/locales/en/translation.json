@@ -125,6 +125,7 @@
   "Attestations ({{count}})_other": "Attestations ({{count}})",
   "Validations ({{count}})_one": "Validations ({{count}})",
   "Validations ({{count}})_other": "Validations ({{count}})",
+  "Failed to load policy totals: {{error}}": "Failed to load policy totals: {{error}}",
   "Failed to load policy: {{error}}": "Failed to load policy: {{error}}",
   "Owner": "Owner",
   "No data yet.": "No data yet.",
