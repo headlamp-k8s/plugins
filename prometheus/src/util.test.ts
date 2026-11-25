@@ -128,6 +128,123 @@ describe('getTimeRangeAndStepSize', () => {
       step: 320,
     });
   });
+
+  describe('calendar and refresh boundaries', () => {
+    const midnight = Date.parse('2023-11-14T00:00:00Z') / 1000;
+
+    function rangeAt(now: number, interval: string, resolution: string) {
+      vitest.mocked(Date.now).mockReturnValue(now * 1000);
+      return getTimeRangeAndStepSize(interval, resolution);
+    }
+
+    test.each([
+      ['low', 864],
+      ['medium', 345],
+      ['high', 115],
+      ['30s', 30],
+      ['1h', 3600],
+    ])('keeps yesterday on UTC day boundaries with %s resolution', (resolution, step) => {
+      expect(rangeAt(midnight - 1, 'yesterday', resolution)).toEqual({
+        from: midnight - 2 * day,
+        to: midnight - day,
+        step,
+      });
+      const previousDay = { from: midnight - day, to: midnight, step };
+      expect(rangeAt(midnight, 'yesterday', resolution)).toEqual(previousDay);
+      expect(rangeAt(midnight + 1, 'yesterday', resolution)).toEqual(previousDay);
+    });
+
+    test.each(['low', 'medium', 'high'])(
+      'starts today at UTC midnight with %s resolution',
+      resolution => {
+        expect(rangeAt(midnight, 'today', resolution)).toEqual({
+          from: midnight,
+          to: midnight,
+          step: 1,
+        });
+        expect(rangeAt(midnight + 1, 'today', resolution)).toEqual({
+          from: midnight,
+          to: midnight + 1,
+          step: 1,
+        });
+      }
+    );
+
+    test.each([
+      ['30s', 30, 1800],
+      ['1h', 3600, 0],
+    ])('aligns today with the %s fixed step', (resolution, step, endOffset) => {
+      const startOfDay = { from: midnight, to: midnight, step };
+      expect(rangeAt(midnight, 'today', resolution)).toEqual(startOfDay);
+      expect(rangeAt(midnight + 1, 'today', resolution)).toEqual(startOfDay);
+      expect(rangeAt(midnight + 1801, 'today', resolution)).toEqual({
+        from: midnight,
+        to: midnight + endOffset,
+        step,
+      });
+    });
+
+    test.each([
+      // Elapsed seconds at the step increase, then the expected last sample before it.
+      ['low', 32100, 32000, 320, 321],
+      ['medium', 80250, 80000, 320, 321],
+      ['high', 75000, 74943, 99, 100],
+    ])(
+      'advances today across a 10-second refresh at a %s step increase',
+      (resolution, transition, previousEnd, previousStep, nextStep) => {
+        expect(rangeAt(midnight + transition - 10, 'today', resolution)).toEqual({
+          from: midnight,
+          to: midnight + previousEnd,
+          step: previousStep,
+        });
+        expect(rangeAt(midnight + transition, 'today', resolution)).toEqual({
+          from: midnight,
+          to: midnight + transition,
+          step: nextStep,
+        });
+      }
+    );
+
+    test('keeps a relative range stable and shifts it by one step at the boundary', () => {
+      const firstRange = { from: midnight - 3600, to: midnight, step: 30 };
+      expect(rangeAt(midnight + 1, '1h', '30s')).toEqual(firstRange);
+      expect(rangeAt(midnight + 29, '1h', '30s')).toEqual(firstRange);
+      expect(rangeAt(midnight + 30, '1h', '30s')).toEqual({
+        from: midnight - 3570,
+        to: midnight + 30,
+        step: 30,
+      });
+    });
+
+    test('advances a relative range with a one-second step', () => {
+      expect(rangeAt(midnight, '1m', 'high')).toEqual({
+        from: midnight - 60,
+        to: midnight,
+        step: 1,
+      });
+      expect(rangeAt(midnight + 1, '1m', 'high')).toEqual({
+        from: midnight - 59,
+        to: midnight + 1,
+        step: 1,
+      });
+    });
+
+    test('keeps the historical lastweek range at UTC midnight', () => {
+      expect(rangeAt(midnight, 'lastweek', 'medium')).toEqual({
+        from: midnight - 14 * day,
+        to: midnight - 7 * day,
+        step: 2419,
+      });
+    });
+
+    test('falls back to a ten-minute relative range at medium resolution', () => {
+      expect(rangeAt(midnight + 3, 'invalid', 'invalid')).toEqual({
+        from: midnight - 598,
+        to: midnight + 2,
+        step: 2,
+      });
+    });
+  });
 });
 
 describe('supportsPrometheusMetrics', () => {

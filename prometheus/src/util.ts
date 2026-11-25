@@ -446,9 +446,11 @@ export function getTimeRangeAndStepSize(
     step = Math.max(Math.floor(rangeMs / factor / 1000), 1);
   }
 
-  // Snap timestamps to step boundary to prevent X-axis flicker on refresh
-  if (to === now && step > 1) {
-    const remainder = now % step;
+  // Snap live ranges to prevent X-axis flicker on refresh.
+  if (to === now && interval !== 'yesterday' && step > 1) {
+    // Today samples start at UTC midnight, so align its end to that same grid.
+    const anchor = interval === 'today' ? from : 0;
+    const remainder = (now - anchor) % step;
     if (remainder > 0) {
       to = now - remainder;
       if (interval !== 'today') {
