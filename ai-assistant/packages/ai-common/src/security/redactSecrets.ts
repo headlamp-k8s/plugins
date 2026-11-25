@@ -27,17 +27,22 @@ const MAX_VALUE_DEPTH = 100;
 // Text without any of these can't hold a credential key, a data key or an
 // escape that spells one, so the patterns alone are enough for it.
 const MAY_NEED_PARSING =
-  /data|password|passwd|secret|token|bearer|authorization|credential|(?:api|access|private|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|certificate|client-key|\\/i;
+  /data|password|passwd|secret|token|bearer|authorization|credential|(?:api|access|private|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|certificate|client[_-]?key|\\/i;
 
 // Keys whose values are credentials: the names the patterns below look for,
 // also at the end of a longer name like DB_PASSWORD, x-api-key or, once
 // camelCase is split, refreshToken.
 const CREDENTIAL_KEY =
-  /(?:^|[^a-z0-9])(?:password|passwd|secret|token|bearer|authorization|credentials?|api[_-]?key|access[_-]?key(?:[_-]?id)?|private[_-]?key|(?:secret|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|client[_-]?secret|auth[_-]?token|certificate-authority-data|client-certificate(?:-data)?|client-key(?:-data)?)$/i;
+  /(?:^|[^a-z0-9])(?:password|passwd|secret|token|bearer|authorization|credentials?|api[_-]?key|access[_-]?key(?:[_-]?id)?|private[_-]?key|(?:secret|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|client[_-]?secret|auth[_-]?token|certificate[_-]?authority[_-]?data|client[_-]?(?:certificate|key)(?:[_-]?data)?)$/i;
 
 // Names of credential keys in text that can't be read as JSON or YAML.
+const KUBECONFIG_KEY =
+  'client[_-]?(?:key|certificate)(?:[_-]?data)?|certificate[_-]?authority[_-]?data';
+
 const CREDENTIAL_WORDS =
-  '(?:password|passwd|secret|token|bearer|authorization|credentials?|api[_-]?key|access[_-]?key|private[_-]?key|(?:secret|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|client[_-]?secret|auth[_-]?token)';
+  '(?:' +
+  KUBECONFIG_KEY +
+  '|password|passwd|secret|token|bearer|authorization|credentials?|api[_-]?key|access[_-]?key|private[_-]?key|(?:secret|signing|encryption|master|hmac|shared|session|ssh)[_-]?key|client[_-]?secret|auth[_-]?token)';
 
 // The same names at the end of a camelCase name, like refreshToken; matched
 // with case, since camelCase has no other boundary.
@@ -54,6 +59,7 @@ const UNREAD_SECRET_START = new RegExp(
     String.raw`(?:^[ \t]*(?:-[ \t]+)*|[{,][ \t]*)(?:data|stringdata|binarydata)\s*:`,
     String.raw`^[ \t]*(?:-[ \t]+)*\?[ \t]+(?:\\?["'])?(?:data|stringdata|binarydata)(?:\\?["'])?[ \t]*$`,
     String.raw`(?:^|[^a-z0-9])${CREDENTIAL_WORDS}(?:\\?["'])?[ \t]*[:=][ \t]*(?:[|>].*|'(?:[^'\n]|'')*)?$`,
+    String.raw`(?:^|[^a-z0-9])(?:${KUBECONFIG_KEY})["']?[ \t]*[:=][ \t]*["']`,
     String.raw`\\(?:u00[4-7][0-9a-f]|U0000[4-7][0-9a-f]|x[4-7][0-9a-f])`,
     String.raw`(?:^|[:\-[{,])[ \t]*&[\w-]`,
   ].join('|'),
@@ -133,9 +139,8 @@ const YAML_START = /^(?:---|\.\.\.|[-?:](?:[ \t]|$)|[^\s#\-?:{[`][^\n]*?:(?:[ \t
  */
 export function redactSecrets(input: string): string {
   try {
-    // Parsed values can't have more nodes than this unless YAML aliases repeat
-    // them, and such values are withheld.
-    return redactText(input, 0, { nodes: 16 * input.length + 10_000 });
+    // Allow repeated parsing of ordinary text, while bounding YAML alias expansion.
+    return redactText(input, 0, { remaining: 16 * input.length + 10_000 });
   } catch {
     // Whatever went wrong, the input is withheld rather than passed on.
     return REDACTED;
@@ -149,7 +154,7 @@ export function redactSecrets(input: string): string {
  * @returns A deep copy with strings, credentials and Kubernetes Secret payloads redacted.
  */
 export function redactSecretsInValue(value: unknown): unknown {
-  const walk: Walk = { nesting: 0, json: true, budget: { nodes: 10_000_000 }, changed: false };
+  const walk: Walk = { nesting: 0, json: true, budget: { remaining: 10_000_000 }, changed: false };
   try {
     return redactValue(value, walk, 0);
   } catch {
@@ -159,9 +164,9 @@ export function redactSecretsInValue(value: unknown): unknown {
   }
 }
 
-/** Nodes left to visit before a value is withheld whole. */
+/** Shared allowance for visited nodes and scanned string characters, including YAML aliases. */
 interface Budget {
-  nodes: number;
+  remaining: number;
 }
 
 /** Thrown when a value has more nodes than its budget. */
@@ -178,10 +183,12 @@ interface Parsed {
  *
  * @param text - Text that may contain credentials or secret material.
  * @param nesting - How many levels of JSON or YAML strings the text is in.
- * @param budget - Nodes left to visit.
+ * @param budget - Remaining traversal and string scanning allowance.
  * @returns The redacted text.
  */
 function redactText(text: string, nesting: number, budget: Budget): string {
+  budget.remaining -= text.length;
+  if (budget.remaining < 0) throw new TooLarge();
   if (!MAY_NEED_PARSING.test(text)) return redactPatterns(text);
   // Real tool output doesn't nest this deeply, so such text is withheld.
   if (nesting > MAX_TEXT_NESTING) return REDACTED;
@@ -247,15 +254,16 @@ interface Redacted {
  * @param text - The JSON or YAML text.
  * @param parsed - The text, read.
  * @param nesting - How many levels of JSON or YAML strings the text is in.
- * @param budget - Nodes left to visit.
+ * @param budget - Remaining traversal and string scanning allowance.
  * @returns The redacted text.
  */
 function redactStructured(text: string, parsed: Parsed, nesting: number, budget: Budget): Redacted {
   try {
     // An anchor can repeat a value that needs redacting in places that don't
     // look sensitive, so such YAML is withheld whole.
+    const hasComment = parsed.format === 'yaml' && /(?:^|\s)#/.test(text);
     if (parsed.format === 'yaml' && YAML_ANCHOR.test(text)) {
-      if (holdsSecrets(parsed, nesting, budget)) {
+      if (hasComment || holdsSecrets(parsed, nesting, budget)) {
         return { text: withSpaceOf(text, REDACTED), changed: true };
       }
       const patterned = redactPatterns(text);
@@ -266,6 +274,7 @@ function redactStructured(text: string, parsed: Parsed, nesting: number, budget:
     // The patterns' output keeps the text as it was around what they replace,
     // so it's used when it reads back as exactly the redacted value.
     const patterned = redactPatterns(text);
+    if (hasComment) return { text: withSpaceOf(text, print(parsed.format, docs)), changed: true };
     const check = patterned === text ? parsed : parseWhole(patterned);
     if (
       check?.format === parsed.format &&
@@ -340,7 +349,7 @@ function print(format: Parsed['format'], docs: unknown[]): string {
  *
  * @param text - Text to redact.
  * @param nesting - How many levels of JSON or YAML strings the text is in.
- * @param budget - Nodes left to visit.
+ * @param budget - Remaining traversal and string scanning allowance.
  * @returns The redacted text.
  */
 function redactMixedText(text: string, nesting: number, budget: Budget): string {
@@ -373,7 +382,7 @@ function redactMixedText(text: string, nesting: number, budget: Budget): string 
     const line = text.slice(pos, end).replace(/\r$/, '');
     const atLineStart = pos === 0 || text[pos - 1] === '\n';
     const first = Math.min(skipIndent(text, pos), end);
-    if (atLineStart && text.startsWith('```', first)) {
+    if (atLineStart && first === pos && text.startsWith('```', pos)) {
       writeUnread(pos);
       withholding = false;
       // A fenced block runs to its closing fence, or to the end of the text.
@@ -511,7 +520,7 @@ function yamlBlockEnd(text: string, start: number): number {
     const end = lineEnd(text, pos);
     const line = text.slice(pos, end).replace(/\r$/, '');
     // Lines that start with a closing bracket end a flow collection.
-    if (/^[ \t]*```/.test(line) || !(/^(?:[ \t#}\]]|$)/.test(line) || YAML_START.test(line))) {
+    if (/^```/.test(line) || !(/^(?:[ \t#}\]]|$)/.test(line) || YAML_START.test(line))) {
       break;
     }
     pos = end + 1;
@@ -528,9 +537,7 @@ function yamlBlockEnd(text: string, start: number): number {
  */
 function fenceClose(text: string, from: number): number {
   for (let pos = from; pos < text.length; pos = lineEnd(text, pos) + 1) {
-    let first = pos;
-    while (text[first] === ' ' || text[first] === '\t') first++;
-    if (text.startsWith('```', first)) return pos;
+    if (text.startsWith('```', pos)) return pos;
   }
   return text.length;
 }
@@ -736,7 +743,7 @@ interface Walk {
   nesting: number;
   /** Whether the value was read from JSON or given as a value, not read from YAML. */
   json: boolean;
-  /** Nodes left to visit. */
+  /** Remaining traversal and string scanning allowance. */
   budget: Budget;
   /** Whether anything was redacted. */
   changed: boolean;
@@ -752,8 +759,14 @@ interface Walk {
  * @param itemKind - Kind of the items when the value is the items of a list.
  * @returns The redacted copy.
  */
-function redactValue(value: unknown, walk: Walk, depth: number, itemKind?: string): unknown {
-  if (--walk.budget.nodes < 0) throw new TooLarge();
+function redactValue(
+  value: unknown,
+  walk: Walk,
+  depth: number,
+  itemKind?: string,
+  path = ''
+): unknown {
+  if (--walk.budget.remaining < 0) throw new TooLarge();
   if (typeof value === 'string') {
     const redacted = redactText(value, walk.nesting + 1, walk.budget);
     if (redacted !== value) walk.changed = true;
@@ -762,7 +775,8 @@ function redactValue(value: unknown, walk: Walk, depth: number, itemKind?: strin
   if (typeof value !== 'object' || value === null || isMarker(value)) return value;
   // Real tool output is never this deep, so a value this deep is withheld.
   if (depth >= MAX_VALUE_DEPTH) return markChanged(walk);
-  if (Array.isArray(value)) return value.map(item => redactValue(item, walk, depth + 1, itemKind));
+  if (Array.isArray(value))
+    return value.map(item => redactValue(item, walk, depth + 1, itemKind, path && path + '[]'));
   if (!isRecord(value)) return value;
   const kind = typeof value.kind === 'string' ? value.kind : itemKind;
   const copy: Record<string, unknown> = {};
@@ -789,17 +803,51 @@ function redactValue(value: unknown, walk: Walk, depth: number, itemKind?: strin
     ) {
       // A key with a credential's label in it, like a line that YAML split at
       // a colon after the label, also has the rest of the credential in its value.
-      redacted = isVolumeSource(field, item)
-        ? redactValue(item, walk, depth + 1)
-        : redactLeaves(item, walk, depth + 1);
+      redacted =
+        ((path === 'pod.spec.volumes[]' && field === 'secret') || path === 'projected.sources[]') &&
+        isVolumeSource(field, item)
+          ? redactValue(item, walk, depth + 1)
+          : redactLeaves(item, walk, depth + 1);
     } else {
       const items = field === 'items' ? listItemKind(kind) : undefined;
-      redacted = redactValue(item, walk, depth + 1, items);
+      redacted = redactValue(item, walk, depth + 1, items, podFieldPath(kind, path, key, item));
     }
     setOwn(copy, redactedKey, redacted);
     typed ||= field === 'apiversion' || field === 'api_version' || field === 'kind';
   }
   return copy;
+}
+
+const POD_TEMPLATE_WORKLOADS = new Set([
+  'Deployment',
+  'ReplicaSet',
+  'StatefulSet',
+  'DaemonSet',
+  'ReplicationController',
+  'Job',
+]);
+
+/** Track only the Kubernetes paths where credentials are references. */
+function podFieldPath(
+  kind: string | undefined,
+  parent: string,
+  key: string,
+  value: unknown
+): string {
+  if (key === 'spec') {
+    if (kind === 'Pod' || parent === 'podTemplate') return 'pod.spec';
+    if (parent === 'jobTemplate' || (kind && POD_TEMPLATE_WORKLOADS.has(kind)))
+      return 'workload.spec';
+    if (kind === 'CronJob') return 'cronJob.spec';
+  }
+  if (key === 'template' && (parent === 'workload.spec' || kind === 'PodTemplate'))
+    return 'podTemplate';
+  if (key === 'jobTemplate' && parent === 'cronJob.spec') return 'jobTemplate';
+  if (parent === 'pod.spec' && key === 'volumes' && Array.isArray(value)) return 'pod.spec.volumes';
+  if (parent === 'pod.spec.volumes[]' && key === 'projected') return 'projected';
+  if (parent === 'projected' && key === 'sources' && Array.isArray(value))
+    return 'projected.sources';
+  return '';
 }
 
 /**
@@ -860,7 +908,7 @@ function redactDataValues(data: unknown, walk: Walk): unknown {
  * @returns The redacted value.
  */
 function redactLeaves(value: unknown, walk: Walk, depth: number): unknown {
-  if (--walk.budget.nodes < 0) throw new TooLarge();
+  if (--walk.budget.remaining < 0) throw new TooLarge();
   if (isEmptyOrMarker(value) || typeof value === 'boolean') return value;
   if (depth >= MAX_VALUE_DEPTH || !isRecordOrArray(value)) return markChanged(walk);
   if (Array.isArray(value)) return value.map(item => redactLeaves(item, walk, depth + 1));
@@ -934,7 +982,7 @@ function isKeyToPath(value: unknown): boolean {
  *
  * @param parsed - The text, read.
  * @param nesting - How many levels of JSON or YAML strings the text is in.
- * @param budget - Nodes left to visit.
+ * @param budget - Remaining traversal and string scanning allowance.
  * @returns Whether redacting the documents would change them.
  */
 function holdsSecrets(parsed: Parsed, nesting: number, budget: Budget): boolean {
@@ -950,12 +998,12 @@ function holdsSecrets(parsed: Parsed, nesting: number, budget: Budget): boolean 
  *
  * @param value - The value read from the patterns' output.
  * @param redacted - The redacted value.
- * @param budget - Nodes left to visit.
+ * @param budget - Remaining traversal and string scanning allowance.
  * @param depth - Depth of the values.
  * @returns Whether it shows no more.
  */
 function sameValue(value: unknown, redacted: unknown, budget: Budget, depth: number): boolean {
-  if (--budget.nodes < 0) throw new TooLarge();
+  if (--budget.remaining < 0) throw new TooLarge();
   if (isMarker(value)) return true;
   if (isMarker(redacted)) return false;
   if (Array.isArray(value)) {
@@ -1201,7 +1249,7 @@ function redactPatterns(input: string): string {
   // stops at a quote or backslash, so in escaped JSON it can't run on into the
   // next line.
   out = out.replace(
-    /\b(certificate-authority-data|client-certificate-data|client-key-data|client-certificate|client-key)[^\S\r\n]*:[^\S\r\n]*[^\s"'\\]+/gi,
+    /\b(certificate[_-]?authority[_-]?data|client[_-]?(?:certificate|key)(?:[_-]?data)?)[^\S\r\n]*:[^\S\r\n]*[^\s"'\\]+/gi,
     '$1: [REDACTED]'
   );
 

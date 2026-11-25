@@ -882,7 +882,8 @@ namespace: default`;
     });
     expect(redactSecrets('{"token":{"value":"zq9a"')).not.toContain('zq9');
     // A Pod's secret volume names a Secret, which isn't a credential.
-    const volume = '{"volumes":[{"name":"creds","secret":{"secretName":"db-creds"}}]}';
+    const volume =
+      '{"kind":"Pod","spec":{"volumes":[{"name":"creds","secret":{"secretName":"db-creds"}}]}}';
     expect(redactSecrets(volume)).toBe(volume);
   });
 
@@ -1420,15 +1421,18 @@ describe('redactSecrets with JSON and YAML read by a parser', () => {
     }
     // A Pod's volumes and flags that only look like credentials stay as they are.
     const pod = JSON.stringify({
-      automountServiceAccountToken: false,
-      volumes: [
-        {
-          name: 'api',
-          projected: {
-            sources: [{ serviceAccountToken: { expirationSeconds: 3607, path: 'token' } }],
+      kind: 'Pod',
+      spec: {
+        automountServiceAccountToken: false,
+        volumes: [
+          {
+            name: 'api',
+            projected: {
+              sources: [{ serviceAccountToken: { expirationSeconds: 3607, path: 'token' } }],
+            },
           },
-        },
-      ],
+        ],
+      },
     });
     expect(redactSecrets(pod)).toBe(pod);
   });
@@ -1502,6 +1506,76 @@ describe('redactSecretsInValue', () => {
       token: { value: '[REDACTED]', ok: true },
     });
     const volume = { secret: { secretName: 'db-creds' } };
-    expect(redactSecretsInValue(volume)).toEqual(volume);
+    expect(redactSecretsInValue(volume)).toEqual({ secret: { secretName: '[REDACTED]' } });
+  });
+});
+
+describe('tool output confidentiality', () => {
+  it.each(['clientKey', 'clientKeyData', 'client_key_data', 'client-key-data'])(
+    'redacts %s in parsed results and diagnostics',
+    key => {
+      const record = { [key]: 'sample-value', status: 'ready' };
+      expect(redactSecretsInValue(record)).toEqual({ ...record, [key]: '[REDACTED]' });
+      expect(JSON.parse(redactSecrets(JSON.stringify(record)))).toEqual(
+        redactSecretsInValue(record)
+      );
+      expect(redactSecrets('Could not read ' + key + ': "sample-value" (invalid)')).not.toContain(
+        'sample-value'
+      );
+    }
+  );
+
+  it('preserves public YAML fields when discarding comments', () => {
+    const result = redactSecrets('# token: sample-value\nmetadata: ready');
+    expect(result).toContain('ready');
+    expect(result).not.toContain('sample-value');
+  });
+
+  it('keeps indented Markdown inside a multiline YAML value', () => {
+    const document = [
+      'Tool output',
+      'kind: Secret',
+      'stringData:',
+      '  note: |',
+      '    sample first line',
+      '    ```text',
+      '    sample second line',
+      '    ```',
+    ].join('\n');
+    expect(redactSecrets(document)).not.toMatch(/sample (first|second) line/);
+  });
+
+  it('withholds documents exceeding the shared scalar scanning allowance', () => {
+    const document = [
+      'metadata: &description ' + 'public description '.repeat(100),
+      ...Array.from({ length: 100 }, (_, i) => 'field' + i + ': *description'),
+    ].join('\n');
+    expect(redactSecrets(document)).toBe('[REDACTED]');
+  });
+
+  it('preserves projected service account references only in a Pod volume', () => {
+    const source = { serviceAccountToken: { path: 'token' } };
+    expect(redactSecretsInValue(source)).toEqual({ serviceAccountToken: { path: '[REDACTED]' } });
+    const pod = { kind: 'Pod', spec: { volumes: [{ projected: { sources: [source] } }] } };
+    expect(redactSecretsInValue(pod)).toEqual(pod);
+  });
+});
+
+describe('Pod templates in workload results', () => {
+  const template = {
+    spec: { volumes: [{ name: 'settings', secret: { secretName: 'settings-ref' } }] },
+  };
+  it.each([
+    { kind: 'Deployment', spec: { template } },
+    { kind: 'Job', spec: { template } },
+    { kind: 'CronJob', spec: { jobTemplate: { spec: { template } } } },
+    { kind: 'PodTemplate', template },
+  ])('retains volume references in $kind', resource => {
+    expect(redactSecretsInValue(resource)).toEqual(resource);
+    expect(JSON.parse(redactSecrets(JSON.stringify(resource)))).toEqual(resource);
+  });
+  it('continues redacting a similarly shaped object in an unrelated resource', () => {
+    const resource = { kind: 'Example', spec: { template } };
+    expect(JSON.stringify(redactSecretsInValue(resource))).not.toContain('settings-ref');
   });
 });
