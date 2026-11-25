@@ -3,6 +3,7 @@ import { EmptyContent, Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/c
 import { KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/KubeObject';
 import { Link } from '@mui/material';
 import { ReactNode, useEffect, useState } from 'react';
+import { resolveAuthNamespace } from '../../utils/authNamespace';
 import { isKueueInstalled } from '../../utils/kueueInstallation';
 
 interface KueueAdminResourceAccessProps {
@@ -12,6 +13,8 @@ interface KueueAdminResourceAccessProps {
   resourceLabel: string;
   /** Kubernetes verb to verify before rendering the page. */
   verb: 'get' | 'list';
+  /** Namespace to scope the check to. Ignored for cluster-scoped resources. */
+  namespace?: string;
   /** Optional sentence describing the resource scope in denied messages. */
   accessDescription?: string;
   /** Cluster to check access in. Defaults to the cluster in the current route. */
@@ -93,14 +96,17 @@ function AccessCheck({
   resourceClass,
   resourceLabel,
   verb,
+  namespace,
   accessDescription = `Kueue ${resourceLabel} are cluster-scoped admin resources.`,
   cluster,
   children,
 }: KueueAdminResourceAccessProps) {
+  const authNamespace = resolveAuthNamespace(resourceClass, namespace);
+
   // AuthVisible only takes the cluster from an object, not from a resource class.
   const allowed = useCheck(() =>
     resourceClass
-      .getAuthorization(verb, {}, cluster)
+      .getAuthorization(verb, authNamespace ? { namespace: authNamespace } : {}, cluster)
       .then((result: any) => !!result?.status?.allowed)
   );
 
@@ -125,7 +131,10 @@ function AccessCheck({
 
 export default function KueueAdminResourceAccess(props: KueueAdminResourceAccessProps) {
   const cluster = useTargetCluster(props.cluster);
-  const access = <AccessCheck key={cluster ?? ''} {...props} cluster={cluster} />;
+  // Key by namespace too, so opening a resource in another namespace checks access again.
+  const access = (
+    <AccessCheck key={`${cluster ?? ''}/${props.namespace ?? ''}`} {...props} cluster={cluster} />
+  );
   return props.installationChecked ? (
     access
   ) : (

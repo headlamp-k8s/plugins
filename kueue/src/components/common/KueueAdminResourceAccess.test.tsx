@@ -180,3 +180,89 @@ describe('Kueue installation gate', () => {
     expect(state.request).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Namespaced access check', () => {
+  /** Pending access checks, resolved by each test in the order it chooses. */
+  let pending: Array<{ namespace?: string; resolve: (allowed: boolean) => void }>;
+
+  const namespacedClass = {
+    isNamespaced: true,
+    getAuthorization: vi.fn(
+      (_verb: string, { namespace }: { namespace?: string }) =>
+        new Promise(resolve => {
+          pending.push({ namespace, resolve: allowed => resolve({ status: { allowed } }) });
+        })
+    ),
+  } as any;
+
+  function detail(namespace: string) {
+    return (
+      <KueueAdminResourceAccess
+        resourceClass={namespacedClass}
+        resourceLabel="Workloads"
+        verb="get"
+        namespace={namespace}
+        installationChecked
+      >
+        <WorkloadList />
+      </KueueAdminResourceAccess>
+    );
+  }
+
+  /** Answer the check made for a namespace. */
+  async function answer(namespace: string, allowed: boolean) {
+    await act(async () => {
+      pending.find(check => check.namespace === namespace)!.resolve(allowed);
+    });
+  }
+
+  beforeEach(() => {
+    state.cluster = 'first';
+    pending = [];
+    namespacedClass.getAuthorization.mockClear();
+    renderedFor.length = 0;
+  });
+  afterEach(cleanup);
+
+  it('scopes the check to the namespace and cluster', async () => {
+    render(detail('team-a'));
+    expect(namespacedClass.getAuthorization).toHaveBeenCalledWith(
+      'get',
+      { namespace: 'team-a' },
+      'first'
+    );
+    await answer('team-a', true);
+    expect(screen.getByText('Workload list')).toBeTruthy();
+  });
+
+  it('hides the page after a namespace change until the new namespace is allowed', async () => {
+    const { rerender } = render(detail('team-a'));
+    await answer('team-a', true);
+    const renders = renderedFor.length;
+
+    rerender(detail('team-b'));
+    expect(namespacedClass.getAuthorization).toHaveBeenLastCalledWith(
+      'get',
+      { namespace: 'team-b' },
+      'first'
+    );
+    expect(screen.queryByText('Workload list')).toBeNull();
+    expect(renderedFor.length).toBe(renders);
+
+    await answer('team-b', true);
+    expect(screen.getByText('Workload list')).toBeTruthy();
+  });
+
+  it('ignores a late answer for the previous namespace', async () => {
+    const { rerender } = render(detail('team-a'));
+    rerender(detail('team-b'));
+
+    await answer('team-a', true);
+    expect(screen.queryByText('Workload list')).toBeNull();
+    expect(renderedFor).toHaveLength(0);
+
+    await answer('team-b', false);
+    expect(screen.getByText(/not authorized to view this page/)).toBeTruthy();
+    expect(renderedFor).toHaveLength(0);
+  });
+});

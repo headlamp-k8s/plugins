@@ -666,6 +666,7 @@ export default function WorkloadDetail(props: {
       resourceClass={Workload}
       resourceLabel="Workloads"
       verb="get"
+      namespace={namespace}
       cluster={cluster}
       accessDescription="Kueue Workloads are namespaced user workload resources."
     >
