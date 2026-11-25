@@ -31,6 +31,7 @@ import {
   YAxis,
 } from 'recharts';
 import { configStore } from '../config';
+import { isEnforcing } from '../resources/failureAction';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
 
 const useKyvernoConfig = configStore.useConfig();
@@ -99,8 +100,8 @@ export function Dashboard() {
     }
 
     const totalPolicies = (clusterPolicies?.length || 0) + (policies?.length || 0);
-    const enforceCount = [...(clusterPolicies || []), ...(policies || [])].filter(
-      p => p.validationFailureAction === 'Enforce'
+    const enforceCount = [...(clusterPolicies || []), ...(policies || [])].filter(p =>
+      isEnforcing(p.validationFailureAction)
     ).length;
     const auditCount = totalPolicies - enforceCount;
     const total = counts.pass + counts.fail + counts.warn + counts.error + counts.skip;

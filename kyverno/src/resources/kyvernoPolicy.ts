@@ -15,6 +15,9 @@
  */
 
 import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { effectiveEnforcementAction } from './failureAction';
+
+export { effectiveEnforcementAction };
 
 // Shape of a single match/exclude selector in Kyverno's spec. Kyverno groups
 // these with `any` (OR) or `all` (AND). Captures the fields the UI reads;
@@ -187,8 +190,11 @@ abstract class KyvernoPolicyBase extends KubeObject<KyvernoPolicyInterface> {
     return getRuleTypes(this.rules);
   }
 
+  // Kyverno 1.13 deprecated spec.validationFailureAction in favour of
+  // rules[].validate.failureAction, so read the rules too. Returns 'Enforce',
+  // 'Audit', or 'Mixed' when validation rules disagree.
   get validationFailureAction(): string {
-    return this.spec.validationFailureAction || 'Audit';
+    return effectiveEnforcementAction(this.spec);
   }
 
   get background(): boolean {
@@ -208,23 +214,4 @@ export class KyvernoClusterPolicy extends KyvernoPolicyBase {
   static apiName = 'clusterpolicies';
   static apiVersion = 'kyverno.io/v1';
   static isNamespaced = false;
-}
-
-// Derives the effective enforcement action from a policy spec.
-// Rule-level validate.failureAction overrides the spec-level action. Resolve
-// each validation rule's effective action before checking agreement; differing
-// actions produce 'Mixed', and the fallback action defaults to 'Audit'.
-// Kyverno accepts lowercase 'audit'/'enforce' as equivalent to 'Audit'/'Enforce';
-// normalize before comparing so they don't produce a false 'Mixed'.
-export function effectiveEnforcementAction(spec: KyvernoPolicySpec | undefined): string {
-  const normalize = (a: string) => (a === 'enforce' ? 'Enforce' : a === 'audit' ? 'Audit' : a);
-  const fallback = normalize(spec?.validationFailureAction ?? 'Audit');
-  const ruleActions = new Set(
-    (spec?.rules ?? [])
-      .filter(r => r.validate)
-      .map(r => normalize(r.validate!.failureAction ?? fallback))
-  );
-  if (ruleActions.size === 1) return [...ruleActions][0];
-  if (ruleActions.size > 1) return 'Mixed';
-  return fallback;
 }
