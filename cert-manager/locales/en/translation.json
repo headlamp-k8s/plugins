@@ -70,6 +70,7 @@
   "Failed to copy to clipboard": "Failed to copy to clipboard",
   "Copy to clipboard": "Copy to clipboard",
   "Kind": "Kind",
+  "Group": "Group",
   "Conditions": "Conditions",
   "Observed Generation": "Observed Generation",
   "Message": "Message",

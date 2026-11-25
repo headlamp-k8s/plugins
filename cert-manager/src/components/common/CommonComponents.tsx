@@ -11,7 +11,7 @@ import {
 } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { Alert, IconButton, Snackbar, Tooltip } from '@mui/material';
 import { Box, CircularProgress, Grid, Link as MuiLink, Typography } from '@mui/material';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Trans } from 'react-i18next';
 import {
   ACMEChallengeSolver,
@@ -68,34 +68,46 @@ interface IssuerRefProps {
 
 export function IssuerRef({ issuerRef, namespace }: IssuerRefProps) {
   const { t } = useTranslation();
+  // issuerRef can point to an external issuer (for example Google CAS or AWS PCA), which
+  // has its own API group and kind. Only cert-manager's own Issuer and ClusterIssuer have
+  // pages in this plugin, so other issuers are shown as plain text.
+  const isCertManagerGroup = !issuerRef?.group || issuerRef.group === 'cert-manager.io';
+  const isIssuer = !issuerRef?.kind || issuerRef.kind === 'Issuer';
+  const isClusterIssuer = issuerRef?.kind === 'ClusterIssuer';
+
+  let name: ReactNode = issuerRef?.name;
+  if (isCertManagerGroup && isIssuer) {
+    name = (
+      <Link
+        routeName="/cert-manager/issuers/:namespace/:name"
+        params={{ name: issuerRef?.name, namespace: namespace }}
+      >
+        {issuerRef?.name}
+      </Link>
+    );
+  } else if (isCertManagerGroup && isClusterIssuer) {
+    name = (
+      <Link routeName="/cert-manager/clusterissuers/:name" params={{ name: issuerRef?.name }}>
+        {issuerRef?.name}
+      </Link>
+    );
+  }
+
   return (
     <NameValueTable
       rows={[
         {
           name: t('Name'),
-          value: (
-            <Link
-              routeName={
-                !issuerRef?.kind || issuerRef?.kind === 'Issuer'
-                  ? '/cert-manager/issuers/:namespace/:name'
-                  : '/cert-manager/clusterissuers/:name'
-              }
-              params={
-                !issuerRef?.kind || issuerRef?.kind === 'Issuer'
-                  ? {
-                      name: issuerRef?.name,
-                      namespace: namespace,
-                    }
-                  : { name: issuerRef?.name }
-              }
-            >
-              {issuerRef?.name}
-            </Link>
-          ),
+          value: name,
         },
         {
           name: t('Kind'),
           value: issuerRef?.kind,
+        },
+        {
+          name: t('Group'),
+          value: issuerRef?.group,
+          hide: !issuerRef?.group,
         },
       ]}
     />
