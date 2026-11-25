@@ -58,6 +58,7 @@ function KubeadmConfigsListWithData({ KubeadmConfigClass }: KubeadmConfigsListWi
             renderConditionStatus(undefined, getCondition(kc.conditions, 'Ready'), {
               trueLabel: t('true'),
               falseLabel: t('false'),
+              unknownLabel: t('Unknown'),
               trueStatus: 'success',
               falseStatus: 'error',
             }),

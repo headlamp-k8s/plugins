@@ -145,6 +145,7 @@ function KubeadmConfigDetailContentWithData(props: KubeadmConfigDetailContentPro
         value: renderConditionStatus(undefined, getCondition(item.conditions, 'Ready'), {
           trueLabel: t('true'),
           falseLabel: t('false'),
+          unknownLabel: t('Unknown'),
           trueStatus: 'success',
           falseStatus: 'error',
         }),

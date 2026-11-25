@@ -64,6 +64,7 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
             renderConditionStatus(undefined, getCondition(cc.conditions, 'VariablesReady'), {
               trueLabel: t('Ready'),
               falseLabel: t('Not Ready'),
+              unknownLabel: t('Unknown'),
               trueStatus: 'success',
               falseStatus: 'error',
             }),
@@ -80,6 +81,7 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
             renderConditionStatus(undefined, getCondition(cc.conditions, 'Paused'), {
               trueLabel: 'true',
               falseLabel: 'false',
+              unknownLabel: t('Unknown'),
               trueStatus: 'warning',
               falseStatus: 'success',
             }),

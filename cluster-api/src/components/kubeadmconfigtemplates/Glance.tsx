@@ -28,6 +28,7 @@ export function KubeadmConfigTemplateGlance({ node }: { node: GraphNode }) {
       {renderConditionStatus(undefined, readyCondition, {
         trueLabel: t('Ready'),
         falseLabel: t('Not Ready'),
+        unknownLabel: t('Unknown'),
         trueStatus: 'success',
         falseStatus: 'error',
       })}

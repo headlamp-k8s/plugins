@@ -115,6 +115,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
             return renderConditionStatus(undefined, cond, {
               trueLabel: 'true',
               falseLabel: 'false',
+              unknownLabel: t('Unknown'),
               trueStatus: 'success',
               falseStatus: 'error',
             });

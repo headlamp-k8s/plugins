@@ -84,6 +84,7 @@ function MachineSetsListWithData({ MachineSetClass }: MachineSetsListWithDataPro
             renderConditionStatus(undefined, getCondition(ms.conditions, 'Paused'), {
               trueLabel: 'true',
               falseLabel: 'false',
+              unknownLabel: t('Unknown'),
               trueStatus: 'warning',
               falseStatus: 'success',
             }),
