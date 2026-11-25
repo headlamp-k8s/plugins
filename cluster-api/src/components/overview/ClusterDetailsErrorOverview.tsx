@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import React, { useEffect, useMemo, useState } from 'react';
+import { CapiErrorDefinition, createCapiErrorDefinitions } from './capiErrorDefinitions';
 import {
   copyToClipboard,
   getBootstrapKind,
@@ -64,6 +65,15 @@ function renderClusterHealthStatus(
     ? 'success'
     : getStatusLabelStateForSeverity(priorityError?.errorDef.severity);
   return <StatusLabel status={status}>{healthy ? t('Healthy') : t('Needs Attention')}</StatusLabel>;
+}
+
+function getSeverityLabel(
+  severity: CapiErrorDefinition['severity'],
+  t: (key: string) => string
+): string {
+  if (severity === 'critical') return t('Critical');
+  if (severity === 'warning') return t('Warning');
+  return t('Info');
 }
 
 /**
@@ -628,9 +638,9 @@ function FullWidthClusterCard({
                     status={
                       getStatusLabelStateForSeverity(priorityError.errorDef.severity) || 'warning'
                     }
-                    sx={{ fontWeight: 700 }}
+                    sx={{ fontWeight: 700, textTransform: 'uppercase' }}
                   >
-                    {priorityError.errorDef.severity.toUpperCase()}
+                    {getSeverityLabel(priorityError.errorDef.severity, t)}
                   </StatusLabel>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
@@ -681,7 +691,7 @@ export default function ClusterDetailsErrorOverview({
   kcps,
   resourcesData,
 }: ClusterDetailsErrorOverviewProps) {
-  const { t } = useTranslation();
+  const { t, i18n, ready } = useTranslation();
   const [clusterFilter, setClusterFilter] = React.useState('');
 
   useEffect(() => {
@@ -695,13 +705,19 @@ export default function ClusterDetailsErrorOverview({
     [resourcesData]
   );
 
+  const errorDefinitions = useMemo(() => createCapiErrorDefinitions(t), [t, i18n?.language, ready]);
+
   const clusterPriorityErrors = useMemo(() => {
     const result: Record<string, ClusterPriorityError | null> = {};
     clusters.forEach(cluster => {
-      result[cluster.metadata.uid] = getPriorityErrorForCluster(cluster, allResourcesForMatching);
+      result[cluster.metadata.uid] = getPriorityErrorForCluster(
+        cluster,
+        allResourcesForMatching,
+        errorDefinitions
+      );
     });
     return result;
-  }, [clusters, allResourcesForMatching]);
+  }, [clusters, allResourcesForMatching, errorDefinitions]);
 
   const displayedClusters = useMemo(
     () => clusters.filter(c => c.metadata.name === clusterFilter),
