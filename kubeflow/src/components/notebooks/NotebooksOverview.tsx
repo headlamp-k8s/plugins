@@ -19,6 +19,7 @@ import {
   aggregateNotebookResources,
   describeResourceError,
   getNotebookStatus,
+  isNotebookPending,
 } from '../common/notebookUtils';
 
 function NotebooksOverviewPageContent() {
@@ -50,10 +51,9 @@ function NotebooksOverviewPageContent() {
     return label === 'Running';
   }).length;
 
-  const pendingCount = notebooksList.filter(nb => {
-    const { label, status } = getNotebookStatus(nb?.jsonData);
-    return label === 'Pending' || label === 'Waiting' || (!status && label !== 'Running');
-  }).length;
+  const pendingCount = notebooksList.filter(nb =>
+    isNotebookPending(getNotebookStatus(nb?.jsonData))
+  ).length;
 
   const failedCount = notebooksList.filter(nb => {
     const { status } = getNotebookStatus(nb?.jsonData);

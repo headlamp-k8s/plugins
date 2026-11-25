@@ -3,6 +3,7 @@ import {
   getNotebookStatus,
   getNotebookType,
   getProfileStatus,
+  isNotebookPending,
   parseCpuQuantity,
   parseMemoryQuantity,
 } from './notebookUtils';
@@ -10,6 +11,62 @@ import {
 // ── getNotebookStatus ──────────────────────────────────────────────────────────
 
 describe('getNotebookStatus', () => {
+  // ── Stopped / Terminating (new paths) ──────────────────────────────────────
+
+  it('returns Stopped when kubeflow-resource-stopped annotation is set and readyReplicas is 0', () => {
+    const result = getNotebookStatus({
+      metadata: {
+        annotations: { 'kubeflow-resource-stopped': '2026-11-25T10:00:00Z' },
+      },
+      status: { readyReplicas: 0 },
+    });
+    expect(result.label).toBe('Stopped');
+    expect(result.icon).toBe('mdi:stop-circle-outline');
+  });
+
+  it('returns Stopped when kubeflow-resource-stopped annotation is set and status is absent', () => {
+    const result = getNotebookStatus({
+      metadata: {
+        annotations: { 'kubeflow-resource-stopped': '2026-11-25T10:00:00Z' },
+      },
+    });
+    expect(result.label).toBe('Stopped');
+  });
+
+  it('returns Running (not Stopped) when kubeflow-resource-stopped is set but readyReplicas > 0', () => {
+    // Annotation may linger briefly while the StatefulSet is scaling back up.
+    const result = getNotebookStatus({
+      metadata: {
+        annotations: { 'kubeflow-resource-stopped': '2026-11-25T10:00:00Z' },
+      },
+      status: { readyReplicas: 1 },
+    });
+    expect(result.label).toBe('Running');
+  });
+
+  it('returns Terminating when deletionTimestamp is set', () => {
+    const result = getNotebookStatus({
+      metadata: { deletionTimestamp: '2026-11-25T11:00:00Z' },
+      status: { readyReplicas: 0 },
+    });
+    expect(result.label).toBe('Terminating');
+    expect(result.icon).toBe('mdi:timer-sand');
+  });
+
+  it('returns Terminating (not Stopped) when both deletionTimestamp and stopped annotation are set', () => {
+    // A stopped notebook being deleted should show "Terminating" because
+    // the deletion is actively in progress and takes precedence.
+    const result = getNotebookStatus({
+      metadata: {
+        deletionTimestamp: '2026-11-25T11:00:00Z',
+        annotations: { 'kubeflow-resource-stopped': '2026-11-25T10:00:00Z' },
+      },
+      status: { readyReplicas: 0 },
+    });
+    expect(result.label).toBe('Terminating');
+    expect(result.icon).toBe('mdi:timer-sand');
+  });
+
   it('returns Running when readyReplicas > 0', () => {
     const result = getNotebookStatus({
       status: { readyReplicas: 1 },
@@ -447,5 +504,60 @@ describe('aggregateNotebookResources', () => {
     expect(result.cpu).toBe(1.5);
     expect(result.memory).toBe(1.5);
     expect(result.gpu).toBe(3); // 1 from requests, 2 from limits
+  });
+});
+
+// ── isNotebookPending ──────────────────────────────────────────────────────────
+
+describe('isNotebookPending', () => {
+  it('excludes Stopped and Terminating statuses from pending', () => {
+    expect(
+      isNotebookPending(
+        getNotebookStatus({
+          metadata: {
+            annotations: { 'kubeflow-resource-stopped': '2026-11-25T10:00:00Z' },
+          },
+          status: { readyReplicas: 0 },
+        })
+      )
+    ).toBe(false);
+
+    expect(
+      isNotebookPending(
+        getNotebookStatus({
+          metadata: { deletionTimestamp: '2026-11-25T11:00:00Z' },
+          status: { readyReplicas: 0 },
+        })
+      )
+    ).toBe(false);
+  });
+
+  it('returns true for Pending, Waiting, and non-error transitioning states', () => {
+    expect(isNotebookPending(getNotebookStatus({}))).toBe(true);
+    expect(
+      isNotebookPending(
+        getNotebookStatus({
+          status: { containerState: { waiting: { reason: 'ContainerCreating' } } },
+        })
+      )
+    ).toBe(true);
+    expect(
+      isNotebookPending(
+        getNotebookStatus({
+          status: { conditions: [{ type: 'Scheduling', status: 'False' }] },
+        })
+      )
+    ).toBe(true);
+  });
+
+  it('returns false for Running and error states', () => {
+    expect(isNotebookPending(getNotebookStatus({ status: { readyReplicas: 1 } }))).toBe(false);
+    expect(
+      isNotebookPending(
+        getNotebookStatus({
+          status: { containerState: { waiting: { reason: 'ImagePullBackOff' } } },
+        })
+      )
+    ).toBe(false);
   });
 });
