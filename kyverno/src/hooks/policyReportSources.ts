@@ -21,6 +21,7 @@ import type {
 } from '../resources/policyReport';
 
 export interface PolicyReportSource {
+  cluster?: string;
   metadata: {
     name: string;
     namespace?: string;
@@ -40,7 +41,8 @@ export interface PolicyReportSource {
 
 export interface ReportSourceList {
   items: PolicyReportSource[] | null;
-  error?: unknown;
+  loading: boolean;
+  errors?: readonly unknown[];
 }
 
 export interface CombinedReportSources {
@@ -86,18 +88,13 @@ function metadataResourceReference(
     kind: owner?.kind || labels[RESOURCE_KIND_LABEL],
     namespace: annotations[RESOURCE_NAMESPACE_ANNOTATION] || report.metadata.namespace,
     name: owner?.name || annotations[RESOURCE_NAME_ANNOTATION],
-    uid: labels[RESOURCE_UID_LABEL] || owner?.uid,
+    uid: labels[RESOURCE_UID_LABEL] || owner?.uid || ownerReferences.find(ref => ref.uid)?.uid,
   };
 
   return hasResourceReference(resource) ? resource : undefined;
 }
 
-/**
- * Gives report-level resource identity one normalized representation. Kyverno's
- * admission reports can omit both spec.owner and result.resources, leaving the
- * evaluated resource only in audit.kyverno.io metadata.
- */
-export function normalizeReportResource(report: PolicyReportSource): PolicyReportSource {
+function reportResourceReference(report: PolicyReportSource): ReportResourceReference | undefined {
   const metadataResource = metadataResourceReference(report);
   const reportScope = report.scope;
   const resource = {
@@ -107,7 +104,15 @@ export function normalizeReportResource(report: PolicyReportSource): PolicyRepor
     name: reportScope?.name || metadataResource?.name,
     uid: reportScope?.uid || metadataResource?.uid,
   };
-  const scope = hasResourceReference(resource) ? resource : undefined;
+  return hasResourceReference(resource) ? resource : undefined;
+}
+
+/**
+ * Kyverno admission reports can omit both spec.owner and result.resources,
+ * leaving the evaluated resource only in audit.kyverno.io metadata.
+ */
+export function normalizeReportResource(report: PolicyReportSource): PolicyReportSource {
+  const scope = reportResourceReference(report);
   const results = report.results.map(result =>
     !result.resources?.length && scope ? { ...result, resources: [scope] } : result
   );
@@ -146,72 +151,41 @@ function isNewerResult(candidate: PolicyReportResult, current: PolicyReportResul
   );
 }
 
-function qualifiedResourceIdentity(resource: {
-  apiVersion?: string;
-  kind?: string;
-  namespace?: string;
-  name?: string;
-}): string | undefined {
-  if (!resource.apiVersion && !resource.kind && !resource.namespace && !resource.name) {
-    return undefined;
-  }
-
-  return [resource.apiVersion, resource.kind, resource.namespace, resource.name].join('/');
+function resourceReferenceIdentity(resource: ReportResourceReference): string {
+  return JSON.stringify(
+    resource.uid
+      ? ['uid', resource.uid]
+      : [
+          'reference',
+          resource.apiVersion || '',
+          resource.kind || '',
+          resource.namespace || '',
+          resource.name || '',
+        ]
+  );
 }
 
-function reportMetadataResourceUid(report: PolicyReportSource): string | undefined {
-  const { labels = {}, ownerReferences = [] } = report.metadata;
-  const resourceUid = labels[RESOURCE_UID_LABEL];
-  if (resourceUid) return resourceUid;
-
-  const ownerWithUid = ownerReferences.find(owner => owner.uid);
-  return ownerWithUid?.uid;
-}
-
-function reportMetadataResourceIdentity(report: PolicyReportSource): string | undefined {
-  const resource = metadataResourceReference(report);
-  return resource ? qualifiedResourceIdentity(resource) : undefined;
-}
-
-function resourceIdentity(report: PolicyReportSource, result: PolicyReportResult): string {
-  const metadataUid = reportMetadataResourceUid(report);
-  if (metadataUid) return metadataUid;
-
-  if (report.scope?.uid) return report.scope.uid;
-
-  const resourceWithUid = result.resources?.find(resource => resource.uid);
-  if (resourceWithUid?.uid) return resourceWithUid.uid;
-
-  const metadataIdentity = reportMetadataResourceIdentity(report);
-  if (metadataIdentity) return metadataIdentity;
-
-  if (report.scope) {
-    const scopeIdentity = qualifiedResourceIdentity(report.scope);
-    if (scopeIdentity) return scopeIdentity;
-  }
-
+function resourceIdentity(report: PolicyReportSource, result: PolicyReportResult): string[] {
   if (result.resources?.length) {
-    return result.resources
-      .map(resource =>
-        [resource.apiVersion, resource.kind, resource.namespace, resource.name].join('/')
-      )
-      .sort()
-      .join(',');
+    return result.resources.map(resourceReferenceIdentity).sort();
   }
 
-  // Without resource identity, keep different reports separate rather than
-  // accidentally collapsing unrelated policy evaluations.
-  return `${report.metadata.namespace || ''}/${report.metadata.name}`;
+  const resource = reportResourceReference(report);
+  if (resource) return [resourceReferenceIdentity(resource)];
+
+  // Keep evaluations without resource identity distinct across reports.
+  return [JSON.stringify(['report', report.metadata.namespace, report.metadata.name])];
 }
 
 function resultIdentity(report: PolicyReportSource, result: PolicyReportResult): string {
   const includeRule = !POLICY_SOURCES_WITHOUT_RULE_IDENTITY.has(result.source || '');
-  return [
+  return JSON.stringify([
+    report.cluster || '',
     result.source || '',
     result.policy,
     includeRule ? result.rule || '' : '',
     resourceIdentity(report, result),
-  ].join('|');
+  ]);
 }
 
 function summarizeResults(results: PolicyReportResult[]): PolicyReportSummary {
@@ -272,12 +246,18 @@ export function reportSourceErrorMessage(error: unknown): string {
   return 'Unknown error';
 }
 
+function reportSourceFailures(source: ReportSourceList): unknown[] {
+  return (source.errors ?? []).filter(error => error && !isNotFoundError(error));
+}
+
 export function combineReportSources(sourceLists: ReportSourceList[]): CombinedReportSources {
-  const error = sourceLists
-    .map(source => source.error)
-    .find(value => value && !isNotFoundError(value));
-  const loading = !error && sourceLists.some(source => source.items === null && !source.error);
-  const reports = mergeReportResults(sourceLists.flatMap(source => source.items || []));
+  const errors = sourceLists.flatMap(reportSourceFailures);
+  const error =
+    errors.length > 1
+      ? { errors, message: errors.map(reportSourceErrorMessage).join(', ') }
+      : errors[0];
+  const loading = !error && sourceLists.some(source => source.loading);
+  const reports = mergeReportResults(sourceLists.flatMap(source => source.items ?? []));
 
   return { reports, loading, ...(error ? { error } : {}) };
 }
@@ -286,9 +266,17 @@ export function combineNamespacedReportSources(
   durableReports: ReportSourceList,
   ephemeralReports: ReportSourceList
 ): CombinedReportSources {
-  if (getErrorStatus(ephemeralReports.error) === 403 && !durableReports.error) {
+  const ephemeralErrors = reportSourceFailures(ephemeralReports);
+  const durableAvailable =
+    !durableReports.errors?.length && (durableReports.items !== null || durableReports.loading);
+
+  if (
+    durableAvailable &&
+    ephemeralErrors.length > 0 &&
+    ephemeralErrors.every(error => getErrorStatus(error) === 403)
+  ) {
     return {
-      ...combineReportSources([durableReports]),
+      ...combineReportSources([durableReports, { ...ephemeralReports, errors: [] }]),
       restrictedEphemeralReports: true,
     };
   }

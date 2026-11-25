@@ -38,6 +38,7 @@ export type PolicyReportSources = CombinedReportSources;
 
 function normalizeReport(report: PolicyReportResource): PolicyReportSource {
   return normalizeReportResource({
+    cluster: report.cluster,
     metadata: {
       name: report.jsonData.metadata.name,
       namespace: report.jsonData.metadata.namespace,
@@ -51,24 +52,31 @@ function normalizeReport(report: PolicyReportResource): PolicyReportSource {
   });
 }
 
-function normalizeSource(items: PolicyReportResource[] | null, error: unknown): ReportSourceList {
-  return {
-    items: items?.map(normalizeReport) || null,
-    error,
-  };
-}
+type ReportListQuery = [PolicyReportResource[] | null, unknown] & {
+  items?: PolicyReportResource[] | null;
+  isLoading?: boolean;
+  errors?: readonly unknown[] | null;
+};
 
-function useNamespacedReportLists(cluster?: string, namespace?: string) {
-  const [policyReports, policyReportsError] = PolicyReport.useList({ cluster, namespace });
-  const [ephemeralReports, ephemeralReportsError] = EphemeralReport.useList({ cluster, namespace });
+function useReportSource(query: ReportListQuery): ReportSourceList {
+  const [legacyItems, legacyError] = query;
+  const items = query.items ?? legacyItems;
+  const { errors, isLoading } = query;
 
   return useMemo(
     () => ({
-      durable: normalizeSource(policyReports, policyReportsError),
-      ephemeral: normalizeSource(ephemeralReports, ephemeralReportsError),
+      items: items?.map(normalizeReport) ?? null,
+      loading: isLoading ?? (items === null && !legacyError),
+      errors: errors?.length ? errors : legacyError ? [legacyError] : [],
     }),
-    [policyReports, policyReportsError, ephemeralReports, ephemeralReportsError]
+    [items, isLoading, errors, legacyError]
   );
+}
+
+function useNamespacedReportLists(cluster?: string, namespace?: string) {
+  const durable = useReportSource(PolicyReport.useList({ cluster, namespace }));
+  const ephemeral = useReportSource(EphemeralReport.useList({ cluster, namespace }));
+  return { durable, ephemeral };
 }
 
 /** A namespaced policy only needs reports from its own namespace. */
@@ -82,28 +90,11 @@ export function useNamespacedPolicyReportSources(
 
 export function usePolicyReportSources(cluster?: string): PolicyReportSources {
   const { durable, ephemeral } = useNamespacedReportLists(cluster);
-  const [clusterPolicyReports, clusterPolicyReportsError] = ClusterPolicyReport.useList({
-    cluster,
-  });
-  const [clusterEphemeralReports, clusterEphemeralReportsError] = ClusterEphemeralReport.useList({
-    cluster,
-  });
+  const clusterPolicyReports = useReportSource(ClusterPolicyReport.useList({ cluster }));
+  const clusterEphemeralReports = useReportSource(ClusterEphemeralReport.useList({ cluster }));
 
   return useMemo(
-    () =>
-      combineReportSources([
-        durable,
-        normalizeSource(clusterPolicyReports, clusterPolicyReportsError),
-        ephemeral,
-        normalizeSource(clusterEphemeralReports, clusterEphemeralReportsError),
-      ]),
-    [
-      durable,
-      clusterPolicyReports,
-      clusterPolicyReportsError,
-      ephemeral,
-      clusterEphemeralReports,
-      clusterEphemeralReportsError,
-    ]
+    () => combineReportSources([durable, clusterPolicyReports, ephemeral, clusterEphemeralReports]),
+    [durable, clusterPolicyReports, ephemeral, clusterEphemeralReports]
   );
 }

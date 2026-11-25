@@ -31,11 +31,12 @@ vi.mock('../resources/policyReport', () => ({
   ClusterPolicyReport: { useList: vi.fn() },
 }));
 
-function listResult(items: unknown[] | null, error: unknown, isLoading = false) {
+function listResult(items: unknown[] | null, errors: unknown[], isLoading = false) {
+  const error = errors[0] ?? null;
   return {
     items,
     error,
-    errors: error ? [error] : null,
+    errors: errors.length ? errors : null,
     isLoading,
     isError: Boolean(error),
     *[Symbol.iterator]() {
@@ -47,16 +48,16 @@ function listResult(items: unknown[] | null, error: unknown, isLoading = false) 
 
 /** Mimics the tuple/object hybrid `KubeObject.useList` returns while a query is in flight. */
 function pendingList() {
-  return listResult(null, null, true);
+  return listResult(null, [], true);
 }
 
 /** A list that settled with an error, e.g. the CRD is absent or RBAC denied it. */
 function erroredList(error: unknown = { status: 404, message: 'not found' }) {
-  return listResult(null, error);
+  return listResult(null, [error]);
 }
 
 function resolvedList(items: unknown[]) {
-  return listResult(items, null);
+  return listResult(items, []);
 }
 
 function report(results: { policy: string; result: 'fail' | 'pass'; rule: string }[]) {
@@ -102,15 +103,69 @@ describe('usePolicyResultCounts', () => {
     expect(result.current.loading).toBe(true);
   });
 
-  it('propagates a non-404 error from the useList tuple', () => {
+  it('also supports errors from a legacy list tuple', () => {
     const accessError = { status: 403, message: 'forbidden' };
-    vi.mocked(PolicyReport.useList).mockReturnValue(erroredList(accessError) as any);
+    vi.mocked(PolicyReport.useList).mockReturnValue([null, accessError] as any);
     vi.mocked(ClusterPolicyReport.useList).mockReturnValue(resolvedList([]) as any);
 
     const { result } = renderHook(() => usePolicyResultCounts());
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe(accessError);
+  });
+
+  it('waits when a list returns partial data and is still loading', () => {
+    const items = [report([{ policy: 'restrict-images', result: 'fail', rule: 'images' }])];
+    vi.mocked(ClusterEphemeralReport.useList).mockReturnValue(listResult(items, [], true) as any);
+
+    const { result, rerender } = renderHook(() => usePolicyResultCounts());
+
+    expect(result.current.loading).toBe(true);
+    vi.mocked(ClusterEphemeralReport.useList).mockReturnValue(resolvedList(items) as any);
+    rerender();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.forCluster('restrict-images')).toEqual({ fail: 1, total: 1 });
+  });
+
+  it('preserves all non-404 errors from enhanced lists', () => {
+    const accessError = { status: 403, message: 'forbidden' };
+    const serverError = { status: 500, message: 'server error' };
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      listResult([], [{ status: 404 }, accessError, serverError]) as any
+    );
+
+    const { result } = renderHook(() => usePolicyReportSources());
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toEqual({
+      errors: [accessError, serverError],
+      message: 'forbidden, server error',
+    });
+  });
+
+  it('keeps identical named resources from different clusters as separate evaluations', () => {
+    const entry = {
+      policy: 'default/require-labels',
+      rule: 'labels',
+      result: 'fail' as const,
+      resources: [{ apiVersion: 'v1', kind: 'Pod', namespace: 'default', name: 'web' }],
+    };
+    vi.mocked(PolicyReport.useList).mockReturnValue(
+      resolvedList([
+        { ...report([entry]), cluster: 'first-cluster' },
+        { ...report([entry]), cluster: 'second-cluster' },
+      ]) as any
+    );
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      resolvedList([{ ...report([entry]), cluster: 'first-cluster' }]) as any
+    );
+
+    const { result } = renderHook(() => usePolicyReportSources());
+
+    expect(result.current.reports.map(report => report.cluster)).toEqual([
+      'first-cluster',
+      'second-cluster',
+    ]);
   });
 
   it('still aggregates the lists that did resolve', () => {
@@ -221,6 +276,17 @@ describe('scoped policy report sources', () => {
     expect(result.current.error).toBeUndefined();
     expect(result.current.restrictedEphemeralReports).toBe(true);
     expect(result.current.reports[0].summary).toEqual({ pass: 1 });
+  });
+
+  it('surfaces other failures alongside restricted ephemeral access', () => {
+    vi.mocked(EphemeralReport.useList).mockReturnValue(
+      listResult(null, [{ status: 403, message: 'forbidden' }, { status: 500 }]) as any
+    );
+
+    const { result } = renderHook(() => useNamespacedPolicyReportSources('default'));
+
+    expect(result.current.error).toMatchObject({ errors: [{ status: 403 }, { status: 500 }] });
+    expect(result.current.restrictedEphemeralReports).toBeUndefined();
   });
 
   it('still reports a forbidden error when no durable report source is available', () => {

@@ -53,10 +53,10 @@ describe('combineReportSources', () => {
       { policy: 'require-owner', rule: 'owner', result: 'warn' },
     ]);
     const { reports, loading } = combineReportSources([
-      { items: [policyReport] },
-      { items: [clusterPolicyReport] },
-      { items: [ephemeralReport] },
-      { items: [clusterEphemeralReport] },
+      { items: [policyReport], loading: false },
+      { items: [clusterPolicyReport], loading: false },
+      { items: [ephemeralReport], loading: false },
+      { items: [clusterEphemeralReport], loading: false },
     ]);
 
     expect(reports.map(item => item.metadata.name)).toEqual([
@@ -68,11 +68,14 @@ describe('combineReportSources', () => {
     expect(loading).toBe(false);
   });
 
-  test('waits for source lists that are still loading', () => {
+  test('waits for source lists that have returned partial items', () => {
     const policyReport = report('policy-report', 'uid-1', [
       { policy: 'restrict-images', rule: 'images', result: 'pass' },
     ]);
-    const { reports, loading } = combineReportSources([{ items: [policyReport] }, { items: null }]);
+    const { reports, loading } = combineReportSources([
+      { items: [policyReport], loading: true },
+      { items: [], loading: false },
+    ]);
 
     expect(reports).toHaveLength(1);
     expect(loading).toBe(true);
@@ -83,8 +86,8 @@ describe('combineReportSources', () => {
       { policy: 'restrict-images', rule: 'images', result: 'pass' },
     ]);
     const { reports, loading, error } = combineReportSources([
-      { items: [policyReport] },
-      { items: null, error: { status: 404, message: 'not found' } },
+      { items: [policyReport], loading: false },
+      { items: null, loading: false, errors: [{ status: 404, message: 'not found' }] },
     ]);
 
     expect(reports).toHaveLength(1);
@@ -95,8 +98,8 @@ describe('combineReportSources', () => {
   test('propagates non-404 source errors instead of returning partial totals', () => {
     const accessError = { status: 403, message: 'forbidden' };
     const { loading, error } = combineReportSources([
-      { items: [] },
-      { items: null, error: accessError },
+      { items: [], loading: false },
+      { items: null, loading: false, errors: [accessError] },
     ]);
 
     expect(loading).toBe(false);
@@ -111,6 +114,7 @@ describe('combineReportSources', () => {
         rule: 'images',
         result: 'pass',
         timestamp: { seconds: 10, nanos: 0 },
+        resources: [{ uid: 'resource-uid' }],
       },
     ]);
     const ephemeral: PolicyReportSource = {
@@ -131,12 +135,73 @@ describe('combineReportSources', () => {
       ],
     };
 
-    const { reports } = combineReportSources([{ items: [durable] }, { items: [ephemeral] }]);
+    const { reports } = combineReportSources([
+      { items: [durable], loading: false },
+      { items: [ephemeral], loading: false },
+    ]);
 
     expect(reports).toHaveLength(1);
     expect(reports[0].metadata.name).toBe('ephemeral-report');
     expect(reports[0].results).toEqual(ephemeral.results);
     expect(reports[0].summary).toEqual({ fail: 1 });
+  });
+
+  test('uses explicit result resources ahead of report-level metadata and scope', () => {
+    const result: PolicyReportResult = {
+      policy: 'restrict-images',
+      rule: 'images',
+      result: 'fail',
+    };
+    const scoped = report('policy-report', 'scope-uid', [
+      { ...result, resources: [{ uid: 'pod-a' }] },
+      { ...result, resources: [{ uid: 'pod-b' }] },
+    ]);
+    scoped.metadata.labels = { 'audit.kyverno.io/resource.uid': 'metadata-uid' };
+
+    const { reports } = combineReportSources([{ items: [scoped], loading: false }]);
+
+    expect(reports[0].results).toEqual(scoped.results);
+    expect(reports[0].summary).toEqual({ fail: 2 });
+  });
+
+  test('matches complete resource lists regardless of order and keeps different lists', () => {
+    const first: PolicyReportResult = {
+      policy: 'restrict-images',
+      rule: 'images',
+      result: 'fail',
+      resources: [{ uid: 'pod-a' }, { uid: 'pod-b' }],
+    };
+    const distinct = { ...first, resources: [{ uid: 'pod-a' }, { uid: 'pod-c' }] };
+    const newer: PolicyReportResult = {
+      ...first,
+      result: 'pass',
+      resources: [{ uid: 'pod-b' }, { uid: 'pod-a' }],
+      timestamp: { seconds: 1, nanos: 0 },
+    };
+
+    const { reports } = combineReportSources([
+      { items: [report('durable', 'durable-scope', [first, distinct])], loading: false },
+      { items: [report('ephemeral', 'ephemeral-scope', [newer])], loading: false },
+    ]);
+
+    expect(reports.flatMap(report => report.results)).toEqual([distinct, newer]);
+  });
+
+  test('matches a named cluster-scoped resource when one reference omits its namespace', () => {
+    const resource = { apiVersion: 'v1', kind: 'Namespace', name: 'demo' };
+    const result: PolicyReportResult = {
+      policy: 'require-labels',
+      result: 'fail',
+      resources: [resource],
+    };
+    const sameResource = { ...result, resources: [{ ...resource, namespace: '' }] };
+
+    const { reports } = combineReportSources([
+      { items: [report('durable', '', [result])], loading: false },
+      { items: [report('ephemeral', '', [sameResource])], loading: false },
+    ]);
+
+    expect(reports.flatMap(report => report.results)).toEqual([result]);
   });
 
   test('keeps the durable result when duplicate timestamps are equal', () => {
@@ -150,7 +215,10 @@ describe('combineReportSources', () => {
     const durable = report('policy-report', 'resource-uid', [result]);
     const ephemeral = report('ephemeral-report', 'resource-uid', [{ ...result, result: 'fail' }]);
 
-    const { reports } = combineReportSources([{ items: [durable] }, { items: [ephemeral] }]);
+    const { reports } = combineReportSources([
+      { items: [durable], loading: false },
+      { items: [ephemeral], loading: false },
+    ]);
 
     expect(reports).toHaveLength(1);
     expect(reports[0].metadata.name).toBe('policy-report');
