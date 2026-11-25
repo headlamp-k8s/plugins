@@ -127,7 +127,8 @@ describe('AccessiblePieChart', () => {
     );
     expect(svg.getAttribute('aria-labelledby')).toBe('kyverno-results-by-status-heading');
     expect(svg.getAttribute('aria-describedby')).toBe('kyverno-results-by-status-heading-desc');
-    expect(svg.getAttribute('tabindex')).toBe('0');
+    expect(screen.getByRole('img', { name: 'Results by Status' })).toBe(svg);
+    expect(svg.hasAttribute('tabindex')).toBe(false);
 
     expect(rowValues('Pass')).toEqual(['5']);
     expect(rowValues('Fail')).toEqual(['2']);
@@ -154,6 +155,8 @@ describe('AccessiblePieChart', () => {
     const svg = getChartSurface(container);
     expect(svg.querySelector('title')?.textContent).toBe('Results by Severity');
     expect(svg.getAttribute('aria-labelledby')).toBe('kyverno-results-by-severity-heading');
+    expect(screen.getByRole('img', { name: 'Results by Severity' })).toBe(svg);
+    expect(svg.hasAttribute('tabindex')).toBe(false);
 
     const labels = container.querySelectorAll('text[aria-hidden="true"]');
     expect(labels).toHaveLength(severityData.length);
@@ -167,32 +170,46 @@ describe('AccessiblePieChart', () => {
     expect(rowValues('Low')).toEqual(['2']);
   });
 
-  test('moves keyboard focus into the chart without using the unlabeled pie group', async () => {
-    const user = userEvent.setup();
-    const { container } = render(
-      <AccessiblePieChart
-        headingId="kyverno-results-by-status-heading"
-        title="Results by Status"
-        description="Donut chart of policy evaluation results grouped by status."
-        data={statusData}
-        viewDataLabel="View data"
-        nameColumnHeader="Status"
-        valueColumnHeader="Count"
-      />
-    );
+  test.each([
+    { name: 'Status', data: statusData, row: 'Pass', count: '5' },
+    { name: 'Severity', data: severityData, row: 'High', count: '3' },
+  ])(
+    'exposes $name data through a native focusable disclosure',
+    async ({ name, data, row, count }) => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <AccessiblePieChart
+          headingId="test-pie-heading"
+          title={`Results by ${name}`}
+          description="Open View data for exact counts."
+          data={data}
+          viewDataLabel="View data"
+          nameColumnHeader={name}
+          valueColumnHeader="Count"
+        />
+      );
 
-    const svg = getChartSurface(container);
-    const unlabeledPieGroup = container.querySelector<SVGGElement>('g.recharts-pie');
-    expect(unlabeledPieGroup?.getAttribute('tabindex')).toBe('-1');
+      const summary = screen.getByText('View data');
+      const details = summary.closest('details');
+      expect(details?.open).toBe(false);
 
-    svg.focus();
-    expect(document.activeElement).toBe(svg);
+      const svg = getChartSurface(container);
+      for (const element of svg.querySelectorAll<SVGElement>('[tabindex]')) {
+        expect(element.tabIndex).toBeLessThan(0);
+      }
+      expect(summary.tagName).toBe('SUMMARY');
+      expect(summary.tabIndex).toBe(0);
+      summary.focus();
+      expect(document.activeElement).toBe(summary);
 
-    await act(async () => {
-      await user.keyboard('{ArrowRight}');
-    });
-    expect(document.activeElement).toBe(svg);
-  });
+      // jsdom supports native summary focus and click, but user-event does not
+      // simulate the browser's Tab and Enter behavior for summary elements.
+      await user.click(summary);
+      expect(details?.open).toBe(true);
+      expect(screen.getByRole('table', { name: `Results by ${name}` })).toBeTruthy();
+      expect(rowValues(row)).toEqual([count]);
+    }
+  );
 });
 
 describe('AccessibleNamespaceChart', () => {

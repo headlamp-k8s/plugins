@@ -140,7 +140,7 @@ export function ChartDataTable({
           textAlign: 'left',
         },
         '& tbody th': { fontWeight: 500 },
-        '& th:not(:first-of-type), & td:not(:first-of-type)': { textAlign: 'right' },
+        '& tr > :not(:first-child)': { textAlign: 'right' },
       }}
     >
       <caption>{caption}</caption>
@@ -238,7 +238,7 @@ export function AccessiblePieChart({
         <PieChart
           title={title}
           desc={description}
-          accessibilityLayer
+          role="img"
           {...chartAriaProps(headingId, descId)}
         >
           <Pie
