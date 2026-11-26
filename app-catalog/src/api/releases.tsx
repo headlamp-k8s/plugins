@@ -2,8 +2,9 @@ import { ApiProxy, getHeadlampAPIHeaders } from '@kinvolk/headlamp-plugin/lib';
 
 const request = ApiProxy.request;
 
-export function listReleases() {
-  return request('/helm/releases/list', {
+export function listReleases(namespace?: string) {
+  const query = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+  return request(`/helm/releases/list${query}`, {
     method: 'GET',
     headers: { ...getHeadlampAPIHeaders() },
   });

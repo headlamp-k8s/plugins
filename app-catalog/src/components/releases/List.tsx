@@ -1,5 +1,4 @@
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
-// import { getCluster } from '@kinvolk/headlamp-plugin/lib/util';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   DateLabel,
   Link,
@@ -11,6 +10,7 @@ import {
 import { Box, Checkbox } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { fetchLatestAppVersion } from '../../api/charts';
 import {
   deleteRelease,
@@ -72,7 +72,33 @@ const RELEASE_KEY_DELIMITER = '|:|';
 
 /** Props for the ReleaseList component. fetchReleases can be overridden for testing. */
 interface ReleaseListProps {
-  fetchReleases?: () => Promise<ReleasesResponse>;
+  fetchReleases?: (namespace?: string) => Promise<ReleasesResponse>;
+}
+
+/**
+ * Computes the list of namespaces to query for Helm releases, or null if an
+ * unscoped cluster-wide request is permitted.
+ *
+ * When allowedNamespaces is configured for the cluster, requests are always
+ * constrained to that set and never fall back to a cluster-wide query.
+ */
+function resolveTargetNamespaces(
+  namespaceFilter: string,
+  globalNamespaces: string[],
+  allowedNamespaces: string[]
+): string[] | null {
+  const requested = namespaceFilter
+    ? [namespaceFilter]
+    : globalNamespaces.length > 0
+    ? globalNamespaces
+    : allowedNamespaces;
+
+  if (allowedNamespaces.length > 0) {
+    const allowedSet = new Set(allowedNamespaces);
+    return requested.filter(ns => allowedSet.has(ns));
+  }
+
+  return requested.length > 0 ? requested : null;
 }
 
 /**
@@ -143,22 +169,103 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   const deleteStatusTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const bulkDeleteTimeoutsRef = React.useRef<NodeJS.Timeout[]>([]);
 
+  const cluster = K8s.useCluster();
+  const [clusterNamespaces] = K8s.ResourceClasses.Namespace.useList();
+  const globalNamespaceSet = useSelector(
+    (state: { filter?: { namespaces?: Set<string> } }) => state?.filter?.namespaces
+  );
+
+  const allowedNamespacesKey = (K8s.cluster.getAllowedNamespaces(cluster) ?? [])
+    .slice()
+    .sort()
+    .join(',');
+  const allowedNamespaces = useMemo(
+    () => (allowedNamespacesKey ? allowedNamespacesKey.split(',') : []),
+    [allowedNamespacesKey]
+  );
+
+  const globalNamespacesKey = globalNamespaceSet
+    ? Array.from(globalNamespaceSet).sort().join(',')
+    : '';
+  const globalNamespaces = useMemo(
+    () => (globalNamespacesKey ? globalNamespacesKey.split(',') : []),
+    [globalNamespacesKey]
+  );
+
+  const targetNamespaces = useMemo(
+    () => resolveTargetNamespaces(namespaceFilter, globalNamespaces, allowedNamespaces),
+    [namespaceFilter, globalNamespaces, allowedNamespaces]
+  );
+
   useEffect(() => {
-    fetchReleases()
-      .then(response => {
-        if (!response.releases) {
+    let isCancelled = false;
+
+    async function loadReleases() {
+      if (targetNamespaces === null) {
+        try {
+          const response = await fetchReleases();
+          if (isCancelled) return;
+          setReleases(response?.releases ?? []);
+        } catch (error) {
+          if (isCancelled) return;
+          console.error('Failed to fetch releases:', error);
+          enqueueSnackbar('Failed to load releases', { variant: 'error' });
           setReleases([]);
-          return;
+          setLatestMap({});
         }
-        setReleases(response.releases);
-      })
-      .catch(error => {
-        console.error('Failed to fetch releases:', error);
+        return;
+      }
+
+      if (targetNamespaces.length === 0) {
+        setReleases([]);
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        targetNamespaces.map(namespace => fetchReleases(namespace))
+      );
+      if (isCancelled) return;
+
+      const mergedMap = new Map<string, Release>();
+      let succeededCount = 0;
+      const failedNamespaces: string[] = [];
+
+      results.forEach((result, index) => {
+        const namespace = targetNamespaces[index];
+        if (result.status === 'fulfilled') {
+          succeededCount += 1;
+          for (const release of result.value?.releases ?? []) {
+            mergedMap.set(createReleaseKey(release.namespace, release.name), release);
+          }
+        } else {
+          failedNamespaces.push(namespace);
+          console.error(`Failed to fetch releases for namespace ${namespace}:`, result.reason);
+        }
+      });
+
+      if (succeededCount === 0) {
         enqueueSnackbar('Failed to load releases', { variant: 'error' });
         setReleases([]);
         setLatestMap({});
-      });
-  }, [refetchCounter, fetchReleases, enqueueSnackbar]);
+        return;
+      }
+
+      if (failedNamespaces.length > 0) {
+        enqueueSnackbar(
+          `Failed to load releases for namespace(s): ${failedNamespaces.join(', ')}`,
+          { variant: 'warning' }
+        );
+      }
+
+      setReleases(Array.from(mergedMap.values()));
+    }
+
+    loadReleases();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [refetchCounter, fetchReleases, enqueueSnackbar, targetNamespaces]);
 
   useEffect(() => {
     return () => {
@@ -198,11 +305,30 @@ export default function ReleaseList({ fetchReleases = listReleases }: ReleaseLis
   }, [releases, nameFilter, namespaceFilter]);
 
   const availableNamespaces = useMemo(() => {
-    if (!releases) return [];
+    if (allowedNamespaces.length > 0) {
+      return allowedNamespaces;
+    }
 
-    const namespaces = new Set(releases.map(r => r.namespace));
+    const namespaces = new Set<string>();
+    if (clusterNamespaces) {
+      clusterNamespaces.forEach(ns => {
+        const name = ns?.metadata?.name;
+        if (name) {
+          namespaces.add(name);
+        }
+      });
+    }
+    if (globalNamespaces.length > 0) {
+      globalNamespaces.forEach(ns => namespaces.add(ns));
+    }
+    if (releases) {
+      releases.forEach(r => namespaces.add(r.namespace));
+    }
+    if (namespaceFilter) {
+      namespaces.add(namespaceFilter);
+    }
     return Array.from(namespaces).sort();
-  }, [releases]);
+  }, [allowedNamespaces, clusterNamespaces, globalNamespaces, releases, namespaceFilter]);
 
   // Count how many of the currently visible (filtered) releases are selected
   const selectedVisibleCount = useMemo(() => {
