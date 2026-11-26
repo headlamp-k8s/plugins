@@ -280,14 +280,20 @@ export default function ExportSessionDialog({
               },
               '& th': {
                 fontWeight: 600,
-                bgcolor: (t: Theme) =>
-                  t.palette.mode === 'dark' ? t.palette.action.hover : t.palette.grey[100],
+                bgcolor: (muiTheme: Theme) =>
+                  muiTheme.palette.mode === 'dark'
+                    ? muiTheme.palette.action.hover
+                    : muiTheme.palette.grey[100],
               },
               '& code': {
-                bgcolor: (t: Theme) =>
-                  t.palette.mode === 'dark' ? t.palette.grey[800] : t.palette.grey[100],
-                color: (t: Theme) =>
-                  t.palette.mode === 'dark' ? t.palette.grey[100] : t.palette.grey[900],
+                bgcolor: (muiTheme: Theme) =>
+                  muiTheme.palette.mode === 'dark'
+                    ? muiTheme.palette.grey[800]
+                    : muiTheme.palette.grey[100],
+                color: (muiTheme: Theme) =>
+                  muiTheme.palette.mode === 'dark'
+                    ? muiTheme.palette.grey[100]
+                    : muiTheme.palette.grey[900],
                 px: 0.6,
                 py: 0.2,
                 borderRadius: 0.5,
@@ -296,10 +302,14 @@ export default function ExportSessionDialog({
                   'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',
               },
               '& pre': {
-                bgcolor: (t: Theme) =>
-                  t.palette.mode === 'dark' ? t.palette.grey[800] : t.palette.grey[100],
-                color: (t: Theme) =>
-                  t.palette.mode === 'dark' ? t.palette.grey[100] : t.palette.grey[900],
+                bgcolor: (muiTheme: Theme) =>
+                  muiTheme.palette.mode === 'dark'
+                    ? muiTheme.palette.grey[800]
+                    : muiTheme.palette.grey[100],
+                color: (muiTheme: Theme) =>
+                  muiTheme.palette.mode === 'dark'
+                    ? muiTheme.palette.grey[100]
+                    : muiTheme.palette.grey[900],
                 p: 1.5,
                 borderRadius: 1,
                 overflow: 'auto',
@@ -316,7 +326,7 @@ export default function ExportSessionDialog({
                 pl: 1.5,
                 py: 0.5,
                 my: 1.5,
-                bgcolor: (t: Theme) => t.palette.action.hover,
+                bgcolor: (muiTheme: Theme) => muiTheme.palette.action.hover,
                 borderRadius: '0 4px 4px 0',
                 color: 'text.secondary',
               },
@@ -357,6 +367,7 @@ export default function ExportSessionDialog({
               height="100%"
               options={{
                 readOnly: true,
+                ariaLabel: t('Exported session report in Markdown'),
                 selectOnLineNumbers: true,
                 minimap: { enabled: false },
                 wordWrap: 'on',

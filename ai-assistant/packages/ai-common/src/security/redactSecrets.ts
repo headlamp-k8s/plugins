@@ -255,7 +255,7 @@ function redactPemBlocks(text: string): string {
  */
 function replaceFencedJsonBlocks(
   text: string,
-  replacer: (block: string, body: string) => string
+  replacer: (block: string, body: string, closed: boolean) => string
 ): string {
   const opening = /```json/gi;
   let out = '';
@@ -264,12 +264,15 @@ function replaceFencedJsonBlocks(
     let bodyStart = opening.lastIndex;
     while (bodyStart < text.length && /\s/.test(text[bodyStart])) bodyStart++;
     const close = text.indexOf('```', bodyStart);
-    // Later blocks open after this one, so they cannot find a closing fence either.
-    if (close === -1) break;
+    const closed = close !== -1;
+    const blockEnd = closed ? close + 3 : text.length;
+    const bodyEnd = closed ? close : text.length;
     out +=
       text.slice(copied, match.index) +
-      replacer(text.slice(match.index, close + 3), text.slice(bodyStart, close));
-    copied = opening.lastIndex = close + 3;
+      replacer(text.slice(match.index, blockEnd), text.slice(bodyStart, bodyEnd), closed);
+    copied = blockEnd;
+    if (!closed) break;
+    opening.lastIndex = blockEnd;
   }
   return out + text.slice(copied);
 }
@@ -294,32 +297,31 @@ function redactKubernetesSecretValues(input: string): string {
     return input;
   }
 
-  const fencedJson = replaceFencedJsonBlocks(input, (block, body) => {
+  const afterFencedJson = replaceFencedJsonBlocks(input, (block, body, closed) => {
     try {
       const parsed: unknown = JSON.parse(body.trim());
-      return redactSecretsInParsedJson(parsed)
-        ? `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``
-        : block;
+      if (!redactSecretsInParsedJson(parsed)) return block;
+      const serialized = `\`\`\`json\n${JSON.stringify(parsed, null, 2)}`;
+      return closed ? `${serialized}\n\`\`\`` : serialized;
     } catch {
       return block;
     }
   });
-  if (fencedJson !== input) return fencedJson;
 
-  const trimmed = input.trim();
+  const trimmed = afterFencedJson.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (redactSecretsInParsedJson(parsed)) {
         return JSON.stringify(parsed, null, 2);
       }
-      return input;
+      return afterFencedJson;
     } catch {
       // Not valid JSON — fall through to the YAML line scanner.
     }
   }
 
-  return redactKubernetesSecretValuesYaml(input);
+  return redactKubernetesSecretValuesYaml(afterFencedJson);
 }
 
 /**
@@ -440,15 +442,16 @@ function redactSecretYamlDocument(input: string): string {
     }
 
     if (dataBlockIndent !== null && line.trim() !== '') {
-      const entryMatch = line.match(/^(\s*)([^\s:][^:]*):\s*(.*)$/);
-      if (entryMatch) {
-        const entryIndent = entryMatch[1].length;
-        if (entryIndent > dataBlockIndent) {
+      if (indent <= dataBlockIndent) {
+        // Dedented back out of the data block; leave following lines intact.
+        dataBlockIndent = null;
+      } else {
+        const entryMatch = line.match(/^(\s*)([^\s:][^:]*):\s*(.*)$/);
+        if (entryMatch) {
+          const entryIndent = entryMatch[1].length;
           if (/^[|>][-+]?\s*$/.test(entryMatch[3])) blockScalarIndent = entryIndent;
           return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]`;
         }
-        // Dedented back out of the data block; leave sibling keys intact.
-        dataBlockIndent = null;
       }
     }
 

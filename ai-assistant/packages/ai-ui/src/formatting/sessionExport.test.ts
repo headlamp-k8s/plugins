@@ -823,7 +823,7 @@ data:
       );
       expect(result).toContain('token=[REDACTED]');
       expect(result).not.toContain('ghp_secretTokenValue12345678901234');
-      expect(result).toContain('Why did it restart with secret password=[REDACTED]?');
+      expect(result).toContain('Why did it restart with secret password=[REDACTED]');
       expect(result).not.toContain('mySecretPassword');
     });
 
@@ -857,6 +857,36 @@ data:
       });
 
       expect(result).not.toContain('c2Vzc2lvbi1jcmVk');
+      const envelopeLine = result.split('\n').find(line => line.trim().startsWith('{'));
+      expect(envelopeLine).toBeTruthy();
+      const parsedEnvelope = JSON.parse(envelopeLine!) as { raw: string };
+      const parsedRaw = JSON.parse(parsedEnvelope.raw) as {
+        body: { data: { session: string } };
+      };
+      expect(parsedRaw.body.data.session).toBe('[REDACTED]');
+    });
+
+    it('redacts partial Secret mutation payloads inside unclosed fenced JSON blocks', () => {
+      const unclosedMarkdown = [
+        'Inspecting Secret mutation payload:',
+        '```json',
+        JSON.stringify(
+          {
+            url: '/api/v1/namespaces/default/secrets/db',
+            body: { data: { session: 'c2VjcmV0' } },
+          },
+          null,
+          2
+        ),
+      ].join('\n');
+
+      const result = generateSessionMarkdown({
+        messages: [{ role: 'assistant', content: unclosedMarkdown }],
+        cluster: 'prod-cluster',
+        timestamp: fixedDate,
+      });
+
+      expect(result).not.toContain('c2VjcmV0');
       expect(result).toContain('"session": "[REDACTED]"');
     });
 

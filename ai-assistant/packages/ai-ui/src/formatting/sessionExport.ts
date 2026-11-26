@@ -184,14 +184,9 @@ function sanitizeJsonCodeBlocksInMarkdown(content: string): string {
     closeFenceRegex.lastIndex = codeStart;
     const closeMatch = closeFenceRegex.exec(content);
 
-    if (!closeMatch) {
-      continue;
-    }
-
-    const codeEnd = closeMatch.index;
+    const codeEnd = closeMatch ? closeMatch.index : content.length;
     const code = content.slice(codeStart, codeEnd);
-    const [fullClose, , closeIndent, closeFence, closeTrailing] = closeMatch;
-    const closeEnd = closeMatch.index + fullClose.length;
+    const closeEnd = closeMatch ? closeMatch.index + closeMatch[0].length : content.length;
 
     result += content.slice(lastIndex, openStartIndex);
 
@@ -212,7 +207,9 @@ function sanitizeJsonCodeBlocksInMarkdown(content: string): string {
                 .map(line => `${openIndent}${line}`)
                 .join('\n');
             }
-            replacedBlock = `${prefix}${openIndent}${openFence}${lang}\n${reFormatted}\n${closeIndent}${closeFence}${closeTrailing}`;
+            replacedBlock = closeMatch
+              ? `${prefix}${openIndent}${openFence}${lang}\n${reFormatted}\n${closeMatch[2]}${closeMatch[3]}${closeMatch[4]}`
+              : `${prefix}${openIndent}${openFence}${lang}\n${reFormatted}`;
           }
         }
       } catch {
@@ -227,6 +224,9 @@ function sanitizeJsonCodeBlocksInMarkdown(content: string): string {
     }
 
     lastIndex = closeEnd;
+    if (!closeMatch) {
+      break;
+    }
     openFenceRegex.lastIndex = closeEnd;
   }
 
@@ -264,8 +264,9 @@ function sanitizeSecretMutations(value: unknown): unknown {
 
   const record: Record<string, unknown> = { ...(value as Record<string, unknown>) };
   const targetUrl = record.url ?? record.path;
+  const handledTargetBody = isSecretRequestUrl(targetUrl);
 
-  if (isSecretRequestUrl(targetUrl)) {
+  if (handledTargetBody) {
     if ('body' in record) {
       record.body = sanitizeSecretMutationBody(record.body);
     }
@@ -295,7 +296,7 @@ function sanitizeSecretMutations(value: unknown): unknown {
   }
 
   for (const [k, v] of Object.entries(record)) {
-    if (k !== 'body' && k !== 'fullResource') {
+    if (!(handledTargetBody && (k === 'body' || k === 'fullResource'))) {
       if ((typeof v === 'object' && v !== null) || typeof v === 'string') {
         record[k] = sanitizeSecretMutations(v);
       }

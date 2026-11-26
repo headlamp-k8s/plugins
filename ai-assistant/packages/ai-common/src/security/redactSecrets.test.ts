@@ -439,6 +439,27 @@ namespace: default`;
     expect(redactedJson).not.toContain('remaining-secret');
     expect(redactedJson).toContain('"[REDACTED]"');
   });
+
+  it('redacts unclosed fenced JSON Secrets and subsequent YAML Secrets in the same message', () => {
+    const mixed = [
+      '```json',
+      JSON.stringify({ kind: 'Secret', data: { session: 's3cr3t' } }),
+      '```',
+      '---',
+      'kind: Secret',
+      'data:',
+      '  cookie: Y29va2llLXZhbHVl',
+      '',
+      '```json',
+      JSON.stringify({ kind: 'Secret', data: { trailing: 'dHJhaWxpbmc=' } }),
+    ].join('\n');
+    const out = redactSecrets(mixed);
+    expect(out).not.toContain('s3cr3t');
+    expect(out).not.toContain('Y29va2llLXZhbHVl');
+    expect(out).not.toContain('dHJhaWxpbmc=');
+    expect(out).toContain('cookie: [REDACTED]');
+    expect(out).toContain('"trailing": "[REDACTED]"');
+  });
 });
 
 describe('redactSecretsInValue', () => {
