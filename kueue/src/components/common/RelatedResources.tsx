@@ -485,3 +485,35 @@ function RelatedWorkloadsTable({
     </SectionBox>
   );
 }
+
+/** List Workloads associated with a specific WorkloadPriorityClass. */
+export function RelatedWorkloadsByPriorityClassSection({
+  priorityClassName,
+  cluster,
+}: {
+  priorityClassName: string;
+  cluster?: string;
+}) {
+  const [workloads, workloadsError] = Workload.useList({ cluster });
+
+  const relatedWorkloads = useMemo(() => {
+    if (!workloads) {
+      return [];
+    }
+
+    return workloads.filter(
+      workload =>
+        workload.isWorkloadPriorityClass && workload.priorityClassName === priorityClassName
+    );
+  }, [priorityClassName, workloads]);
+
+  if (workloadsError) {
+    return renderLoadError('Related Workloads', 'Workloads');
+  }
+
+  if (!workloads) {
+    return <Loader title="Loading related Workloads..." />;
+  }
+
+  return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
+}

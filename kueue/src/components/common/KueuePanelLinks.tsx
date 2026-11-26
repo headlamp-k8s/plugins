@@ -10,6 +10,7 @@ import ClusterQueueDetail from '../clusterqueues/Detail';
 import CohortDetail from '../cohorts/Detail';
 import LocalQueueDetail from '../localqueues/Detail';
 import ResourceFlavorDetail from '../resourceflavors/Detail';
+import WorkloadPriorityClassDetail from '../workloadpriorityclasses/Detail';
 import WorkloadDetail from '../workloads/Detail';
 
 type DetailProps = { name?: string; namespace?: string; cluster?: string };
@@ -30,6 +31,11 @@ const panelDetails: { kind: string; path: string; Detail: ComponentType<DetailPr
     Detail: ResourceFlavorDetail,
   },
   { kind: 'Workload', path: kueueRoutePaths.workloadDetail, Detail: WorkloadDetail },
+  {
+    kind: 'WorkloadPriorityClass',
+    path: kueueRoutePaths.workloadPriorityClassDetail,
+    Detail: WorkloadPriorityClassDetail,
+  },
 ];
 
 /** Find the Kueue detail view a link's pathname points at, such as /c/main/kueue/workloads/ns/name. */

@@ -8,6 +8,7 @@ vi.mock('../cohorts/Detail', () => ({ default: () => null }));
 vi.mock('../localqueues/Detail', () => ({ default: () => null }));
 vi.mock('../resourceflavors/Detail', () => ({ default: () => null }));
 vi.mock('../workloads/Detail', () => ({ default: () => null }));
+vi.mock('../workloadpriorityclasses/Detail', () => ({ default: () => null }));
 vi.mock('../../map/kueueMapSource', () => ({ kueueIconName: 'icon' }));
 
 describe('matchKueueDetailPath', () => {
@@ -25,6 +26,14 @@ describe('matchKueueDetailPath', () => {
       kind: 'ClusterQueue',
       cluster: 'main',
       name: 'strict',
+    });
+  });
+
+  it('matches WorkloadPriorityClass detail routes', () => {
+    expect(matchKueueDetailPath('/c/main/kueue/workloadpriorityclasses/high')).toMatchObject({
+      kind: 'WorkloadPriorityClass',
+      cluster: 'main',
+      name: 'high',
     });
   });
 
