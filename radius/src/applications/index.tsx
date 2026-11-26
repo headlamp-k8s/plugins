@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Link, SectionBox, Table } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { CircularProgress, Typography } from '@mui/material';
 import { RadiusStatusLabel } from '../components/RadiusStatusLabel';
@@ -31,6 +32,7 @@ interface ApplicationTableData {
  * Applications component displays a list of all Radius applications
  */
 export default function Applications() {
+  const { t } = useTranslation();
   const [applications, error, loading] = useRadiusApplications();
 
   // Show loading state
@@ -54,7 +56,7 @@ export default function Applications() {
     return (
       <SectionBox>
         <Typography color="error" variant="h6">
-          Error loading applications
+          {t('Error loading applications')}
         </Typography>
         <Typography color="error">{error.message}</Typography>
       </SectionBox>
@@ -62,12 +64,12 @@ export default function Applications() {
   }
 
   const tableData: ApplicationTableData[] = (applications || []).map(app => {
-    const namespace = app.properties.status?.compute?.namespace || 'N/A';
-    const environment = app.properties.environment?.split('/').pop() || 'N/A';
+    const namespace = app.properties.status?.compute?.namespace || t('N/A');
+    const environment = app.properties.environment?.split('/').pop() || t('N/A');
     const provisioningState = app.properties.provisioningState || 'Unknown';
     const created = app.systemData?.createdAt
       ? new Date(app.systemData.createdAt).toLocaleDateString()
-      : 'N/A';
+      : t('N/A');
 
     return {
       name: app.name,
@@ -79,12 +81,12 @@ export default function Applications() {
   });
 
   return (
-    <SectionBox title={`Applications (${tableData.length})`}>
+    <SectionBox title={t('Applications ({{count}})', { count: tableData.length })}>
       <Table
         data={tableData}
         columns={[
           {
-            header: 'Name',
+            header: t('Name'),
             accessorKey: 'name',
             gridTemplate: 'auto',
             Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
@@ -97,15 +99,15 @@ export default function Applications() {
             },
           },
           {
-            header: 'Namespace',
+            header: t('Namespace'),
             accessorKey: 'namespace',
           },
           {
-            header: 'Environment',
+            header: t('Environment'),
             accessorKey: 'environment',
             Cell: ({ row }: { row: { original: ApplicationTableData } }) => {
               const environmentName = row.original.environment;
-              return environmentName === 'N/A' ? (
+              return environmentName === t('N/A') ? (
                 <Typography>{environmentName}</Typography>
               ) : (
                 <Link routeName="environment-detail" params={{ environmentName }}>
@@ -115,14 +117,14 @@ export default function Applications() {
             },
           },
           {
-            header: 'Provisioning State',
+            header: t('Provisioning State'),
             accessorKey: 'provisioningState',
             accessorFn: (item: ApplicationTableData) => {
               return <RadiusStatusLabel status={item.provisioningState} />;
             },
           },
           {
-            header: 'Created',
+            header: t('Created'),
             accessorKey: 'created',
           },
         ]}
