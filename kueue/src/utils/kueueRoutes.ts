@@ -12,6 +12,8 @@ export const kueueRouteNames = {
   resourceFlavorDetail: 'kueue-resourceflavor-detail',
   workloadsList: 'kueue-workloads-list',
   workloadDetail: 'kueue-workload-detail',
+  multiKueueClustersList: 'kueue-multikueueclusters-list',
+  multiKueueClusterDetail: 'kueue-multikueuecluster-detail',
   multiKueueConfigsList: 'kueue-multikueueconfigs-list',
   multiKueueConfigDetail: 'kueue-multikueueconfig-detail',
 } as const;
@@ -30,6 +32,8 @@ export const kueueRoutePaths = {
   resourceFlavorDetail: '/kueue/resourceflavors/:name',
   workloadsList: '/kueue/workloads',
   workloadDetail: '/kueue/workloads/:namespace/:name',
+  multiKueueClustersList: '/kueue/multikueueclusters',
+  multiKueueClusterDetail: '/kueue/multikueueclusters/:name',
   multiKueueConfigsList: '/kueue/multikueueconfigs',
   multiKueueConfigDetail: '/kueue/multikueueconfigs/:name',
 } as const;
