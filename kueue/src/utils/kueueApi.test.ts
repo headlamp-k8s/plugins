@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { kueueApiGroup, kueueApiVersions } from './kueueApi';
-import { kueueRoutePaths } from './kueueRoutes';
+import { kueueRouteNames, kueueRoutePaths } from './kueueRoutes';
 
 describe('Kueue API constants', () => {
   it('uses the Kueue API group with current and previous ResourceFlavor versions', () => {
@@ -40,5 +40,12 @@ describe('Kueue API constants', () => {
   it('defines Workload list and namespaced detail routes', () => {
     expect(kueueRoutePaths.workloadsList).toBe('/kueue/workloads');
     expect(kueueRoutePaths.workloadDetail).toBe('/kueue/workloads/:namespace/:name');
+  });
+
+  it('names routes with readable titles that stay unique ignoring case', () => {
+    const names = Object.values(kueueRouteNames);
+    expect(kueueRouteNames.clusterQueuesList).toBe('Kueue ClusterQueues');
+    expect(new Set(names.map(name => name.toLowerCase())).size).toBe(names.length);
+    names.forEach(name => expect(name).toMatch(/^Kueue [A-Z]/));
   });
 });
