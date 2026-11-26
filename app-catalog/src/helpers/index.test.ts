@@ -743,4 +743,76 @@ describe('mergeHelmValues', () => {
     expect(merged.worker?.settings?.global?.rootEnv).toBeUndefined();
     expect('env' in (merged.worker?.settings?.global || {})).toBe(false);
   });
+
+  it('removes worker.global key overridden with null when both parent and subchart defaults define it without root globals', () => {
+    const defaults = {
+      worker: {
+        global: { env: 'dev' },
+      },
+    };
+    const overrides = {
+      worker: {
+        global: { env: null },
+      },
+    };
+    const chart = {
+      metadata: {
+        dependencies: [{ name: 'worker' }],
+      },
+      dependencies: [
+        {
+          name: 'worker',
+          values: {
+            global: { env: 'dev' },
+          },
+        },
+      ],
+    };
+
+    const merged = mergeHelmValues(defaults, overrides, chart);
+    expect(merged.global).toBeUndefined();
+    expect('env' in (merged.worker?.global || {})).toBe(false);
+  });
+
+  it('does not resurrect a dependency deleted with null even when parent globals or child defaults exist', () => {
+    const defaults = {
+      global: { env: 'prod' },
+      worker: { replicaCount: 1 },
+    };
+    const overrides = {
+      worker: null,
+    };
+    const chart = {
+      metadata: { dependencies: [{ name: 'worker' }] },
+      dependencies: [{ name: 'worker', values: { replicaCount: 2 } }],
+    };
+
+    const merged = mergeHelmValues(defaults, overrides, chart);
+    expect('worker' in merged).toBe(false);
+  });
+
+  it('resolves aliased subchart values when alias is only declared on metadata.dependencies', () => {
+    const defaults = {
+      global: { env: 'prod' },
+    };
+    const overrides = {
+      myWorker: { replicaCount: 3 },
+    };
+    const chart = {
+      metadata: {
+        dependencies: [{ name: 'worker', alias: 'myWorker' }],
+      },
+      dependencies: [
+        {
+          metadata: { name: 'worker' },
+          values: { replicaCount: 1, port: 8080 },
+        },
+      ],
+    };
+
+    const merged = mergeHelmValues(defaults, overrides, chart);
+    expect(merged.myWorker?.replicaCount).toBe(3);
+    expect(merged.myWorker?.port).toBe(8080);
+    expect(merged.myWorker?.global?.env).toBe('prod');
+  });
 });

@@ -260,6 +260,18 @@ export function findChildDependencyContext(
     if (Array.isArray(context.metadata?.dependencies)) {
       for (const item of context.metadata.dependencies) {
         if (matchesDep(item)) {
+          const originalName = typeof item === 'object' && item !== null ? item.name : undefined;
+          if (originalName && originalName !== depName && Array.isArray(context.dependencies)) {
+            const matchedSubchart = context.dependencies.find(
+              sub =>
+                typeof sub === 'object' &&
+                sub !== null &&
+                ((sub as any).metadata?.name === originalName || (sub as any).name === originalName)
+            );
+            if (matchedSubchart) {
+              return resolveChild(matchedSubchart);
+            }
+          }
           return resolveChild(item);
         }
       }
@@ -291,8 +303,8 @@ export function findChildDependencyContext(
  * - Sibling properties in maps are preserved.
  * - A null override deletes the key, matching Helm coalescing semantics.
  * - Own property definition is used to protect against prototype pollution with __proto__ keys.
- * - When dependency context is provided, parent `global` values are propagated into chart dependencies,
- *   without propagating globals into arbitrary maps that are not dependencies.
+ * - When dependency context is provided, parent `global` values are propagated into chart
+ *   dependencies without propagating globals into arbitrary maps that are not dependencies.
  */
 export function mergeHelmValues(
   base: Record<string, any> = {},
@@ -350,6 +362,10 @@ export function mergeHelmValues(
     for (const dep of depNames) {
       if (dep === '__proto__') continue;
 
+      if (Object.prototype.hasOwnProperty.call(overrides, dep) && overrides[dep] === null) {
+        continue;
+      }
+
       const hasDepKey = Object.prototype.hasOwnProperty.call(result, dep);
       const existingVal = hasDepKey ? result[dep] : undefined;
 
@@ -366,7 +382,8 @@ export function mergeHelmValues(
         : {};
       const hasChildDefaults = Object.keys(childDefaults).length > 0;
 
-      // If the dependency is not in result, and parent has no globals, and child has no defaults or context, skip
+      // Skip when the dependency is absent in result and has no parent globals,
+      // child defaults, or nested context
       if (!hasDepKey && !hasParentGlobal && !hasChildDefaults && !childContext) {
         continue;
       }
@@ -385,32 +402,31 @@ export function mergeHelmValues(
         });
       }
 
-      // Coalesce child chart defaults with parent overrides and recursively propagate into child dependencies
+      // Coalesce child defaults with parent overrides and recurse into child dependencies
       const coalescedDep = childContext
         ? mergeHelmValues(childDefaults, depObj, childContext)
         : hasChildDefaults
         ? mergeHelmValues(childDefaults, depObj)
         : depObj;
 
-      // Re-apply null overrides from user overrides for this dependency so subchart defaults do not restore keys deleted by null
+      // Re-apply null overrides from user overrides for this dependency so subchart
+      // defaults do not restore keys deleted by null
       if (Object.prototype.hasOwnProperty.call(overrides, dep) && isPlainObject(overrides[dep])) {
         const parentDepDefaults = isPlainObject(base[dep]) ? base[dep] : undefined;
-        const containingChartGlobal = isPlainObject(coalescedDep.global)
-          ? coalescedDep.global
-          : parentGlobal;
         applyNullOverrides(
           coalescedDep,
           overrides[dep],
           parentDepDefaults,
           hasChildDefaults ? childDefaults : undefined,
           childContext,
-          containingChartGlobal,
+          parentGlobal,
           false,
           undefined
         );
       }
 
-      // Only set in result if the dependency already existed, or parent globals were propagated, or child has values
+      // Preserve the dependency in result only if it existed, inherited parent globals,
+      // or resolved non-empty child values
       if (hasDepKey || hasParentGlobal || Object.keys(coalescedDep).length > 0) {
         Object.defineProperty(result, dep, {
           value: coalescedDep,

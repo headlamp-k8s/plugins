@@ -169,7 +169,7 @@ export default function ReleaseDetail() {
             {historyReleases.map((rel: any) => {
               return (
                 <MenuItem key={rel?.version} value={rel?.version?.toString()}>
-                  {rel?.version} - {rel?.info?.description || 'N/A'} (
+                  {rel?.version} - {rel?.info?.description || t('N/A')} (
                   {new Date(rel?.info.last_deployed).toLocaleString()})
                 </MenuItem>
               );
