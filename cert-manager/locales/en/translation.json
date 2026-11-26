@@ -53,6 +53,7 @@
   "Certificates": "Certificates",
   "Secret": "Secret",
   "Expires In (Not After)": "Expires In (Not After)",
+  "Expired": "Expired",
   "DNS Name": "DNS Name",
   "Authorization URL": "Authorization URL",
   "Type": "Type",

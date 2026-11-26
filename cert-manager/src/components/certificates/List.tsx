@@ -1,9 +1,9 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { ResourceListView } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { DateLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { useCertManagerInstalled } from '../../hooks/useCertManagerInstalled';
 import { Certificate } from '../../resources/certificate';
 import { NotInstalledBanner } from '../common/CommonComponents';
+import { ExpiryLabel } from './ExpiryLabel';
 
 export function CertificatesList() {
   const { t } = useTranslation();
@@ -30,9 +30,7 @@ export function CertificatesList() {
           id: 'expiresIn',
           label: t('Expires In (Not After)'),
           render: item => {
-            return item?.status?.notAfter ? (
-              <DateLabel date={item.status.notAfter} format="mini" />
-            ) : null;
+            return item?.status?.notAfter ? <ExpiryLabel date={item.status.notAfter} /> : null;
           },
           getValue: item => item.status?.notAfter ?? '',
           sort: (a, b) => {
