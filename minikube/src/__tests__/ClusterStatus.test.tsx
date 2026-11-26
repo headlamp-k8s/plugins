@@ -38,6 +38,7 @@ describe('ClusterStatus component', () => {
     render(<ClusterStatus cluster={cluster} error={undefined} />);
 
     expect(screen.getByText('Connecting...')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'Checking cluster status...' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'start' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'stop' })).toBeNull();
   });

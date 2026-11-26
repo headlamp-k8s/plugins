@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Box, IconButton, Tooltip, Typography, useTheme } from '@mui/material';
+import { Box, CircularProgress, IconButton, Tooltip, Typography, useTheme } from '@mui/material';
 import React from 'react';
 import CommandCluster from './CommandCluster/CommandCluster';
 
@@ -9,6 +9,8 @@ export type MinikubeClusterStatusType =
   | 'auth-error'
   | 'permission-error'
   | 'unavailable';
+
+type ConfirmDialogAction = 'startMinikube' | 'stopMinikube';
 
 export interface ClusterStatusProps {
   cluster: {
@@ -40,148 +42,118 @@ export function getMinikubeClusterStatus(
   return 'unavailable';
 }
 
+interface StatusPresentation {
+  label: string;
+  color: string;
+  tooltip: string;
+  action?: {
+    ariaLabel: string;
+    dialog: ConfirmDialogAction;
+    icon: string;
+  };
+  icon?: string;
+}
+
+const iconBoxSx = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 16,
+  height: 16,
+};
+
+const actionButtonSx = {
+  ...iconBoxSx,
+  p: 0,
+  minWidth: 16,
+  minHeight: 16,
+};
+
 export default function ClusterStatus({ cluster, error }: ClusterStatusProps) {
   const theme = useTheme() as any;
   const status = getMinikubeClusterStatus(error);
-  const [openConfirmDialog, setOpenConfirmDialog] = React.useState<string | null>(null);
+  const [openConfirmDialog, setOpenConfirmDialog] = React.useState<ConfirmDialogAction | null>(
+    null
+  );
 
   const successColor =
     theme.palette?.home?.status?.success || theme.palette?.success?.main || '#4caf50';
   const errorColor = theme.palette?.home?.status?.error || theme.palette?.error?.main || '#f44336';
   const neutralColor = theme.palette?.text?.secondary || '#888';
 
-  const renderActionOrIcon = () => {
-    switch (status) {
-      case 'active':
-        return (
-          <Tooltip title="Stop" placement="top" arrow>
-            <IconButton
-              aria-label="stop"
-              onClick={() => {
-                setOpenConfirmDialog('stopMinikube');
-              }}
-              size="small"
-              sx={{
-                p: 0,
-                minWidth: 16,
-                width: 16,
-                height: 16,
-                minHeight: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon icon="mdi:stop" width={16} height={16} color={successColor} />
-            </IconButton>
-          </Tooltip>
-        );
-      case 'unavailable':
-        return (
-          <Tooltip title="Start" placement="top" arrow>
-            <IconButton
-              aria-label="start"
-              onClick={() => {
-                setOpenConfirmDialog('startMinikube');
-              }}
-              size="small"
-              sx={{
-                p: 0,
-                minWidth: 16,
-                width: 16,
-                height: 16,
-                minHeight: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon icon="mdi:play" width={16} height={16} color={errorColor} />
-            </IconButton>
-          </Tooltip>
-        );
-      case 'auth-error':
-        return (
-          <Tooltip
-            title="Authentication failed. Check your cluster credentials."
-            placement="top"
-            arrow
+  const statusConfig: Record<MinikubeClusterStatusType, StatusPresentation> = {
+    active: {
+      label: 'Active',
+      color: successColor,
+      tooltip: 'Stop',
+      action: { ariaLabel: 'stop', dialog: 'stopMinikube', icon: 'mdi:stop' },
+    },
+    unavailable: {
+      label: 'Inactive',
+      color: errorColor,
+      tooltip: 'Start',
+      action: { ariaLabel: 'start', dialog: 'startMinikube', icon: 'mdi:play' },
+    },
+    'auth-error': {
+      label: 'Authentication Error',
+      color: errorColor,
+      tooltip: 'Authentication failed. Check your cluster credentials.',
+      icon: 'mdi:alert-circle-outline',
+    },
+    'permission-error': {
+      label: 'Permission Error',
+      color: errorColor,
+      tooltip: 'Permission denied. Check your user permissions.',
+      icon: 'mdi:alert-circle-outline',
+    },
+    loading: {
+      label: 'Connecting...',
+      color: neutralColor,
+      tooltip: 'Checking cluster status...',
+    },
+  };
+
+  const statusInfo = statusConfig[status];
+
+  const renderIndicator = () => {
+    if (statusInfo.action) {
+      const { ariaLabel, dialog, icon } = statusInfo.action;
+      return (
+        <Tooltip title={statusInfo.tooltip} placement="top" arrow>
+          <IconButton
+            aria-label={ariaLabel}
+            onClick={() => setOpenConfirmDialog(dialog)}
+            size="small"
+            sx={actionButtonSx}
           >
-            <Box
-              role="img"
-              tabIndex={0}
-              aria-label="Authentication failed. Check your cluster credentials."
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 16,
-                height: 16,
-              }}
-            >
-              <Icon icon="mdi:alert-circle-outline" width={16} height={16} color={errorColor} />
-            </Box>
-          </Tooltip>
-        );
-      case 'permission-error':
-        return (
-          <Tooltip title="Permission denied. Check your user permissions." placement="top" arrow>
-            <Box
-              role="img"
-              tabIndex={0}
-              aria-label="Permission denied. Check your user permissions."
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 16,
-                height: 16,
-              }}
-            >
-              <Icon icon="mdi:alert-circle-outline" width={16} height={16} color={errorColor} />
-            </Box>
-          </Tooltip>
-        );
-      case 'loading':
-      default:
-        return (
-          <Tooltip title="Checking cluster status..." placement="top" arrow>
-            <Box
-              role="img"
-              tabIndex={0}
-              aria-label="Checking cluster status..."
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 16,
-                height: 16,
-              }}
-            >
-              <Icon icon="mdi:loading" width={16} height={16} color={neutralColor} />
-            </Box>
-          </Tooltip>
-        );
+            <Icon icon={icon} width={16} height={16} color={statusInfo.color} />
+          </IconButton>
+        </Tooltip>
+      );
     }
-  };
 
-  const getStatusLabelAndColor = () => {
-    switch (status) {
-      case 'active':
-        return { label: 'Active', color: successColor };
-      case 'unavailable':
-        return { label: 'Inactive', color: errorColor };
-      case 'auth-error':
-        return { label: 'Authentication Error', color: errorColor };
-      case 'permission-error':
-        return { label: 'Permission Error', color: errorColor };
-      case 'loading':
-      default:
-        return { label: 'Connecting...', color: neutralColor };
+    if (statusInfo.icon) {
+      return (
+        <Tooltip title={statusInfo.tooltip} placement="top" arrow>
+          <Box role="img" tabIndex={0} aria-label={statusInfo.tooltip} sx={iconBoxSx}>
+            <Icon icon={statusInfo.icon} width={16} height={16} color={statusInfo.color} />
+          </Box>
+        </Tooltip>
+      );
     }
-  };
 
-  const statusInfo = getStatusLabelAndColor();
+    return (
+      <Tooltip title={statusInfo.tooltip} placement="top" arrow>
+        <Box sx={iconBoxSx}>
+          <CircularProgress
+            size={14}
+            aria-label={statusInfo.tooltip}
+            sx={{ color: statusInfo.color }}
+          />
+        </Box>
+      </Tooltip>
+    );
+  };
 
   return (
     <>
@@ -189,14 +161,14 @@ export default function ClusterStatus({ cluster, error }: ClusterStatusProps) {
         initialClusterName={cluster?.name}
         open={openConfirmDialog === 'stopMinikube'}
         handleClose={cancel => {
-          setOpenConfirmDialog('');
+          setOpenConfirmDialog(null);
           if (cancel) {
             return;
           }
           window.location.reload();
         }}
         onCommandDispatched={() => {
-          setOpenConfirmDialog('');
+          setOpenConfirmDialog(null);
         }}
         command={'stop'}
       />
@@ -204,20 +176,20 @@ export default function ClusterStatus({ cluster, error }: ClusterStatusProps) {
         initialClusterName={cluster?.name}
         open={openConfirmDialog === 'startMinikube'}
         handleClose={cancel => {
-          setOpenConfirmDialog('');
+          setOpenConfirmDialog(null);
           if (cancel) {
             return;
           }
           window.location.reload();
         }}
         onCommandDispatched={() => {
-          setOpenConfirmDialog('');
+          setOpenConfirmDialog(null);
         }}
         command={'start'}
       />
       <Box width="fit-content">
         <Box display="flex" alignItems="center" justifyContent="center">
-          {renderActionOrIcon()}
+          {renderIndicator()}
           <Typography
             variant="body2"
             sx={{
