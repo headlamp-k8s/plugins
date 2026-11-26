@@ -113,8 +113,8 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
             const cond =
               getCondition(c.conditions, 'Available') || getCondition(c.conditions, 'Ready');
             return renderConditionStatus(undefined, cond, {
-              trueLabel: 'true',
-              falseLabel: 'false',
+              trueLabel: t('true'),
+              falseLabel: t('false'),
               unknownLabel: t('Unknown'),
               trueStatus: 'success',
               falseStatus: 'error',

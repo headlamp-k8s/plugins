@@ -152,7 +152,7 @@ function UsedClustersSection({ clusterClassName, namespace }: UsedClustersSectio
             label: t('Phase'),
             getter: (c: Cluster) => (
               <StatusLabel status={getPhaseStatus(c.status?.phase)}>
-                {c.status?.phase || 'Unknown'}
+                {c.status?.phase || t('Unknown')}
               </StatusLabel>
             ),
           },

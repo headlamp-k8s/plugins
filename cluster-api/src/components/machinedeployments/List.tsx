@@ -100,8 +100,8 @@ function MachineDeploymentsListWithData({
           getValue: deployment => (deployment.spec?.paused ? 'true' : 'false'),
           render: deployment =>
             renderConditionStatus(deployment.spec?.paused ? 'true' : 'false', undefined, {
-              trueLabel: 'true',
-              falseLabel: 'false',
+              trueLabel: t('true'),
+              falseLabel: t('false'),
               trueStatus: 'warning',
               falseStatus: 'success',
             }),

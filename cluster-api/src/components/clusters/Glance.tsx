@@ -32,7 +32,7 @@ export function ClusterGlance({ node }: { node: GraphNode }) {
   const infraRef = spec.infrastructureRef;
   const providerName = infraRef?.kind;
 
-  const phase: string = status.phase || 'Unknown';
+  const phase: string = status.phase || t('Unknown');
 
   const cpEndpoint = spec.controlPlaneEndpoint;
   const endpointStr = cpEndpoint?.host ? `${cpEndpoint.host}:${cpEndpoint.port ?? 6443}` : null;
@@ -60,7 +60,7 @@ export function ClusterGlance({ node }: { node: GraphNode }) {
         </StatusLabel>
       )}
       {k8sVersion && <StatusLabel status="">{`${k8sVersion}`}</StatusLabel>}
-      <StatusLabel status={getPhaseStatus(phase)}>{`${phase}`}</StatusLabel>
+      <StatusLabel status={getPhaseStatus(status.phase || 'Unknown')}>{`${phase}`}</StatusLabel>
       {providerName && (
         <StatusLabel status="">
           {t('Provider: {{provider}}', { provider: providerName })}

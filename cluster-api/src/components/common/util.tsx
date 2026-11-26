@@ -240,7 +240,7 @@ export function TopologyControlledAction() {
             whiteSpace: 'nowrap',
           }}
         >
-          Topology-controlled
+          {t('Topology-controlled')}
         </Typography>
       </Box>
     </Tooltip>

@@ -62,7 +62,7 @@ export function MachineHealthCheckDetail({ node }: { node?: MachineHealthCheckNo
                 ? `${item.spec.checks.nodeStartupTimeoutSeconds}s`
                 : item.spec?.nodeStartupTimeout
                 ? `${item.spec.nodeStartupTimeout}`
-                : 'Not set',
+                : t('Not set'),
             },
             {
               name: t('Expected Machines'),

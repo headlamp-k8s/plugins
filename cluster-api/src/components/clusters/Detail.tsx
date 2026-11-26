@@ -204,7 +204,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 '-'
               ) : (
                 <StatusLabel status={item.status.controlPlaneReady ? 'success' : 'error'}>
-                  {item.status.controlPlaneReady ? 'true' : 'false'}
+                  {item.status.controlPlaneReady ? t('true') : t('false')}
                 </StatusLabel>
               ),
             hide: item.status?.controlPlaneReady === undefined,
@@ -216,7 +216,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 '-'
               ) : (
                 <StatusLabel status={item.status.infrastructureReady ? 'success' : 'error'}>
-                  {item.status.infrastructureReady ? 'true' : 'false'}
+                  {item.status.infrastructureReady ? t('true') : t('false')}
                 </StatusLabel>
               ),
             hide: item.status?.infrastructureReady === undefined,
@@ -230,7 +230,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 <StatusLabel
                   status={initialization.controlPlaneInitialized ? 'success' : 'warning'}
                 >
-                  {initialization.controlPlaneInitialized ? 'true' : 'false'}
+                  {initialization.controlPlaneInitialized ? t('true') : t('false')}
                 </StatusLabel>
               ),
             hide: initialization?.controlPlaneInitialized === undefined,
@@ -244,7 +244,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 <StatusLabel
                   status={initialization.infrastructureProvisioned ? 'success' : 'warning'}
                 >
-                  {initialization.infrastructureProvisioned ? 'true' : 'false'}
+                  {initialization.infrastructureProvisioned ? t('true') : t('false')}
                 </StatusLabel>
               ),
             hide: initialization?.infrastructureProvisioned === undefined,
@@ -252,8 +252,8 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
           {
             name: t('Paused'),
             value: renderConditionStatus(spec?.paused ? 'true' : 'false', undefined, {
-              trueLabel: 'true',
-              falseLabel: 'false',
+              trueLabel: t('true'),
+              falseLabel: t('false'),
               trueStatus: 'warning',
               falseStatus: 'success',
             }),

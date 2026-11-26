@@ -26,7 +26,7 @@ export function MachineHealthCheckGlance({ node }: { node: GraphNode }) {
   const spec = data?.spec;
   const status = data?.status;
 
-  const clusterName = spec?.clusterName || 'Unknown';
+  const clusterName = spec?.clusterName || t('Unknown');
   const expected = status?.expectedMachines;
   const healthy = status?.currentHealthy;
   const hasHealthCounts = typeof expected === 'number' && typeof healthy === 'number';
@@ -34,7 +34,7 @@ export function MachineHealthCheckGlance({ node }: { node: GraphNode }) {
   const maxUnhealthy = spec?.maxUnhealthy;
   const unhealthyRange = spec?.unhealthyRange;
   const nodeStartupTimeout =
-    spec?.nodeStartupTimeout || spec?.checks?.nodeStartupTimeoutSeconds || 'Unknown';
+    spec?.nodeStartupTimeout || spec?.checks?.nodeStartupTimeoutSeconds || t('Unknown');
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="mhc-glance">

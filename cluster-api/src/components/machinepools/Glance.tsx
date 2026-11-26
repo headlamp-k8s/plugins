@@ -36,7 +36,7 @@ export function MachinePoolGlance({ node }: { node: GraphNode }) {
   const upToDate = getMachinePoolUpToDateReplicas(data) ?? undefined;
   const phase: string | undefined = status?.phase;
   const clusterName: string | undefined = spec?.clusterName;
-  const provider = spec?.template?.spec?.infrastructureRef?.kind || 'Unknown';
+  const provider = spec?.template?.spec?.infrastructureRef?.kind || t('Unknown');
 
   const conditions = getMachinePoolConditions(data);
   const readyCondition = getCondition(conditions, 'Available') ?? getCondition(conditions, 'Ready');

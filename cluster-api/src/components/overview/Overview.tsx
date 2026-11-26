@@ -200,8 +200,8 @@ function ResourceCircleChart({
   resourceKind,
   allResourcesForMatching = [],
   title,
-  readyLabel = 'Ready',
-  notReadyLabel = 'Not Ready',
+  readyLabel,
+  notReadyLabel,
   showReadyBar = false,
 }: {
   resourceData: any[] | null;
@@ -213,6 +213,8 @@ function ResourceCircleChart({
   showReadyBar?: boolean;
 }) {
   const { t } = useTranslation();
+  const resolvedReadyLabel = readyLabel ?? t('Ready');
+  const resolvedNotReadyLabel = notReadyLabel ?? t('Not Ready');
   const theme = useTheme();
   if (!resourceData) return <Loader title={t('Loading chart...')} />;
 
@@ -283,14 +285,16 @@ function ResourceCircleChart({
             }}
           >
             <Box sx={{ flex: 1, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{readyLabel}</Typography>
+              <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                {resolvedReadyLabel}
+              </Typography>
               <Typography sx={{ fontSize: 12, fontWeight: 500, color: theme.palette.success.main }}>
                 {healthy}
               </Typography>
             </Box>
             <Box sx={{ flex: 1, textAlign: 'center' }}>
               <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                {notReadyLabel}
+                {resolvedNotReadyLabel}
               </Typography>
               <Typography sx={{ fontSize: 12, fontWeight: 500, color: theme.palette.warning.main }}>
                 {total - healthy}
@@ -873,7 +877,7 @@ export default function ClusterApiOverview() {
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
           <Select
             size="small"
-            inputProps={{ 'aria-label': 'Filter conditions by cluster' }}
+            inputProps={{ 'aria-label': t('Filter conditions by cluster') }}
             value={clusterErrorFilter}
             onChange={e => setClusterErrorFilter(e.target.value)}
             sx={{ minWidth: 200 }}
@@ -886,7 +890,7 @@ export default function ClusterApiOverview() {
           </Select>
           <Select
             size="small"
-            inputProps={{ 'aria-label': 'Filter conditions by resource' }}
+            inputProps={{ 'aria-label': t('Filter conditions by resource') }}
             value={errorResourceFilter}
             onChange={e => setErrorResourceFilter(e.target.value)}
             sx={{ minWidth: 220 }}
@@ -900,7 +904,7 @@ export default function ClusterApiOverview() {
           </Select>
           <Select
             size="small"
-            inputProps={{ 'aria-label': 'Filter conditions by severity' }}
+            inputProps={{ 'aria-label': t('Filter conditions by severity') }}
             value={severityFilter}
             onChange={e => setSeverityFilter(e.target.value as 'All' | ErrorSeverity)}
             sx={{ minWidth: 160 }}

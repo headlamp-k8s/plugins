@@ -111,7 +111,7 @@ export function MachineListRenderer(props: MachineListRendererProps) {
             const isControlPlane = owners.some(
               (ref: { kind?: string }) => ref.kind === 'KubeadmControlPlane'
             );
-            return isControlPlane ? 'Control Plane' : 'Worker';
+            return isControlPlane ? t('Control Plane') : t('Worker');
           },
         },
         {

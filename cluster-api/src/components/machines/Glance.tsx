@@ -29,7 +29,7 @@ export function MachineGlance({ node }: { node: GraphNode }) {
 
   const conditions = getMachineConditions(data);
   const clusterName =
-    spec.clusterName || data.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] || 'Unknown';
+    spec.clusterName || data.metadata?.labels?.['cluster.x-k8s.io/cluster-name'] || t('Unknown');
   const version: string | undefined = spec.version;
 
   const readyCondition = getCondition(conditions, 'Available') ?? getCondition(conditions, 'Ready');
@@ -45,7 +45,7 @@ export function MachineGlance({ node }: { node: GraphNode }) {
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="machine-glance">
       <StatusLabel status="">{t('Cluster: {{name}}', { name: clusterName })}</StatusLabel>
       <StatusLabel status={getPhaseStatus(status?.phase ?? '')}>
-        {`${status?.phase ?? 'Unknown'}`}
+        {`${status?.phase ?? t('Unknown')}`}
       </StatusLabel>
       {!readyCondition || readyCondition.status === 'Unknown' ? (
         <StatusLabel status="warning">{t('Unknown')}</StatusLabel>

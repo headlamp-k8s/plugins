@@ -108,7 +108,7 @@ function MachineSetDetailContentWithData({
   const status = item.status;
   const failure = item.failure;
 
-  const deleteOrder = spec?.deletion?.order ?? spec?.deletePolicy ?? 'Random (default)';
+  const deleteOrder = spec?.deletion?.order ?? spec?.deletePolicy ?? t('Random (default)');
 
   const extraInfo: NameValueTableRow[] = [
     {

@@ -114,7 +114,7 @@ function MachineDeploymentDetailContentWithData(
   const status = item.status;
   const failure = item.failure;
 
-  const deleteOrder = spec?.deletion?.order ?? spec?.deletePolicy ?? 'Random (default)';
+  const deleteOrder = spec?.deletion?.order ?? spec?.deletePolicy ?? t('Random (default)');
 
   const extraInfo: NameValueTableRow[] = [
     {
@@ -152,8 +152,8 @@ function MachineDeploymentDetailContentWithData(
     {
       name: t('Paused'),
       value: renderConditionStatus(spec?.paused ? 'true' : 'false', undefined, {
-        trueLabel: 'true',
-        falseLabel: 'false',
+        trueLabel: t('true'),
+        falseLabel: t('false'),
         trueStatus: 'warning',
         falseStatus: 'success',
       }),
@@ -162,7 +162,7 @@ function MachineDeploymentDetailContentWithData(
       name: t('Rollout After'),
       value: spec?.rolloutAfter
         ? new Date(spec.rolloutAfter).toLocaleString()
-        : 'default (immediate)',
+        : t('default (immediate)'),
     },
     {
       name: t('Selector'),

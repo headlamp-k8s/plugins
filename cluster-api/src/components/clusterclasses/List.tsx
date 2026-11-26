@@ -79,8 +79,8 @@ function ClusterClassesListWithData({ ClusterClassType }: ClusterClassesListWith
           },
           render: (cc: ClusterClass) =>
             renderConditionStatus(undefined, getCondition(cc.conditions, 'Paused'), {
-              trueLabel: 'true',
-              falseLabel: 'false',
+              trueLabel: t('true'),
+              falseLabel: t('false'),
               unknownLabel: t('Unknown'),
               trueStatus: 'warning',
               falseStatus: 'success',

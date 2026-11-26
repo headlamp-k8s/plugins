@@ -748,7 +748,7 @@ export default function ClusterDetailsErrorOverview({
           </Box>
           <Select
             size="small"
-            inputProps={{ 'aria-label': 'Filter clusters' }}
+            inputProps={{ 'aria-label': t('Filter clusters') }}
             value={clusterFilter}
             onChange={e => setClusterFilter(e.target.value)}
             sx={{ minWidth: 220 }}
