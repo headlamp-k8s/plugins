@@ -395,7 +395,7 @@ function RelatedLocalQueueWorkloadsSection({
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
 }
 
-export function RelatedWorkloadsTable({
+function RelatedWorkloadsTable({
   workloads,
   loadWarning,
 }: {

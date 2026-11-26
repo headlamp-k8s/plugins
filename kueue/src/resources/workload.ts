@@ -824,7 +824,7 @@ export class Workload extends KubeObject<KubeWorkload> {
   }
 
   get blockerStageDisplay() {
-    return renderText(this.blocker?.stage);
+    return renderText(this.blockerStage);
   }
 
   get blockerWhyDisplay() {

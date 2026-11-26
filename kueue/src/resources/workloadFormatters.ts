@@ -571,11 +571,7 @@ export function getWorkloadBlocker(
  * Workloads that are admitted, finished, or have no blocker return '-'.
  */
 export function renderWorkloadBlockerWhy(blocker?: WorkloadBlocker | null) {
-  if (!blocker) {
-    return '-';
-  }
-
-  return blocker.message?.trim() || blocker.explanation || '-';
+  return renderText(blocker?.message?.trim() || blocker?.explanation);
 }
 
 /** One stage of a Workload's lifecycle, as drawn on the detail page timeline. */
