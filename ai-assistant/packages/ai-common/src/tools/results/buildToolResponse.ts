@@ -40,11 +40,25 @@ export function detectToolResponseError(
     return { isError: true, errorMsg: content };
   }
   if (explicitStatus && typeof explicitStatus === 'object') {
-    if (explicitStatus.isError === false || explicitStatus.success === true) {
-      return { isError: false, errorMsg: null };
+    const hasExplicitErrorString =
+      typeof explicitStatus.error === 'string' && explicitStatus.error.trim().length > 0;
+    if (
+      explicitStatus.isError === true ||
+      explicitStatus.success === false ||
+      explicitStatus.error === true ||
+      hasExplicitErrorString
+    ) {
+      return {
+        isError: true,
+        errorMsg: hasExplicitErrorString ? (explicitStatus.error as string) : content,
+      };
     }
-    if (explicitStatus.isError === true || explicitStatus.success === false) {
-      return { isError: true, errorMsg: content };
+    if (
+      explicitStatus.isError === false ||
+      explicitStatus.success === true ||
+      explicitStatus.error === false
+    ) {
+      return { isError: false, errorMsg: null };
     }
   }
 

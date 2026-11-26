@@ -56,7 +56,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       method: z
         .string()
         .describe(
-          'HTTP method: GET, POST, PUT, PATCH, DELETE. Use PUT for updating specific fields of existing resources.',
+          'HTTP method: GET, POST, PUT, PATCH, DELETE. Use PUT for updating specific fields of existing resources.'
         ),
       body: z
         .string()
@@ -66,13 +66,13 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
 - For PUT: Provide ONLY the fields to change as a JSON patch (e.g., {"spec": {"replicas": 3}})
 - Use null to remove fields (e.g., {"spec": {"livenessProbe": null}})
 - For POST: Provide the complete resource definition
-- The system will automatically merge PUT patches with existing resources`,
+- The system will automatically merge PUT patches with existing resources`
         ),
       cluster: z
         .string()
         .optional()
         .describe(
-          'Name of the cluster to send the request to. Omit to use the currently selected cluster. When no cluster is selected, pass one of the available clusters listed in the context.',
+          'Name of the cluster to send the request to. Omit to use the currently selected cluster. When no cluster is selected, pass one of the available clusters listed in the context.'
         ),
     }),
   };
@@ -170,7 +170,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           this.context.aiManager, // Use aiManager from context
           '', // No resource info needed for GET requests
           targetCluster,
-          undefined, // No failure callback for GET requests (they're read-only)
+          undefined // No failure callback for GET requests (they're read-only)
         );
 
         // Tag the history entry pushed by handleActualApiRequest with the toolCallId
@@ -324,7 +324,7 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
       this.context.aiManager, // Use aiManager from context
       resourceInfo,
       cluster,
-      undefined, // No failure callback needed here as it's handled by the main flow
+      undefined // No failure callback needed here as it's handled by the main flow
     );
 
     // Tag the history entry pushed by handleActualApiRequest with the originating

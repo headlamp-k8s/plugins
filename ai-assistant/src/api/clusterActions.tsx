@@ -614,21 +614,24 @@ export const handleActualApiRequest = async (
         ? t(' in namespace "{{namespace}}"', { namespace: resourceInfo.namespace })
         : '';
 
-      const formattedLogContent = logText.trim()
+      const hasLogs = logText.trim().length > 0;
+      const noLogsMessage = t(
+        'No logs available for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}.',
+        {
+          resourceType: resourceInfo.resourceType,
+          resourceName: resourceInfo.resourceName,
+          namespaceInfo,
+          containerInfo,
+        }
+      );
+
+      const formattedLogContent = hasLogs
         ? isTruncated
           ? `... [truncated, showing most recent logs] ...\n${boundedLogs}`
           : boundedLogs
-        : t(
-            'No logs available for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}.',
-            {
-              resourceType: resourceInfo.resourceType,
-              resourceName: resourceInfo.resourceName,
-              namespaceInfo,
-              containerInfo,
-            }
-          );
+        : noLogsMessage;
 
-      const logSummary = logText
+      const logSummary = hasLogs
         ? t(
             'Logs retrieved for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}. {{logs}}',
             {
@@ -638,16 +641,8 @@ export const handleActualApiRequest = async (
               containerInfo,
               logs: '',
             }
-          )
-        : t(
-            'No logs available for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}.',
-            {
-              resourceType: resourceInfo.resourceType,
-              resourceName: resourceInfo.resourceName,
-              namespaceInfo,
-              containerInfo,
-            }
-          );
+          ).trim()
+        : noLogsMessage;
 
       // Store full logs in display-only history for the UI LOGS_BUTTON widget
       aiManager.history.push({
@@ -661,8 +656,8 @@ export const handleActualApiRequest = async (
       // Store bounded logs in model-facing history so tool-call follow-ups
       // receive bounded content without bypassing line/character limits,
       // prefixed with logSummary to retain workload/container attribution
-      const modelFacingContent = logText
-        ? `${logSummary.trim()}\n\n${formattedLogContent}`
+      const modelFacingContent = hasLogs
+        ? `${logSummary}\n\n${formattedLogContent}`
         : formattedLogContent;
 
       aiManager.history.push({

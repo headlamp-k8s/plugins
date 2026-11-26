@@ -44,13 +44,13 @@ export function aggregateToolResults(results: Record<string, ToolResult>): strin
       aggregation += `**Data**:\n\`\`\`json\n${JSON.stringify(
         redactSecretsInValue(result.data),
         null,
-        2,
+        2
       )}\n\`\`\`\n\n`;
     } else {
       aggregation += `**Result**:\n\`\`\`json\n${JSON.stringify(
         redactSecretsInValue(result),
         null,
-        2,
+        2
       )}\n\`\`\`\n\n`;
     }
   }

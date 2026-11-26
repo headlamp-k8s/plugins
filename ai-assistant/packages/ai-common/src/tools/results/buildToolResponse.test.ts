@@ -87,6 +87,25 @@ describe('detectToolResponseError', () => {
       errorMsg: okContent,
     });
   });
+
+  it('honors explicitStatus.error booleans and nonempty strings', () => {
+    expect(detectToolResponseError('403 Forbidden', { error: true })).toEqual({
+      isError: true,
+      errorMsg: '403 Forbidden',
+    });
+    expect(detectToolResponseError('403 Forbidden', { error: 'Forbidden' })).toEqual({
+      isError: true,
+      errorMsg: 'Forbidden',
+    });
+    expect(detectToolResponseError('ERROR: benign log', { error: false })).toEqual({
+      isError: false,
+      errorMsg: null,
+    });
+    expect(detectToolResponseError('request failed', { error: '   ' })).toEqual({
+      isError: true,
+      errorMsg: 'request failed',
+    });
+  });
 });
 
 // =============================================================================

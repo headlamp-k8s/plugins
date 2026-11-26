@@ -855,6 +855,38 @@ describe('handleActualApiRequest GET redaction', () => {
     );
   });
 
+  it('returns localized fallback message consistently when pod logs contain only whitespace', async () => {
+    mocks.isLogRequest.mockReturnValue(true);
+    mocks.clusterRequest.mockResolvedValue({
+      text: async () => '  \n\t  ',
+    });
+
+    const aiManager = {
+      history: [] as Array<{
+        content: string;
+        isDisplayOnly?: boolean;
+        isModelOnly?: boolean;
+      }>,
+    };
+    const result = await handleActualApiRequest(
+      '/api/v1/namespaces/default/pods/ws-pod/log',
+      'GET',
+      '',
+      () => {},
+      aiManager,
+      'ws-pod',
+      'Headlamp'
+    );
+
+    const expectedFallback = 'No logs available for pods "ws-pod" in namespace "default".';
+    expect(result).toBe(expectedFallback);
+    expect(aiManager.history).toHaveLength(2);
+    const uiEntry = aiManager.history.find(m => m.isDisplayOnly);
+    const modelEntry = aiManager.history.find(m => m.isModelOnly);
+    expect(uiEntry?.content).toContain(expectedFallback);
+    expect(modelEntry?.content).toBe(expectedFallback);
+  });
+
   it('preserves error-bearing logs with success status in history without triggering failure callback', async () => {
     mocks.isLogRequest.mockReturnValue(true);
     const errorLogs =
