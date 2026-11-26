@@ -55,6 +55,7 @@ export function SandboxClaimList() {
           render: item => (
             <LinkValue
               routeName="agent-sandbox-warmpool"
+              cluster={item.cluster}
               namespace={item.metadata.namespace}
               name={item.spec.warmPoolRef?.name}
             />
@@ -67,6 +68,7 @@ export function SandboxClaimList() {
           render: item => (
             <LinkValue
               routeName="agent-sandbox-sandbox"
+              cluster={item.cluster}
               namespace={item.metadata.namespace}
               name={item.status.sandbox?.name}
             />
@@ -98,6 +100,7 @@ export function SandboxClaimDetail() {
             value: (
               <LinkValue
                 routeName="agent-sandbox-warmpool"
+                cluster={item.cluster}
                 namespace={item.metadata.namespace}
                 name={item.spec.warmPoolRef?.name}
               />
@@ -108,6 +111,7 @@ export function SandboxClaimDetail() {
             value: (
               <LinkValue
                 routeName="agent-sandbox-sandbox"
+                cluster={item.cluster}
                 namespace={item.metadata.namespace}
                 name={item.status.sandbox?.name}
               />

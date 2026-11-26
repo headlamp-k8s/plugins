@@ -18,10 +18,12 @@ import { Link } from '@kinvolk/headlamp-plugin/lib/components/common';
 
 export function LinkValue({
   routeName,
+  cluster,
   namespace,
   name,
 }: {
   routeName: string;
+  cluster: string;
   namespace?: string;
   name?: string;
 }) {
@@ -30,7 +32,7 @@ export function LinkValue({
   }
 
   return (
-    <Link routeName={routeName} params={{ namespace, name }}>
+    <Link routeName={routeName} activeCluster={cluster} params={{ namespace, name }}>
       {name}
     </Link>
   );

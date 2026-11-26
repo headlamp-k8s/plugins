@@ -19,11 +19,13 @@ import {
   registerRoute,
   registerSidebarEntry,
   registerSidebarEntryFilter,
+  Router,
   useTranslation,
   Utils,
 } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { type ComponentType, useEffect, useState } from 'react';
+import { matchPath } from 'react-router-dom';
 import { discoverExtensions } from './extensionDiscovery';
 import {
   SandboxClaimDetail,
@@ -44,9 +46,11 @@ const rootEntry = {
   parent: '',
 };
 
+const sandboxListRoute = 'agent-sandbox-sandboxes';
+
 const resources = [
   {
-    name: 'agent-sandbox-sandboxes',
+    name: sandboxListRoute,
     label: 'Sandboxes',
     path: 'sandboxes',
     list: SandboxList,
@@ -87,6 +91,10 @@ interface ClusterDiscovery {
   resources: ReadonlySet<string> | null;
 }
 
+function clusterSelection(clusters: string[]) {
+  return [...clusters].sort().join('+');
+}
+
 // The sidebar filter runs outside the page's React tree.
 let sidebarDiscovery: ClusterDiscovery | undefined;
 
@@ -96,9 +104,11 @@ registerSidebarEntryFilter(entry => {
   const extension = resources.find(resource => resource.name === entry.name)?.extension;
   if (!extension) return entry;
 
-  const cluster = Utils.getCluster();
-  return cluster &&
-    sidebarDiscovery?.selection.split('+').includes(cluster) &&
+  // Headlamp resolves the full cluster group for both web and desktop routes.
+  const route = Router.createRouteURL(sandboxListRoute);
+  const match = matchPath<{ cluster: string }>(route, Utils.getClusterPrefixedPath());
+  return match &&
+    sidebarDiscovery?.selection === clusterSelection(match.params.cluster.split('+')) &&
     sidebarDiscovery.resources?.has(extension)
     ? entry
     : null;
@@ -106,18 +116,13 @@ registerSidebarEntryFilter(entry => {
 
 function withDiscovery(Component: ComponentType, extension?: string) {
   return function AgentSandboxPage() {
-    const selection = [...K8s.useSelectedClusters()].sort().join('+');
+    const selection = clusterSelection(K8s.useSelectedClusters());
     const { t, ready } = useTranslation();
-    const [discovery, setDiscovery] = useState(sidebarDiscovery);
+    const [discovery, setDiscovery] = useState<ClusterDiscovery>();
 
     useEffect(() => {
+      setDiscovery(undefined);
       if (!selection) return;
-
-      // Reuse discovery while navigating among views for the same selection.
-      if (sidebarDiscovery?.selection === selection && sidebarDiscovery.resources) {
-        setDiscovery(sidebarDiscovery);
-        return;
-      }
 
       let current = true;
       const publish = (resourceNames: ReadonlySet<string> | null) => {

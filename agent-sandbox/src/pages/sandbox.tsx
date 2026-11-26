@@ -108,6 +108,7 @@ export function SandboxDetail() {
                       value: (
                         <LinkValue
                           routeName="pod"
+                          cluster={item.cluster}
                           namespace={item.metadata.namespace}
                           name={item.backingPodName}
                         />
@@ -118,6 +119,7 @@ export function SandboxDetail() {
                       value: (
                         <LinkValue
                           routeName="service"
+                          cluster={item.cluster}
                           namespace={item.metadata.namespace}
                           name={item.status.service}
                         />

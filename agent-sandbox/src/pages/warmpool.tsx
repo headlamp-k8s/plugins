@@ -54,6 +54,7 @@ export function SandboxWarmPoolList() {
           render: item => (
             <LinkValue
               routeName="agent-sandbox-template"
+              cluster={item.cluster}
               namespace={item.metadata.namespace}
               name={item.templateName}
             />
@@ -94,6 +95,7 @@ export function SandboxWarmPoolDetail() {
             value: (
               <LinkValue
                 routeName="agent-sandbox-template"
+                cluster={item.cluster}
                 namespace={item.metadata.namespace}
                 name={item.templateName}
               />

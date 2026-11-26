@@ -32,7 +32,13 @@ const headlamp = vi.hoisted(() => ({
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   ApiProxy: { request: headlamp.request },
   K8s: { useSelectedClusters: () => headlamp.selected },
-  Utils: { getCluster: () => headlamp.selected[0] },
+  Router: {
+    createRouteURL: () =>
+      headlamp.selected.length ? `/c/${headlamp.selected.join('+')}/agent-sandbox/sandboxes` : '/',
+  },
+  Utils: {
+    getClusterPrefixedPath: () => '/c/:cluster',
+  },
   registerSidebarEntry: headlamp.refreshSidebar,
   registerSidebarEntryFilter: (filter: (entry: SidebarEntry) => SidebarEntry | null) => {
     headlamp.sidebarFilters.push(filter);
@@ -100,9 +106,42 @@ it('keeps the core list and detail available when extension discovery returns 40
   expect(screen.getByText('Sandbox detail')).toBeTruthy();
 
   rerender(<Claim />);
-  expect(screen.getByText(unavailable)).toBeTruthy();
+  expect(await screen.findByText(unavailable)).toBeTruthy();
   expect(screen.queryByText('Claim detail')).toBeNull();
-  expect(headlamp.request).toHaveBeenCalledTimes(1);
+});
+
+it('shows a newly installed extension when reopening the plugin in the same cluster', async () => {
+  headlamp.selected = ['install'];
+  headlamp.request.mockRejectedValue({ status: 404 });
+  const Sandbox = route('sandboxes');
+  const Claim = route('claims');
+  const { unmount } = render(<Sandbox />);
+  await waitFor(() => expect(headlamp.refreshSidebar).toHaveBeenCalledTimes(1));
+  expect(sidebarShows('claims')).toBe(false);
+  unmount();
+
+  headlamp.request.mockResolvedValue(discovered('sandboxclaims'));
+  render(<Claim />);
+
+  expect(await screen.findByText('Claim list')).toBeTruthy();
+  expect(sidebarShows('claims')).toBe(true);
+});
+
+it('hides an extension removed while away from the plugin in the same cluster', async () => {
+  headlamp.selected = ['remove'];
+  headlamp.request.mockResolvedValue(discovered('sandboxclaims'));
+  const Claim = route('claims');
+  const { unmount } = render(<Claim />);
+  expect(await screen.findByText('Claim list')).toBeTruthy();
+  expect(sidebarShows('claims')).toBe(true);
+  unmount();
+
+  headlamp.request.mockRejectedValue({ status: 404 });
+  render(<Claim />);
+
+  expect(screen.queryByText('Claim list')).toBeNull();
+  expect(await screen.findByText(unavailable)).toBeTruthy();
+  expect(sidebarShows('claims')).toBe(false);
 });
 
 it('only exposes the extension kinds served by the cluster', async () => {
@@ -148,6 +187,23 @@ it('only exposes extension views available in every selected cluster', async () 
   await waitFor(() => expect(headlamp.refreshSidebar).toHaveBeenCalledTimes(1));
   expect(sidebarShows('claims')).toBe(true);
   expect(sidebarShows('warmpools')).toBe(false);
+
+  headlamp.selected = ['group-b', 'group-a'];
+  expect(sidebarShows('claims')).toBe(true);
+});
+
+it('hides extension links when the selected cluster group changes outside the plugin', async () => {
+  headlamp.selected = ['selection-a'];
+  headlamp.request.mockResolvedValue(discovered('sandboxclaims'));
+  const Claim = route('claims');
+  const { unmount } = render(<Claim />);
+  expect(await screen.findByText('Claim list')).toBeTruthy();
+  expect(sidebarShows('claims')).toBe(true);
+  unmount();
+
+  headlamp.selected = ['selection-a', 'selection-b'];
+  expect(sidebarShows('claims')).toBe(false);
+  expect(sidebarShows('sandboxes')).toBe(true);
 });
 
 it('distinguishes discovery failures from absent extensions', async () => {

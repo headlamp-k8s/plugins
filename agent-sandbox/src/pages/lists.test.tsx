@@ -19,12 +19,24 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { createInstance, type Resource } from 'i18next';
 import { readFileSync } from 'node:fs';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { SandboxClaimList, SandboxList, SandboxTemplateList, SandboxWarmPoolList } from '.';
 
 const translations = createInstance();
 let translationsReady = false;
+
+type ResourceRow = {
+  cluster: string;
+  metadata: { namespace: string };
+  spec?: { warmPoolRef: { name: string } };
+  status?: { sandbox: { name: string } };
+  templateName?: string;
+};
+
+type ListColumn = string | { id: string; label: string; render?: (item: ResourceRow) => ReactNode };
+
+let listRow: ResourceRow | undefined;
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
   useTranslation: () => ({
@@ -42,12 +54,28 @@ vi.mock('../resources', () => ({
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/components/common', () => ({
+  Link: ({
+    children,
+    activeCluster,
+    params,
+  }: {
+    children: ReactNode;
+    activeCluster?: string;
+    params: { namespace: string; name: string };
+  }) => {
+    const clusters = ['east', 'west'];
+    const target = activeCluster
+      ? [activeCluster, ...clusters.filter(cluster => cluster !== activeCluster)]
+      : clusters;
+    return <a href={`/c/${target.join('+')}/${params.namespace}/${params.name}`}>{children}</a>;
+  },
   Loader: () => null,
-  ResourceListView({ columns }: { columns: (string | { id: string; label: string })[] }) {
+  ResourceListView({ columns }: { columns: ListColumn[] }) {
     // Model Headlamp retaining the header labels from the first render.
     const [headers] = useState(() =>
       columns.map(column => (typeof column === 'string' ? { id: column, label: column } : column))
     );
+    const row = listRow;
     return (
       <table>
         <thead>
@@ -57,6 +85,15 @@ vi.mock('@kinvolk/headlamp-plugin/lib/components/common', () => ({
             ))}
           </tr>
         </thead>
+        {row && (
+          <tbody>
+            <tr>
+              {columns.map(column =>
+                typeof column === 'string' ? null : <td key={column.id}>{column.render?.(row)}</td>
+              )}
+            </tr>
+          </tbody>
+        )}
       </table>
     );
   },
@@ -84,6 +121,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   translationsReady = false;
+  listRow = undefined;
   await translations.changeLanguage('en');
 });
 afterEach(cleanup);
@@ -128,4 +166,38 @@ it('renders translated custom headers after loading and switching to Simplified 
   await translations.changeLanguage('zh');
   rerender(<SandboxList />);
   expect(screen.getByRole('columnheader', { name: '就绪' })).toBeTruthy();
+});
+
+it('links a Claim to its WarmPool and Sandbox in the Claim’s cluster', () => {
+  translationsReady = true;
+  listRow = {
+    cluster: 'west',
+    metadata: { namespace: 'agents' },
+    spec: { warmPoolRef: { name: 'shared-pool' } },
+    status: { sandbox: { name: 'assigned-sandbox' } },
+  };
+
+  render(<SandboxClaimList />);
+
+  expect(screen.getByRole('link', { name: 'shared-pool' }).getAttribute('href')).toBe(
+    '/c/west+east/agents/shared-pool'
+  );
+  expect(screen.getByRole('link', { name: 'assigned-sandbox' }).getAttribute('href')).toBe(
+    '/c/west+east/agents/assigned-sandbox'
+  );
+});
+
+it('links a WarmPool to its Template in the WarmPool’s cluster', () => {
+  translationsReady = true;
+  listRow = {
+    cluster: 'west',
+    metadata: { namespace: 'agents' },
+    templateName: 'shared-template',
+  };
+
+  render(<SandboxWarmPoolList />);
+
+  expect(screen.getByRole('link', { name: 'shared-template' }).getAttribute('href')).toBe(
+    '/c/west+east/agents/shared-template'
+  );
 });
