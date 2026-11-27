@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 
 /**
@@ -59,15 +60,43 @@ function mapRadiusStateToHeadlampStatus(
   }
 }
 
+export function translateRadiusStatus(
+  status: string | null | undefined,
+  t: (key: string) => string
+): string {
+  const normalizedStatus = (status || '').trim();
+  switch (normalizedStatus) {
+    case 'Succeeded':
+      return t('Succeeded');
+    case 'Failed':
+      return t('Failed');
+    case 'Provisioning':
+      return t('Provisioning');
+    case 'Updating':
+      return t('Updating');
+    case 'Deleting':
+      return t('Deleting');
+    case 'Canceled':
+      return t('Canceled');
+    case 'Accepted':
+      return t('Accepted');
+    case 'Unknown':
+    case '':
+      return t('Unknown');
+    default:
+      return normalizedStatus;
+  }
+}
+
 /**
  * RadiusStatusLabel component extends Headlamp's StatusLabel
  * to display Radius resource provisioning states with appropriate styling
  */
 export function RadiusStatusLabel({ status }: Readonly<RadiusStatusLabelProps>) {
-  const normalizedStatus = (status || 'Unknown').trim();
+  const { t } = useTranslation();
   const headlampStatus = mapRadiusStateToHeadlampStatus(status);
 
-  return <StatusLabel status={headlampStatus}>{normalizedStatus}</StatusLabel>;
+  return <StatusLabel status={headlampStatus}>{translateRadiusStatus(status, t)}</StatusLabel>;
 }
 
 /**
