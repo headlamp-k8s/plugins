@@ -459,11 +459,13 @@ export interface WorkloadBlocker {
  */
 export function getWorkloadBlocker(
   conditions: WorkloadConditionLike[] = [],
-  admissionChecks: AdmissionCheckState[] = [],
+  admissionChecksOrNull?: AdmissionCheckState[] | null,
   requeueState?: RequeueState,
   active?: boolean,
   admission?: Admission
 ): WorkloadBlocker | null {
+  // A default parameter only covers undefined; status.admissionChecks can also be null.
+  const admissionChecks = admissionChecksOrNull ?? [];
   if (isConditionTrue(conditions, CONDITION_TYPES.finished)) {
     return null;
   }

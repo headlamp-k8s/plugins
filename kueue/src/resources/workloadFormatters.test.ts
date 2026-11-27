@@ -401,6 +401,10 @@ describe('Workload formatters', () => {
 
     expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
     expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'False')], null)
+        ?.pendingAdmissionChecks
+    ).toEqual([]);
+    expect(
       getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
     ).toBe('Not evaluated');
     expect(
