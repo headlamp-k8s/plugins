@@ -56,7 +56,7 @@ export function redactSecrets(input: string): string {
   // AWS environment/JSON credential names are explicit because underscores
   // prevent the generic key-name pattern's word boundary from matching them.
   out = out.replace(
-    /"(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)"(\s*:\s*)"[^"]*"/gi,
+    /"(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
   out = out.replace(
@@ -87,7 +87,7 @@ export function redactSecrets(input: string): string {
   // quoted key and value are matched before the unquoted fallback below.
   // e.g. "Authorization": "Bearer eyJ..." → "Authorization": "[REDACTED]"
   out = out.replace(
-    /"(authorization|x-api-key|x-auth-token)"(\s*:\s*)"[^"]*"/gi,
+    /"(authorization|x-api-key|x-auth-token)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
 
@@ -107,9 +107,10 @@ export function redactSecrets(input: string): string {
 
   // Generic credential key/value — JSON-quoted form first.
   // Covers "password": "s3cr3t", "token": "abc 123", etc.
-  // Values in JSON can contain spaces, so match [^"]* rather than \S+.
+  // Values in JSON can contain spaces or escaped characters, so match
+  // escape-aware strings "(?:[^"\\]|\\.)*" rather than [^"]*.
   out = out.replace(
-    /"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer)"(\s*:\s*)"[^"]*"/gi,
+    /"(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer)"(\s*:\s*)"(?:[^"\\]|\\.)*"/gi,
     '"$1"$2"[REDACTED]"'
   );
 
@@ -254,7 +255,7 @@ function redactPemBlocks(text: string): string {
  */
 function replaceFencedJsonBlocks(
   text: string,
-  replacer: (block: string, body: string) => string
+  replacer: (block: string, body: string, closed: boolean) => string
 ): string {
   const opening = /```json/gi;
   let out = '';
@@ -263,12 +264,15 @@ function replaceFencedJsonBlocks(
     let bodyStart = opening.lastIndex;
     while (bodyStart < text.length && /\s/.test(text[bodyStart])) bodyStart++;
     const close = text.indexOf('```', bodyStart);
-    // Later blocks open after this one, so they cannot find a closing fence either.
-    if (close === -1) break;
+    const closed = close !== -1;
+    const blockEnd = closed ? close + 3 : text.length;
+    const bodyEnd = closed ? close : text.length;
     out +=
       text.slice(copied, match.index) +
-      replacer(text.slice(match.index, close + 3), text.slice(bodyStart, close));
-    copied = opening.lastIndex = close + 3;
+      replacer(text.slice(match.index, blockEnd), text.slice(bodyStart, bodyEnd), closed);
+    copied = blockEnd;
+    if (!closed) break;
+    opening.lastIndex = blockEnd;
   }
   return out + text.slice(copied);
 }
@@ -293,32 +297,31 @@ function redactKubernetesSecretValues(input: string): string {
     return input;
   }
 
-  const fencedJson = replaceFencedJsonBlocks(input, (block, body) => {
+  const afterFencedJson = replaceFencedJsonBlocks(input, (block, body, closed) => {
     try {
       const parsed: unknown = JSON.parse(body.trim());
-      return redactSecretsInParsedJson(parsed)
-        ? `\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\``
-        : block;
+      if (!redactSecretsInParsedJson(parsed)) return block;
+      const serialized = `\`\`\`json\n${JSON.stringify(parsed, null, 2)}`;
+      return closed ? `${serialized}\n\`\`\`` : serialized;
     } catch {
       return block;
     }
   });
-  if (fencedJson !== input) return fencedJson;
 
-  const trimmed = input.trim();
+  const trimmed = afterFencedJson.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (redactSecretsInParsedJson(parsed)) {
         return JSON.stringify(parsed, null, 2);
       }
-      return input;
+      return afterFencedJson;
     } catch {
       // Not valid JSON — fall through to the YAML line scanner.
     }
   }
 
-  return redactKubernetesSecretValuesYaml(input);
+  return redactKubernetesSecretValuesYaml(afterFencedJson);
 }
 
 /**
@@ -439,15 +442,16 @@ function redactSecretYamlDocument(input: string): string {
     }
 
     if (dataBlockIndent !== null && line.trim() !== '') {
-      const entryMatch = line.match(/^(\s*)([^\s:][^:]*):\s*(.*)$/);
-      if (entryMatch) {
-        const entryIndent = entryMatch[1].length;
-        if (entryIndent > dataBlockIndent) {
+      if (indent <= dataBlockIndent) {
+        // Dedented back out of the data block; leave following lines intact.
+        dataBlockIndent = null;
+      } else {
+        const entryMatch = line.match(/^(\s*)([^\s:][^:]*):\s*(.*)$/);
+        if (entryMatch) {
+          const entryIndent = entryMatch[1].length;
           if (/^[|>][-+]?\s*$/.test(entryMatch[3])) blockScalarIndent = entryIndent;
           return `${entryMatch[1]}${entryMatch[2]}: [REDACTED]`;
         }
-        // Dedented back out of the data block; leave sibling keys intact.
-        dataBlockIndent = null;
       }
     }
 
@@ -456,6 +460,9 @@ function redactSecretYamlDocument(input: string): string {
 
   return redacted.join('\n');
 }
+
+const CREDENTIAL_PROPERTY_REGEX =
+  /^(?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?token|bearer|authorization|x-api-key|x-auth-token|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)$/i;
 
 /**
  * Returns a deep redacted copy of a JSON-like value.
@@ -470,7 +477,15 @@ export function redactSecretsInValue(value: unknown): unknown {
 
   const copy: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    copy[key] = redactSecretsInValue(item);
+    if (CREDENTIAL_PROPERTY_REGEX.test(key)) {
+      if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        copy[key] = '[REDACTED]';
+      } else {
+        copy[key] = redactSecretsInValue(item);
+      }
+    } else {
+      copy[key] = redactSecretsInValue(item);
+    }
   }
   if (copy.kind === 'Secret') {
     redactSecretDataFieldsInPlace(copy);
