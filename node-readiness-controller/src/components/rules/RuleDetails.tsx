@@ -1,10 +1,10 @@
-import { DateLabel, Resource } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { DateLabel, Resource, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Chip } from '@mui/material';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { NodeReadinessRule } from '../../resources';
-import { getRuleStats } from '../../utils';
-import { formatTaint, NodeSelectorDetails, NodeStatusChips } from '../common';
+import { getRuleStats, resolveCrdErrorState } from '../../utils';
+import { CrdNotInstalled, formatTaint, NodeSelectorDetails, NodeStatusChips } from '../common';
 import DryRunResultsSection from './DryRunResultsSection';
 import RuleConditionsTable from './RuleConditionsTable';
 
@@ -114,6 +114,30 @@ export function getRuleDetailSections(rule: NodeReadinessRule | null): RuleDetai
  */
 export default function RuleDetails() {
   const { name } = useParams<{ name: string }>();
+  const [rule, ruleError] = NodeReadinessRule.useGet(name!);
+
+  const crdErrorState = resolveCrdErrorState(!rule && ruleError ? [ruleError] : null, {
+    resourceName: 'NodeReadinessRule',
+    forbiddenTitle: 'Permission Denied: Cannot Read Node Readiness Rule',
+    forbiddenDescription:
+      'Your Kubernetes user or service account lacks read permissions for readiness.node.x-k8s.io/nodereadinessrules.',
+    notFoundTitle: 'NodeReadinessRule Unavailable',
+    notFoundDescription:
+      'The requested NodeReadinessRule could not be found, or the NodeReadinessRule CRD is not installed on this cluster.',
+  });
+
+  if (crdErrorState) {
+    return (
+      <SectionBox title={name ? `NodeReadinessRule: ${name}` : 'Node Readiness Rule'}>
+        <CrdNotInstalled
+          isForbidden={crdErrorState.isForbidden}
+          resourceName="NodeReadinessRule"
+          title={crdErrorState.title}
+          description={crdErrorState.description}
+        />
+      </SectionBox>
+    );
+  }
 
   return (
     <Resource.DetailsGrid
@@ -122,9 +146,9 @@ export default function RuleDetails() {
       noDefaultActions
       withEvents
       extraInfo={getRuleDetailSections}
-      extraSections={(rule: NodeReadinessRule | null) => {
-        const spec = rule?.spec;
-        if (!rule || !spec) return [];
+      extraSections={(ruleItem: NodeReadinessRule | null) => {
+        const spec = ruleItem?.spec;
+        if (!ruleItem || !spec) return [];
         return [
           {
             id: 'nrc-conditions',
