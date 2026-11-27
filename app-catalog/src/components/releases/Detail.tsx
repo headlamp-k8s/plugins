@@ -10,6 +10,7 @@ import {
   StatusLabel,
 } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import {
+  Box,
   Button,
   DialogActions,
   DialogContent,
@@ -29,6 +30,8 @@ import {
   rollbackRelease,
 } from '../../api/releases';
 import { EditorDialog } from './EditorDialog';
+import { RevisionDiffDialog } from './RevisionDiffDialog';
+import { RevisionValuesDialog } from './RevisionValuesDialog';
 
 const { createRouteURL } = Router;
 export default function ReleaseDetail() {
@@ -43,8 +46,14 @@ export default function ReleaseDetail() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdateRelease, setIsUpdateRelease] = useState(false);
+  const [isValuesDialogOpen, setIsValuesDialogOpen] = useState<boolean>(false);
+  const [selectedRevisionForValues, setSelectedRevisionForValues] = useState<any | null>(null);
+  const [isDiffDialogOpen, setIsDiffDialogOpen] = useState<boolean>(false);
+  const [diffBaseVersion, setDiffBaseVersion] = useState<number | undefined>(undefined);
+  const [diffTargetVersion, setDiffTargetVersion] = useState<number | undefined>(undefined);
   const { enqueueSnackbar } = useSnackbar();
   const history = useHistory();
+  const historyReleases = Array.isArray(releaseHistory?.releases) ? releaseHistory.releases : [];
 
   useEffect(() => {
     getRelease(namespace, releaseName).then(response => {
@@ -55,6 +64,9 @@ export default function ReleaseDetail() {
   useEffect(() => {
     getReleaseHistory(namespace, releaseName).then(response => {
       setReleaseHistory(response);
+      if (Array.isArray(response?.releases) && response.releases.length > 0 && !revertVersion) {
+        setRevertVersion(response.releases[0].version.toString());
+      }
     });
   }, [update]);
 
@@ -149,24 +161,24 @@ export default function ReleaseDetail() {
           <InputLabel id="revert">{t('Select a version')}</InputLabel>
           <Select
             value={revertVersion}
-            defaultValue={releaseHistory?.releases[0]?.version}
+            defaultValue={historyReleases[0]?.version}
             onChange={event => setRevertVersion(event.target.value as string)}
             id="revert"
             fullWidth
           >
-            {releaseHistory &&
-              releaseHistory.releases.map((release: any) => {
-                return (
-                  <MenuItem value={release?.version}>
-                    {release?.version} - {release?.info?.description || 'N/A'} (
-                    {new Date(release?.info.last_deployed).toLocaleString()})
-                  </MenuItem>
-                );
-              })}
+            {historyReleases.map((rel: any) => {
+              return (
+                <MenuItem key={rel?.version} value={rel?.version?.toString()}>
+                  {rel?.version} - {rel?.info?.description || t('N/A')} (
+                  {new Date(rel?.info.last_deployed).toLocaleString()})
+                </MenuItem>
+              );
+            })}
           </Select>
         </DialogContent>
         <DialogActions>
           <Button
+            disabled={!revertVersion}
             onClick={() => {
               rollbackRelease(
                 release.namespace,
@@ -220,7 +232,12 @@ export default function ReleaseDetail() {
                 />,
                 <ActionButton
                   description={t('Rollback')}
-                  onClick={() => setRollbackPopup(true)}
+                  onClick={() => {
+                    if (historyReleases.length > 0) {
+                      setRevertVersion(historyReleases[0].version.toString());
+                    }
+                    setRollbackPopup(true);
+                  }}
                   icon="mdi:undo"
                   iconButtonProps={{ disabled: release.version === 1 }}
                 />,
@@ -269,12 +286,34 @@ export default function ReleaseDetail() {
       )}
 
       {releaseHistory && (
-        <SectionBox title={t('History')}>
+        <SectionBox
+          title={
+            <SectionHeader
+              title={t('History')}
+              actions={[
+                <ActionButton
+                  key="compare-revisions"
+                  description={t('Compare Revisions')}
+                  onClick={() => {
+                    const sorted = [...historyReleases].sort(
+                      (a: any, b: any) => b.version - a.version
+                    );
+                    setDiffTargetVersion(sorted[0]?.version);
+                    setDiffBaseVersion(sorted.length > 1 ? sorted[1]?.version : sorted[0]?.version);
+                    setIsDiffDialogOpen(true);
+                  }}
+                  icon="mdi:compare"
+                  iconButtonProps={{ disabled: historyReleases.length < 2 }}
+                />,
+              ]}
+            />
+          }
+        >
           <SimpleTable
             data={
               releaseHistory === null
                 ? null
-                : [...releaseHistory.releases].sort((a, b) => b.version - a.version)
+                : [...historyReleases].sort((a, b) => b.version - a.version)
             }
             defaultSortingColumn={1}
             columns={[
@@ -285,37 +324,88 @@ export default function ReleaseDetail() {
               },
               {
                 label: t('Description'),
-                getter: data => data.info.description,
+                getter: data => data.info?.description || t('N/A'),
               },
               {
                 label: t('Status'),
                 getter: data => (
-                  <StatusLabel status={release?.info.status === 'deployed' ? 'success' : 'error'}>
-                    {data.info.status}
+                  <StatusLabel status={data?.info?.status === 'deployed' ? 'success' : 'error'}>
+                    {data.info?.status}
                   </StatusLabel>
                 ),
               },
               {
                 label: t('Chart'),
-                getter: data => data.chart.metadata.name,
+                getter: data => data.chart?.metadata?.name,
               },
               {
                 label: t('App Version'),
-                getter: data => data.chart.metadata.appVersion,
+                getter: data => data.chart?.metadata?.appVersion,
               },
               {
                 label: t('Updated'),
                 // Key by the deploy timestamp (epoch) so TimeAgo remounts when the value
                 // changes, instead of showing a reused row's stale age after a re-sort.
                 getter: data => {
-                  const deployedAt = new Date(data.info.last_deployed).getTime();
+                  const deployedAt = new Date(data.info?.last_deployed).getTime();
                   return <DateLabel key={deployedAt} date={deployedAt} format="mini" />;
                 },
+              },
+              {
+                label: t('Actions'),
+                getter: data => (
+                  <Box display="flex" gap={1}>
+                    <ActionButton
+                      description={t('View Values')}
+                      onClick={() => {
+                        setSelectedRevisionForValues(data);
+                        setIsValuesDialogOpen(true);
+                      }}
+                      icon="mdi:file-document-box-outline"
+                    />
+                    <ActionButton
+                      description={t('Compare with current')}
+                      onClick={() => {
+                        setDiffBaseVersion(data.version);
+                        setDiffTargetVersion(release?.version);
+                        setIsDiffDialogOpen(true);
+                      }}
+                      icon="mdi:compare"
+                      iconButtonProps={{
+                        disabled:
+                          !release?.version ||
+                          !historyReleases.some((r: any) => r.version === release.version) ||
+                          data.version === release?.version,
+                      }}
+                    />
+                  </Box>
+                ),
               },
             ]}
           />
         </SectionBox>
       )}
+
+      <RevisionValuesDialog
+        open={isValuesDialogOpen}
+        onClose={() => {
+          setIsValuesDialogOpen(false);
+          setSelectedRevisionForValues(null);
+        }}
+        releaseName={releaseName}
+        releaseNamespace={namespace}
+        revision={selectedRevisionForValues}
+      />
+
+      <RevisionDiffDialog
+        open={isDiffDialogOpen}
+        onClose={() => setIsDiffDialogOpen(false)}
+        releaseName={releaseName}
+        releaseNamespace={namespace}
+        releases={historyReleases}
+        initialBaseVersion={diffBaseVersion}
+        initialTargetVersion={diffTargetVersion}
+      />
     </>
   );
 }
