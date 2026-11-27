@@ -187,16 +187,48 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
           }
         }
 
+        let isError = false;
+        let errorMessage: string | undefined;
+        try {
+          const parsed = typeof apiResponse === 'string' ? JSON.parse(apiResponse) : apiResponse;
+          if (
+            parsed &&
+            (parsed.error === true ||
+              parsed.isError === true ||
+              (typeof parsed.error === 'string' && parsed.error.trim().length > 0))
+          ) {
+            isError = true;
+            if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+              errorMessage = parsed.message;
+            } else if (typeof parsed.content === 'string' && parsed.content.trim().length > 0) {
+              errorMessage = parsed.content;
+            } else if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+              errorMessage = parsed.error;
+            } else {
+              errorMessage =
+                typeof apiResponse === 'string' ? apiResponse : JSON.stringify(apiResponse);
+            }
+          }
+        } catch {
+          // Plain-text responses (such as successful pod logs) are not JSON errors
+          isError = false;
+        }
+
         // The handleActualApiRequest already adds to history (now tagged with toolCallId)
         return {
           content: typeof apiResponse === 'string' ? apiResponse : JSON.stringify(apiResponse),
           shouldAddToHistory: false, // Already added by handleActualApiRequest
           shouldProcessFollowUp: true,
+          isError,
+          ...(isError ? { error: true } : {}),
+          success: !isError,
+          ...(isError && errorMessage ? { message: errorMessage } : {}),
           metadata: {
             method: METHOD,
             url,
             body: requestBody,
-            success: true,
+            success: !isError,
+            ...(isError && errorMessage ? { error: errorMessage } : {}),
           },
         };
       } catch (error) {
@@ -213,6 +245,9 @@ LOG HANDLING FOR MULTI-CONTAINER PODS:
 
         return {
           content: errorContent,
+          message: `Error executing GET request: ${msg}`,
+          isError: true,
+          error: true,
           shouldAddToHistory: true,
           shouldProcessFollowUp: true, // Let the LLM explain the error to the user
           metadata: {

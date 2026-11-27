@@ -574,6 +574,25 @@ export const handleActualApiRequest = async (
 
       const resourceInfo = extractResourceFromUrl(url);
 
+      // Bound log output returned to tool runtime to avoid token exhaustion
+      const MAX_LOG_LINES = 100;
+      const MAX_LOG_CHARS = 8000;
+
+      const rawLines = logText.split('\n');
+      const lines = logText.endsWith('\n') ? rawLines.slice(0, -1) : rawLines;
+      let boundedLogs = logText;
+      let isTruncated = false;
+
+      if (lines.length > MAX_LOG_LINES) {
+        boundedLogs = lines.slice(-MAX_LOG_LINES).join('\n');
+        isTruncated = true;
+      }
+
+      if (boundedLogs.length > MAX_LOG_CHARS) {
+        boundedLogs = boundedLogs.slice(-MAX_LOG_CHARS);
+        isTruncated = true;
+      }
+
       // Create a special logs response format that can be detected by the content renderer
       const logsResponse = {
         type: 'logs',
@@ -594,7 +613,25 @@ export const handleActualApiRequest = async (
       const namespaceInfo = resourceInfo.namespace
         ? t(' in namespace "{{namespace}}"', { namespace: resourceInfo.namespace })
         : '';
-      const logSummary = logText
+
+      const hasLogs = logText.trim().length > 0;
+      const noLogsMessage = t(
+        'No logs available for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}.',
+        {
+          resourceType: resourceInfo.resourceType,
+          resourceName: resourceInfo.resourceName,
+          namespaceInfo,
+          containerInfo,
+        }
+      );
+
+      const formattedLogContent = hasLogs
+        ? isTruncated
+          ? `... [truncated, showing most recent logs] ...\n${boundedLogs}`
+          : boundedLogs
+        : noLogsMessage;
+
+      const logSummary = hasLogs
         ? t(
             'Logs retrieved for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}. {{logs}}',
             {
@@ -602,24 +639,33 @@ export const handleActualApiRequest = async (
               resourceName: resourceInfo.resourceName,
               namespaceInfo,
               containerInfo,
-              logs: logText.split('\n'),
+              logs: '',
             }
-          )
-        : t(
-            'No logs available for {{resourceType}} "{{resourceName}}"{{namespaceInfo}}{{containerInfo}}.',
-            {
-              resourceType: resourceInfo.resourceType,
-              resourceName: resourceInfo.resourceName,
-              namespaceInfo,
-              containerInfo,
-            }
-          );
+          ).trim()
+        : noLogsMessage;
 
+      // Store full logs in display-only history for the UI LOGS_BUTTON widget
       aiManager.history.push({
         success: true,
         role: 'tool',
         cluster,
         content: `LOGS_BUTTON:${JSON.stringify(logsResponse)}\n\n${logSummary}`,
+        isDisplayOnly: true,
+      });
+
+      // Store bounded logs in model-facing history so tool-call follow-ups
+      // receive bounded content without bypassing line/character limits,
+      // prefixed with logSummary to retain workload/container attribution
+      const modelFacingContent = hasLogs
+        ? `${logSummary}\n\n${formattedLogContent}`
+        : formattedLogContent;
+
+      aiManager.history.push({
+        success: true,
+        role: 'tool',
+        cluster,
+        content: modelFacingContent,
+        isModelOnly: true,
       });
 
       // Call the success callback if provided
@@ -627,7 +673,7 @@ export const handleActualApiRequest = async (
         onSuccess(logsResponse, 'GET', { type: 'logs', ...resourceInfo });
       }
 
-      return '';
+      return modelFacingContent;
     } else if (response?.kind === 'Table') {
       // ...existing code...
       const extractKindFromUrl = (url: string) => {

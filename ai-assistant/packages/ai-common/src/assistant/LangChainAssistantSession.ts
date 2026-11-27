@@ -1854,8 +1854,21 @@ Please analyze this data and provide a specific, detailed response that directly
           );
         }
 
-        // Check if the response indicates an error even if the tool didn't throw
-        const { isError, errorMsg } = detectToolResponseError(toolResponse.content);
+        // Check if the response indicates an error even if the tool didn't throw.
+        // Use explicit execution status from toolResponse when available so successful
+        // outputs (e.g. logs containing "ERROR" or "failed") don't trigger false alerts.
+        const explicitStatus = {
+          isError: toolResponse.isError,
+          error: toolResponse.error,
+          success:
+            typeof toolResponse.success === 'boolean'
+              ? toolResponse.success
+              : typeof toolResponse.metadata?.success === 'boolean'
+              ? (toolResponse.metadata.success as boolean)
+              : undefined,
+        };
+
+        const { isError, errorMsg } = detectToolResponseError(toolResponse.content, explicitStatus);
         if (isError) {
           const toolName = toolCall.function.name || 'unknown tool';
           failedOperations.push(`${toolName}: ${errorMsg}`);

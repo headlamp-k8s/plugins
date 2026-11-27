@@ -28,6 +28,7 @@ import { getIntelligentDefault } from '../../prompts/buildToolArgumentPrompt';
 export function isRegularConversationMessage(prompt: Prompt): boolean {
   if (prompt.role === 'system') return false;
   if (prompt.isDisplayOnly) return false;
+  if (prompt.isModelOnly) return false;
   if (prompt.role === 'tool') return false;
   if (prompt.role === 'assistant' && prompt.toolCalls?.length) return false;
   return true;

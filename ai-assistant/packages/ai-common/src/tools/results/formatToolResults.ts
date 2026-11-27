@@ -79,7 +79,10 @@ export function formatToolResultsForLLM(results: Record<string, ToolResult>): st
 
     if (result.error || result.isError) {
       formatted += '**Status**: ❌ Error\n';
-      formatted += `**Error Message**: ${result.message ?? 'Unknown error'}\n\n`;
+      const errorMessage =
+        result.message ??
+        (typeof result.content === 'string' && result.content ? result.content : 'Unknown error');
+      formatted += `**Error Message**: ${errorMessage}\n\n`;
     } else {
       formatted += '**Status**: ✅ Success\n';
 

@@ -351,6 +351,49 @@ describe('KubernetesTool.handler — GET error path', () => {
       undefined
     );
     expect(result.metadata?.error).toContain('bad request');
+    expect(result.message).toContain('bad request');
+    expect(result.isError).toBe(true);
+  });
+
+  it('handled GET failure sets isError, error, and message from failure payload', async () => {
+    const tool = new KubernetesTool();
+    const ctx = makeCtx(['prod']);
+    ctx.callbacks.handleActualApiRequest = async () => ({
+      error: true,
+      message: 'pods "forbidden-pod" is forbidden: User cannot get resource',
+    });
+    tool.setContext(ctx);
+
+    const result = await tool.handler(
+      { url: '/api/v1/namespaces/default/pods/forbidden-pod', method: 'GET', body: '' },
+      'tc-forbidden',
+      undefined
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('pods "forbidden-pod" is forbidden: User cannot get resource');
+    expect(result.metadata?.error).toBe(
+      'pods "forbidden-pod" is forbidden: User cannot get resource'
+    );
+  });
+
+  it('handled GET failure with stringified error payload populates message', async () => {
+    const tool = new KubernetesTool();
+    const ctx = makeCtx(['prod']);
+    ctx.callbacks.handleActualApiRequest = async () =>
+      JSON.stringify({ error: true, content: 'Error in API call: 404 Not Found' });
+    tool.setContext(ctx);
+
+    const result = await tool.handler(
+      { url: '/api/v1/namespaces/default/pods/missing-pod', method: 'GET', body: '' },
+      'tc-notfound',
+      undefined
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Error in API call: 404 Not Found');
   });
 });
 
@@ -400,6 +443,34 @@ describe('KubernetesTool.handler — GET toolCallId tagging', () => {
     await tool.handler({ url: '/api/v1/pods', method: 'GET', body: '' }, 'new-tc', undefined);
 
     expect(history[0].toolCallId).toBe('existing-tc');
+  });
+
+  it('returns plain-text pod logs with shouldProcessFollowUp=true and isError=false', async () => {
+    const tool = new KubernetesTool();
+    const logSummary =
+      'Logs retrieved for pods "crash-pod" in namespace "default".\nINFO: boot\nERROR: boom';
+    const history: KubernetesAIManagerContext['history'] = [{ role: 'user', content: 'get logs' }];
+    const ctx = makeCtx(['prod']);
+    ctx.callbacks.handleActualApiRequest = async () => {
+      history.push({ role: 'tool', content: 'LOGS_BUTTON:{}' });
+      history.push({ role: 'tool', content: logSummary });
+      return logSummary;
+    };
+    ctx.aiManager = { history };
+    tool.setContext(ctx);
+
+    const result = await tool.handler(
+      { url: '/api/v1/namespaces/default/pods/crash-pod/log', method: 'GET', body: '' },
+      'tc-logs',
+      undefined
+    );
+
+    expect(result.content).toBe(logSummary);
+    expect(result.shouldAddToHistory).toBe(false);
+    expect(result.shouldProcessFollowUp).toBe(true);
+    expect(result.isError).toBe(false);
+    expect(result.success).toBe(true);
+    expect(history[2].toolCallId).toBe('tc-logs');
   });
 });
 

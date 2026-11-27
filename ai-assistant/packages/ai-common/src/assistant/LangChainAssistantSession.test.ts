@@ -2513,6 +2513,192 @@ describe('processToolCalls — executeTool throws', () => {
     warnSpy.mockRestore();
     errorSpy.mockRestore();
   });
+
+  it('does not create system-error-alert when tool returns error-bearing logs with success: true', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content:
+          'Logs retrieved for pod "db":\nERROR: database connection failed\nFATAL: terminating',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        success: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-logs',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({
+            url: '/api/v1/namespaces/default/pods/db/log',
+            method: 'GET',
+          }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Fetching logs', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeUndefined();
+
+    const toolEntry = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'tc-logs' && prompt.role === 'tool'
+    );
+    expect(toolEntry).toBeDefined();
+    expect(toolEntry?.content).toContain('ERROR: database connection failed');
+  });
+
+  it('creates system-error-alert when tool returns error: true without isError or success', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Namespace "missing" not found',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-err-only',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/namespaces/missing/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Namespace "missing" not found');
+  });
+
+  it('creates system-error-alert when tool returns error string', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'raw output',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: 'permission denied',
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-err-str',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('permission denied');
+  });
+
+  it('creates system-error-alert when tool returns conflicting error: true and success: true', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Operation returned partial failure',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: true,
+        success: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-conflict-err-success',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Operation returned partial failure');
+  });
+
+  it('creates system-error-alert when tool returns conflicting isError: false and success: false', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Request rejected by API server',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        isError: false,
+        success: false,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-conflict-iserror-success',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Request rejected by API server');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -3153,6 +3339,77 @@ describe('handleMultipleToolExecution', () => {
     const toolB = capturedToolCalls.find(t => t.name === 'mcp_tool_b');
     expect(toolB).toBeDefined();
     expect(toolB?.description).toBe('MCP tool: mcp_tool_b');
+  });
+
+  it('covers a handled GET failure through orchestration without losing diagnostics', async () => {
+    inlineToolApprovalManager.setApprovalHandler(
+      createMockApprovalManager({ mode: 'approve-all' })
+    );
+    const toolManager = createMockToolManager({
+      enabledToolNames: ['kubernetes_api_request', 'mcp_tool_b'],
+      toolResults: {},
+    });
+    toolManager.executeTool = vi.fn().mockImplementation(async (name: string) => {
+      if (name === 'kubernetes_api_request') {
+        return {
+          content: '{"error":true,"message":"pods is forbidden: 403 Forbidden"}',
+          isError: true,
+          error: true,
+          message: 'pods is forbidden: 403 Forbidden',
+          success: false,
+          shouldAddToHistory: false,
+          shouldProcessFollowUp: true,
+        };
+      }
+      return { success: true, data: { status: 'ok' } };
+    });
+
+    const manager = new LangChainAssistantSession('mock-testing-model', {}, [], { toolManager });
+    privateManager(manager).toolManager.getMCPTools = () => [
+      { name: 'kubernetes_api_request' },
+      { name: 'mcp_tool_b' },
+    ];
+
+    let capturedPrompt = '';
+    privateManager(manager).model = {
+      invoke: vi.fn().mockImplementation((messages: BaseMessage[]) => {
+        capturedPrompt = messages.map(m => m.content).join('\n');
+        return Promise.resolve({ content: 'Handled error explanation.', tool_calls: [] });
+      }),
+      stream: async function* () {},
+    };
+
+    vi.spyOn(ToolPlanner, 'groupToolsByExecutionStrategy').mockReturnValueOnce({
+      parallel: [
+        {
+          name: 'kubernetes_api_request',
+          priority: 'high' as const,
+          reason: 'get pods',
+          description: '',
+          arguments: { url: '/api/v1/pods', method: 'GET' },
+        },
+      ],
+      sequential: [],
+    });
+
+    const recommended: RecommendedTool[] = [
+      {
+        name: 'kubernetes_api_request',
+        description: '',
+        priority: 'high',
+        reason: 'get pods',
+        arguments: { url: '/api/v1/pods', method: 'GET' },
+      },
+    ];
+
+    const result = await privateManager(manager).handleMultipleToolExecution(
+      'get pods',
+      recommended
+    );
+
+    expect(result.role).toBe('assistant');
+    expect(capturedPrompt).toContain('pods is forbidden: 403 Forbidden');
+    expect(capturedPrompt).not.toContain('Unknown error');
   });
 
   it('returns denial prompt when all MCP tools are denied and no built-in tools', async () => {

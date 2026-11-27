@@ -55,6 +55,8 @@ export interface ConversationMessage {
   alreadyDisplayed?: boolean;
   /** Whether the message is for UI display only and should not reach the LLM. */
   isDisplayOnly?: boolean;
+  /** Whether the message is for model context only and should not be displayed in UI. */
+  isModelOnly?: boolean;
   /** Request identifier used to track tool confirmation updates. */
   requestId?: string;
   /** Assistant activity shown in a collapsible block. */
