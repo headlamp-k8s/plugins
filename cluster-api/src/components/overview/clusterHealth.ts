@@ -85,7 +85,8 @@ export function getDisplayableErrorConditions(item: any): any[] {
 
 export function getPriorityErrorForCluster(
   cluster: any,
-  allResources: { className: string; items: any[] }[]
+  allResources: { className: string; items: any[] }[],
+  errorDefinitions?: CapiErrorDefinition[]
 ): ClusterPriorityError | null {
   const clusterName = cluster.metadata.name;
   const candidates: Candidate[] = [];
@@ -107,7 +108,7 @@ export function getPriorityErrorForCluster(
           reason: failureReason,
           message: getFailureMessage(item),
         };
-        const matched = matchCapiError(item, syntheticCondition);
+        const matched = matchCapiError(item, syntheticCondition, errorDefinitions);
         if (matched) {
           candidates.push({
             priority: 0,
@@ -126,7 +127,7 @@ export function getPriorityErrorForCluster(
           if (condition.status !== 'False' && condition.status !== 'Unknown') continue;
         }
 
-        const matched = matchCapiError(item, condition);
+        const matched = matchCapiError(item, condition, errorDefinitions);
         if (matched) {
           candidates.push({
             priority: CONDITION_PRIORITY[condition.type] ?? 99,

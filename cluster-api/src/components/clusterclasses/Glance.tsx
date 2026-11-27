@@ -1,9 +1,11 @@
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { StatusLabel } from '@kinvolk/headlamp-plugin/lib/components/common';
 import { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import { Box } from '@mui/system';
 import { ClusterClass } from '../../resources/clusterclass';
 
 export function ClusterClassGlance({ node }: { node: GraphNode }) {
+  const { t } = useTranslation();
   const kubeObject = node?.kubeObject;
   if (!kubeObject || kubeObject.kind !== ClusterClass.kind || !kubeObject.jsonData) {
     return null;
@@ -19,10 +21,12 @@ export function ClusterClassGlance({ node }: { node: GraphNode }) {
 
   return (
     <Box display="flex" gap={1} alignItems="center" mt={2} flexWrap="wrap" key="cc-glance">
-      {infraRefName && <StatusLabel status="">{`Infra: ${infraRefName}`}</StatusLabel>}
-      {cpRefName && <StatusLabel status="">{`CP: ${cpRefName}`}</StatusLabel>}
-      <StatusLabel status="">{`MDs: ${mdsCount}`}</StatusLabel>
-      <StatusLabel status="">{`MPs: ${mpsCount}`}</StatusLabel>
+      {infraRefName && (
+        <StatusLabel status="">{t('Infra: {{name}}', { name: infraRefName })}</StatusLabel>
+      )}
+      {cpRefName && <StatusLabel status="">{t('CP: {{name}}', { name: cpRefName })}</StatusLabel>}
+      <StatusLabel status="">{t('MDs: {{count}}', { count: mdsCount })}</StatusLabel>
+      <StatusLabel status="">{t('MPs: {{count}}', { count: mpsCount })}</StatusLabel>
     </Box>
   );
 }
