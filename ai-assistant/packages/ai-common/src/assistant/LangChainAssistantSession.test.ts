@@ -2557,6 +2557,148 @@ describe('processToolCalls — executeTool throws', () => {
     expect(toolEntry).toBeDefined();
     expect(toolEntry?.content).toContain('ERROR: database connection failed');
   });
+
+  it('creates system-error-alert when tool returns error: true without isError or success', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Namespace "missing" not found',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-err-only',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/namespaces/missing/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Namespace "missing" not found');
+  });
+
+  it('creates system-error-alert when tool returns error string', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'raw output',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: 'permission denied',
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-err-str',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('permission denied');
+  });
+
+  it('creates system-error-alert when tool returns conflicting error: true and success: true', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Operation returned partial failure',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        error: true,
+        success: true,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-conflict-err-success',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Operation returned partial failure');
+  });
+
+  it('creates system-error-alert when tool returns conflicting isError: false and success: false', async () => {
+    const manager = createTestManager();
+
+    privateManager(manager).toolManager = {
+      executeTool: async () => ({
+        content: 'Request rejected by API server',
+        shouldAddToHistory: true,
+        shouldProcessFollowUp: true,
+        isError: false,
+        success: false,
+      }),
+      getToolNames: () => ['kubernetes_api_request'],
+      getMCPTools: () => [],
+    };
+
+    const toolCalls: NormalizedToolCall[] = [
+      {
+        type: 'function',
+        id: 'tc-conflict-iserror-success',
+        function: {
+          name: 'kubernetes_api_request',
+          arguments: JSON.stringify({ url: '/api/v1/pods', method: 'GET' }),
+        },
+      },
+    ];
+    const assistantPrompt: Prompt = { role: 'assistant', content: 'Checking pods', toolCalls };
+
+    await privateManager(manager).processToolCalls(toolCalls, assistantPrompt);
+
+    const alert = privateManager(manager).history.find(
+      prompt => prompt.toolCallId === 'system-error-alert'
+    );
+    expect(alert).toBeDefined();
+    expect(alert?.content).toContain('Request rejected by API server');
+  });
 });
 
 // ---------------------------------------------------------------------------
