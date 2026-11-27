@@ -1,7 +1,6 @@
 import { Icon } from '@iconify/react';
-import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
+import { K8s, useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { Loader, SectionBox } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { useCluster } from '@kinvolk/headlamp-plugin/lib/k8s';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -14,6 +13,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useEffect, useState } from 'react';
 import {
   createTickTimestampFormatter,
+  escapePrometheusLabelValue,
   getConfigStore,
   getPrometheusInterval,
   getPrometheusPrefix,
@@ -44,10 +44,8 @@ interface ChartConfig {
 interface VolcanoChartProps {
   chartConfigs: ChartConfig[];
   defaultChart?: string;
-}
-
-function escapePrometheusLabelValue(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  /** The cluster whose Prometheus settings and metrics to use, when it is not the current one. */
+  cluster?: string;
 }
 
 function getVolcanoQueueMetricQuery(metricName: string, queueName: string) {
@@ -122,9 +120,18 @@ export function getVolcanoQueueChartConfigs(queueName: string): ChartConfig[] {
   ];
 }
 
+/**
+ * Shows a set of Prometheus charts with buttons to switch between them and to choose the timespan
+ * and resolution, while metrics are on for the cluster. It finds Prometheus with the cluster's
+ * settings, and says so when it cannot.
+ *
+ * @param props - The charts, the chart to show first and the cluster.
+ * @returns The charts, or nothing while metrics are off for the cluster or there are no charts.
+ */
 export function VolcanoChart(props: VolcanoChartProps) {
   const { t } = useTranslation();
-  const cluster = useCluster();
+  const currentCluster = K8s.useCluster();
+  const cluster = props.cluster || currentCluster;
   const configStore = getConfigStore();
   const useClusterConfig = configStore.useConfig();
   const clusterConfig = useClusterConfig();
@@ -326,6 +333,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
                   resolution={resolution}
                   subPath={subPath}
                   timespan={timespan}
+                  cluster={cluster}
                   CustomTooltip={CustomTooltip}
                   {...currentChartConfig.queries}
                 />
@@ -343,7 +351,7 @@ export function VolcanoChart(props: VolcanoChartProps) {
             <Alert severity="warning">{t('Error fetching Prometheus Info')}</Alert>
           </Box>
         ) : state === PrometheusState.UNKNOWN ? (
-          <PrometheusNotFoundBanner />
+          <PrometheusNotFoundBanner cluster={cluster} />
         ) : null}
       </Paper>
     </SectionBox>

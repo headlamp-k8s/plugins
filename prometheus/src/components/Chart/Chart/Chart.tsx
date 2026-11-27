@@ -67,8 +67,18 @@ export interface ChartProps {
   };
   CustomTooltip?: ({ active, payload, label }) => JSX.Element | null;
   subPath?: string;
+  /** The cluster whose Prometheus to query, when it is not the current cluster. */
+  cluster?: string;
 }
 
+/**
+ * Fetches the query of each plot from Prometheus for the chosen time range and draws the plots as
+ * areas over time, or says that it is loading, found no data or failed. It fetches again when the
+ * request changes, and every 10 seconds while it refreshes itself.
+ *
+ * @param props - The plots, the axes and the request.
+ * @returns The chart.
+ */
 export default function Chart(props: ChartProps) {
   const { t } = useTranslation();
 
@@ -118,6 +128,7 @@ export default function Chart(props: ChartProps) {
           to: currentTimeRange.to,
           step: currentTimeRange.step,
           subPath: props.subPath,
+          cluster: props.cluster,
         });
       } catch (e) {
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
@@ -188,6 +199,7 @@ export default function Chart(props: ChartProps) {
     props.resolution,
     props.prometheusPrefix,
     props.subPath,
+    props.cluster,
     JSON.stringify(props.plots),
   ]);
 
@@ -213,6 +225,7 @@ export default function Chart(props: ChartProps) {
     props.resolution,
     props.prometheusPrefix,
     props.subPath,
+    props.cluster,
     JSON.stringify(props.plots),
   ]);
 

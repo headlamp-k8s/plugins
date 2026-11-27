@@ -20,7 +20,13 @@ import { fetchMetrics } from '../../../request';
 import { createTickTimestampFormatter, dataProcessor } from '../../../util';
 import Chart from '../Chart/Chart';
 
-const formatLatency = (value: number | string) => {
+/**
+ * Formats a latency for a chart axis: in whole milliseconds, or in seconds above one second.
+ *
+ * @param value - The latency in milliseconds.
+ * @returns The latency with its unit, or the value unchanged when it is not a number.
+ */
+export const formatLatency = (value: number | string) => {
   const numValue = Number(value);
   if (isNaN(numValue)) return value;
   if (numValue > 1000) return `${(numValue / 1000).toFixed(2)}s`;

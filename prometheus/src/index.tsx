@@ -12,6 +12,8 @@ import { DiskMetricsChart } from './components/Chart/DiskMetricsChart/DiskMetric
 import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/GenericMetricsChart';
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
+import { getKnativeEventingTarget } from './components/Chart/KnativeEventingChart/eventingTarget';
+import { KnativeEventingChart } from './components/Chart/KnativeEventingChart/KnativeEventingChart';
 import { getKueueClusterQueueChartConfigs } from './components/Chart/KueueClusterQueueChart/KueueClusterQueueChart';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
@@ -182,6 +184,11 @@ function PrometheusMetrics(resource: KubeObject) {
     );
   }
 
+  const knativeEventingTarget = getKnativeEventingTarget(resource);
+  if (knativeEventingTarget) {
+    return <KnativeEventingChart target={knativeEventingTarget} cluster={resource.cluster} />;
+  }
+
   if (
     resourceKind === 'Queue' &&
     resource.jsonData?.apiVersion === 'scheduling.volcano.sh/v1beta1'
@@ -306,9 +313,10 @@ registerDetailsViewHeaderActionsProcessor(function addPrometheusMetricsButton(re
     return actions;
   }
 
+  const cluster = getKnativeEventingTarget(resource) ? resource.cluster : undefined;
   actions.splice(0, 0, {
     id: prometheusAction,
-    action: <VisibilityButton resource={resource} />,
+    action: <VisibilityButton resource={resource} cluster={cluster} />,
   });
 
   return actions;

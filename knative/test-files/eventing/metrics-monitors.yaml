@@ -1,0 +1,95 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: imc-dispatcher
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      messaging.knative.dev/channel: in-memory-channel
+      messaging.knative.dev/role: dispatcher
+  podTargetLabels:
+    - messaging.knative.dev/channel
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: imc-controller
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      messaging.knative.dev/channel: in-memory-channel
+      messaging.knative.dev/role: controller
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: mt-broker-controller
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      app: mt-broker-controller
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: apiserversource-adapters
+  namespace: knative-eventing
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      eventing.knative.dev/source: apiserver-source-controller
+  podTargetLabels:
+    - eventing.knative.dev/sourceName
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: jetstream-ch-controller
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      messaging.knative.dev/channel: nats-jetstream-channel
+      messaging.knative.dev/role: controller
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: jetstream-ch-dispatcher
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      messaging.knative.dev/channel: nats-jetstream-channel
+      messaging.knative.dev/role: dispatcher
+  podTargetLabels:
+    - messaging.knative.dev/channel
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: nats-webhook
+  namespace: knative-eventing
+spec:
+  selector:
+    matchLabels:
+      app: nats-webhook
+  podMetricsEndpoints:
+    - port: metrics
