@@ -25,6 +25,7 @@ import {
   renderReclaimablePodsSummary,
   renderRequeueState,
   renderText,
+  renderWorkloadBlockerWhy,
   renderWorkloadStatus,
   resolveAccumulatedPastExecutionTimeSeconds,
   resolvePriorityClassName,
@@ -807,7 +808,7 @@ export class Workload extends KubeObject<KubeWorkload> {
     return renderWorkloadStatus(this.conditions, this.spec.active);
   }
 
-  get blockerStage() {
+  get blocker() {
     const { conditions, admissionChecks, requeueState, admission } = this.status;
     return getWorkloadBlocker(
       conditions,
@@ -815,11 +816,19 @@ export class Workload extends KubeObject<KubeWorkload> {
       requeueState,
       this.spec.active,
       admission
-    )?.stage;
+    );
+  }
+
+  get blockerStage() {
+    return this.blocker?.stage;
   }
 
   get blockerStageDisplay() {
     return renderText(this.blockerStage);
+  }
+
+  get blockerWhyDisplay() {
+    return renderWorkloadBlockerWhy(this.blocker);
   }
 
   get admissionClusterQueue() {

@@ -16,7 +16,7 @@ import { ClusterQueue } from '../../resources/clusterQueue';
 import { renderFlavorNominalQuota } from '../../resources/clusterQueueFormatters';
 import { LocalQueue } from '../../resources/localQueue';
 import { AdmissionCheckState, Workload } from '../../resources/workload';
-import { getWorkloadBlocker, renderText } from '../../resources/workloadFormatters';
+import { renderText } from '../../resources/workloadFormatters';
 import { kueueRouteNames } from '../../utils/kueueRoutes';
 import { renderCohortLink } from './KueueResourceLinks';
 
@@ -395,16 +395,6 @@ function RelatedLocalQueueWorkloadsSection({
   return <RelatedWorkloadsTable workloads={relatedWorkloads} />;
 }
 
-function getBlocker(workload: Workload) {
-  return getWorkloadBlocker(
-    workload.conditions,
-    workload.status.admissionChecks,
-    workload.status.requeueState,
-    workload.spec.active,
-    workload.status.admission
-  );
-}
-
 function RelatedWorkloadsTable({
   workloads,
   loadWarning,
@@ -469,7 +459,7 @@ function RelatedWorkloadsTable({
             label: 'Blocked On',
             gridTemplate: 'max-content',
             getter: (workload: Workload) => {
-              const blocker = getBlocker(workload);
+              const blocker = workload.blocker;
 
               if (!blocker) {
                 return '-';
@@ -485,11 +475,7 @@ function RelatedWorkloadsTable({
           {
             label: 'Why',
             gridTemplate: 'minmax(150px, 1fr)',
-            getter: (workload: Workload) => {
-              const blocker = getBlocker(workload);
-              // Kueue's message names the exact cause, so prefer it over the generic explanation.
-              return blocker?.message || blocker?.explanation || '-';
-            },
+            getter: (workload: Workload) => workload.blockerWhyDisplay,
           },
         ]}
       />
