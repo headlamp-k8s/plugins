@@ -1,21 +1,38 @@
-export function parseRam(ramStr: string): number {
-  if (!ramStr) return 0;
-  const match = ramStr.match(/^(\d+)([KMGT]i?)?$/i);
+const decimalExponents: Record<string, number> = {
+  n: -9,
+  u: -6,
+  m: -3,
+  k: 3,
+  M: 6,
+  G: 9,
+  T: 12,
+  P: 15,
+  E: 18,
+};
+
+const binaryFactors: Record<string, number> = {
+  Ki: 2 ** 10,
+  Mi: 2 ** 20,
+  Gi: 2 ** 30,
+  Ti: 2 ** 40,
+  Pi: 2 ** 50,
+  Ei: 2 ** 60,
+};
+
+const quantityPattern =
+  /^([+-]?(?:\d+\.?\d*|\.\d+))(?:(Ki|Mi|Gi|Ti|Pi|Ei|n|u|m|k|M|G|T|P|E)|([eE][+-]?\d+))?$/;
+
+export function parseQuantity(quantity: string): number {
+  if (!quantity) return 0;
+  const match = String(quantity).trim().match(quantityPattern);
   if (!match) return 0;
 
-  const num = parseInt(match[1]);
-  const unit = match[2]?.toUpperCase();
+  const [, value, suffix, exponent] = match;
+  if (suffix && suffix in binaryFactors) return Number(value) * binaryFactors[suffix];
+  if (suffix) return Number(`${value}e${decimalExponents[suffix]}`);
+  return Number(value + (exponent ?? ''));
+}
 
-  const units: Record<string, number> = {
-    K: 1024,
-    KI: 1024,
-    M: 1024 * 1024,
-    MI: 1024 * 1024,
-    G: 1024 * 1024 * 1024,
-    GI: 1024 * 1024 * 1024,
-    T: 1024 * 1024 * 1024 * 1024,
-    TI: 1024 * 1024 * 1024 * 1024,
-  };
-
-  return num * (units[unit] || 1);
+export function parseRam(ramStr: string): number {
+  return parseQuantity(ramStr);
 }
