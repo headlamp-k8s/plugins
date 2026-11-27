@@ -1,7 +1,7 @@
 import { K8s } from '@kinvolk/headlamp-plugin/lib';
 import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
-import { timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { PendingPodsRenderer } from './List';
+import { matchPendingPodsToEvents } from './matchPendingPodsToEvents';
 
 /**
  * Represents a pending Kubernetes pod with associated event information.
@@ -79,47 +79,7 @@ export const PodEvents = (props: { reason: string; kind: string; phase: string }
     return null;
   }
 
-  const podMap = new Map<string, PendingPod>();
-
-  pods.forEach(pod => {
-    podMap.set(pod.jsonData.metadata.name, {
-      id: pod.jsonData.metadata.uid,
-      name: pod.jsonData.metadata.name,
-      type: '',
-      source: '',
-      namespace: pod.jsonData.metadata.namespace,
-      reason: '',
-      message: '',
-      age: timeAgo(pod.metadata.creationTimestamp),
-      count: 0,
-      lastOccurrence: '',
-      firstOccurrence: '',
-    });
-  });
-
-  const podsWithEvents = new Map<string, PendingPod>();
-
-  events.forEach(event => {
-    const podName = event.involvedObject.name;
-    if (podMap.has(podName)) {
-      const pod = podMap.get(podName)!;
-
-      if (event.reason && event.message && event.type) {
-        podsWithEvents.set(podName, {
-          ...pod,
-          reason: event.reason,
-          message: event.message,
-          type: event.type,
-          source: event.source?.component || '',
-          count: event.count || 0,
-          lastOccurrence: event.lastOccurrence || '',
-          firstOccurrence: event.firstOccurrence || '',
-        });
-      }
-    }
-  });
-
-  const data = Array.from(podsWithEvents.values());
+  const data = matchPendingPodsToEvents(pods, events);
 
   return <PendingPodsRenderer pods={data} />;
 };
