@@ -33,6 +33,7 @@ import { getTinkerbellController } from './components/Config/tinkerbellChart/tin
 import { Settings } from './components/Settings/Settings';
 import { VisibilityButton } from './components/VisibilityButton/VisibilityButton';
 import {
+  getKedaHpaName,
   getNodeClaimChartConfigs,
   getNodePoolChartConfigs,
   PLUGIN_NAME,
@@ -101,7 +102,7 @@ function PrometheusMetrics(resource: KubeObject) {
   if (resource.kind === 'ScaledObject') {
     const namespace = resource.jsonData.metadata.namespace;
     const name = resource.jsonData.metadata.name;
-    const hpaName = resource.jsonData.status.hpaName;
+    const hpaName = getKedaHpaName(resource.jsonData);
     const defaultMinReplicaCount = 0; // https://keda.sh/docs/latest/reference/scaledobject-spec/#minreplicacount
     const defaultMaxReplicaCount = 100; // https://keda.sh/docs/latest/reference/scaledobject-spec/#maxreplicacount
 

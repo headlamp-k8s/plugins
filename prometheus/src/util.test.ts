@@ -1,5 +1,6 @@
 import {
   escapePrometheusLabelValue,
+  getKedaHpaName,
   getTimeRangeAndStepSize,
   isArgoCDApplication,
   supportsPrometheusMetrics,
@@ -235,5 +236,32 @@ describe('isArgoCDApplication', () => {
     ['rejects an Application without an API version', { kind: 'Application' }, false],
   ])('%s', (_, resource, expected) => {
     expect(isArgoCDApplication(resource)).toBe(expected);
+  });
+});
+
+describe('getKedaHpaName', () => {
+  test('uses status.hpaName when KEDA has set it', () => {
+    expect(
+      getKedaHpaName({ metadata: { name: 'checkout' }, status: { hpaName: 'custom-hpa' } })
+    ).toBe('custom-hpa');
+  });
+
+  test('falls back to keda-hpa-<name> when there is no status', () => {
+    expect(getKedaHpaName({ metadata: { name: 'checkout' } })).toBe('keda-hpa-checkout');
+  });
+
+  test('falls back to keda-hpa-<name> when status has no hpaName', () => {
+    expect(getKedaHpaName({ metadata: { name: 'checkout' }, status: {} })).toBe(
+      'keda-hpa-checkout'
+    );
+  });
+
+  test('uses the HPA name set in spec.advanced when there is no status', () => {
+    expect(
+      getKedaHpaName({
+        metadata: { name: 'checkout' },
+        spec: { advanced: { horizontalPodAutoscalerConfig: { name: 'checkout-hpa' } } },
+      })
+    ).toBe('checkout-hpa');
   });
 });
