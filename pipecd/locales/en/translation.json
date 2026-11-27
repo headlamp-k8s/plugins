@@ -85,6 +85,7 @@
   "Failed to load deployments: {{error}}": "Failed to load deployments: {{error}}",
   "Could not refresh the deployment: {{error}}": "Could not refresh the deployment: {{error}}",
   "The request timed out.": "The request timed out.",
+  "The server sent too many pages of applications.": "The server sent too many pages of applications.",
   "Failed to load logs: {{error}}": "Failed to load logs: {{error}}",
   "Pending": "Pending",
   "Planned": "Planned",

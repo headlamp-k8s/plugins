@@ -18,7 +18,11 @@ import { processJobsTableColumns } from './components/jobs/kueueJobColumns';
 import KueueJobSection from './components/jobs/KueueJobSection';
 import LocalQueueDetail from './components/localqueues/Detail';
 import LocalQueueList from './components/localqueues/List';
+import MultiKueueConfigDetail from './components/multikueueconfigs/Detail';
+import MultiKueueConfigList from './components/multikueueconfigs/List';
 import KueueOverview from './components/overview/Overview';
+import ProvisioningRequestConfigDetail from './components/provisioningrequestconfigs/Detail';
+import ProvisioningRequestConfigList from './components/provisioningrequestconfigs/List';
 import ResourceFlavorDetail from './components/resourceflavors/Detail';
 import ResourceFlavorList from './components/resourceflavors/List';
 import WorkloadDetail from './components/workloads/Detail';
@@ -69,6 +73,20 @@ registerSidebarEntry({
   name: 'kueue-localqueues',
   label: 'LocalQueues',
   url: kueueRoutePaths.localQueuesList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-multikueueconfigs',
+  label: 'MultiKueueConfigs',
+  url: kueueRoutePaths.multiKueueConfigsList,
+});
+
+registerSidebarEntry({
+  parent: 'kueue',
+  name: 'kueue-provisioningrequestconfigs',
+  label: 'ProvisioningRequestConfigs',
+  url: kueueRoutePaths.provisioningRequestConfigsList,
 });
 
 registerSidebarEntry({
@@ -155,6 +173,38 @@ registerRoute({
   name: kueueRouteNames.localQueueDetail,
   exact: true,
   component: () => <LocalQueueDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigsList,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigsList,
+  exact: true,
+  component: () => <MultiKueueConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.multiKueueConfigDetail,
+  sidebar: 'kueue-multikueueconfigs',
+  name: kueueRouteNames.multiKueueConfigDetail,
+  exact: true,
+  component: () => <MultiKueueConfigDetail />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.provisioningRequestConfigsList,
+  sidebar: 'kueue-provisioningrequestconfigs',
+  name: kueueRouteNames.provisioningRequestConfigsList,
+  exact: true,
+  component: () => <ProvisioningRequestConfigList />,
+});
+
+registerRoute({
+  path: kueueRoutePaths.provisioningRequestConfigDetail,
+  sidebar: 'kueue-provisioningrequestconfigs',
+  name: kueueRouteNames.provisioningRequestConfigDetail,
+  exact: true,
+  component: () => <ProvisioningRequestConfigDetail />,
 });
 
 registerRoute({

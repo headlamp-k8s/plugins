@@ -23,7 +23,7 @@ import type { Destination, KReference } from './common';
 import { getKnativeCrdName, type KnativeResourceClass } from './customResourceLinks';
 import type { KnativeTrigger } from './trigger';
 
-const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
+export const BROKER_CLASS_ANNOTATION = 'eventing.knative.dev/broker.class';
 
 export const KNATIVE_SOURCE_KINDS: KnativeResourceClass[] = [
   ['ApiServerSource', 'apiserversources'],

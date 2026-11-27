@@ -1,4 +1,9 @@
-import { getTimeRangeAndStepSize, isArgoCDApplication, supportsPrometheusMetrics } from './util';
+import {
+  escapePrometheusLabelValue,
+  getTimeRangeAndStepSize,
+  isArgoCDApplication,
+  supportsPrometheusMetrics,
+} from './util';
 
 beforeAll(async () => {
   global.TextEncoder = require('util').TextEncoder;
@@ -105,6 +110,8 @@ describe('getTimeRangeAndStepSize', () => {
 });
 
 describe('supportsPrometheusMetrics', () => {
+  const shop = { name: 'default', namespace: 'shop' };
+
   test.each([
     ['Workflow', 'tinkerbell.org/v1alpha1'],
     ['Machine', 'bmc.tinkerbell.org/v1alpha1'],
@@ -177,10 +184,36 @@ describe('supportsPrometheusMetrics', () => {
       { kind: 'ClusterQueue', jsonData: { kind: 'ClusterQueue', apiVersion: 'example.com/v1' } },
       false,
     ],
+    [
+      'supports Knative Brokers',
+      {
+        kind: 'Broker',
+        jsonData: { kind: 'Broker', apiVersion: 'eventing.knative.dev/v1', metadata: shop },
+      },
+      true,
+    ],
+    [
+      'rejects Knative kinds without metrics',
+      {
+        kind: 'EventType',
+        jsonData: { kind: 'EventType', apiVersion: 'eventing.knative.dev/v1beta3', metadata: shop },
+      },
+      false,
+    ],
     ['rejects unknown kinds', { kind: 'VolcanoJob', jsonData: { kind: 'VolcanoJob' } }, false],
     ['rejects missing resources', undefined, false],
   ])('%s', (_, resource, expected) => {
     expect(supportsPrometheusMetrics(resource)).toBe(expected);
+  });
+});
+
+describe('escapePrometheusLabelValue', () => {
+  test('escapes backslashes, quotes and line breaks', () => {
+    expect(escapePrometheusLabelValue('a\\b"c\nd')).toBe('a\\\\b\\"c\\nd');
+  });
+
+  test('leaves other values unchanged', () => {
+    expect(escapePrometheusLabelValue('catch-all.shop')).toBe('catch-all.shop');
   });
 });
 

@@ -77,6 +77,21 @@ Selecting a Broker or Trigger opens its detail page. A Broker's page shows its c
 settings ConfigMap; a Trigger's page shows its Broker, filter, subscriber, and the URI the
 subscriber resolved to. Both show conditions and events.
 
+Users who may create Brokers or Triggers in the cluster get a create button on their list, as on
+Headlamp's own lists. It opens Headlamp's create dialog with a Form tab next to the YAML editor, and
+an edit in either shows in the other:
+
+- The Broker form takes a name, namespace, labels, class, and delivery settings: a dead letter
+  sink, retries, backoff policy and delay, and the timeout of each attempt.
+- The Trigger form takes the Broker, picked from those in the Trigger's namespace, the filter
+  attributes, the subscriber, and the same delivery settings. A subscriber or dead letter sink is a
+  Knative Service, Kubernetes Service, Broker or Channel picked by name, or a URL.
+
+On the Form tab, Apply stays disabled until the required fields are filled in and the Broker or
+Trigger settings pass Knative's own checks. Kubernetes checks the name and labels on Apply. Settings
+the form does not show, such as a Trigger's `spec.filters` or a Broker's `spec.config`, can be set in
+the YAML editor.
+
 The Channel Implementations view lists the channels of every kind in one table: Knative's
 InMemoryChannel and the implementations installed in the cluster, such as KafkaChannel and
 NatsJetStreamChannel, found through the `messaging.knative.dev/subscribable=true` label on their
@@ -190,6 +205,8 @@ Remove the test namespace, optional PodMonitor, and cluster-scoped test claim wi
 
 ### Prometheus Metrics Integration
 
+#### Serving
+
 The Prometheus plugin provides the following metric charts on KService and Revision detail pages when Prometheus is installed and the PodMonitor is active:
 
 | Chart | KService | Revision | What it shows |
@@ -200,3 +217,105 @@ The Prometheus plugin provides the following metric charts on KService and Revis
 | **Resources** | ✅ | ✅ | CPU usage (cores) and Memory usage (bytes) for pods matching the service/revision |
 
 The `podmonitor.yaml` file configures Prometheus to scrape the Knative `queue-proxy` sidecar (port 9091) on all pods with the `serving.knative.dev/revision` label.
+
+#### Eventing
+
+The Prometheus plugin adds these charts to Eventing detail pages:
+
+| Detail page | Charts | Recorded by |
+|---|---|---|
+| Broker of the default class, and its Triggers | Deliveries, Delivery latency | The Broker filter |
+| Kafka Broker | Events received | The Kafka Broker receiver |
+| Trigger of a Kafka Broker | Deliveries, Queued events | The Kafka Broker dispatcher, and Kafka Exporter |
+| InMemoryChannel, a Channel it backs, and their Subscriptions | Events received (channels only), Deliveries, Delivery latency | The InMemoryChannel dispatcher |
+| KafkaChannel, and a Channel it backs | Events received, Deliveries, Queued events | The KafkaChannel receiver and dispatcher, and Kafka Exporter |
+| Subscription to a KafkaChannel | Queued events | Kafka Exporter |
+| NatsJetStreamChannel, and a Channel it backs | Events received, Queued events | The NatsJetStreamChannel dispatcher, and the NATS exporter |
+| Subscription to a NatsJetStreamChannel | Queued events | The NATS exporter |
+| KafkaSource | Deliveries, Queued events | The KafkaSource dispatcher, and Kafka Exporter |
+| ApiServerSource | Deliveries, Delivery latency | The source's adapter pods |
+| All of the above, PingSource, ContainerSource and SinkBinding | Admission requests, Reconciles | The admission webhooks, and the controllers' work queues |
+
+- **Deliveries**: deliveries per second that the subscriber answered with `2xx` (Succeeded), and
+  those that got another status or no answer (Failed), stacked on them; the top line is all
+  deliveries.
+- **Delivery latency**: P50, P95 and P99 of the time successful deliveries took. P50 is the median;
+  P95 and P99 mean that 95% and 99% of deliveries took less time than that. The lines go no higher
+  than 10 seconds, so a line at 10 seconds means that percentile is 10 seconds or more.
+- **Events received**: events per second that the resource accepted with `2xx`, and those it
+  rejected, stacked on them.
+- **Queued events**: events that a Trigger, Subscription or KafkaSource has not received yet. On
+  Kafka this is Kafka Exporter's consumer group lag, with a partition that has no committed offset
+  counted as 0, and for a KafkaSource only the topics it reads; the lag that Knative's Kafka client
+  reports counts only events it has not fetched, so it stays at 0 while fetched events wait. Kafka
+  Exporter does not name the Kafka cluster, so when Prometheus scrapes exporters of several Kafka
+  clusters, a group, topic and partition found in two of them count once. On NATS it is the
+  JetStream consumer's pending events plus those delivered but not yet answered, as the NATS server
+  that leads the consumer counts them.
+- **Admission requests**: requests per second for all resources of the page's kind that the
+  admission webhooks allowed, and those they rejected. Status updates by controllers are left out.
+  When several webhooks handle the kind, such as the Eventing and the Kafka webhook for Brokers,
+  each line shows the webhook that counted the most, which can be less than their sum. The chart
+  has no data until a webhook has handled a request for the kind since it started, a controller's
+  status update included.
+- **Reconciles**: how many times per second the controller of the page's kind reconciled one of its
+  resources, and how many times it put one back in its queue to reconcile later.
+
+Each component records deliveries in its own way:
+
+- The Broker filter sends each event once, and the channel behind the Broker retries by sending the
+  event to the filter again. Each try counts as a delivery: an event that fails with `retry: 3` and
+  a status that Knative retries, such as `503` or no answer, shows as 4 failed deliveries, while a
+  `405` is not retried and counts once. The latency is the time of one try.
+- The InMemoryChannel dispatcher records a delivery once, after its retries, and its time includes
+  them. When a delivery fails and the dead letter sink accepts the event, the dispatcher records
+  the dead letter sink's answer and how long the dead letter sink took, so the delivery shows as
+  succeeded, with that time. The channel rejects an event when any of its Subscriptions failed
+  without a dead letter sink. The dispatcher names a Subscription by its name and the channel's
+  namespace, so with cross-namespace event links, Subscriptions of the same name from different
+  namespaces to one channel share their charts.
+- The Kafka data plane records no delivery that got no answer, such as a timeout or a refused
+  connection, and its latency buckets start at 50 milliseconds, too coarse for a latency chart. A
+  KafkaChannel adds up the deliveries of all its Subscriptions. A Kafka Broker records deliveries
+  per Trigger only, and keeps no queue per Broker: the consumer groups of deleted Triggers stay in
+  Kafka.
+- The NatsJetStreamChannel dispatcher records the events it accepts, but its deliveries carry no
+  status, so NATS channels have no Deliveries chart. Their queue comes from the NATS exporter.
+  It names a channel as the InMemoryChannel dispatcher does, so the Events received charts of
+  both read the dispatcher pods' `messaging.knative.dev/channel` label, which the monitors copy to
+  the metrics.
+- No component counts the events sent to a dead letter sink. For a Trigger with a dead letter sink,
+  its failed deliveries come closest.
+- Source metrics do not name the source since Eventing 1.24. Each ApiServerSource runs its own
+  adapter pods, so its charts read the adapter pods' `eventing.knative.dev/sourceName` label, which
+  the monitor copies to the metrics. PingSource, ContainerSource and SinkBinding have only the
+  admission and reconcile charts. KafkaSink has no charts: the Knative plugin has no page for it,
+  and Headlamp's Custom Resources page has no place for them.
+- A Broker of the default class has no Events received chart: in Eventing 1.24 its ingress counts
+  each request twice, and records only the events that the channel behind it accepted. Brokers of
+  other classes, such as the Kafka release's `KafkaNamespaced`, and their Triggers, have only the
+  admission chart. A Trigger does not name its Broker's class, and a Subscription to a Channel does
+  not name the channel implementation, so their pages read the Broker or Channel, while metrics are
+  on, before they show their charts; this needs permission to list Brokers or Channels in its
+  namespace.
+
+The charts need Knative Eventing 1.20 or later; they read the metrics of Eventing 1.24, the Kafka
+release 1.23 and the NATS release 1.23. To turn the metrics on, as in
+[Collecting Metrics](https://knative.dev/docs/eventing/observability/metrics/collecting-metrics/):
+
+1. Set `metrics-protocol: prometheus` in the `config-observability` ConfigMap in
+   `knative-eventing`, and restart the Eventing, Kafka and NATS Deployments and StatefulSets in
+   `knative-eventing`.
+2. Scrape them: the Broker, the Eventing controller and the Eventing webhook with Knative's
+   [Eventing monitors](https://github.com/knative-extensions/monitoring/blob/main/config/eventing-monitors.yaml);
+   the Kafka components with the `eventing-kafka-*-prometheus-operator.yaml` files of the
+   [Kafka release](https://github.com/knative-extensions/eventing-kafka-broker/releases); and the
+   InMemoryChannel and NATS dispatchers and controllers, the Broker controller, the NATS webhook and
+   the ApiServerSource adapters with monitors such as
+   [`metrics-monitors.yaml`](test-files/eventing/metrics-monitors.yaml). None of these monitors
+   has the `release` label that kube-prometheus-stack selects by default, so set its
+   `podMonitorSelectorNilUsesHelmValues` and `serviceMonitorSelectorNilUsesHelmValues` to `false`.
+3. For **Queued events**, run [Kafka Exporter](https://github.com/danielqsj/kafka_exporter) against
+   the Kafka cluster (with Strimzi, turn on `kafkaExporter` in the `Kafka` resource) and the
+   [NATS exporter](https://github.com/nats-io/prometheus-nats-exporter) with `-jsz=all` against
+   every NATS server, such as the exporter sidecar of the NATS Helm chart, and scrape them.

@@ -1,0 +1,50 @@
+version: 0.2.0-alpha
+name: headlamp_velero
+displayName: Velero
+createdAt: "2026-11-24T00:00:00Z"
+description: A Headlamp UI for Velero backup coverage, backup and restore creation, schedule management, storage and data movement details, health overview, and resource map.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/velero
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - velero
+  - backup
+  - restore
+screenshots:
+  - title: Create a Velero Backup
+    url: https://github.com/user-attachments/assets/c89ef32c-556a-4e07-ac23-3f35f8c6ef8b
+  - title: Create a Velero Schedule
+    url: https://github.com/user-attachments/assets/0813df9a-a6fb-4817-b417-186a18b8b6a2
+  - title: Create a Velero Restore
+    url: https://github.com/user-attachments/assets/c0bf78ca-73a7-410a-a53c-77509d25db62
+  - title: Velero backup health overview
+    url: https://github.com/user-attachments/assets/1a663f38-093c-4cfd-a71c-ecb533d6235f
+  - title: Velero resources on the Headlamp Map
+    url: https://github.com/user-attachments/assets/f1e85f51-29dc-4ff3-878d-8b98fbf1ed9b
+changes:
+  - kind: added
+    description: "Create Backups, Restores, and Schedules from their list pages in the configured Velero namespace."
+  - kind: added
+    description: "Pause and unpause Schedules, with namespace- and name-scoped permission checks."
+  - kind: added
+    description: "Check create and patch permissions before showing write controls; hide them while checking and on explicit denial."
+  - kind: added
+    description: "Add a Velero Overview with backup, restore, and schedule health counts, storage locations, and links to recent failures."
+  - kind: added
+    description: "Add a default-enabled Velero Map source linking Schedules, Backups, Restores, and Backup Storage Locations within each cluster and namespace."
+  - kind: added
+    description: "Show Map node success, warning, and failure status, and open Velero details from a selected node."
+  - kind: added
+    description: "Show failure reasons, validation errors, and status conditions on Backup and Restore details, and link Backups to their storage location."
+  - kind: added
+    description: "Add create-form, duration, overview-summary, and Map relationship regression tests and manual create-action fixtures."
+  - kind: changed
+    description: "Require Headlamp 0.31 or newer for Map registration, custom node details, and cluster-scoped authorization."
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/velero-0.2.0-alpha/headlamp-k8s-velero-0.2.0-alpha.tar.gz
+  # Add headlamp/plugin/archive-checksum from the signed Actions build before merging this metadata.
+  headlamp/plugin/version-compat: ">=0.31"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop

@@ -13,21 +13,25 @@ This directory contains sample `NodeReadinessRule` custom resource manifests des
 | [`05-pending-rule.yaml`](./05-pending-rule.yaml)                                 | Pending / Unreconciled        | Newly submitted rule without controller status; verifies graceful handling of uninitialized status and zero-count states without crashing. |
 | [`06-multicondition-fallback-rule.yaml`](./06-multicondition-fallback-rule.yaml) | Multi-condition with fallback | `conditionPolicy: allOf`; multiple condition evaluations with fallback `defaultStatus: "False"` tested in Conditions table.                |
 | [`07-attention-multi-issue-rule.yaml`](./07-attention-multi-issue-rule.yaml)     | Multiple attention conditions | Combines evaluation errors (`failedNodes`), active taint (`Present`), and out-of-sync spec (`observedGen < gen`) on a single card.         |
+| [`08-gpu-readiness-rule.yaml`](./08-gpu-readiness-rule.yaml)                     | GPU readiness rule            | Matches `worker-node-02`; requires `nvidia.com/GPUReady=True`; manages `readiness.k8s.io/gpu-not-ready:NoSchedule` linked from NRE.        |
+| [`10-nre-worker1-available.yaml`](./10-nre-worker1-available.yaml)               | NRE Available                 | `status.state: Available`; node satisfies all rule criteria; managed taint is absent; unblock duration timestamps populated.               |
+| [`11-nre-worker2-blocked.yaml`](./11-nre-worker2-blocked.yaml)                   | NRE Blocked                   | `status.state: NotAvailable`; GPU condition unsatisfied; managed taint is present; currently blocked timer testable.                       |
 
 ## Quickstart Testing
 
-### 1. Ensure the CRD is Installed
+### 1. Ensure the CRDs are Installed
 
-Ensure the `NodeReadinessRule` Custom Resource Definition is registered in your cluster:
+Ensure the `NodeReadinessRule` and `NodeReadinessEvaluation` Custom Resource Definitions are registered in your cluster:
 
 ```bash
-kubectl get crd nodereadinessrules.readiness.node.x-k8s.io
+kubectl get crd nodereadinessrules.readiness.node.x-k8s.io nodereadinessevaluations.readiness.node.x-k8s.io
 ```
 
-If not yet installed, apply the CRD from the controller repository:
+If not yet installed, apply the CRDs from the controller repository:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/node-readiness-controller/main/config/crd/bases/readiness.node.x-k8s.io_nodereadinessrules.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/node-readiness-controller/main/config/crd/bases/readiness.node.x-k8s.io_nodereadinessevaluations.yaml
 ```
 
 ### 2. Apply Fixtures and Seed Status Subresources
@@ -78,7 +82,7 @@ kubectl apply -f test-files/
 - **Linux / macOS (bash):**
 
   ```bash
-  for file in test-files/0[1-4,6-7]*.yaml; do
+  for file in test-files/0[1-4,6-8]*.yaml test-files/1[0-1]*.yaml; do
     kubectl replace --subresource=status -f "$file"
   done
   ```
@@ -86,7 +90,7 @@ kubectl apply -f test-files/
 - **Windows (PowerShell):**
 
   ```powershell
-  Get-ChildItem test-files/0*.yaml | Where-Object { $_.Name -ne '05-pending-rule.yaml' } | ForEach-Object {
+  Get-ChildItem test-files/*.yaml | Where-Object { $_.Name -notin @('00-test-nodes.yaml', '05-pending-rule.yaml') } | ForEach-Object {
     kubectl replace --subresource=status -f $_.FullName
   }
   ```

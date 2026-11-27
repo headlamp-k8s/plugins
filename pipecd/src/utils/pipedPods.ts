@@ -70,6 +70,41 @@ function notRunningReason(pod: PodLike): string {
   return pod.status?.phase === 'Running' ? 'NotReady' : pod.status?.phase || 'Unknown';
 }
 
+/** Where a ConfigMap lives, as `namespace/name`. */
+function configMapKey(namespace: string, name: string): string {
+  return `${namespace}/${name}`;
+}
+
+function mountedConfigMaps(pod: PodLike): string[] {
+  return (pod.spec?.volumes ?? [])
+    .map(v => v.configMap?.name)
+    .filter((name): name is string => !!name);
+}
+
+/**
+ * ConfigMaps mounted by piped pods that mount none of `configMaps`. The Helm
+ * chart can use an existing ConfigMap (`config.create=false`), which need not
+ * carry the chart's labels, so a label search does not find it. A pod that
+ * already mounts a listed ConfigMap is skipped, so its other mounts (CA
+ * bundles, scripts) are not read.
+ */
+export function unlistedConfigMaps(
+  pods: PodLike[],
+  configMaps: ConfigMapLike[]
+): { namespace: string; name: string }[] {
+  const listed = new Set(
+    configMaps.map(cm => configMapKey(cm.metadata.namespace ?? '', cm.metadata.name))
+  );
+  const missing = new Map<string, { namespace: string; name: string }>();
+  for (const pod of pods) {
+    const namespace = pod.metadata.namespace ?? '';
+    const names = mountedConfigMaps(pod);
+    if (names.some(name => listed.has(configMapKey(namespace, name)))) continue;
+    for (const name of names) missing.set(configMapKey(namespace, name), { namespace, name });
+  }
+  return [...missing.values()];
+}
+
 /**
  * Matches piped pods to piped ids through the ConfigMap each pod mounts.
  * A pod whose ConfigMap cannot be read or has no pipedID is skipped.
@@ -83,7 +118,7 @@ export function clusterPipeds(
     for (const value of Object.values(cm.data ?? {})) {
       const id = pipedIdFromConfig(value);
       if (id) {
-        idByConfigMap.set(`${cm.metadata.namespace ?? ''}/${cm.metadata.name}`, id);
+        idByConfigMap.set(configMapKey(cm.metadata.namespace ?? '', cm.metadata.name), id);
         break;
       }
     }
@@ -92,10 +127,8 @@ export function clusterPipeds(
   const result = new Map<string, ClusterPiped>();
   for (const pod of pods) {
     const namespace = pod.metadata.namespace ?? '';
-    const id = (pod.spec?.volumes ?? [])
-      .map(v => v.configMap?.name)
-      .filter((name): name is string => !!name)
-      .map(name => idByConfigMap.get(`${namespace}/${name}`))
+    const id = mountedConfigMaps(pod)
+      .map(name => idByConfigMap.get(configMapKey(namespace, name)))
       .find(Boolean);
     if (!id) continue;
 

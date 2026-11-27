@@ -5,10 +5,13 @@ import type { KueueCondition } from './clusterQueue';
 import type { PodSet, WorkloadConditionLike } from './workload';
 import {
   findWorkloadCondition,
+  formatQuantity,
   getAdmissionFlavorNames,
+  getQuotaFitRows,
   getWorkloadBlocker,
   getWorkloadDetailRouteParams,
   getWorkloadTimeline,
+  parseQuantity,
   renderAdmissionClusterQueue,
   renderAdmissionFlavors,
   renderAdmissionSummary,
@@ -119,7 +122,8 @@ describe('Workload formatters', () => {
     expect(renderFinishedStatus([{ type: 'Finished', status: 'True' }])).toBe('Yes');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'False' }])).toBe('No');
     expect(renderFinishedStatus([{ type: 'Finished', status: 'Unknown' }])).toBe('Unknown');
-    expect(renderFinishedStatus()).toBe('Unknown');
+    expect(renderFinishedStatus([{ type: 'Admitted', status: 'True' }])).toBe('No');
+    expect(renderFinishedStatus()).toBe('No');
   });
 
   it('derives readable Workload status from Kueue condition types and reasons', () => {
@@ -397,6 +401,10 @@ describe('Workload formatters', () => {
     ).toBeNull();
 
     expect(getWorkloadBlocker([])?.stage).toBe('Not evaluated');
+    expect(
+      getWorkloadBlocker([condition('QuotaReserved', 'True'), condition('Admitted', 'False')], null)
+        ?.pendingAdmissionChecks
+    ).toEqual([]);
     expect(
       getWorkloadBlocker([condition('QuotaReserved', 'False', 'PendingEvaluation')])?.stage
     ).toBe('Not evaluated');
@@ -813,6 +821,247 @@ describe('Workload formatters', () => {
       expect(renderQueuePosition(items, 'tail', 'team-b')).toBeNull();
       expect(renderQueuePosition(items, 'missing', 'team-a')).toBeNull();
       expect(renderQueuePosition(undefined, 'head', 'team-a')).toBeNull();
+    });
+  });
+
+  describe('quota fit', () => {
+    it('parses Kubernetes quantities', () => {
+      expect(parseQuantity('500m')).toBe(0.5);
+      expect(parseQuantity('2Gi')).toBe(2 * 2 ** 30);
+      expect(parseQuantity('1k')).toBe(1000);
+      expect(parseQuantity('1e3')).toBe(1000);
+      expect(parseQuantity('1E')).toBe(1e18);
+      expect(parseQuantity(4)).toBe(4);
+      expect(parseQuantity('.5')).toBe(0.5);
+      expect(parseQuantity('abc')).toBeNaN();
+      expect(parseQuantity('1Xi')).toBeNaN();
+    });
+
+    it('formats amounts per resource', () => {
+      expect(formatQuantity('memory', 128 * 2 ** 20)).toBe('128Mi');
+      expect(formatQuantity('memory', 1.5 * 2 ** 30)).toBe('1.5Gi');
+      expect(formatQuantity('memory', 0)).toBe('0');
+      expect(formatQuantity('memory', 2 ** 30 + 2 ** 20)).toBe('1025Mi');
+      expect(formatQuantity('memory', 1e9)).toBe('1G');
+      expect(formatQuantity('memory', 2 ** 30 + 1)).toBe('1073741825');
+      expect(formatQuantity('cpu', 0.2)).toBe('200m');
+      expect(formatQuantity('cpu', 63)).toBe('63');
+      expect(formatQuantity('cpu', 1.001)).toBe('1.001');
+      expect(formatQuantity('nvidia.com/gpu', 2)).toBe('2');
+    });
+
+    const groups = [
+      {
+        coveredResources: ['cpu', 'memory'],
+        flavors: [
+          {
+            name: 'default-flavor',
+            resources: [
+              { name: 'cpu', nominalQuota: '2' },
+              { name: 'memory', nominalQuota: '2Gi' },
+            ],
+          },
+          { name: 'spot', resources: [{ name: 'cpu', nominalQuota: '8' }] },
+        ],
+      },
+    ];
+    const reservation = [
+      {
+        name: 'default-flavor',
+        resources: [
+          { name: 'cpu', total: '1500m' },
+          { name: 'memory', total: '3Gi' },
+        ],
+      },
+    ];
+
+    it('sums requests over PodSets and compares them with each flavor', () => {
+      const requests = [
+        { name: 'driver', resources: { cpu: '1', memory: '128Mi' } },
+        { name: 'workers', resources: { cpu: '3' } },
+      ];
+      expect(getQuotaFitRows(requests, groups, reservation)).toEqual([
+        {
+          resource: 'cpu',
+          flavor: 'default-flavor',
+          requested: 4,
+          quota: 2,
+          free: 0.5,
+          fits: false,
+          aboveQuota: true,
+        },
+        {
+          resource: 'cpu',
+          flavor: 'spot',
+          requested: 4,
+          quota: 8,
+          free: 8,
+          fits: true,
+          aboveQuota: false,
+        },
+        // Reserved above nominal (borrowing) leaves nothing free, not a negative amount.
+        {
+          resource: 'memory',
+          flavor: 'default-flavor',
+          requested: 128 * 2 ** 20,
+          quota: 2 * 2 ** 30,
+          free: 0,
+          fits: false,
+          aboveQuota: false,
+        },
+        {
+          resource: 'memory',
+          flavor: 'spot',
+          requested: 128 * 2 ** 20,
+          quota: 0,
+          free: 0,
+          fits: false,
+          aboveQuota: true,
+        },
+      ]);
+    });
+
+    it('reports a resource no resource group covers', () => {
+      expect(
+        getQuotaFitRows([{ name: 'main', resources: { 'nvidia.com/gpu': '1' } }], groups)
+      ).toEqual([
+        {
+          resource: 'nvidia.com/gpu',
+          requested: 1,
+          quota: 0,
+          free: 0,
+          fits: false,
+          aboveQuota: true,
+        },
+      ]);
+    });
+
+    it('counts exact CPU fits as fitting despite floating point error', () => {
+      const cpuGroups = [
+        {
+          coveredResources: ['cpu'],
+          flavors: [{ name: 'f', resources: [{ name: 'cpu', nominalQuota: '300m' }] }],
+        },
+      ];
+      // 300m nominal minus 200m reserved leaves 0.09999999999999998 in floating point.
+      const [partlyUsed] = getQuotaFitRows(
+        [{ name: 'main', resources: { cpu: '100m' } }],
+        cpuGroups,
+        [{ name: 'f', resources: [{ name: 'cpu', total: '200m' }] }]
+      );
+      expect(partlyUsed.fits).toBe(true);
+
+      // 100m + 200m sums to 0.30000000000000004.
+      const [summed] = getQuotaFitRows(
+        [
+          { name: 'a', resources: { cpu: '100m' } },
+          { name: 'b', resources: { cpu: '200m' } },
+        ],
+        cpuGroups
+      );
+      expect(summed.fits).toBe(true);
+
+      const [over] = getQuotaFitRows([{ name: 'main', resources: { cpu: '301m' } }], cpuGroups);
+      expect(over.fits).toBe(false);
+    });
+
+    it('flags a request above the whole quota apart from one waiting for free quota', () => {
+      const rows = getQuotaFitRows(
+        [{ name: 'main', resources: { cpu: '800m', memory: '2Gi' } }],
+        [
+          {
+            coveredResources: ['cpu', 'memory'],
+            flavors: [
+              {
+                name: 'f',
+                resources: [
+                  { name: 'cpu', nominalQuota: '1500m' },
+                  { name: 'memory', nominalQuota: '1Gi' },
+                ],
+              },
+            ],
+          },
+        ],
+        [
+          {
+            name: 'f',
+            resources: [
+              { name: 'cpu', total: '700m' },
+              { name: 'memory', total: '128Mi' },
+            ],
+          },
+        ]
+      );
+      // 1500m - 700m is 0.7999999999999999 in floating point, still an exact fit.
+      expect(rows[0]).toMatchObject({ resource: 'cpu', fits: true, aboveQuota: false });
+      expect(rows[1]).toMatchObject({ resource: 'memory', fits: false, aboveQuota: true });
+    });
+
+    it('returns nothing without requests', () => {
+      expect(getQuotaFitRows(undefined, groups, reservation)).toEqual([]);
+      expect(getQuotaFitRows(null, groups, reservation)).toEqual([]);
+    });
+
+    it('treats null resource groups and reservation as empty', () => {
+      const cpuRequest = [{ name: 'main', resources: { cpu: '100m' } }];
+      const cpuGroups = [
+        {
+          coveredResources: ['cpu'],
+          flavors: [{ name: 'f', resources: [{ name: 'cpu', nominalQuota: '1' }] }],
+        },
+      ];
+      expect(getQuotaFitRows(cpuRequest, cpuGroups, null)[0]).toMatchObject({
+        free: 1,
+        fits: true,
+      });
+      expect(getQuotaFitRows(cpuRequest, null)[0]).toMatchObject({ quota: 0, fits: false });
+    });
+
+    it('rounds nominal quota up like Kueue before comparing', () => {
+      const quotaOf = (name: string, nominalQuota: string) => [
+        { coveredResources: [name], flavors: [{ name: 'f', resources: [{ name, nominalQuota }] }] },
+      ];
+
+      // 1.1Gi is 1181116006.4 bytes, which Kueue rounds up to 1181116007.
+      const memory = quotaOf('memory', '1.1Gi');
+      const [exact] = getQuotaFitRows(
+        [{ name: 'main', resources: { memory: '1181116007' } }],
+        memory
+      );
+      expect(exact).toMatchObject({ quota: 1181116007, fits: true, aboveQuota: false });
+      const [byteOver] = getQuotaFitRows(
+        [{ name: 'main', resources: { memory: '1181116008' } }],
+        memory
+      );
+      expect(byteOver).toMatchObject({ fits: false, aboveQuota: true });
+
+      // A whole quota is kept as is, even at 1Pi where the tolerance reaches one byte.
+      const [petabyte] = getQuotaFitRows(
+        [{ name: 'main', resources: { storage: '1Pi' } }],
+        quotaOf('storage', '1Pi')
+      );
+      expect(petabyte).toMatchObject({ quota: 2 ** 50, fits: true, aboveQuota: false });
+
+      // 1Ti plus 1m rounds up to 1Ti plus a byte, though floating point drops the 1m.
+      const [fraction] = getQuotaFitRows(
+        [{ name: 'main', resources: { memory: '1099511627777' } }],
+        quotaOf('memory', '1099511627776001m')
+      );
+      expect(fraction).toMatchObject({ quota: 2 ** 40 + 1, fits: true, aboveQuota: false });
+
+      // CPU rounds up to whole millicores, so 100.5m allows 101m.
+      const cpu = quotaOf('cpu', '100.5m');
+      const [milli] = getQuotaFitRows([{ name: 'main', resources: { cpu: '101m' } }], cpu);
+      expect(milli).toMatchObject({ fits: true, aboveQuota: false });
+      const [milliOver] = getQuotaFitRows([{ name: 'main', resources: { cpu: '102m' } }], cpu);
+      expect(milliOver.aboveQuota).toBe(true);
+
+      // A quota already in whole millicores is unchanged by floating point error.
+      const [whole] = getQuotaFitRows(
+        [{ name: 'main', resources: { cpu: '1101m' } }],
+        quotaOf('cpu', '1.1')
+      );
+      expect(whole).toMatchObject({ quota: 1.1, aboveQuota: true });
     });
   });
 });

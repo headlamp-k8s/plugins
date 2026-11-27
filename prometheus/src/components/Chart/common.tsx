@@ -26,12 +26,19 @@ const DismissButton = styled(Button)(({ theme }) => ({
 }));
 
 /**
- * Component to display when Prometheus is not found in the cluster
- * @returns {JSX.Element}
+ * Says that Prometheus was not found, with links to set it up and a button that turns metrics off
+ * for that cluster.
+ *
+ * @param props - The cluster that Prometheus was not found in.
+ * @returns The banner.
  */
-export function PrometheusNotFoundBanner() {
+export function PrometheusNotFoundBanner(props: {
+  /** The cluster whose metrics Dismiss turns off, when it is not the current one. */
+  cluster?: string;
+}) {
   const { t } = useTranslation();
-  const cluster = K8s.useCluster();
+  const currentCluster = K8s.useCluster();
+  const cluster = props.cluster || currentCluster;
   const history = useHistory();
 
   return (

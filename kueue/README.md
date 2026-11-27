@@ -43,6 +43,7 @@ The plugin only reads from the cluster. Before it loads a page, it asks the API 
 | Resource                                                         | API group                   | Scope     | Verbs                  | Used by                                                        |
 | ---------------------------------------------------------------- | --------------------------- | --------- | ---------------------- | -------------------------------------------------------------- |
 | `clusterqueues`, `cohorts`, `resourceflavors`, `admissionchecks` | `kueue.x-k8s.io`            | Cluster   | `get`, `list`, `watch` | Their pages, the Map and related resource links                |
+| `multikueueconfigs`, `provisioningrequestconfigs`                | `kueue.x-k8s.io`            | Cluster   | `get`, `list`, `watch` | Their pages                                                    |
 | `localqueues`, `workloads`                                       | `kueue.x-k8s.io`            | Namespace | `get`, `list`, `watch` | Their pages, the Map and the Kueue columns and section on Jobs |
 | `clusterqueues/pendingworkloads`                                 | `visibility.kueue.x-k8s.io` | Cluster   | `get`                  | Pending Workloads on the ClusterQueue page                     |
 | `localqueues/pendingworkloads`                                   | `visibility.kueue.x-k8s.io` | Namespace | `get`                  | Queue position on the Workload page                            |
@@ -64,6 +65,8 @@ rules:
       - cohorts
       - resourceflavors
       - admissionchecks
+      - multikueueconfigs
+      - provisioningrequestconfigs
       - localqueues
       - workloads
     verbs: ['get', 'list', 'watch']

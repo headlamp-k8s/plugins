@@ -1,0 +1,32 @@
+apiVersion: readiness.node.x-k8s.io/v1alpha1
+kind: NodeReadinessRule
+metadata:
+  name: 08-gpu-readiness-rule
+  labels:
+    app.kubernetes.io/name: node-readiness-controller
+    app.kubernetes.io/component: test-fixture
+    scenario: gpu-readiness-blocked
+spec:
+  enforcementMode: continuous
+  conditionPolicy: allOf
+  taint:
+    key: readiness.k8s.io/gpu-not-ready
+    effect: NoSchedule
+  nodeSelector:
+    matchLabels:
+      test.readiness.k8s.io/gpu: 'true'
+  conditions:
+    - type: nvidia.com/GPUReady
+      requiredStatus: 'True'
+status:
+  observedGeneration: 1
+  appliedNodes:
+    - worker-node-02
+  nodeEvaluations:
+    - nodeName: worker-node-02
+      taintStatus: Present
+      lastEvaluationTime: '2026-10-14T10:15:00Z'
+      conditionResults:
+        - type: nvidia.com/GPUReady
+          requiredStatus: 'True'
+          currentStatus: 'False'

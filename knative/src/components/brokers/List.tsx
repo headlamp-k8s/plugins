@@ -22,11 +22,14 @@ import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeBroker } from '../../resources/knative';
+import { CreateFormButton } from '../common/CreateFormButton';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { getReadinessColumns, TextValue } from '../common/ResourceListCells';
+import { brokerFormSections } from './CreateBrokerForm';
 
 /**
- * Lists the Knative Eventing Brokers in the selected clusters.
+ * Lists the Knative Eventing Brokers in the selected clusters, with a button that opens the create
+ * form for users who may create Brokers.
  *
  * @returns The Brokers list, or a banner when Knative Eventing is not installed.
  */
@@ -70,6 +73,15 @@ export function BrokersList() {
       columns={columns}
       reflectInURL="knative-brokers"
       id="knative-brokers"
+      headerProps={{
+        titleSideActions: [
+          <CreateFormButton
+            key="create"
+            resourceClass={KnativeBroker}
+            sections={brokerFormSections}
+          />,
+        ],
+      }}
     />
   );
 }

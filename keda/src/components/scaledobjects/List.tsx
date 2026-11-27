@@ -22,6 +22,7 @@ export function ScaledObjectsList() {
               <Link
                 routeName={item.scaleTargetKind}
                 params={{ name: item.scaleTargetName, namespace: item.metadata.namespace }}
+                activeCluster={item.cluster}
               >
                 {item.scaleTargetKind}/{item.scaleTargetName}
               </Link>

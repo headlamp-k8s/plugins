@@ -77,6 +77,7 @@ import {
   ConfigMapLike,
   PIPED_LABEL_SELECTOR,
   PodLike,
+  unlistedConfigMaps,
 } from '../utils/pipedPods';
 import { formatTimestamp, relativeTime, Translate } from '../utils/time';
 import { REQUEST_TIMEOUT_MS, withTimeout } from '../utils/timeout';
@@ -171,17 +172,20 @@ function isAbort(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
-/** Failures that say nothing about the piped itself, so they are worth reporting. */
-const TRANSIENT_CODES = new Set<number>([
-  Code.Unknown,
-  Code.DeadlineExceeded,
-  Code.Internal,
-  Code.Unavailable,
-]);
+/**
+ * PipeCD answers NotFound for a deleted piped and InvalidArgument for one in
+ * another project, so neither is one of this project's pipeds. Any other
+ * failure (network, server, a wrong key, rate limits) says nothing about the
+ * piped, so it is worth reporting.
+ */
+const NOT_THIS_PROJECT_CODES = new Set<number>([Code.NotFound, Code.InvalidArgument]);
 
-function isTransient(err: unknown): boolean {
-  return !(err instanceof PipeCDApiError) || TRANSIENT_CODES.has(err.status);
+function isReported(err: unknown): boolean {
+  return !(err instanceof PipeCDApiError) || !NOT_THIS_PROJECT_CODES.has(err.status);
 }
+
+/** How many GetPiped calls run at once, so a large project sends no burst. */
+const PIPED_LOOKUP_CONCURRENCY = 5;
 
 function pipedRow(p: Piped, apps: number): PipedRow {
   return {
@@ -206,10 +210,32 @@ async function fetchPipeds(
   signal: AbortSignal,
   timedOut: string
 ): Promise<{ pipeds: PipedRow[]; errors: unknown[] }> {
-  // One failed piped should not hide the others, so settle each call.
-  const results = await Promise.allSettled(
-    ids.map(id => timed(getPiped(config, id, signal), timedOut))
-  );
+  // One failed piped should not hide the others, so settle each call. A few
+  // workers take the ids in turn, and each timeout starts when its call is sent.
+  // Each call has its own signal, so a timeout cancels the request and frees
+  // its place instead of leaving it open.
+  const results: PromiseSettledResult<Piped>[] = new Array(ids.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < ids.length && !signal.aborted) {
+      const i = next++;
+      const call = new AbortController();
+      const cancel = (): void => call.abort();
+      signal.addEventListener('abort', cancel);
+      try {
+        results[i] = {
+          status: 'fulfilled',
+          value: await timed(getPiped(config, ids[i], call.signal), timedOut),
+        };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      } finally {
+        signal.removeEventListener('abort', cancel);
+        call.abort();
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PIPED_LOOKUP_CONCURRENCY, ids.length) }, worker));
   const errors: unknown[] = [];
   const pipeds: PipedRow[] = [];
   results.forEach((result, i) => {
@@ -219,6 +245,10 @@ async function fetchPipeds(
       if (!result.value.disabled) pipeds.push(pipedRow(result.value, apps));
       return;
     }
+    // A deployment or the cluster can name a deleted piped or one in another
+    // project, which is not one of this project's. A piped that applications
+    // still use keeps its row, so the Apps column still adds up.
+    if (apps === 0 && !isReported(result.reason)) return;
     errors.push(result.reason);
     pipeds.push({ id, name: id, version: '', startedAt: 0, apps, known: false, status: 'UNKNOWN' });
   });
@@ -238,7 +268,8 @@ async function fetchAllPipeds(
   apps: Application[],
   deployments: Deployment[],
   signal: AbortSignal,
-  timedOut: string
+  timedOut: string,
+  tooManyPages: string
 ): Promise<{ pipeds: PipedRow[]; complete: boolean; error: unknown }> {
   // The Apps column counts enabled applications, like the Applications card.
   const counts = knownPipeds(apps, []);
@@ -257,6 +288,7 @@ async function fetchAllPipeds(
     disabled: true,
     signal,
     timedOut,
+    tooManyPages,
   }).catch(err => {
     if (isAbort(err)) throw err;
     disabledError = err;
@@ -270,6 +302,28 @@ async function fetchAllPipeds(
     complete: false,
     error: listError ?? disabledError ?? result.errors[0] ?? null,
   };
+}
+
+/**
+ * Reads one ConfigMap a piped pod mounts by its namespace and name, for one the
+ * label search did not find. Renders nothing. A ConfigMap that cannot be read
+ * leaves its pod without a cluster status, as before.
+ */
+function MountedConfigMap({
+  namespace,
+  name,
+  onLoad,
+}: {
+  namespace: string;
+  name: string;
+  onLoad: (key: string, configMap: ConfigMapLike | null) => void;
+}): null {
+  const [configMap] = K8s.ResourceClasses.ConfigMap.useGet(name, namespace);
+  const json = (configMap?.jsonData as ConfigMapLike | undefined) ?? null;
+  useEffect(() => {
+    onLoad(`${namespace}/${name}`, json);
+  }, [namespace, name, json, onLoad]);
+  return null;
 }
 
 /** Whether PipeCD sees the piped as connected. */
@@ -620,8 +674,9 @@ export function Overview(): JSX.Element {
       try {
         const now = new Date();
         const timedOut = t('The request timed out.');
+        const tooManyPages = t('The server sent too many pages of applications.');
         const [apps, deploymentResult, listed] = await Promise.all([
-          listAllApplications(config, { signal, timedOut }),
+          listAllApplications(config, { signal, timedOut, tooManyPages }),
           fetchDeploymentsSince(config, rangeStart(range, now), signal, timedOut),
           // Settled, so a server without ListPipeds does not fail the page.
           timed(listPipeds(config, signal), timedOut).then(
@@ -635,7 +690,8 @@ export function Overview(): JSX.Element {
           apps,
           deploymentResult.deployments,
           signal,
-          timedOut
+          timedOut,
+          tooManyPages
         );
         if (signal.aborted) return;
         setData({
@@ -682,14 +738,31 @@ export function Overview(): JSX.Element {
   const [pipedConfigMaps] = K8s.ResourceClasses.ConfigMap.useList({
     labelSelector: PIPED_LABEL_SELECTOR,
   });
-  const inCluster = useMemo(
-    () =>
-      clusterPipeds(
-        (pipedPods ?? []).map(p => p.jsonData as PodLike),
-        (pipedConfigMaps ?? []).map(c => c.jsonData as ConfigMapLike)
-      ),
-    [pipedPods, pipedConfigMaps]
+  const podList = useMemo(() => (pipedPods ?? []).map(p => p.jsonData as PodLike), [pipedPods]);
+  const labelledConfigMaps = useMemo(
+    () => (pipedConfigMaps ?? []).map(c => c.jsonData as ConfigMapLike),
+    [pipedConfigMaps]
   );
+  // An existing ConfigMap the chart was told to use may have no labels, so the
+  // ones the pods mount but the label search missed are read one by one.
+  // Wait for the label search, or every mounted ConfigMap looks missing.
+  const unlisted = useMemo(
+    () => (pipedConfigMaps ? unlistedConfigMaps(podList, labelledConfigMaps) : []),
+    [pipedConfigMaps, podList, labelledConfigMaps]
+  );
+  const [mountedConfigMaps, setMountedConfigMaps] = useState<Record<string, ConfigMapLike | null>>(
+    {}
+  );
+  const onMountedConfigMap = useCallback((key: string, configMap: ConfigMapLike | null) => {
+    setMountedConfigMaps(prev => (prev[key] === configMap ? prev : { ...prev, [key]: configMap }));
+  }, []);
+  const inCluster = useMemo(() => {
+    const wanted = new Set(unlisted.map(u => `${u.namespace}/${u.name}`));
+    const extra = Object.entries(mountedConfigMaps)
+      .filter(([key, cm]) => wanted.has(key) && cm)
+      .map(([, cm]) => cm as ConfigMapLike);
+    return clusterPipeds(podList, [...labelledConfigMaps, ...extra]);
+  }, [podList, labelledConfigMaps, unlisted, mountedConfigMaps]);
   const clusterIds = [...inCluster.keys()].sort().join(',');
 
   // Without ListPipeds, a piped running in the cluster may have no application
@@ -714,12 +787,10 @@ export function Overview(): JSX.Element {
       t('The request timed out.')
     ).then(r => {
       if (controller.signal.aborted) return;
-      // A piped PipeCD rejects belongs to another project or was deleted, so
-      // it is not one of this project's pipeds. A network or server failure
-      // says nothing about that, so report it instead of hiding it silently.
+      // fetchPipeds already leaves out pipeds PipeCD does not know. Any other
+      // failure says nothing about the piped, so report it instead of hiding it.
       setClusterOnly(r.pipeds.filter(p => p.known));
-      const transient = r.errors.find(isTransient);
-      setClusterError(transient ? errorMessage(transient, t) : null);
+      setClusterError(r.errors[0] ? errorMessage(r.errors[0], t) : null);
     });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -755,6 +826,14 @@ export function Overview(): JSX.Element {
 
   return (
     <Box sx={{ p: 3 }}>
+      {unlisted.map(u => (
+        <MountedConfigMap
+          key={`${u.namespace}/${u.name}`}
+          namespace={u.namespace}
+          name={u.name}
+          onLoad={onMountedConfigMap}
+        />
+      ))}
       <Stack
         direction="row"
         alignItems="center"

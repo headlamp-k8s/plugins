@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: kafka-exporter }
+  template:
+    metadata:
+      labels: { app: kafka-exporter }
+    spec:
+      containers:
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.9.0
+          args:
+            - --kafka.server=my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+          ports:
+            - { name: metrics, containerPort: 9308 }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-exporter
+  namespace: kafka
+spec:
+  selector:
+    matchLabels: { app: kafka-exporter }
+  podMetricsEndpoints:
+    - port: metrics

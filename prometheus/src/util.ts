@@ -4,6 +4,7 @@ import { NodeClaimCreationChart } from './components/Chart/KarpenterNodeClaimCre
 import { KarpenterNodeClaimsProvisionChart } from './components/Chart/KarpenterNodeClaimProvisionChart/KarpenterNodeClaimProvisionChart';
 import { KarpenterNodePoolResourceChart } from './components/Chart/KarpenterNodePoolResourceChart/KarpenterNodePoolResourceChart';
 import { KarpenterPendingPods } from './components/Chart/KarpenterPendingPods/KarpenterPendingPods';
+import { getKnativeEventingTarget } from './components/Chart/KnativeEventingChart/eventingTarget';
 import { getTinkerbellController } from './components/Config/tinkerbellChart/tinkerbellQueries';
 import { isPrometheusInstalled, KubernetesType } from './request';
 
@@ -102,7 +103,7 @@ export async function getPrometheusPrefix(cluster: string): Promise<string | nul
   // if so return the prometheus pod address
   const clusterData = getClusterConfig(cluster);
   if (clusterData?.autoDetect) {
-    const prometheusEndpoint = await isPrometheusInstalled();
+    const prometheusEndpoint = await isPrometheusInstalled(cluster);
     if (prometheusEndpoint.type === KubernetesType.none) {
       return null;
     }
@@ -192,7 +193,7 @@ export function isArgoCDApplication(resource?: ResourceIdentity): boolean {
 }
 
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
-  if (getTinkerbellController(resource)) {
+  if (getTinkerbellController(resource) || getKnativeEventingTarget(resource)) {
     return true;
   }
   const kind = getResourceKind(resource);
@@ -236,6 +237,17 @@ const ChartEnabledKinds = [
   'MachinePool',
   'KubeadmControlPlane',
 ];
+
+/**
+ * Escapes a value for a Prometheus label matcher, so that a backslash, quote or line break in it
+ * cannot end the quoted string early.
+ *
+ * @param value - The label value.
+ * @returns The value, ready to put between double quotes in PromQL.
+ */
+export function escapePrometheusLabelValue(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
 
 /**
  * Creates a formatter function that formats timestamps based on the given interval.

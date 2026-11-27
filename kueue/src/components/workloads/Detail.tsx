@@ -10,6 +10,8 @@ import { formatDuration, localeDate } from '@kinvolk/headlamp-plugin/lib/Utils';
 import { Box, Step, StepLabel, Stepper, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { ClusterQueue } from '../../resources/clusterQueue';
+import { LocalQueue } from '../../resources/localQueue';
 import {
   AdmissionCheckState,
   PodSet,
@@ -21,7 +23,10 @@ import {
 } from '../../resources/workload';
 import {
   findWorkloadCondition,
+  formatQuantity,
+  getQuotaFitRows,
   getWorkloadTimeline,
+  QuotaFitRow,
   renderPodSetRequests,
   renderQueuePosition,
   renderResourceList,
@@ -130,9 +135,9 @@ function getPodSetRows(podSets: PodSet[]): PodSetRow[] {
 
 /** Convert admission assignments into table rows. */
 function getAdmissionAssignmentRows(
-  assignments: PodSetAssignment[] = []
+  assignments?: PodSetAssignment[] | null
 ): AdmissionAssignmentRow[] {
-  return assignments.map(assignment => ({
+  return (assignments ?? []).map(assignment => ({
     name: assignment.name || 'main',
     count: assignment.count ?? '-',
     flavors: renderResourceList(assignment.flavors),
@@ -143,8 +148,10 @@ function getAdmissionAssignmentRows(
 }
 
 /** Convert admission checks into table rows. */
-function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): AdmissionCheckRow[] {
-  return admissionChecks.map(admissionCheck => ({
+function getAdmissionCheckRows(
+  admissionChecks?: AdmissionCheckState[] | null
+): AdmissionCheckRow[] {
+  return (admissionChecks ?? []).map(admissionCheck => ({
     name: admissionCheck.name,
     state: renderText(admissionCheck.state),
     lastTransitionTime: renderText(admissionCheck.lastTransitionTime),
@@ -155,24 +162,24 @@ function getAdmissionCheckRows(admissionChecks: AdmissionCheckState[] = []): Adm
 }
 
 /** Convert reclaimable pods into table rows. */
-function getReclaimablePodRows(reclaimablePods: ReclaimablePod[] = []): ReclaimablePodRow[] {
-  return reclaimablePods.map(reclaimablePod => ({
+function getReclaimablePodRows(reclaimablePods?: ReclaimablePod[] | null): ReclaimablePodRow[] {
+  return (reclaimablePods ?? []).map(reclaimablePod => ({
     name: reclaimablePod.name,
     count: reclaimablePod.count,
   }));
 }
 
 /** Convert resource request status entries into table rows. */
-function getResourceRequestRows(resourceRequests: PodSetRequest[] = []): ResourceRequestRow[] {
-  return resourceRequests.map(request => ({
+function getResourceRequestRows(resourceRequests?: PodSetRequest[] | null): ResourceRequestRow[] {
+  return (resourceRequests ?? []).map(request => ({
     name: request.name,
     resources: renderResourceList(request.resources),
   }));
 }
 
 /** Convert scheduling eviction stats into table rows. */
-function getEvictionRows(evictions: WorkloadSchedulingStatsEviction[] = []): EvictionRow[] {
-  return evictions.map(eviction => ({
+function getEvictionRows(evictions?: WorkloadSchedulingStatsEviction[] | null): EvictionRow[] {
+  return (evictions ?? []).map(eviction => ({
     reason: eviction.reason,
     underlyingCause: renderText(eviction.underlyingCause),
     count: eviction.count,
@@ -578,6 +585,87 @@ function WorkloadBlockerTable(props: {
   );
 }
 
+/**
+ * What a Workload waiting for quota asks for, against what its ClusterQueue has left per
+ * flavor. Renders nothing until the LocalQueue and ClusterQueue are found, or when Kueue
+ * has not filled in the requests.
+ */
+function QuotaFitTable(props: { workload: Workload }) {
+  const { workload } = props;
+  const cluster = workload.cluster;
+  const [localQueues] = LocalQueue.useList({ namespace: workload.metadata.namespace, cluster });
+  const [clusterQueues] = ClusterQueue.useList({ cluster });
+  const clusterQueueName = localQueues?.find(
+    queue => queue.metadata.name === workload.queueName
+  )?.clusterQueueName;
+  const clusterQueue = clusterQueues?.find(queue => queue.metadata.name === clusterQueueName);
+
+  if (!clusterQueue) {
+    return null;
+  }
+
+  const rows = getQuotaFitRows(
+    workload.status.resourceRequests,
+    clusterQueue.resourceGroups,
+    clusterQueue.status.flavorsReservation
+  );
+  if (!rows.length) {
+    return null;
+  }
+
+  return (
+    <Box mt={2}>
+      <Typography variant="subtitle2">
+        Requests against free quota in ClusterQueue{' '}
+        {renderClusterQueueLink(clusterQueue.metadata.name, cluster)}
+      </Typography>
+      <SimpleTable
+        data={rows}
+        columns={[
+          { label: 'Resource', getter: (row: QuotaFitRow) => row.resource },
+          {
+            label: 'Flavor',
+            getter: (row: QuotaFitRow) => row.flavor ?? 'Not covered by this ClusterQueue',
+          },
+          {
+            label: 'Requested',
+            getter: (row: QuotaFitRow) => formatQuantity(row.resource, row.requested),
+          },
+          {
+            label: 'Quota',
+            getter: (row: QuotaFitRow) =>
+              row.flavor ? formatQuantity(row.resource, row.quota) : '-',
+          },
+          { label: 'Free', getter: (row: QuotaFitRow) => formatQuantity(row.resource, row.free) },
+          {
+            label: 'Fits',
+            getter: (row: QuotaFitRow) =>
+              row.fits ? (
+                <StatusLabel status="success">Yes</StatusLabel>
+              ) : !row.flavor ? (
+                <StatusLabel status="error">No</StatusLabel>
+              ) : row.aboveQuota ? (
+                // Freeing quota cannot help here, so say the request is above quota too.
+                <StatusLabel status="error">
+                  Short by {formatQuantity(row.resource, row.requested - row.free)} (more than the{' '}
+                  {formatQuantity(row.resource, row.quota)} quota)
+                </StatusLabel>
+              ) : (
+                <StatusLabel status="warning">
+                  Short by {formatQuantity(row.resource, row.requested - row.free)}
+                </StatusLabel>
+              ),
+          },
+        ]}
+      />
+      <Typography variant="body2" color="text.secondary">
+        Free is the nominal quota minus what is reserved. Quota the ClusterQueue can borrow from its
+        cohort is not counted.
+      </Typography>
+    </Box>
+  );
+}
+
 /** Build the section explaining what is stopping the Workload from being admitted. */
 export function getBlockerSection(
   workload: Workload,
@@ -629,6 +717,7 @@ export function getBlockerSection(
           inQueue={blocker.stage === 'Not evaluated' || blocker.stage === 'Waiting for quota'}
           rows={rows}
         />
+        {blocker.stage === 'Waiting for quota' && <QuotaFitTable workload={workload} />}
       </SectionBox>
     ),
   };
@@ -659,6 +748,7 @@ export default function WorkloadDetail(props: {
       resourceClass={Workload}
       resourceLabel="Workloads"
       verb="get"
+      namespace={namespace}
       cluster={cluster}
       accessDescription="Kueue Workloads are namespaced user workload resources."
     >

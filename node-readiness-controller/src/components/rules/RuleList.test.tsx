@@ -4,18 +4,33 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RuleList from './RuleList';
 
-const mockResourceListViewProps = vi.fn();
+const { mockResourceListViewProps, mockUseList } = vi.hoisted(() => ({
+  mockResourceListViewProps: vi.fn(),
+  mockUseList: vi.fn(),
+}));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/lib/k8s/crd', () => ({
-  makeCustomResourceClass: vi.fn().mockReturnValue(class MockCRD {}),
+  makeCustomResourceClass: vi.fn().mockReturnValue(
+    class MockCRD {
+      static useList(...args: any[]) {
+        return mockUseList(...args);
+      }
+    }
+  ),
 }));
 
 vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
-  Link: ({ children, routeName, params }: any) => (
-    <a href={`#${routeName}`} data-routename={routeName} data-params={JSON.stringify(params)}>
+  useThrottle: (value: any) => value,
+  Link: ({ children, routeName, params, activeCluster }: any) => (
+    <a
+      href={`#${routeName}`}
+      data-routename={routeName}
+      data-params={JSON.stringify(params)}
+      data-cluster={activeCluster}
+    >
       {children}
     </a>
   ),
@@ -23,6 +38,12 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
     <span data-testid="status-label" data-status={status}>
       {children}
     </span>
+  ),
+  SectionBox: ({ title, children }: any) => (
+    <div data-testid="section-box">
+      <h2>{title}</h2>
+      {children}
+    </div>
   ),
   CreateResourceButton: () => <button data-testid="create-resource-button">Create</button>,
   ResourceListView: (props: any) => {
@@ -36,6 +57,10 @@ vi.mock('@kinvolk/headlamp-plugin/lib/CommonComponents', () => ({
 }));
 
 describe('RuleList component', () => {
+  beforeEach(() => {
+    mockUseList.mockReturnValue([[], null]);
+  });
+
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -51,6 +76,56 @@ describe('RuleList component', () => {
     expect(lastCall).toBeDefined();
     expect(lastCall.title).toBe('Node Readiness Rules');
     expect(lastCall.id).toBe('nrc-readiness-rules');
+    expect(lastCall.data).toBeDefined();
+  });
+
+  it('renders CrdNotInstalled when NodeReadinessRule CRD returns 404 or 403', () => {
+    mockUseList.mockReturnValue([null, { status: 404, message: 'Resource not found' }]);
+    render(<RuleList />);
+    expect(screen.getByText('NodeReadinessRule CRD Not Installed')).toBeInTheDocument();
+    expect(screen.queryByTestId('resource-list-view')).not.toBeInTheDocument();
+
+    cleanup();
+
+    mockUseList.mockReturnValue([null, { status: 403, message: 'Forbidden' }]);
+    render(<RuleList />);
+    expect(
+      screen.getByText('Permission Denied: Cannot Read Node Readiness Rules')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('resource-list-view')).not.toBeInTheDocument();
+  });
+
+  it('forwards non-403/404 errors and preserves multi-cluster partial results', () => {
+    const serverError = { status: 500, message: 'Internal Server Error' };
+    mockUseList.mockReturnValue([null, serverError]);
+    render(<RuleList />);
+    expect(screen.getByTestId('resource-list-view')).toBeInTheDocument();
+    expect(mockResourceListViewProps.mock.calls.at(-1)?.[0].errors).toEqual([serverError]);
+
+    cleanup();
+
+    const clusterARule = { metadata: { name: 'rule-a' }, cluster: 'cluster-a' } as any;
+    const clusterBError = { status: 403, message: 'Forbidden', cluster: 'cluster-b' };
+    const listResult = Object.assign([[clusterARule], clusterBError], {
+      items: [clusterARule],
+      errors: [clusterBError],
+      error: clusterBError,
+      isLoading: false,
+      isSuccess: false,
+      clusterResults: {
+        'cluster-a': {
+          items: [clusterARule],
+          errors: null,
+          error: null,
+          isLoading: false,
+          isSuccess: true,
+        },
+      },
+    });
+    mockUseList.mockReturnValue(listResult);
+    render(<RuleList />);
+    expect(screen.getByTestId('resource-list-view')).toBeInTheDocument();
+    expect(mockResourceListViewProps.mock.calls.at(-1)?.[0].data).toEqual([clusterARule]);
   });
 
   it('uses rule.getName() for the name column value and render', () => {
@@ -61,6 +136,7 @@ describe('RuleList component', () => {
     const mockRule = {
       getName: vi.fn().mockReturnValue('my-custom-rule'),
       isDryRun: false,
+      cluster: 'prod-east',
     } as any;
 
     expect(nameColumn.getValue(mockRule)).toBe('my-custom-rule');
@@ -72,6 +148,7 @@ describe('RuleList component', () => {
     const link = container.querySelector('a');
     expect(link?.getAttribute('data-routename')).toBe('nrc-rule-details');
     expect(link?.getAttribute('data-params')).toBe('{"name":"my-custom-rule"}');
+    expect(link?.getAttribute('data-cluster')).toBe('prod-east');
   });
 
   it('renders a color-neutral Dry Run chip when isDryRun is true', () => {

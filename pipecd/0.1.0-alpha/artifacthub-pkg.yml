@@ -1,0 +1,49 @@
+version: 0.1.0-alpha
+name: headlamp_pipecd
+displayName: PipeCD
+createdAt: "2026-11-24T00:00:00Z"
+description: A Headlamp UI for PipeCD pipeds, applications, deployments, pipeline stage logs, and application sync.
+license: Apache-2.0
+homeURL: https://github.com/headlamp-k8s/plugins/tree/main/pipecd
+logoURL: https://raw.githubusercontent.com/headlamp-k8s/plugins/a43ca07384397f8ed964515657dd2c07b4a905ed/pipecd/logo.png
+keywords:
+  - headlamp
+  - headlamp-plugin
+  - kubernetes
+  - gitops
+  - continuous-delivery
+  - pipecd
+screenshots:
+  - title: PipeCD Overview
+    url: https://github.com/user-attachments/assets/c2ee8b64-c6cb-4f94-8a6f-093af657a180
+  - title: PipeCD Applications
+    url: https://github.com/user-attachments/assets/847ddbd2-437e-45cf-b813-60e0ee6ff8cd
+  - title: PipeCD application details
+    url: https://github.com/user-attachments/assets/f40cbe73-1c9f-418a-9a31-939a2469c59b
+  - title: PipeCD deployment details and stage logs
+    url: https://github.com/user-attachments/assets/b6bfae14-125a-4d5b-8ab7-dbc0be44c1b7
+  - title: PipeCD Settings
+    url: https://github.com/user-attachments/assets/6c50ffa6-b99a-4f53-a198-67769b74c477
+changes:
+  - kind: added
+    description: "Connect to the PipeCD APIService over gRPC-Web with configurable server URL, API key, and a connection test."
+  - kind: added
+    description: "Keep API keys in memory only, persist only the server URL, and remove previously persisted keys."
+  - kind: added
+    description: "List applications across all pages, with name/repository search, platform filtering, and sync status."
+  - kind: added
+    description: "Show application and deployment details, pipeline stages, stage logs, and links to the PipeCD web UI."
+  - kind: added
+    description: "Start Sync, Quick Sync, or Pipeline Sync after confirmation with a read-write API key; disable sync for disabled applications."
+  - kind: added
+    description: "Add an Overview with pipeds, application and deployment counts, change failure rate, deployment status charts, and recent deployments."
+  - kind: added
+    description: "Show online/offline piped status on newer PipeCD servers and pod status when the piped runs in the selected Kubernetes cluster."
+  - kind: added
+    description: "Include regression tests for API mapping, settings, pagination, overview summaries, status labels, sync, and detail pages."
+annotations:
+  headlamp/plugin/archive-url: >-
+    https://github.com/headlamp-k8s/plugins/releases/download/pipecd-0.1.0-alpha/headlamp-k8s-pipecd-0.1.0-alpha.tar.gz
+  headlamp/plugin/archive-checksum: SHA256:5bf27d6f09728902d60cd1069201cfb5c952209da8ebdc3812334ff7bfc4b46b
+  headlamp/plugin/version-compat: ">=0.35"
+  headlamp/plugin/distro-compat: in-cluster,web,docker-desktop,desktop
