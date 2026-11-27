@@ -22,13 +22,16 @@ import React from 'react';
 import { useClusters } from '../../hooks/useClusters';
 import { useKnativeInstalled } from '../../hooks/useKnativeInstalled';
 import { KnativeTrigger } from '../../resources/knative';
+import { CreateFormButton } from '../common/CreateFormButton';
 import { destinationColumn } from '../common/DestinationLink';
 import { NotInstalledBanner } from '../common/NotInstalledBanner';
 import { getReadinessColumns } from '../common/ResourceListCells';
 import { BrokerLink } from './BrokerLink';
+import { triggerFormSections } from './CreateTriggerForm';
 
 /**
- * Lists the Knative Eventing Triggers in the selected clusters.
+ * Lists the Knative Eventing Triggers in the selected clusters, with a button that opens the create
+ * form for users who may create Triggers.
  *
  * @returns The Triggers list, or a banner when Knative Eventing is not installed.
  */
@@ -67,6 +70,15 @@ export function TriggersList() {
       columns={columns}
       reflectInURL="knative-triggers"
       id="knative-triggers"
+      headerProps={{
+        titleSideActions: [
+          <CreateFormButton
+            key="create"
+            resourceClass={KnativeTrigger}
+            sections={triggerFormSections}
+          />,
+        ],
+      }}
     />
   );
 }
