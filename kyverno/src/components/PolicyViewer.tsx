@@ -24,8 +24,14 @@ import {
   SectionBox,
   Table,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Chip, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Chip, CircularProgress, Typography } from '@mui/material';
 import { useMemo } from 'react';
+import { policyIdentity, reportSourceErrorMessage } from '../hooks/policyReportSources';
+import {
+  PolicyReportSources,
+  useNamespacedPolicyReportSources,
+  usePolicyReportSources,
+} from '../hooks/usePolicyReportSources';
 import {
   KyvernoClusterPolicy,
   KyvernoPolicy,
@@ -33,12 +39,7 @@ import {
   PolicyCondition,
   PolicyRule,
 } from '../resources/kyvernoPolicy';
-import {
-  ClusterPolicyReport,
-  POLICY_REPORT_SOURCE,
-  PolicyReport,
-  PolicyReportResult,
-} from '../resources/policyReport';
+import { POLICY_REPORT_SOURCE, PolicyReportResult } from '../resources/policyReport';
 import { ResultStatusChip, SeverityChip, tableRemountKey } from './common';
 import { PolicyImpactPanel } from './PolicyImpactPanel';
 
@@ -249,17 +250,8 @@ type AssociatedReportResult = PolicyReportResult & {
   reportScope?: ReportResourceRef;
 };
 
-// A namespaced Policy can only ever match (and so only ever be reported on) in its own
-// namespace, never cluster-scoped resources, the same reasoning PolicyImpactPanel's split
-// documents. Split into two data-fetching wrappers, selected by the parent, instead of one
-// component calling both hooks unconditionally: React's Rules of Hooks mean a single component
-// can't conditionally skip ClusterPolicyReport.useList() for a namespaced Policy, but two
-// separately-mounted components can each call only the hook their own case actually needs. The
-// namespace-only RBAC fixture this plugin ships (test-files/policy-impact/error-scenarios/06-)
-// is denied the unscoped ClusterPolicyReport list outright, and was previously denied the
-// unscoped PolicyReport list too, so this section used to issue a forbidden request for a
-// namespaced Policy and then stay on its spinner forever once that identity's lists both landed
-// on `null` from the denial, never reaching the loading check below (see AssociatedReportsBody).
+// A namespaced Policy can only match resources in its own namespace.
+// Mount a separate reader so namespace-scoped users never need a cluster-wide list.
 function AssociatedReportsSection({
   policyName,
   policyNamespace,
@@ -289,20 +281,12 @@ function NamespacedAssociatedReports({
   policyNamespace: string;
   cluster?: string;
 }) {
-  const { items: policyReports, errors: policyReportErrors } = PolicyReport.useList({
-    namespace: policyNamespace,
-    cluster,
-  });
+  const reportSources = useNamespacedPolicyReportSources(policyNamespace, cluster);
   return (
     <AssociatedReportsBody
       policyName={policyName}
       policyNamespace={policyNamespace}
-      policyReports={policyReports}
-      // Never fetched for a namespaced Policy, not merely loading: ClusterPolicyReport only ever
-      // holds results for cluster-scoped resources, a namespaced Policy can't match any, so an
-      // empty list here is the real, complete answer, not a placeholder waiting on a request.
-      clusterPolicyReports={[]}
-      queryErrors={policyReportErrors}
+      reportSources={reportSources}
     />
   );
 }
@@ -314,56 +298,36 @@ function ClusterAssociatedReports({
   policyName: string;
   cluster?: string;
 }) {
-  const { items: policyReports, errors: prErrors } = PolicyReport.useList({ cluster });
-  const { items: clusterPolicyReports, errors: cprErrors } = ClusterPolicyReport.useList({
-    cluster,
-  });
-  const queryErrors = [...(prErrors ?? []), ...(cprErrors ?? [])];
-  return (
-    <AssociatedReportsBody
-      policyName={policyName}
-      policyNamespace={undefined}
-      policyReports={policyReports}
-      clusterPolicyReports={clusterPolicyReports}
-      queryErrors={queryErrors.length > 0 ? queryErrors : null}
-    />
-  );
+  const reportSources = usePolicyReportSources(cluster);
+  return <AssociatedReportsBody policyName={policyName} reportSources={reportSources} />;
 }
 
 function AssociatedReportsBody({
   policyName,
   policyNamespace,
-  policyReports,
-  clusterPolicyReports,
-  queryErrors,
+  reportSources: { reports, loading, error, restrictedEphemeralReports },
 }: {
   policyName: string;
   policyNamespace?: string;
-  policyReports: PolicyReport[] | null;
-  clusterPolicyReports: ClusterPolicyReport[] | null;
-  queryErrors?: Array<{ message: string }> | null;
+  reportSources: PolicyReportSources;
 }) {
-  const { t } = useTranslation();
-
-  // Surface the first fetch error instead of spinning forever. Without this,
-  // a namespaced-only RBAC identity that is forbidden the PolicyReport list
-  // gets items === null indefinitely and the section never leaves the spinner.
-  const firstError = queryErrors?.find(Boolean);
-  if (firstError && (policyReports === null || clusterPolicyReports === null)) {
+  const { t, ready } = useTranslation();
+  const title = ready ? t('Associated Report Results') : 'Associated Report Results';
+  if (error) {
     return (
-      <SectionBox title={t('Associated Report Results')}>
+      <SectionBox title={title}>
         <Typography color="error" variant="body2" sx={{ py: 1 }}>
-          {firstError.message}
+          {t('Failed to load policy reports: {{error}}', {
+            error: reportSourceErrorMessage(error),
+          })}
         </Typography>
       </SectionBox>
     );
   }
 
-  // Wait for BOTH streams before rendering — otherwise we'd briefly show a
-  // partial result set as soon as the first list resolves.
-  if (policyReports === null || clusterPolicyReports === null) {
+  if (loading || !ready) {
     return (
-      <SectionBox title={t('Associated Report Results')}>
+      <SectionBox title={title}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
@@ -371,15 +335,10 @@ function AssociatedReportsBody({
     );
   }
 
-  // Kyverno encodes a namespaced policy's identity in report results as
-  // <namespace>/<name> (see bucketReportResults and policyImpact.ts),
-  // cluster policies stay unprefixed. Comparing against the bare name alone
-  // silently matched nothing for every namespaced Policy.
-  const qualifiedName = policyNamespace ? `${policyNamespace}/${policyName}` : policyName;
-
+  const qualifiedName = policyIdentity(policyName, policyNamespace);
   const matchingResults: AssociatedReportResult[] = [];
 
-  for (const report of policyReports) {
+  for (const report of reports) {
     for (const result of report.results) {
       // Every Kyverno policy engine reports through the same PolicyReport
       // CRD, so a legacy namespaced Policy and a same-named CEL policy can
@@ -389,20 +348,8 @@ function AssociatedReportsBody({
       if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
         matchingResults.push({
           ...result,
-          reportName: report.jsonData.metadata.name,
-          reportNamespace: report.jsonData.metadata.namespace,
-          reportScope: report.scope,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports) {
-    for (const result of report.results) {
-      if (result.policy === qualifiedName && result.source === POLICY_REPORT_SOURCE.legacy) {
-        matchingResults.push({
-          ...result,
-          reportName: report.jsonData.metadata.name,
+          reportName: report.metadata.name,
+          reportNamespace: report.metadata.namespace,
           reportScope: report.scope,
         });
       }
@@ -413,6 +360,11 @@ function AssociatedReportsBody({
     <SectionBox
       title={t('Associated Report Results ({{count}})', { count: matchingResults.length })}
     >
+      {restrictedEphemeralReports && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {t('Some results may be missing because you do not have access to ephemeral reports.')}
+        </Alert>
+      )}
       <AssociatedReportsTable results={matchingResults} />
     </SectionBox>
   );

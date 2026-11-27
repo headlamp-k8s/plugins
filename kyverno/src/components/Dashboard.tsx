@@ -16,7 +16,7 @@
 
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { SectionBox } from '@kinvolk/headlamp-plugin/lib/components/common';
-import { Box, Grid, Typography } from '@mui/material';
+import { Alert, Box, Grid, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import {
   Bar,
@@ -31,12 +31,14 @@ import {
   YAxis,
 } from 'recharts';
 import { configStore } from '../config';
+import { reportSourceErrorMessage } from '../hooks/policyReportSources';
+import { usePolicyReportSources } from '../hooks/usePolicyReportSources';
 import { KyvernoClusterPolicy, KyvernoPolicy } from '../resources/kyvernoPolicy';
-
-const useKyvernoConfig = configStore.useConfig();
-import { ClusterPolicyReport, PolicyReport, PolicyResultStatus } from '../resources/policyReport';
+import { PolicyResultStatus } from '../resources/policyReport';
 import { MetricCard } from './common';
 import { PolicyEngineHealth } from './PolicyEngineHealth';
+
+const useKyvernoConfig = configStore.useConfig();
 
 const STATUS_COLORS: Record<PolicyResultStatus, string> = {
   pass: '#4caf50',
@@ -57,10 +59,15 @@ const SEVERITY_COLORS: Record<string, string> = {
 export function Dashboard() {
   const { t } = useTranslation();
   const config = useKyvernoConfig();
-  const [clusterPolicies] = KyvernoClusterPolicy.useList();
-  const [policies] = KyvernoPolicy.useList();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const clusterPolicyList = KyvernoClusterPolicy.useList();
+  const policyList = KyvernoPolicy.useList();
+  const [clusterPolicies, clusterPolicyError] = clusterPolicyList;
+  const [policies, policyError] = policyList;
+  const policyTotalsError = clusterPolicyError || policyError;
+  const policiesLoading =
+    (clusterPolicyList.isLoading ?? clusterPolicies === null) ||
+    (policyList.isLoading ?? policies === null);
+  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
 
   const stats = useMemo(() => {
     const counts: Record<PolicyResultStatus, number> = {
@@ -74,9 +81,7 @@ export function Dashboard() {
     const bySeverity = new Map<string, number>();
     const byNamespace = new Map<string, { pass: number; fail: number }>();
 
-    const allReports = [...(policyReports || []), ...(clusterPolicyReports || [])];
-
-    for (const report of allReports) {
+    for (const report of reports) {
       for (const result of report.results) {
         counts[result.result] = (counts[result.result] || 0) + 1;
 
@@ -89,8 +94,7 @@ export function Dashboard() {
           bySeverity.set(result.severity, (bySeverity.get(result.severity) || 0) + 1);
         }
 
-        const ns =
-          result.resources?.[0]?.namespace || report.jsonData.metadata.namespace || 'cluster';
+        const ns = result.resources?.[0]?.namespace || report.metadata.namespace || 'cluster';
         const nsStats = byNamespace.get(ns) || { pass: 0, fail: 0 };
         if (result.result === 'pass') nsStats.pass++;
         if (result.result === 'fail' || result.result === 'error') nsStats.fail++;
@@ -120,7 +124,7 @@ export function Dashboard() {
       bySeverity,
       byNamespace,
     };
-  }, [clusterPolicies, policies, policyReports, clusterPolicyReports]);
+  }, [clusterPolicies, policies, reports]);
 
   const statusData = useMemo(() => {
     return (['pass', 'fail', 'warn', 'error', 'skip'] as PolicyResultStatus[])
@@ -158,16 +162,28 @@ export function Dashboard() {
       .map(([ns, { pass, fail }]) => ({ name: ns, pass, failAndError: fail }));
   }, [stats.byNamespace]);
 
-  // Loading until ALL streams resolve — otherwise totals/compliance flash partial values
-  // as each useList settles.
-  const isLoading =
-    clusterPolicies === null ||
-    policies === null ||
-    policyReports === null ||
-    clusterPolicyReports === null;
+  const policyEngineHealth = config?.policyEngineHealthEnabled === true && <PolicyEngineHealth />;
+
+  if (reportsError) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <SectionBox title={t('Kyverno Overview')}>
+          <Typography color="error">
+            {t('Failed to load policy reports: {{error}}', {
+              error: reportSourceErrorMessage(reportsError),
+            })}
+          </Typography>
+        </SectionBox>
+        {policyEngineHealth}
+      </Box>
+    );
+  }
+
+  const policyTotal = (value: number) =>
+    policyTotalsError ? '—' : policiesLoading ? '...' : value;
 
   const complianceColor =
-    stats.compliancePct === null
+    reportsLoading || stats.compliancePct === null
       ? undefined
       : stats.compliancePct >= 90
       ? '#4caf50'
@@ -178,50 +194,74 @@ export function Dashboard() {
   return (
     <Box sx={{ p: 2 }}>
       <SectionBox title={t('Kyverno Overview')}>
+        {policyTotalsError && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {t('Failed to load policy totals: {{error}}', {
+              error: reportSourceErrorMessage(policyTotalsError),
+            })}
+          </Alert>
+        )}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} sm={3}>
-            <MetricCard
-              title={t('Total Policies')}
-              value={isLoading ? '...' : stats.totalPolicies}
-            />
+            <MetricCard title={t('Total Policies')} value={policyTotal(stats.totalPolicies)} />
           </Grid>
           <Grid item xs={6} sm={3}>
             <MetricCard
               title={t('Compliance')}
               value={
-                isLoading ? '...' : stats.compliancePct === null ? '—' : `${stats.compliancePct}%`
+                reportsLoading
+                  ? '...'
+                  : stats.compliancePct === null
+                  ? '—'
+                  : `${stats.compliancePct}%`
               }
               color={complianceColor}
             />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Enforce')} value={isLoading ? '...' : stats.enforceCount} />
+            <MetricCard title={t('Enforce')} value={policyTotal(stats.enforceCount)} />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Audit')} value={isLoading ? '...' : stats.auditCount} />
+            <MetricCard title={t('Audit')} value={policyTotal(stats.auditCount)} />
           </Grid>
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Pass')} value={stats.counts.pass} color="#4caf50" />
+            <MetricCard
+              title={t('Pass')}
+              value={reportsLoading ? '...' : stats.counts.pass}
+              color={reportsLoading ? undefined : '#4caf50'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Fail')} value={stats.counts.fail} color="#f44336" />
+            <MetricCard
+              title={t('Fail')}
+              value={reportsLoading ? '...' : stats.counts.fail}
+              color={reportsLoading ? undefined : '#f44336'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Warn')} value={stats.counts.warn} color="#ff9800" />
+            <MetricCard
+              title={t('Warn')}
+              value={reportsLoading ? '...' : stats.counts.warn}
+              color={reportsLoading ? undefined : '#ff9800'}
+            />
           </Grid>
           <Grid item xs={6} sm={3}>
-            <MetricCard title={t('Error')} value={stats.counts.error} color="#d32f2f" />
+            <MetricCard
+              title={t('Error')}
+              value={reportsLoading ? '...' : stats.counts.error}
+              color={reportsLoading ? undefined : '#d32f2f'}
+            />
           </Grid>
         </Grid>
       </SectionBox>
 
-      {config?.policyEngineHealthEnabled === true && <PolicyEngineHealth />}
+      {policyEngineHealth}
 
       <Grid container spacing={2}>
-        {statusData.length > 0 && (
+        {!reportsLoading && statusData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Status')}>
               <Box
@@ -255,7 +295,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {severityData.length > 0 && (
+        {!reportsLoading && severityData.length > 0 && (
           <Grid item xs={12} md={6}>
             <SectionBox title={t('Results by Severity')}>
               <Box
@@ -289,7 +329,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {categoryData.length > 0 && (
+        {!reportsLoading && categoryData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Top Failing Categories')}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, py: 1 }}>
@@ -334,7 +374,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {namespaceData.length > 0 && (
+        {!reportsLoading && namespaceData.length > 0 && (
           <Grid item xs={12}>
             <SectionBox title={t('Compliance by Namespace (Top 10)')}>
               <Box
@@ -368,7 +408,7 @@ export function Dashboard() {
           </Grid>
         )}
 
-        {!isLoading && !stats.hasData && (
+        {!reportsLoading && !stats.hasData && (
           <Grid item xs={12}>
             <SectionBox title={t('No reports yet')}>
               <Typography variant="body2" color="text.secondary">

@@ -30,10 +30,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
+import { reportSourceErrorMessage } from '../hooks/policyReportSources';
+import {
+  PolicyReportSource as AggregatedReport,
+  usePolicyReportSources,
+} from '../hooks/usePolicyReportSources';
 import { DrillDownTarget } from '../resources/policyImpact';
 import {
-  ClusterPolicyReport,
-  PolicyReport,
   PolicyReportInterface,
   PolicyReportResult,
   PolicyReportSource,
@@ -51,30 +54,16 @@ interface ViolationEntry extends PolicyReportResult {
 
 const VIOLATION_STATUSES: PolicyResultStatus[] = ['fail', 'warn', 'error'];
 
-function collectViolations(
-  policyReports: PolicyReport[] | null,
-  clusterPolicyReports: ClusterPolicyReport[] | null
-): ViolationEntry[] {
+function collectViolations(reports: AggregatedReport[]): ViolationEntry[] {
   const violations: ViolationEntry[] = [];
 
-  for (const report of policyReports || []) {
+  for (const report of reports) {
     for (const result of report.results) {
       if (VIOLATION_STATUSES.includes(result.result)) {
         violations.push({
           ...result,
-          reportNamespace: report.jsonData.metadata.namespace,
-          scope: report.jsonData.scope,
-        });
-      }
-    }
-  }
-
-  for (const report of clusterPolicyReports || []) {
-    for (const result of report.results) {
-      if (VIOLATION_STATUSES.includes(result.result)) {
-        violations.push({
-          ...result,
-          scope: report.jsonData.scope,
+          reportNamespace: report.metadata.namespace,
+          scope: report.scope,
         });
       }
     }
@@ -175,8 +164,7 @@ function entryToTarget(v: ViolationEntry): DrillDownTarget {
 
 export function ViolationsView() {
   const { i18n, ready, t } = useTranslation();
-  const { items: policyReports } = PolicyReport.useList();
-  const { items: clusterPolicyReports } = ClusterPolicyReport.useList();
+  const { reports, loading: reportsLoading, error: reportsError } = usePolicyReportSources();
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [statusFilter, setStatusFilter] = useState<PolicyResultStatus[]>(VIOLATION_STATUSES);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -283,10 +271,7 @@ export function ViolationsView() {
     ]
   );
 
-  const allViolations = useMemo(
-    () => collectViolations(policyReports, clusterPolicyReports),
-    [policyReports, clusterPolicyReports]
-  );
+  const allViolations = useMemo(() => collectViolations(reports), [reports]);
 
   const filteredViolations = useMemo(() => {
     return allViolations.filter(v => {
@@ -318,12 +303,22 @@ export function ViolationsView() {
     return Array.from(set).sort();
   }, [allViolations]);
 
-  // Wait for BOTH streams — partial data here would silently undercount violations.
-  const isLoading = policyReports === null || clusterPolicyReports === null;
-
-  if (isLoading) {
+  const title = ready ? t('Violations') : 'Violations';
+  if (reportsError) {
     return (
-      <SectionBox title={t('Violations')}>
+      <SectionBox title={title}>
+        <Typography color="error">
+          {t('Failed to load policy reports: {{error}}', {
+            error: reportSourceErrorMessage(reportsError),
+          })}
+        </Typography>
+      </SectionBox>
+    );
+  }
+
+  if (reportsLoading || !ready) {
+    return (
+      <SectionBox title={title}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
