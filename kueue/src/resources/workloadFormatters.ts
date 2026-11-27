@@ -114,19 +114,19 @@ export function renderAdmittedStatus(conditions: WorkloadConditionLike[] = []) {
   return 'Unknown';
 }
 
-/** Render whether the workload's associated job finished. */
+/**
+ * Render whether the workload's associated job finished.
+ * Kueue only adds the Finished condition, with status True, once the Workload finishes,
+ * so a missing one means No.
+ */
 export function renderFinishedStatus(conditions: WorkloadConditionLike[] = []) {
-  const finishedCondition = findWorkloadCondition(conditions, CONDITION_TYPES.finished);
+  const status = findWorkloadCondition(conditions, CONDITION_TYPES.finished)?.status;
 
-  if (!finishedCondition) {
-    return 'Unknown';
-  }
-
-  if (finishedCondition.status === 'True') {
+  if (status === 'True') {
     return 'Yes';
   }
 
-  if (finishedCondition.status === 'False') {
+  if (status === undefined || status === 'False') {
     return 'No';
   }
 
