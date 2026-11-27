@@ -118,6 +118,10 @@ export interface IssuerSpec {
       kubernetes?: {
         role: string;
         secretRef?: SecretKeySelector;
+        serviceAccountRef?: {
+          name: string;
+          audiences?: string[];
+        };
         mountPath?: string;
       };
     };
