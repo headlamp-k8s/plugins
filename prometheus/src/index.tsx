@@ -13,6 +13,7 @@ import { GenericMetricsChart } from './components/Chart/GenericMetricsChart/Gene
 import { KedaChart } from './components/Chart/KedaChart/KedaChart';
 import { KnativeChart } from './components/Chart/KnativeChart/KnativeChart';
 import { getKueueClusterQueueChartConfigs } from './components/Chart/KueueClusterQueueChart/KueueClusterQueueChart';
+import { MetricsNamespace } from './components/Chart/MetricsNamespace';
 import { getKafkaChartConfigs, StrimziChart } from './components/Chart/StrimziChart/StrimziChart';
 import { TinkerbellChart } from './components/Chart/TinkerbellChart/TinkerbellChart';
 import {
@@ -283,7 +284,11 @@ registerDetailsViewSectionsProcessor(function addSubheaderSection(resource, sect
   // We place our custom section after the header.
   sections.splice(detailsHeaderIdx + 1, 0, {
     id: prometheusSection,
-    section: prometheusMetricsSection,
+    section: (
+      <MetricsNamespace namespace={resource.jsonData.metadata.namespace}>
+        {prometheusMetricsSection}
+      </MetricsNamespace>
+    ),
   });
 
   return sections;

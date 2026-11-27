@@ -1,7 +1,7 @@
 import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import { EmptyContent, Loader } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, useTheme } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -14,6 +14,7 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartDataPoint, getTimeRangeAndStepSize } from '../../../util';
+import { MetricsNamespaceContext } from '../MetricsNamespace';
 
 /**
  * Props for the Chart component.
@@ -71,6 +72,8 @@ export interface ChartProps {
 
 export default function Chart(props: ChartProps) {
   const { t } = useTranslation();
+  const namespace = useContext(MetricsNamespaceContext);
+  const requestGeneration = useRef(0);
 
   enum ChartState {
     LOADING,
@@ -88,6 +91,7 @@ export default function Chart(props: ChartProps) {
     plots: Array<{ query: string; name: string; dataProcessor: (data: any) => any }>,
     firstLoad: boolean = false
   ) => {
+    const generation = requestGeneration.current;
     const fetchedMetrics: {
       [key: string]: {
         data: { timestamp: number; y: number }[];
@@ -118,8 +122,10 @@ export default function Chart(props: ChartProps) {
           to: currentTimeRange.to,
           step: currentTimeRange.step,
           subPath: props.subPath,
+          namespace,
         });
       } catch (e) {
+        if (generation !== requestGeneration.current) return;
         fetchedMetrics[plot.name] = { data: [], state: ChartState.ERROR };
         setError(e.message);
         setState(ChartState.ERROR);
@@ -138,6 +144,8 @@ export default function Chart(props: ChartProps) {
       const data = plot.dataProcessor(response);
       fetchedMetrics[plot.name] = { data: data, state: ChartState.SUCCESS };
     }
+
+    if (generation !== requestGeneration.current) return;
 
     // if all the plots are in no data state, set the state to no data
     if (Object.values(fetchedMetrics).every(plot => plot.state === ChartState.NO_DATA)) {
@@ -183,11 +191,15 @@ export default function Chart(props: ChartProps) {
   // Fetch data on initial load and when key parameters change
   useEffect(() => {
     fetchMetricsData(props.plots, true);
+    return () => {
+      requestGeneration.current += 1;
+    };
   }, [
     props.interval,
     props.resolution,
     props.prometheusPrefix,
     props.subPath,
+    namespace,
     JSON.stringify(props.plots),
   ]);
 
@@ -213,6 +225,7 @@ export default function Chart(props: ChartProps) {
     props.resolution,
     props.prometheusPrefix,
     props.subPath,
+    namespace,
     JSON.stringify(props.plots),
   ]);
 

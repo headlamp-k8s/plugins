@@ -27,3 +27,14 @@ page from the sidebar, searching for "prometheus" and installing the app/chart f
 
 For Tinkerbell controller metrics configuration and chart details, see the
 [Tinkerbell plugin documentation](../tinkerbell/README.md#controller-health-metrics).
+
+## Namespace-scoped queries
+
+For prom-label-proxy configured with `-label namespace -query-param namespace`,
+disable **Auto detect**, set **Prometheus Service Address** to the proxy service,
+and enable **Send resource namespace**. Charts then send the viewed resource's
+namespace in the `namespace` query parameter. Cluster-scoped resources have no
+namespace to send and may be rejected by the proxy.
+
+For **Test Connection**, enter a namespace you can access in
+**Namespace for connection test**. This value is used only for that test.
