@@ -117,6 +117,23 @@ IssuerRefWithoutKind.decorators = [
   ),
 ];
 
+export const ExternalIssuerRef = IssuerRefTemplate.bind({});
+ExternalIssuerRef.args = {
+  issuerRef: {
+    name: 'corp-ca',
+    kind: 'GoogleCASClusterIssuer',
+    group: 'cas-issuer.jetstack.io',
+  },
+  namespace: 'default',
+};
+ExternalIssuerRef.decorators = [
+  (Story: StoryFn) => (
+    <BrowserRouter>
+      <Story />
+    </BrowserRouter>
+  ),
+];
+
 // =============================================================================
 // ConditionsTable Stories
 // =============================================================================
