@@ -17,6 +17,7 @@ This is a repository of official plugins that Headlamp uses or recommends.
 | [cert-manager](./cert-manager) | A UI for viewing and managing cert-manager. | | [@yolossn](https://github.com/yolossn) |
 | [cluster-api](./cluster-api) | See your Cluster API management clusters in Headlamp's sidebar and map. | Learn more about CAPI with the [Cluster API book](https://cluster-api.sigs.k8s.io/). | [@mboersma](https://github.com/mboersma) [@ChayanDass](https://github.com/ChayanDass) |
 | [flux](./flux) | Visualize Flux in Headlamp. | |[@ashu8912](https://github.com/ashu8912) |
+| [helm-releases](./helm-releases) | Browse the installed Helm releases: revision history, values, notes and manifest. | Read-only alpha. Reads Helm's storage Secrets with the user's own permissions. | [@guillaumebernard84](https://github.com/guillaumebernard84) |
 | [hubble](./hubble) | See the network traffic Cilium Hubble records between pods. | Alpha. | [@9p-tech](https://github.com/9p-tech) |
 | [karpenter](./karpenter) | Adds Karpenter-specific custom resources to the Headlamp UI. | | [@SinghaAnirban005](https://github.com/SinghaAnirban005) |
 | [keda](./keda) | A UI for viewing and managing KEDA resources. | | [@adwait-godbole](https://github.com/adwait-godbole), [@yolossn](https://github.com/yolossn) |
