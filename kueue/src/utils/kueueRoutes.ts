@@ -1,21 +1,25 @@
+/**
+ * Route names. Headlamp shows a route's name as the page title and finds routes by it,
+ * ignoring case, so each one is readable and unique.
+ */
 export const kueueRouteNames = {
-  overview: 'kueue-overview',
-  admissionChecksList: 'kueue-admissionchecks-list',
-  admissionCheckDetail: 'kueue-admissioncheck-detail',
-  cohortsList: 'kueue-cohorts-list',
-  cohortDetail: 'kueue-cohort-detail',
-  clusterQueuesList: 'kueue-clusterqueues-list',
-  clusterQueueDetail: 'kueue-clusterqueue-detail',
-  localQueuesList: 'kueue-localqueues-list',
-  localQueueDetail: 'kueue-localqueue-detail',
-  provisioningRequestConfigsList: 'kueue-provisioningrequestconfigs-list',
-  provisioningRequestConfigDetail: 'kueue-provisioningrequestconfig-detail',
-  resourceFlavorsList: 'kueue-resourceflavors-list',
-  resourceFlavorDetail: 'kueue-resourceflavor-detail',
-  workloadsList: 'kueue-workloads-list',
-  workloadDetail: 'kueue-workload-detail',
-  multiKueueConfigsList: 'kueue-multikueueconfigs-list',
-  multiKueueConfigDetail: 'kueue-multikueueconfig-detail',
+  overview: 'Kueue Overview',
+  admissionChecksList: 'Kueue AdmissionChecks',
+  admissionCheckDetail: 'Kueue AdmissionCheck',
+  cohortsList: 'Kueue Cohorts',
+  cohortDetail: 'Kueue Cohort',
+  clusterQueuesList: 'Kueue ClusterQueues',
+  clusterQueueDetail: 'Kueue ClusterQueue',
+  localQueuesList: 'Kueue LocalQueues',
+  localQueueDetail: 'Kueue LocalQueue',
+  provisioningRequestConfigsList: 'Kueue ProvisioningRequestConfigs',
+  provisioningRequestConfigDetail: 'Kueue ProvisioningRequestConfig',
+  resourceFlavorsList: 'Kueue ResourceFlavors',
+  resourceFlavorDetail: 'Kueue ResourceFlavor',
+  workloadsList: 'Kueue Workloads',
+  workloadDetail: 'Kueue Workload',
+  multiKueueConfigsList: 'Kueue MultiKueueConfigs',
+  multiKueueConfigDetail: 'Kueue MultiKueueConfig',
 } as const;
 
 export const kueueRoutePaths = {
