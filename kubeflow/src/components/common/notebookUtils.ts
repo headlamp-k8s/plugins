@@ -56,6 +56,21 @@ export function getNotebookStatus(jsonData: any): NotebookStatus {
   const readyReplicas = jsonData?.status?.readyReplicas;
   const containerState = jsonData?.status?.containerState || {};
 
+  // A notebook being deleted has a deletionTimestamp set by the API server.
+  // Check this before the stopped annotation so a stopped notebook that is
+  // also being deleted shows "Terminating" rather than "Stopped".
+  if (jsonData?.metadata?.deletionTimestamp) {
+    return { label: 'Terminating', status: '', icon: 'mdi:timer-sand' };
+  }
+
+  // A notebook whose StatefulSet has been scaled to 0 by the controller carries
+  // the kubeflow-resource-stopped annotation.  Show "Stopped" before any
+  // replica or condition checks so it is never misclassified as "Pending".
+  const stoppedAnnotation = jsonData?.metadata?.annotations?.['kubeflow-resource-stopped'];
+  if (stoppedAnnotation && !readyReplicas) {
+    return { label: 'Stopped', status: '', icon: 'mdi:stop-circle-outline' };
+  }
+
   if (readyReplicas && readyReplicas > 0) {
     return { label: 'Running', status: 'success', icon: 'mdi:check-circle' };
   }
@@ -119,6 +134,18 @@ export function getNotebookStatus(jsonData: any): NotebookStatus {
   }
 
   return { label: 'Pending', status: '', icon: 'mdi:clock-outline' };
+}
+
+/**
+ * Returns whether a derived NotebookStatus represents a pending/starting state.
+ * Excludes Running, Stopped, Terminating, and error states.
+ */
+export function isNotebookPending({ label, status }: NotebookStatus): boolean {
+  return (
+    label === 'Pending' ||
+    label === 'Waiting' ||
+    (!status && label !== 'Running' && label !== 'Stopped' && label !== 'Terminating')
+  );
 }
 
 /**

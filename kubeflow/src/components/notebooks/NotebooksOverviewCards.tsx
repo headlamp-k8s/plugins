@@ -17,7 +17,11 @@ import { useHistory } from 'react-router-dom';
 import { NotebookClass } from '../../resources/notebook';
 import { NotebookStatusBadge } from '../common/NotebookStatusBadge';
 import { NotebookTypeBadge } from '../common/NotebookTypeBadge';
-import { aggregateNotebookResources, getNotebookStatus } from '../common/notebookUtils';
+import {
+  aggregateNotebookResources,
+  getNotebookStatus,
+  isNotebookPending,
+} from '../common/notebookUtils';
 
 interface NotebooksOverviewContentProps {
   notebooks: any[];
@@ -39,10 +43,9 @@ export function NotebooksOverviewContent({
   const runningCount = normalizedNotebooks.filter(
     nb => getNotebookStatus(nb).label === 'Running'
   ).length;
-  const pendingCount = normalizedNotebooks.filter(nb => {
-    const { label, status } = getNotebookStatus(nb);
-    return label === 'Pending' || label === 'Waiting' || (!status && label !== 'Running');
-  }).length;
+  const pendingCount = normalizedNotebooks.filter(nb =>
+    isNotebookPending(getNotebookStatus(nb))
+  ).length;
   const failedCount = normalizedNotebooks.filter(
     nb => getNotebookStatus(nb).status === 'error'
   ).length;
