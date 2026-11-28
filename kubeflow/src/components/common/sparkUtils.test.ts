@@ -76,5 +76,17 @@ describe('Spark Utilities', () => {
       expect(totals.cpu).toBe(5); // 1 + 2*2
       expect(totals.memory).toBe(5); // 1 + 2*2
     });
+
+    it('reads memory in the JVM format Spark takes, as in the operator examples', () => {
+      const apps = [
+        // spark-operator's examples/spark-pi.yaml
+        { spec: { driver: { memory: '512m' }, executor: { memory: '512m', instances: 2 } } },
+        // A number without a unit is MiB for spark.driver.memory and spark.executor.memory
+        { spec: { driver: { memory: '1g' }, executor: { memory: '2048', instances: 1 } } },
+        { spec: { driver: { memory: '1024mb' }, executor: { memory: '1048576k', instances: 1 } } },
+      ] as any[];
+      // 0.5 + 0.5*2, then 1 + 2, then 1 + 1 GiB
+      expect(aggregateSparkResources(apps).memory).toBe(6.5);
+    });
   });
 });
