@@ -12,6 +12,10 @@ Please refer to the [official installation guide](https://fluxcd.io/flux/install
 
 Go to the Plugin Catalog, search for the Flux plugin, and click the Install button. Reload the UI (Navigation menu > Reload, or use the notification after installing the plugin) to see the new Flux item in the sidebar.
 
+## Dependencies in the Map
+
+In the Headlamp Map, the Kustomization and Helm Release sources draw an edge labelled "depends on" from a resource to each resource listed in its `spec.dependsOn`. References without a namespace point to the namespace of the resource that declares them.
+
 ## Flux-managed resources
 
 Resources created by Flux (labelled `kustomize.toolkit.fluxcd.io/name` or `helm.toolkit.fluxcd.io/name`) show a "Flux managed" chip in their details view. By default, the Edit, Scale, Delete and Rollback actions in the details view are hidden for these resources and replaced by a read-only "View YAML" button, since manual changes are either reverted by Flux on its next reconciliation or leave the cluster out of sync with Git. The actions in resource list rows are not affected.
