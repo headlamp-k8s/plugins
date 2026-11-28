@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import { Cluster } from '../../resources/cluster';
 import { getCondition } from '../../resources/common';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getClusterClassNamespace } from '../../utils/clusterClass';
 import { getPhaseStatus } from '../common/util';
 import { renderConditionStatus } from '../common/util';
 
@@ -43,7 +44,7 @@ function ClustersListWithData({ ClusterClass }: ClustersListWithDataProps) {
                 routeName="clusterclass"
                 params={{
                   name: className,
-                  namespace: cluster.metadata?.namespace,
+                  namespace: getClusterClassNamespace(cluster.jsonData),
                 }}
               >
                 {className}
