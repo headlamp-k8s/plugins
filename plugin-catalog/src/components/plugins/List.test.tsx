@@ -263,4 +263,42 @@ describe('catalog host filtering', () => {
     expect(log).toHaveBeenCalled();
     log.mockRestore();
   });
+
+  it('offers a retry instead of loading forever when fetching fails', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const succeed = fetchMock.getMockImplementation()!;
+    fetchMock.mockRejectedValue(new Error('offline'));
+    render(<PluginList />);
+    await screen.findByRole('alert');
+    expect(screen.queryByText('Loading')).toBeNull();
+    fetchMock.mockImplementation(succeed);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText(flux.display_name);
+    expect(screen.queryByRole('alert')).toBeNull();
+    log.mockRestore();
+  });
+
+  it('offers a retry when a filter round trip fails while older results are still shown', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const succeed = fetchMock.getMockImplementation()!;
+    const view = render(<PluginList />);
+    await screen.findByText(flux.display_name);
+
+    // Switch a filter away, and back before the request for it answers.
+    fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+    state.config = { displayOnlyOfficialPlugins: false };
+    view.rerender(<PluginList />);
+    fetchMock.mockRejectedValue(new Error('offline'));
+    state.config = {};
+    view.rerender(<PluginList />);
+
+    // The results from before are shown again, and the new request for them failed.
+    await screen.findByRole('alert');
+    expect(screen.getByText(flux.display_name)).toBeTruthy();
+    fetchMock.mockImplementation(succeed);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(screen.getByText(flux.display_name)).toBeTruthy();
+    log.mockRestore();
+  });
 });
