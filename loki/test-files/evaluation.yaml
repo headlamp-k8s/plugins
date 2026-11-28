@@ -1,0 +1,245 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-config
+  namespace: logging
+data:
+  config.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+    common:
+      instance_addr: 127.0.0.1
+      path_prefix: /tmp/loki
+      storage:
+        filesystem:
+          chunks_directory: /tmp/loki/chunks
+          rules_directory: /tmp/loki/rules
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+    schema_config:
+      configs:
+        - from: "2024-01-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+    analytics:
+      reporting_enabled: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: loki}
+  template:
+    metadata:
+      labels: {app: loki}
+    spec:
+      containers:
+        - name: loki
+          image: grafana/loki:3.5.0
+          args: ["-config.file=/etc/loki/config.yaml"]
+          ports: [{containerPort: 3100}]
+          volumeMounts:
+            - {name: config, mountPath: /etc/loki}
+            - {name: data, mountPath: /tmp/loki}
+      volumes:
+        - name: config
+          configMap: {name: loki-config}
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: logging
+spec:
+  selector: {app: loki}
+  ports: [{port: 3100, targetPort: 3100}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-gateway
+  namespace: logging
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location = /loki/api/v1/query_range {
+        limit_except GET { deny all; }
+        proxy_set_header X-Scope-OrgID "";
+        proxy_pass http://loki.logging.svc:3100;
+      }
+      location / { return 403; }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki-gateway
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: loki-gateway}
+  template:
+    metadata:
+      labels: {app: loki-gateway}
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.28-alpine
+          ports: [{containerPort: 80}]
+          volumeMounts:
+            - {name: config, mountPath: /etc/nginx/conf.d}
+      volumes:
+        - name: config
+          configMap: {name: loki-gateway}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-gateway
+  namespace: logging
+spec:
+  selector: {app: loki-gateway}
+  ports: [{port: 80, targetPort: 80}]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy
+  namespace: logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: loki-evaluation-collector
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: loki-evaluation-collector
+subjects:
+  - {kind: ServiceAccount, name: alloy, namespace: logging}
+roleRef:
+  {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: loki-evaluation-collector}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: logging
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label = "container"
+      }
+      rule {
+        replacement = "evaluation-a"
+        target_label = "cluster"
+      }
+    }
+    loki.source.kubernetes "pods" {
+      targets = discovery.relabel.pods.output
+      forward_to = [loki.write.local.receiver]
+    }
+    loki.write "local" {
+      endpoint {
+        url = "http://loki.logging.svc:3100/loki/api/v1/push"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: alloy}
+  template:
+    metadata:
+      labels: {app: alloy}
+    spec:
+      serviceAccountName: alloy
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.8.3
+          args: ["run", "/etc/alloy/config.alloy", "--storage.path=/tmp/alloy"]
+          volumeMounts:
+            - {name: config, mountPath: /etc/alloy}
+      volumes:
+        - name: config
+          configMap: {name: alloy-config}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: history-reader
+  namespace: logging
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: history-denied
+  namespace: logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: history-reader
+  namespace: logging
+rules:
+  - apiGroups: [""]
+    resources: ["services/proxy"]
+    resourceNames: ["http:loki-gateway:80"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: history-reader
+  namespace: logging
+subjects:
+  - {kind: ServiceAccount, name: history-reader, namespace: logging}
+roleRef:
+  {apiGroup: rbac.authorization.k8s.io, kind: Role, name: history-reader}
