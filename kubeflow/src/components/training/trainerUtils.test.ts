@@ -4,6 +4,7 @@ import {
   buildTrainJobWarnings,
   getTrainJobStatusInfo,
   inferPodMetricSummary,
+  isTrainJobRunning,
   mergeRuntimeObjects,
 } from './trainerUtils';
 
@@ -19,13 +20,37 @@ describe('trainerUtils', () => {
       expect(info.status).toBe('warning');
     });
 
-    it('returns Succeeded state from conditions', () => {
+    it('returns Succeeded state from the Complete condition', () => {
       const job = {
-        conditions: [{ type: 'Succeeded', status: 'True' }],
+        conditions: [{ type: 'Complete', status: 'True' }],
       } as any as TrainJobClass;
       const info = getTrainJobStatusInfo(job);
       expect(info.label).toBe('Succeeded');
       expect(info.status).toBe('success');
+    });
+
+    it('does not report success when the Complete condition is False', () => {
+      // Mirrors TrainJobClass, which falls back to the latest condition when none is True.
+      const completeFalse = { type: 'Complete', status: 'False' };
+      const job = {
+        conditions: [completeFalse],
+        latestCondition: completeFalse,
+        phase: 'Complete',
+      } as any as TrainJobClass;
+      const info = getTrainJobStatusInfo(job);
+      expect(info.status).not.toBe('success');
+    });
+
+    it('reports Failed over Complete when both are True', () => {
+      const job = {
+        conditions: [
+          { type: 'Complete', status: 'True' },
+          { type: 'Failed', status: 'True', reason: 'BackoffLimitExceeded' },
+        ],
+      } as any as TrainJobClass;
+      const info = getTrainJobStatusInfo(job);
+      expect(info.label).toBe('Failed');
+      expect(info.status).toBe('error');
     });
 
     it('returns Failed state from conditions', () => {
@@ -46,6 +71,28 @@ describe('trainerUtils', () => {
       const info = getTrainJobStatusInfo(job);
       expect(info.label).toBe('Pending');
       expect(info.status).toBe('warning');
+    });
+  });
+
+  describe('isTrainJobRunning', () => {
+    it('counts a job without a terminal condition as running', () => {
+      const job = { suspended: false, complete: false, phase: 'Running' } as any as TrainJobClass;
+      expect(isTrainJobRunning(job)).toBe(true);
+    });
+
+    it('does not count completed, failed or suspended jobs as running', () => {
+      const complete = { suspended: false, complete: true, phase: 'Complete' };
+      const failed = { suspended: false, complete: false, phase: 'Failed' };
+      const suspended = { suspended: true, complete: false, phase: 'Suspended' };
+      expect(isTrainJobRunning(complete as any as TrainJobClass)).toBe(false);
+      expect(isTrainJobRunning(failed as any as TrainJobClass)).toBe(false);
+      expect(isTrainJobRunning(suspended as any as TrainJobClass)).toBe(false);
+    });
+
+    it('still counts a job whose Complete condition is False as running', () => {
+      // TrainJobClass reports phase 'Complete' here, but complete is false.
+      const job = { suspended: false, complete: false, phase: 'Complete' } as any as TrainJobClass;
+      expect(isTrainJobRunning(job)).toBe(true);
     });
   });
 
