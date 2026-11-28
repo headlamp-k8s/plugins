@@ -98,6 +98,24 @@ describe('ToolBase', () => {
     expect(parsed.message).toContain('boom');
   });
 
+  it.each([new Error('password: private-tool-value'), 'token: private-tool-value'])(
+    'redacts thrown credentials in both the response and the log',
+    async error => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const tool = new FailingTool();
+        vi.spyOn(tool, 'handler').mockRejectedValueOnce(error);
+        const result = await tool.createLangChainTool().invoke({});
+        expect(result).not.toContain('private-tool-value');
+        expect(JSON.parse(result as string).message).toContain('[REDACTED]');
+        expect(log).toHaveBeenCalledOnce();
+        expect(log.mock.calls.flat().map(String).join(' ')).not.toContain('private-tool-value');
+      } finally {
+        log.mockRestore();
+      }
+    }
+  );
+
   it('createLangChainTool passes undefined for toolCallId and pendingPrompt', async () => {
     // toolCallId and pendingPrompt are LangChain-message-level concepts not
     // available inside the LangChain tool callback. Handlers that need them

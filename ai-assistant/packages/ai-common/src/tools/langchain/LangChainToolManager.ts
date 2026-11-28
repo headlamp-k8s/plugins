@@ -21,6 +21,7 @@ import type { ConversationMessage as Prompt } from '../../conversation/types';
 import { NullToolClient, type ToolClient } from '../../mcp/client/ToolClient';
 import { MCPOutputFormatter } from '../../mcp/langchain/formatToolOutput';
 import type { MCPToolsConfig, MCPToolState } from '../../mcp/types';
+import { redactSecrets } from '../../security/redactSecrets';
 import { AVAILABLE_TOOLS, getToolByName } from '../catalog/builtInTools';
 import type { KubernetesToolContext } from '../kubernetes/context';
 import { KubernetesTool } from '../kubernetes/langchain/KubernetesTool';
@@ -266,7 +267,10 @@ export class LangChainToolManager {
                       : JSON.stringify(actualResult) ?? '';
                   return response;
                 } catch (error) {
-                  console.error(`Error executing MCP tool ${toolData.name}:`, error);
+                  const message = error instanceof Error ? error.message : String(error);
+                  console.error(
+                    `Error executing MCP tool ${toolData.name}: ${redactSecrets(message)}`
+                  );
                   throw error;
                 }
               },
@@ -719,7 +723,9 @@ export class LangChainToolManager {
         return {
           content: JSON.stringify({
             error: true,
-            message: error instanceof Error ? error.message : 'Tool execution failed',
+            message: redactSecrets(
+              error instanceof Error ? error.message : 'Tool execution failed'
+            ),
             toolName,
           }),
           shouldAddToHistory: true,
@@ -733,10 +739,15 @@ export class LangChainToolManager {
     const mcpTool = this.mcpTools.find(tool => tool.name === toolName);
     if (mcpTool) {
       try {
-        const rawResult = await mcpTool.invoke(args);
+        const output = await mcpTool.invoke(args);
 
-        // Check if the raw result indicates an error
-        const isError = this.detectMCPError(rawResult);
+        // Check the tool's own output for an error first, since redaction can remove the
+        // words that show one, like `invalid` in `token: invalid`.
+        const isError = this.detectMCPError(output);
+
+        // Then redact it before it is kept anywhere: the content below carries this raw text
+        // next to the formatted summary, and it goes to the model and the UI from there.
+        const rawResult = redactSecrets(output);
 
         // Format the MCP output using AI if formatter is available
         let formattedContent = rawResult;
@@ -790,7 +801,12 @@ export class LangChainToolManager {
           },
         };
       } catch (error) {
-        console.error(`Error executing MCP tool ${toolName}:`, error);
+        // The error can quote the tool's output or connection details, so it's
+        // redacted like the output before it's logged or kept.
+        const errorMessage = redactSecrets(
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+        console.error(`Error executing MCP tool ${toolName}: ${errorMessage}`);
 
         // Format execution errors properly if formatter is available
         let errorContent: string;
@@ -801,7 +817,7 @@ export class LangChainToolManager {
             summary: 'The MCP tool failed to execute due to an internal error.',
             data: {
               message: 'Tool execution failed',
-              details: error instanceof Error ? error.message : 'Unknown execution error',
+              details: error instanceof Error ? errorMessage : 'Unknown execution error',
               suggestions: [
                 'Check if the tool is properly configured and accessible',
                 'Verify the input parameters match the tool requirements',
@@ -822,16 +838,14 @@ export class LangChainToolManager {
           errorContent = JSON.stringify({
             formatted: true,
             mcpOutput: errorFormatted,
-            raw: error instanceof Error ? error.message : 'Unknown error',
+            raw: errorMessage,
             isError: true,
             originalArgs: args,
           });
         } else {
           errorContent = JSON.stringify({
             error: true,
-            message: `Error executing MCP tool: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
+            message: `Error executing MCP tool: ${errorMessage}`,
             toolName,
             originalArgs: args,
           });

@@ -33,6 +33,7 @@ interface ToolManagerTestHarness {
   filterMCPArguments(args: unknown, schema?: unknown): Record<string, unknown>;
   tools: LangChainTool[];
   addTool(tool: LangChainTool): void;
+  mcpFormatter: unknown;
 }
 
 function privateManager(manager: LangChainToolManager): ToolManagerTestHarness {
@@ -813,6 +814,23 @@ describe('ToolManager — executeTool', () => {
     expect(result.metadata?.isError).toBe(true);
   });
 
+  it.each([
+    'password: private-tool-value',
+    '{"kind":"Secret","data":{"DATABASE_URL":"private-tool-value"}}',
+  ])('redacts a built-in tool exception before storing it: %s', async message => {
+    const mgr = new LangChainToolManager();
+    const tool = privateManager(mgr).tools.find(
+      tool => tool.config.name === 'kubernetes_api_request'
+    );
+    expect(tool).toBeDefined();
+    vi.spyOn(tool!, 'handler').mockRejectedValueOnce(new Error(message));
+    const result = await mgr.executeTool('kubernetes_api_request', {});
+    expect(JSON.stringify(result)).not.toContain('private-tool-value');
+    expect(JSON.parse(result.content).message).toContain('[REDACTED]');
+    expect(result.shouldAddToHistory).toBe(true);
+    expect(result.metadata?.isError).toBe(true);
+  });
+
   it('calls MCP tool invoke for MCP tool', async () => {
     let invoked = false;
     const adapter = makeMCPAdapter({
@@ -854,6 +872,99 @@ describe('ToolManager — executeTool', () => {
     const result = await mgr.executeTool('test-server__my_tool', { query: 'missing' });
     // isError should be set in metadata
     expect(result.metadata?.isError).toBe(true);
+  });
+
+  it('redacts Secret data in the raw MCP output kept next to the formatted summary', async () => {
+    const secret = JSON.stringify({ kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } });
+    const adapter = makeMCPAdapter({ executeTool: async () => ({ result: secret }) });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+    // bindToModel sets a formatter, and the content then keeps the raw output as well.
+    const summary = { type: 'text', title: 'Secret', summary: 'One Secret' };
+    privateManager(mgr).mcpFormatter = {
+      formatMCPOutput: async () => summary,
+      formatSimple: () => summary,
+    };
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'secrets' });
+    const content = JSON.parse(result.content);
+    expect(content.raw).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(content.raw).toContain('[REDACTED]');
+  });
+
+  it('redacts Secret data in MCP output used as the content without a formatter', async () => {
+    const secret = JSON.stringify({ kind: 'Secret', data: { DATABASE_URL: 'cG9zdGdyZXM6Ly8=' } });
+    const adapter = makeMCPAdapter({ executeTool: async () => ({ result: secret }) });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'secrets' });
+    expect(result.content).not.toContain('cG9zdGdyZXM6Ly8=');
+    expect(result.content).toContain('[REDACTED]');
+  });
+
+  it('detects an MCP error before redaction removes the words that show it', async () => {
+    for (const output of ['token: invalid', '{"success":false,"message":"token: expired"}']) {
+      const adapter = makeMCPAdapter({ executeTool: async () => ({ result: output }) });
+      const mgr = new LangChainToolManager({ mcpClient: adapter });
+      await mgr.waitForMCPToolsInitialization();
+
+      const result = await mgr.executeTool('test-server__my_tool', { query: 'pods' });
+      expect(result.metadata?.isError).toBe(true);
+      expect(result.content).not.toMatch(/invalid|expired/);
+    }
+  });
+
+  it('redacts a whole credential with an escaped quote in an MCP content block', async () => {
+    const text = '{"password":"first\\"still-private","name":"db"}';
+    const adapter = makeMCPAdapter({
+      executeTool: async () => ({ result: [{ type: 'text', text }] }),
+    });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'config' });
+    expect(result.content).not.toContain('still-private');
+    expect(JSON.parse(JSON.parse(result.content)[0].text)).toEqual({
+      password: '[REDACTED]',
+      name: 'db',
+    });
+  });
+
+  it('redacts credentials in the error of an MCP tool that fails', async () => {
+    const adapter = makeMCPAdapter({
+      executeTool: async () => {
+        throw new Error('connect failed: token=zq9secret');
+      },
+    });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+    const plain = await mgr.executeTool('test-server__my_tool', { query: 'pods' });
+    expect(plain.content).not.toContain('zq9secret');
+    expect(plain.content).toContain('token=[REDACTED]');
+
+    const summary = { type: 'text', title: 'Pods', summary: 'No pods' };
+    privateManager(mgr).mcpFormatter = {
+      formatMCPOutput: async () => summary,
+      formatSimple: () => summary,
+    };
+    const formatted = await mgr.executeTool('test-server__my_tool', { query: 'pods' });
+    expect(formatted.content).not.toContain('zq9secret');
+    expect(JSON.parse(formatted.content).raw).toContain('token=[REDACTED]');
+  });
+
+  it('keeps the other fields of MCP JSON output when a message holds a credential', async () => {
+    const output = '{"message":"Using token=abc123","items":[{"name":"pod-1"}]}';
+    const adapter = makeMCPAdapter({ executeTool: async () => ({ result: output }) });
+    const mgr = new LangChainToolManager({ mcpClient: adapter });
+    await mgr.waitForMCPToolsInitialization();
+
+    const result = await mgr.executeTool('test-server__my_tool', { query: 'pods' });
+    expect(result.metadata?.isError).toBeFalsy();
+    expect(JSON.parse(result.content)).toEqual({
+      message: 'Using token=[REDACTED]',
+      items: [{ name: 'pod-1' }],
+    });
   });
 });
 
