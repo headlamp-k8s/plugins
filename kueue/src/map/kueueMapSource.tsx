@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import type { GraphNode } from '@kinvolk/headlamp-plugin/lib/components/resourceMap/graph/graphModel';
 import type { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
 import { ComponentType, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import ClusterQueueDetail from '../components/clusterqueues/Detail';
 import CohortDetail from '../components/cohorts/Detail';
 import LocalQueueDetail from '../components/localqueues/Detail';
@@ -38,6 +39,17 @@ function makeNodes(objects: KubeObject[], detailsComponent: ComponentType<{ node
   return objects.map(object => ({ id: object.metadata.uid, kubeObject: object, detailsComponent }));
 }
 
+/**
+ * The namespaces picked in the Map's namespace filter, or undefined for all of them, so the
+ * namespaced sources only list what the Map shows.
+ */
+function useSelectedNamespaces() {
+  const namespaces = useSelector(
+    ({ filter }: { filter: { namespaces: Set<string> } }) => filter.namespaces
+  );
+  return useMemo(() => (namespaces.size ? [...namespaces] : undefined), [namespaces]);
+}
+
 const workloadDetails = makeNodeDetails(WorkloadDetail);
 const localQueueDetails = makeNodeDetails(LocalQueueDetail);
 const clusterQueueDetails = makeNodeDetails(ClusterQueueDetail);
@@ -49,8 +61,9 @@ const workloadSource = {
   label: 'Workloads',
   icon: kueueMapIcon,
   useData() {
-    const [workloads] = Workload.useList();
-    const [localQueues] = LocalQueue.useList();
+    const namespace = useSelectedNamespaces();
+    const [workloads] = Workload.useList({ namespace });
+    const [localQueues] = LocalQueue.useList({ namespace });
 
     return useMemo(() => {
       if (!workloads) {
@@ -78,7 +91,7 @@ const localQueueSource = {
   label: 'LocalQueues',
   icon: kueueMapIcon,
   useData() {
-    const [localQueues] = LocalQueue.useList();
+    const [localQueues] = LocalQueue.useList({ namespace: useSelectedNamespaces() });
     const [clusterQueues] = ClusterQueue.useList();
 
     return useMemo(() => {
