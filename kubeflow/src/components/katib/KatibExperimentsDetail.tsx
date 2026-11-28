@@ -91,15 +91,15 @@ export function KatibExperimentsDetail(props: { namespace?: string; name?: strin
             },
             {
               name: 'Current Trial Count',
-              value: item.status.currentTrialCount ?? '-',
+              value: item.status.trials ?? '-',
             },
             {
               name: 'Succeeded Trials',
-              value: item.status.succeededTrialCount ?? 0,
+              value: item.status.trialsSucceeded ?? 0,
             },
             {
               name: 'Failed Trials',
-              value: item.status.failedTrialCount ?? 0,
+              value: item.status.trialsFailed ?? 0,
             },
             {
               name: 'Early Stopping',

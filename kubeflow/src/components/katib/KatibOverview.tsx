@@ -39,7 +39,7 @@ function countByCondition(items: Array<{ latestCondition: any }>, conditionType:
 
 function experimentProgress(experiment: KatibExperimentClass, trials: KatibTrialClass[]): string {
   const relatedTrials = getKatibRelatedTrials(experiment, trials);
-  const currentTrials = experiment.status.currentTrialCount ?? relatedTrials.length;
+  const currentTrials = experiment.status.trials ?? relatedTrials.length;
   const maxTrials = experiment.spec.maxTrialCount ?? 0;
 
   if (!maxTrials) {
@@ -240,8 +240,7 @@ export function KatibOverview() {
                   getter: (experiment: KatibExperimentClass) => {
                     const relatedTrials = getKatibRelatedTrials(experiment, trialList);
                     const maxTrials = experiment.spec.maxTrialCount ?? 0;
-                    const currentTrials =
-                      experiment.status.currentTrialCount ?? relatedTrials.length;
+                    const currentTrials = experiment.status.trials ?? relatedTrials.length;
                     const progress =
                       maxTrials > 0 ? Math.min((currentTrials / maxTrials) * 100, 100) : 0;
                     return (
