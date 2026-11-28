@@ -43,7 +43,11 @@ export default function PodGroupList() {
             label: 'Queue',
             getValue: (podGroup: VolcanoPodGroup) => podGroup.queue,
             render: (podGroup: VolcanoPodGroup) => (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: podGroup.queue }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: podGroup.queue }}
+                activeCluster={podGroup.cluster}
+              >
                 {podGroup.queue}
               </Link>
             ),

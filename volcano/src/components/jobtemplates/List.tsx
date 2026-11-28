@@ -22,7 +22,11 @@ export default function JobTemplateList() {
             label: 'Queue',
             getValue: (jobTemplate: VolcanoJobTemplate) => jobTemplate.queue,
             render: (jobTemplate: VolcanoJobTemplate) => (
-              <Link routeName={volcanoRouteNames.queueDetail} params={{ name: jobTemplate.queue }}>
+              <Link
+                routeName={volcanoRouteNames.queueDetail}
+                params={{ name: jobTemplate.queue }}
+                activeCluster={jobTemplate.cluster}
+              >
                 {jobTemplate.queue}
               </Link>
             ),
