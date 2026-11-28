@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { ApiProxy } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceListView,
   type ColumnType,
@@ -18,6 +17,7 @@ import {
 import { KafkaConnector } from '../resources/kafkaConnector';
 import type { KafkaConnectorInterface, KafkaConnectorState } from '../resources/kafkaConnector';
 import { getErrorMessage } from '../utils/errors';
+import { requestInCluster } from '../utils/requestInCluster';
 import { useStrimziApiVersions } from '../hooks/useStrimziApiVersions';
 import { StrimziNotInstalledMessage } from './StrimziNotInstalledMessage';
 import { readyChipProps } from '../utils/readyChip';
@@ -47,16 +47,19 @@ export function KafkaConnectorList() {
   const [toast, setToast] = React.useState<ToastMessage | null>(null);
   const [pendingState, setPendingState] = React.useState<{
     connector: KafkaConnectorInterface;
+    // Cluster the connector is in, so the change goes to that cluster.
+    cluster?: string;
     targetState: KafkaConnectorState;
   } | null>(null);
 
   const patchState = async (
     connector: KafkaConnectorInterface,
-    targetState: KafkaConnectorState
+    targetState: KafkaConnectorState,
+    cluster?: string
   ) => {
     const path = `/apis/kafka.strimzi.io/${kafkaVersion}/namespaces/${connector.metadata.namespace}/kafkaconnectors/${connector.metadata.name}`;
     try {
-      await ApiProxy.request(path, {
+      await requestInCluster(cluster, path, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/merge-patch+json' },
         body: JSON.stringify({ spec: { state: targetState } }),
@@ -75,9 +78,9 @@ export function KafkaConnectorList() {
 
   const confirmStateChange = async () => {
     if (!pendingState) return;
-    const { connector, targetState } = pendingState;
+    const { connector, targetState, cluster } = pendingState;
     setPendingState(null);
-    await patchState(connector, targetState);
+    await patchState(connector, targetState, cluster);
   };
 
   const stateChip = (state: KafkaConnectorState) => (
@@ -151,7 +154,11 @@ export function KafkaConnectorList() {
               variant="contained"
               color="primary"
               onClick={() =>
-                setPendingState({ connector: item.jsonData, targetState: 'running' })
+                setPendingState({
+                  connector: item.jsonData,
+                  cluster: item.cluster,
+                  targetState: 'running',
+                })
               }
             >
               Resume
@@ -165,7 +172,11 @@ export function KafkaConnectorList() {
               variant="contained"
               color="warning"
               onClick={() =>
-                setPendingState({ connector: item.jsonData, targetState: 'paused' })
+                setPendingState({
+                  connector: item.jsonData,
+                  cluster: item.cluster,
+                  targetState: 'paused',
+                })
               }
             >
               Pause
@@ -178,7 +189,11 @@ export function KafkaConnectorList() {
             variant="contained"
             color="primary"
             onClick={() =>
-              setPendingState({ connector: item.jsonData, targetState: 'running' })
+              setPendingState({
+                connector: item.jsonData,
+                cluster: item.cluster,
+                targetState: 'running',
+              })
             }
           >
             Start
