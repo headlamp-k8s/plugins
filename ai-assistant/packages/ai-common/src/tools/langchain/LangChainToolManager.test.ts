@@ -814,6 +814,23 @@ describe('ToolManager — executeTool', () => {
     expect(result.metadata?.isError).toBe(true);
   });
 
+  it.each([
+    'password: private-tool-value',
+    '{"kind":"Secret","data":{"DATABASE_URL":"private-tool-value"}}',
+  ])('redacts a built-in tool exception before storing it: %s', async message => {
+    const mgr = new LangChainToolManager();
+    const tool = privateManager(mgr).tools.find(
+      tool => tool.config.name === 'kubernetes_api_request'
+    );
+    expect(tool).toBeDefined();
+    vi.spyOn(tool!, 'handler').mockRejectedValueOnce(new Error(message));
+    const result = await mgr.executeTool('kubernetes_api_request', {});
+    expect(JSON.stringify(result)).not.toContain('private-tool-value');
+    expect(JSON.parse(result.content).message).toContain('[REDACTED]');
+    expect(result.shouldAddToHistory).toBe(true);
+    expect(result.metadata?.isError).toBe(true);
+  });
+
   it('calls MCP tool invoke for MCP tool', async () => {
     let invoked = false;
     const adapter = makeMCPAdapter({

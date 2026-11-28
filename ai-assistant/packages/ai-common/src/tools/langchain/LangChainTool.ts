@@ -17,6 +17,7 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { ConversationMessage as Prompt } from '../../conversation/types';
+import { redactSecrets } from '../../security/redactSecrets';
 import type { ToolExecutionResult } from '../ToolRuntime';
 
 /** Configuration used to register a tool with the AI tool system. */
@@ -69,8 +70,8 @@ export abstract class LangChainTool {
           // Return just the content for LangChain, metadata is handled by ToolManager
           return response.content;
         } catch (error: unknown) {
-          console.error(`Error in ${this.config.name} tool:`, error);
-          const message = error instanceof Error ? error.message : String(error);
+          const message = redactSecrets(error instanceof Error ? error.message : String(error));
+          console.error(`Error in ${this.config.name} tool:`, message);
           return JSON.stringify({
             error: true,
             message,

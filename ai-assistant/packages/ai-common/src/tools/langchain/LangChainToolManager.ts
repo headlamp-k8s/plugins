@@ -723,7 +723,9 @@ export class LangChainToolManager {
         return {
           content: JSON.stringify({
             error: true,
-            message: error instanceof Error ? error.message : 'Tool execution failed',
+            message: redactSecrets(
+              error instanceof Error ? error.message : 'Tool execution failed'
+            ),
             toolName,
           }),
           shouldAddToHistory: true,
