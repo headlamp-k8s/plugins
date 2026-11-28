@@ -192,6 +192,25 @@ export function isArgoCDApplication(resource?: ResourceIdentity): boolean {
   );
 }
 
+/**
+ * Returns the name of the HPA that KEDA creates for a ScaledObject.
+ * `status.hpaName` is only set once KEDA has reconciled the ScaledObject, so
+ * fall back to the name KEDA uses: `spec.advanced.horizontalPodAutoscalerConfig.name`,
+ * or `keda-hpa-<name>`.
+ * See https://keda.sh/docs/latest/reference/scaledobject-spec/#horizontalpodautoscalerconfig
+ */
+export function getKedaHpaName(scaledObject: {
+  metadata: { name: string };
+  spec?: { advanced?: { horizontalPodAutoscalerConfig?: { name?: string } } };
+  status?: { hpaName?: string };
+}): string {
+  return (
+    scaledObject.status?.hpaName ||
+    scaledObject.spec?.advanced?.horizontalPodAutoscalerConfig?.name ||
+    `keda-hpa-${scaledObject.metadata.name}`
+  );
+}
+
 export function supportsPrometheusMetrics(resource?: ResourceIdentity): boolean {
   if (getTinkerbellController(resource) || getKnativeEventingTarget(resource)) {
     return true;
