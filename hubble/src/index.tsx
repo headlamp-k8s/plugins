@@ -14,9 +14,17 @@
  * limitations under the License.
  */
 
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerDetailsViewSection,
+  registerPluginSettings,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import PodConnections from './connections/PodConnections';
+import Settings from './settings/Settings';
 import HubbleStatus from './status/HubbleStatus';
 import { hubbleRouteNames, hubbleRoutePaths } from './utils/routes';
+import { PLUGIN_NAME } from './utils/settings';
 
 registerSidebarEntry({
   parent: null,
@@ -33,3 +41,18 @@ registerRoute({
   exact: true,
   component: () => <HubbleStatus />,
 });
+
+registerDetailsViewSection(({ resource }) => {
+  if (resource?.kind !== 'Pod') {
+    return null;
+  }
+  return (
+    <PodConnections
+      cluster={resource.cluster}
+      namespace={resource.metadata.namespace}
+      pod={resource.metadata.name}
+    />
+  );
+});
+
+registerPluginSettings(PLUGIN_NAME, Settings, true);
