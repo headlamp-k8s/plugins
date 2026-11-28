@@ -6,9 +6,9 @@ import { NotInstalledBanner } from '../common/CommonComponents';
 
 export function ClusterIssuersList() {
   const { t } = useTranslation();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
-  return isManagerInstalled ? (
+  return !notInstalled && !isLoading ? (
     <ResourceListView
       title={t('Cluster Issuers')}
       resourceClass={ClusterIssuer}
@@ -23,6 +23,6 @@ export function ClusterIssuersList() {
       ]}
     />
   ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+    <NotInstalledBanner isLoading={isLoading} />
   );
 }

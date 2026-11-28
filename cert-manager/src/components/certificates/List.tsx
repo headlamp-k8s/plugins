@@ -7,9 +7,9 @@ import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 
 export function CertificatesList() {
   const { t } = useTranslation();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
-  return isManagerInstalled ? (
+  return !notInstalled && !isLoading ? (
     <ResourceListView
       title={t('Certificates')}
       resourceClass={Certificate}
@@ -59,6 +59,6 @@ export function CertificatesList() {
       ]}
     />
   ) : (
-    <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+    <NotInstalledBanner isLoading={isLoading} />
   );
 }

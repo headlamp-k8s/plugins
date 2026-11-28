@@ -16,11 +16,11 @@ import { CertificateExpiryLabel } from './CertificateExpiryLabel';
 export function CertificateDetail() {
   const { t } = useTranslation();
   const { name, namespace } = useParams<{ name: string; namespace: string }>();
-  const { isManagerInstalled, isCertManagerCheckLoading } = useCertManagerInstalled();
+  const { notInstalled, isLoading } = useCertManagerInstalled();
 
   return (
     <>
-      {isManagerInstalled ? (
+      {!notInstalled && !isLoading ? (
         <DetailsGrid
           resourceType={Certificate}
           name={name}
@@ -299,7 +299,7 @@ export function CertificateDetail() {
           }
         />
       ) : (
-        <NotInstalledBanner isLoading={isCertManagerCheckLoading} />
+        <NotInstalledBanner isLoading={isLoading} />
       )}
     </>
   );
