@@ -15,6 +15,7 @@ import { VolcanoPodGroup } from './resources/podgroup';
 import { VolcanoQueue } from './resources/queue';
 import { getJobStatusColor, getPodGroupStatusColor, getQueueStatusColor } from './utils/status';
 import {
+  getParentQueue,
   getPodJob,
   getRelatedPodGroup,
   getVolcanoPods,
@@ -128,12 +129,7 @@ function getQueueHierarchyEdges(queues: VolcanoQueue[]) {
   const edges: GraphEdge[] = [];
 
   queues.forEach(queue => {
-    const parentQueueName = queue.spec.parent;
-    if (!parentQueueName) {
-      return;
-    }
-
-    const parentQueue = queues.find(candidate => candidate.metadata.name === parentQueueName);
+    const parentQueue = getParentQueue(queue, queues);
     if (parentQueue) {
       edges.push(makeKubeToKubeEdge(parentQueue, queue));
     }

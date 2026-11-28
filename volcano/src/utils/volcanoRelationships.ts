@@ -1,5 +1,6 @@
 import { VolcanoJob } from '../resources/job';
 import { VolcanoPodGroup } from '../resources/podgroup';
+import { VolcanoQueue } from '../resources/queue';
 import { isVolcanoJobApiVersion } from './volcanoApi';
 import { volcanoJobNameLabel, volcanoJobNamespaceLabel } from './volcanoLabels';
 
@@ -165,4 +166,28 @@ export function getRelatedPodGroup(
   }
 
   return null;
+}
+
+/**
+ * Finds the parent of a hierarchical queue.
+ *
+ * With several clusters selected, each cluster has its own queues with the same names, such as
+ * `root`, so the parent is only looked up in the queue's own cluster.
+ *
+ * @param queue Queue whose parent to find.
+ * @param queues Candidate queues, possibly from several clusters.
+ * @returns The parent queue, or `null` when the queue has no parent in its cluster.
+ */
+export function getParentQueue(queue: VolcanoQueue, queues: VolcanoQueue[]): VolcanoQueue | null {
+  const parentQueueName = queue.spec.parent;
+  if (!parentQueueName) {
+    return null;
+  }
+
+  return (
+    queues.find(
+      candidate =>
+        candidate.metadata.name === parentQueueName && candidate.cluster === queue.cluster
+    ) || null
+  );
 }

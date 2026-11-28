@@ -5,7 +5,7 @@ import { VolcanoQueue } from '../../resources/queue';
 import { getQueueStatusColor } from '../../utils/status';
 import { volcanoRouteNames } from '../../utils/volcanoRoutes';
 import { VolcanoCoreInstallCheck } from '../common/CommonComponents';
-import { getQueuePodGroupStats } from './stats';
+import { getQueuePodGroupStatsByCluster } from './stats';
 
 /**
  * Renders the Volcano Queues list page.
@@ -14,7 +14,8 @@ import { getQueuePodGroupStats } from './stats';
  */
 export default function QueueList() {
   const [podGroups] = VolcanoPodGroup.useList();
-  const queuePodGroupStats = useMemo(() => getQueuePodGroupStats(podGroups), [podGroups]);
+  const statsByCluster = useMemo(() => getQueuePodGroupStatsByCluster(podGroups), [podGroups]);
+  const getStats = (queue: VolcanoQueue) => statsByCluster[queue.cluster]?.[queue.metadata.name];
 
   return (
     <VolcanoCoreInstallCheck>
@@ -55,32 +56,27 @@ export default function QueueList() {
           {
             id: 'inqueue',
             label: 'Inqueue',
-            getValue: (queue: VolcanoQueue) =>
-              queuePodGroupStats[queue.metadata.name]?.inqueue ?? 0,
+            getValue: (queue: VolcanoQueue) => getStats(queue)?.inqueue ?? 0,
           },
           {
             id: 'pending',
             label: 'Pending',
-            getValue: (queue: VolcanoQueue) =>
-              queuePodGroupStats[queue.metadata.name]?.pending ?? 0,
+            getValue: (queue: VolcanoQueue) => getStats(queue)?.pending ?? 0,
           },
           {
             id: 'running',
             label: 'Running',
-            getValue: (queue: VolcanoQueue) =>
-              queuePodGroupStats[queue.metadata.name]?.running ?? 0,
+            getValue: (queue: VolcanoQueue) => getStats(queue)?.running ?? 0,
           },
           {
             id: 'unknown',
             label: 'Unknown',
-            getValue: (queue: VolcanoQueue) =>
-              queuePodGroupStats[queue.metadata.name]?.unknown ?? 0,
+            getValue: (queue: VolcanoQueue) => getStats(queue)?.unknown ?? 0,
           },
           {
             id: 'completed',
             label: 'Completed',
-            getValue: (queue: VolcanoQueue) =>
-              queuePodGroupStats[queue.metadata.name]?.completed ?? 0,
+            getValue: (queue: VolcanoQueue) => getStats(queue)?.completed ?? 0,
           },
           'age',
         ]}

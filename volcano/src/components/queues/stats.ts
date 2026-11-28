@@ -24,7 +24,8 @@ export interface QueuePodGroupStats {
 export function getQueuePodGroupStats(
   podGroups: VolcanoPodGroup[] | null | undefined
 ): Record<string, QueuePodGroupStats> {
-  const stats: Record<string, QueuePodGroupStats> = {};
+  // Queue names such as `constructor` are valid, so the map has no prototype to collide with.
+  const stats: Record<string, QueuePodGroupStats> = Object.create(null);
 
   for (const podGroup of podGroups ?? []) {
     const queueName = podGroup.queue;
@@ -57,5 +58,28 @@ export function getQueuePodGroupStats(
     }
   }
 
+  return stats;
+}
+
+/**
+ * Builds queue counters for each cluster separately. With several clusters selected, queues
+ * with the same name, such as `default`, exist in each of them and must not share counters.
+ *
+ * @param podGroups PodGroups to aggregate, possibly from several clusters.
+ * @returns Queue counters keyed by cluster name, then by queue name.
+ */
+export function getQueuePodGroupStatsByCluster(
+  podGroups: VolcanoPodGroup[] | null | undefined
+): Record<string, Record<string, QueuePodGroupStats>> {
+  // Cluster names are arbitrary strings, so neither map may inherit keys like `constructor`.
+  const podGroupsByCluster: Record<string, VolcanoPodGroup[]> = Object.create(null);
+  for (const podGroup of podGroups ?? []) {
+    (podGroupsByCluster[podGroup.cluster] ??= []).push(podGroup);
+  }
+
+  const stats: Record<string, Record<string, QueuePodGroupStats>> = Object.create(null);
+  for (const [cluster, clusterPodGroups] of Object.entries(podGroupsByCluster)) {
+    stats[cluster] = getQueuePodGroupStats(clusterPodGroups);
+  }
   return stats;
 }
