@@ -5,9 +5,9 @@ import {
   SectionBox,
   ShowHideLabel,
 } from '@kinvolk/headlamp-plugin/lib/components/common';
-import K8s from '@kinvolk/headlamp-plugin/lib/k8s';
-import Event from '@kinvolk/headlamp-plugin/lib/K8s/event';
+import K8s from '@kinvolk/headlamp-plugin/lib/lib/k8s';
 import { KubeObject, KubeObjectClass } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
+import Event from '@kinvolk/headlamp-plugin/lib/lib/k8s/event';
 import { localeDate, timeAgo } from '@kinvolk/headlamp-plugin/lib/Utils';
 import React, { useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
@@ -25,9 +25,12 @@ export function getSourceNameAndPluralKind(item: KubeObject): {
   let namespace: string | undefined;
 
   if (itemKind === 'Kustomization' || itemKind === 'Terraform') {
-    pluralKind = PluralName(item.jsonData.spec.sourceRef.kind);
-    name = item.jsonData.spec?.sourceRef?.name;
-    namespace = item.jsonData.spec.sourceRef.namespace;
+    const sourceRef = item?.jsonData?.spec?.sourceRef;
+    if (sourceRef) {
+      pluralKind = PluralName(sourceRef.kind);
+      name = sourceRef.name;
+      namespace = sourceRef.namespace;
+    }
   } else if (itemKind === 'HelmRelease') {
     const refToCheck =
       item?.jsonData?.spec?.chartRef ?? item?.jsonData?.spec?.chart?.spec?.sourceRef;

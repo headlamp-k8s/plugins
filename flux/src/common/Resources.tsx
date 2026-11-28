@@ -1,4 +1,4 @@
-import { KubeObject } from '@kinvolk/headlamp-plugin/lib/k8s/cluster';
+import { KubeObject } from '@kinvolk/headlamp-plugin/lib/lib/k8s/cluster';
 
 export class Kustomization extends KubeObject {
   static kind = 'Kustomization';
