@@ -80,6 +80,12 @@ export interface ValidatingPolicyInterface extends KubeObjectInterface {
   status?: CELPolicyStatus;
 }
 
+// Kyverno treats a missing or empty validationActions as Deny (ValidationActions() on the spec
+// types in kyverno/api), so the getters report the action that actually applies.
+function effectiveValidationActions(actions: string[] | undefined): string[] {
+  return actions?.length ? actions : ['Deny'];
+}
+
 export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
   static kind = 'ValidatingPolicy';
   static apiName = 'validatingpolicies';
@@ -95,7 +101,7 @@ export class ValidatingPolicy extends KubeObject<ValidatingPolicyInterface> {
   }
 
   get validationActions(): string[] {
-    return this.spec.validationActions || ['Audit'];
+    return effectiveValidationActions(this.spec.validationActions);
   }
 
   get validationCount(): number {
@@ -278,6 +284,7 @@ export interface ImageAttestation {
 }
 
 export interface ImageValidatingPolicySpec {
+  validationActions?: string[];
   matchImageReferences?: ImageMatchReference[];
   attestors?: Attestor[];
   attestations?: ImageAttestation[];
@@ -304,6 +311,10 @@ export class ImageValidatingPolicy extends KubeObject<ImageValidatingPolicyInter
 
   get status() {
     return this.jsonData.status;
+  }
+
+  get validationActions(): string[] {
+    return effectiveValidationActions(this.spec.validationActions);
   }
 
   get imagePatterns(): string[] {
