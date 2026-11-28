@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import {
   useVolcanoCoreInstalled,
   useVolcanoFlowInstalled,
+  useVolcanoNamespaceQueueInstalled,
 } from '../../hooks/useVolcanoInstallChecks';
 
 interface NotInstalledBannerProps {
@@ -58,6 +59,32 @@ export function VolcanoCoreInstallCheck({ children, fallback }: VolcanoApiInstal
 
   if (!isVolcanoCoreInstalled) {
     return fallback || <NotInstalledBanner isLoading={isVolcanoCoreCheckLoading} />;
+  }
+
+  return <>{children}</>;
+}
+
+export const namespaceQueueNotInstalledMessage =
+  'The NamespaceQueue CRD was not detected on this cluster. Install a Volcano version that includes namespacequeues.scheduling.volcano.sh to view these resources.';
+
+export function VolcanoNamespaceQueueInstallCheck({
+  children,
+  fallback,
+  cluster,
+}: VolcanoApiInstallCheckProps & { cluster?: string }) {
+  const { isVolcanoNamespaceQueueInstalled, isVolcanoNamespaceQueueCheckLoading } =
+    useVolcanoNamespaceQueueInstalled(cluster);
+
+  if (!isVolcanoNamespaceQueueInstalled) {
+    return (
+      fallback || (
+        <NotInstalledBanner
+          isLoading={isVolcanoNamespaceQueueCheckLoading}
+          message={namespaceQueueNotInstalledMessage}
+          linkText="Volcano"
+        />
+      )
+    );
   }
 
   return <>{children}</>;

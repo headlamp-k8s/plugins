@@ -12,6 +12,19 @@ export function getApiPath(apiVersion: string) {
   return `/apis/${apiVersion}`;
 }
 
+/**
+ * Reports whether an API group version discovery response lists a resource.
+ *
+ * @param resourceList Response of `GET /apis/<group>/<version>`.
+ * @param resourceName Plural resource name to look for, for example `namespacequeues`.
+ * @returns `true` when the group version serves the resource.
+ */
+export function hasApiResource(resourceList: unknown, resourceName: string): boolean {
+  const resources = (resourceList as { resources?: Array<{ name?: string }> } | null)?.resources;
+
+  return Array.isArray(resources) && resources.some(resource => resource?.name === resourceName);
+}
+
 export function isApiVersionInGroup(apiVersion: string | undefined, apiGroup: string) {
   return apiVersion?.startsWith(`${apiGroup}/`) || false;
 }
