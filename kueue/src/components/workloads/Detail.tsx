@@ -640,6 +640,9 @@ function QuotaFitTable(props: { workload: Workload }) {
           { label: 'Free', getter: (row: QuotaFitRow) => formatQuantity(row.resource, row.free) },
           {
             label: 'Fits',
+            // SimpleTable cells hide overflow and the labels do not wrap, so a 1fr column
+            // clips the longer "Short by" label. Size this column to its label instead.
+            gridTemplate: 'max-content',
             getter: (row: QuotaFitRow) =>
               row.fits ? (
                 <StatusLabel status="success">Yes</StatusLabel>
