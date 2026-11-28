@@ -1,6 +1,6 @@
 import { createMuiTheme } from '@kinvolk/headlamp-plugin/lib/lib/themes';
 import { ThemeProvider } from '@mui/material/styles';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { areFluxManagedActionsAllowed, FluxSettings, type PluginConfig, store } from '.';
 
@@ -56,13 +56,11 @@ describe('areFluxManagedActionsAllowed', () => {
 
 describe('FluxSettings', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     store.set({} as PluginConfig);
   });
 
   afterEach(() => {
     delete clusters[longClusterName];
-    vi.useRealTimers();
   });
 
   it('allows unbroken cluster names to wrap and keeps their switches usable', () => {
@@ -72,7 +70,6 @@ describe('FluxSettings', () => {
     const label = screen.getByText(longClusterName);
     expect(getComputedStyle(label).overflowWrap).toBe('anywhere');
     fireEvent.click(label);
-    act(() => vi.advanceTimersByTime(100));
 
     expect(areFluxManagedActionsAllowed(store.get(), longClusterName)).toBe(true);
     expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(false);
@@ -83,19 +80,16 @@ describe('FluxSettings', () => {
     renderSettings();
 
     fireEvent.click(screen.getByText('qa'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(true);
     expect(areFluxManagedActionsAllowed(store.get(), 'prod')).toBe(false);
   });
 
-  it('keeps both settings when switches are toggled within the save delay', () => {
+  it('keeps both settings when switches are toggled one after another', () => {
     renderSettings();
 
     fireEvent.click(linkHRelSwitch());
-    act(() => vi.advanceTimersByTime(50));
     fireEvent.click(clusterSwitch('qa'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(store.get()).toMatchObject({
       linkHRelToKs: true,
@@ -103,15 +97,22 @@ describe('FluxSettings', () => {
     });
   });
 
-  it('keeps every cluster when cluster switches are toggled within the save delay', () => {
+  it('keeps every cluster when cluster switches are toggled one after another', () => {
     renderSettings();
 
     fireEvent.click(clusterSwitch('qa'));
-    act(() => vi.advanceTimersByTime(50));
     fireEvent.click(clusterSwitch('prod'));
-    act(() => vi.advanceTimersByTime(100));
 
     expect(store.get()?.allowFluxManagedActions).toEqual({ qa: true, prod: true });
+  });
+
+  it('keeps a change when the page is left right after a toggle', () => {
+    const { unmount } = renderSettings();
+
+    fireEvent.click(clusterSwitch('qa'));
+    unmount();
+
+    expect(areFluxManagedActionsAllowed(store.get(), 'qa')).toBe(true);
   });
 
   it('links each cluster switch to the warning', () => {
