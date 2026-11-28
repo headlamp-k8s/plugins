@@ -21,6 +21,11 @@ export interface KubeflowPodDefault extends KubeObjectInterface {
     desc?: string;
     selector?: {
       matchLabels?: Record<string, string>;
+      matchExpressions?: Array<{
+        key: string;
+        operator: string;
+        values?: string[];
+      }>;
     };
     env?: Array<{
       name: string;
