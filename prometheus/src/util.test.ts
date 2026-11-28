@@ -1,5 +1,6 @@
 import {
   escapePrometheusLabelValue,
+  formatBytes,
   getTimeRangeAndStepSize,
   isArgoCDApplication,
   supportsPrometheusMetrics,
@@ -235,5 +236,24 @@ describe('isArgoCDApplication', () => {
     ['rejects an Application without an API version', { kind: 'Application' }, false],
   ])('%s', (_, resource, expected) => {
     expect(isArgoCDApplication(resource)).toBe(expected);
+  });
+});
+
+describe('formatBytes', () => {
+  test.each([
+    [0, '0.00B'],
+    [-0, '0.00B'],
+    [0.5, '0.50B'],
+    [512, '512.00B'],
+    [1024, '1.00KB'],
+    [1234567, '1.18MB'],
+    [-1024, '-1.00KB'],
+    [-1234567, '-1.18MB'],
+    [Number.NaN, '0.00B'],
+    [Number.POSITIVE_INFINITY, '0.00B'],
+    [Number.NEGATIVE_INFINITY, '0.00B'],
+    [1024 ** 5, '1024.00TB'],
+  ])('formats %p as %s', (input, expected) => {
+    expect(formatBytes(input)).toBe(expected);
   });
 });

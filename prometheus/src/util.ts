@@ -368,10 +368,18 @@ export function createDataProcessor(
  * formatBytes(1024) // Returns "1.00KB"
  * formatBytes(1234567) // Returns "1.18MB"
  */
-export function formatBytes(bytes: number) {
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes === 0) {
+    return '0.00B';
+  }
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(2) + units[i];
+  const sign = bytes < 0 ? '-' : '';
+  const absBytes = Math.abs(bytes);
+  const i = Math.min(
+    units.length - 1,
+    Math.max(0, Math.floor(Math.log(absBytes) / Math.log(1024)))
+  );
+  return `${sign}${(absBytes / Math.pow(1024, i)).toFixed(2)}${units[i]}`;
 }
 
 // Number of seconds in a day (24h)
