@@ -360,6 +360,29 @@ export function getSparkSecurityWarnings(spec: SparkApplicationSpec | undefined 
   return warnings;
 }
 
+const SPARK_MEMORY_UNIT_TO_MIB: Record<string, number> = {
+  b: 1 / 1024 ** 2,
+  k: 1 / 1024,
+  m: 1,
+  g: 1024,
+  t: 1024 ** 2,
+  p: 1024 ** 3,
+};
+
+/**
+ * Parses a driver or executor memory value in GiB. The operator passes it to Spark as
+ * spark.driver.memory or spark.executor.memory, a JVM-style size such as "512m" or "2g",
+ * where a number without a unit is MiB. Kubernetes quantities such as "1Gi" still work.
+ */
+function parseSparkMemory(value: unknown): number {
+  const match = `${value ?? ''}`.trim().match(/^(\d+)(b|[kmgtp]b?)?$/i);
+  if (!match) {
+    return parseMemoryQuantity(value);
+  }
+  const unit = (match[2]?.[0] ?? 'm').toLowerCase();
+  return (Number.parseInt(match[1], 10) * SPARK_MEMORY_UNIT_TO_MIB[unit]) / 1024;
+}
+
 /**
  * Aggregates resource requests across a list of SparkApplications.
  */
@@ -372,7 +395,7 @@ export function aggregateSparkResources(
       const driver = app.spec?.driver;
       if (driver) {
         acc.cpu += parseCpuQuantity(driver.cores ?? 0);
-        acc.memory += parseMemoryQuantity(driver.memory ?? 0);
+        acc.memory += parseSparkMemory(driver.memory ?? 0);
         const driverGpu = driver.gpu?.quantity || 0;
         acc.gpu += Number.parseInt(`${driverGpu}`, 10) || 0;
       }
@@ -382,7 +405,7 @@ export function aggregateSparkResources(
       if (executor) {
         const instances = executor.instances ?? 1;
         acc.cpu += parseCpuQuantity(executor.cores ?? 0) * instances;
-        acc.memory += parseMemoryQuantity(executor.memory ?? 0) * instances;
+        acc.memory += parseSparkMemory(executor.memory ?? 0) * instances;
         const executorGpu = (executor.gpu?.quantity || 0) * instances;
         acc.gpu += Number.parseInt(`${executorGpu}`, 10) || 0;
       }
