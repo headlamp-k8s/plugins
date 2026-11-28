@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Cluster, type ReplicasStatus } from '../../resources/cluster';
 import { useCapiApiVersion } from '../../utils/capiVersion';
+import { getClusterClassNamespace } from '../../utils/clusterClass';
 import { getClusterActions } from '../actions';
 import { OwnedMachinesSection, renderReplicas } from '../common';
 import { getPhaseStatus, renderReference } from '../common/util';
@@ -170,7 +171,7 @@ function ClusterDetailWithData(props: ClusterDetailWithVersionProps) {
                 routeName="clusterclass"
                 params={{
                   name: clusterClassName,
-                  namespace,
+                  namespace: getClusterClassNamespace(item.jsonData),
                 }}
               >
                 {clusterClassName}
