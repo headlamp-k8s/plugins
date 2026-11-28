@@ -30,6 +30,8 @@ vi.mock('../resources/knative', () => ({
 
 const HOST = 'app.example.com';
 const NAMESPACE = 'tenant-a';
+const t = (key: string, options: Record<string, string> = {}) =>
+  key.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, name) => options[name] ?? '');
 
 function makeDomainMapping(cluster = 'cluster-b', host = HOST): KnativeDomainMapping {
   const jsonData = {
@@ -162,7 +164,7 @@ describe('createClusterDomainClaim', () => {
 
   it('rejects a DomainMapping with no host', async () => {
     await expect(
-      createClusterDomainClaim(makeDomainMapping('cluster-b', ''), NAMESPACE)
+      createClusterDomainClaim(makeDomainMapping('cluster-b', ''), NAMESPACE, t)
     ).rejects.toThrow('Domain name is missing');
     expect(post).not.toHaveBeenCalled();
   });
@@ -170,7 +172,7 @@ describe('createClusterDomainClaim', () => {
   it('creates the claim and annotates the DomainMapping on the happy path', async () => {
     const domainMapping = makeDomainMapping();
 
-    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).resolves.toBeUndefined();
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE, t)).resolves.toBeUndefined();
 
     expect(post).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith(
@@ -187,7 +189,7 @@ describe('createClusterDomainClaim', () => {
   it('reports a claim-creation failure as a ClusterDomainClaim error', async () => {
     post.mockRejectedValue(new Error('forbidden'));
 
-    await expect(createClusterDomainClaim(makeDomainMapping(), NAMESPACE)).rejects.toThrow(
+    await expect(createClusterDomainClaim(makeDomainMapping(), NAMESPACE, t)).rejects.toThrow(
       'Failed to create ClusterDomainClaim: forbidden'
     );
   });
@@ -196,7 +198,7 @@ describe('createClusterDomainClaim', () => {
     const domainMapping = makeDomainMapping();
     vi.mocked(domainMapping.patch).mockRejectedValue(new Error('patch conflict'));
 
-    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).rejects.toThrow(
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE, t)).rejects.toThrow(
       /^Failed to annotate DomainMapping: patch conflict$/
     );
     expect(post).toHaveBeenCalledTimes(1);
@@ -206,7 +208,7 @@ describe('createClusterDomainClaim', () => {
     post.mockRejectedValue(new Error('clusterdomainclaims "app.example.com" already exists'));
     const domainMapping = makeDomainMapping();
 
-    await expect(createClusterDomainClaim(domainMapping, NAMESPACE)).resolves.toBeUndefined();
+    await expect(createClusterDomainClaim(domainMapping, NAMESPACE, t)).resolves.toBeUndefined();
     expect(domainMapping.patch).toHaveBeenCalledTimes(1);
   });
 });

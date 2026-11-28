@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useTranslation } from '@kinvolk/headlamp-plugin/lib';
 import {
   ResourceTable,
   type ResourceTableColumn,
@@ -42,6 +43,7 @@ type Props = {
 };
 
 export default function DomainMappingSection({ namespace, serviceName, cluster }: Props) {
+  const { t } = useTranslation();
   const clusters = [cluster];
   const { notifyError, notifyInfo } = useNotify();
   const [creating, setCreating] = React.useState<boolean>(false);
@@ -66,7 +68,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   async function handleCreate() {
     setCreating(true);
     try {
-      await createDomainMapping(domainInput, cluster, namespace, serviceName);
+      await createDomainMapping(domainInput, cluster, namespace, serviceName, t);
       notifyInfo('DomainMapping Created');
       setDomainInput('');
     } catch (err: unknown) {
@@ -83,7 +85,7 @@ export default function DomainMappingSection({ namespace, serviceName, cluster }
   //   navigates to item.getListLink(). We override getListLink per item to keep users on this page.
   async function handleCreateClusterDomainClaim(dm: KnativeDomainMapping) {
     try {
-      await createClusterDomainClaim(dm, namespace);
+      await createClusterDomainClaim(dm, namespace, t);
       notifyInfo('ClusterDomainClaim created');
     } catch (err: unknown) {
       const error = err as { message?: string } | undefined;
