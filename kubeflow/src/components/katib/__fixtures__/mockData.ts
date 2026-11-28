@@ -57,9 +57,9 @@ export const mockKatibExperiment: KatibExperiment = {
         metrics: [{ name: 'Validation-accuracy', value: '0.98' }],
       },
     },
-    currentTrialCount: 12,
-    succeededTrialCount: 12,
-    failedTrialCount: 0,
+    trials: 12,
+    trialsSucceeded: 12,
+    trialsFailed: 0,
   },
 };
 
@@ -80,9 +80,9 @@ export const mockKatibExperimentRunning: KatibExperiment = {
         message: 'Experiment is running',
       },
     ],
-    currentTrialCount: 5,
-    succeededTrialCount: 2,
-    failedTrialCount: 1,
+    trials: 5,
+    trialsSucceeded: 2,
+    trialsFailed: 1,
   },
 };
 

@@ -48,7 +48,7 @@ export function KatibExperimentsList() {
             id: 'trials',
             label: t('Trials'),
             getValue: (item: KatibExperimentClass) =>
-              `${item.status.currentTrialCount ?? 0}/${item.spec.maxTrialCount ?? '-'}`,
+              `${item.status.trials ?? 0}/${item.spec.maxTrialCount ?? '-'}`,
           },
           {
             id: 'parallel',
@@ -58,7 +58,7 @@ export function KatibExperimentsList() {
           {
             id: 'failed',
             label: t('Failed'),
-            getValue: (item: KatibExperimentClass) => item.status.failedTrialCount ?? 0,
+            getValue: (item: KatibExperimentClass) => item.status.trialsFailed ?? 0,
           },
           {
             id: 'early-stopping',

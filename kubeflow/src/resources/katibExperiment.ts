@@ -122,9 +122,9 @@ export interface KatibExperimentStatus {
     parameterAssignments?: Array<{ name?: string; value?: string }>;
     observation?: KatibObservation;
   };
-  currentTrialCount?: number;
-  failedTrialCount?: number;
-  succeededTrialCount?: number;
+  trials?: number;
+  trialsFailed?: number;
+  trialsSucceeded?: number;
   [key: string]: unknown;
 }
 
