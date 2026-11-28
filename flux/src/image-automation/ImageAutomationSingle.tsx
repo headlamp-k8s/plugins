@@ -51,6 +51,69 @@ export function FluxImageAutomationDetailView() {
   );
 }
 
+export interface ImageRepositoryRefResource {
+  jsonData?: {
+    metadata?: {
+      name?: string;
+      namespace?: string;
+    };
+    spec?: {
+      imageRepositoryRef?: {
+        name?: string;
+        namespace?: string;
+      };
+    };
+  };
+  metadata?: {
+    name?: string;
+    namespace?: string;
+  };
+}
+
+export function imageRepositoryLink(resource?: ImageRepositoryRefResource | null): ReactNode {
+  const repoName = resource?.jsonData?.spec?.imageRepositoryRef?.name;
+  const repoNamespace =
+    resource?.jsonData?.spec?.imageRepositoryRef?.namespace ??
+    resource?.jsonData?.metadata?.namespace ??
+    resource?.metadata?.namespace;
+
+  if (repoName && repoNamespace) {
+    return (
+      <HeadlampLink
+        routeName="image"
+        params={{
+          name: repoName,
+          namespace: repoNamespace,
+          pluralName: 'imagerepositories',
+        }}
+      >
+        {repoName}
+      </HeadlampLink>
+    );
+  }
+
+  return repoName || '-';
+}
+
+export function policyNameLink(name?: string, namespace?: string): ReactNode {
+  if (name && namespace) {
+    return (
+      <HeadlampLink
+        routeName="image"
+        params={{
+          name,
+          namespace,
+          pluralName: 'imagepolicies',
+        }}
+      >
+        {name}
+      </HeadlampLink>
+    );
+  }
+
+  return name || '-';
+}
+
 function CustomResourceDetails(props) {
   const { name, namespace, resourceClass } = props;
   const { t } = useTranslation();
@@ -94,20 +157,7 @@ function CustomResourceDetails(props) {
     if (resource.jsonData.kind === 'ImagePolicy') {
       extraInfo.push({
         name: t('Image Repository'),
-        value: (
-          <HeadlampLink
-            routeName="image"
-            params={{
-              name: resource.jsonData.spec?.imageRepositoryRef.name,
-              namespace:
-                resource.jsonData.spec.imageRepositoryRef.namespace ??
-                resource.jsonData.metadata.namespace,
-              pluralName: 'imagerepositories',
-            }}
-          >
-            {resource.jsonData.spec?.imageRepositoryRef.name}
-          </HeadlampLink>
-        ),
+        value: imageRepositoryLink(resource),
       });
       extraInfo.push({
         name: t('Policy'),
@@ -152,7 +202,7 @@ function CustomResourceDetails(props) {
       if (resource.jsonData?.spec?.interval) {
         extraInfo.push({
           name: t('Interval'),
-          value: resource.jsonData.spec.interval,
+          value: resource.jsonData.spec?.interval,
         });
       }
 
@@ -232,26 +282,15 @@ function Policies(props: { resource }) {
           {
             header: t('Policy'),
             accessorFn: item => item[0],
-            Cell: ({ cell }) => (
-              <HeadlampLink
-                routeName="image"
-                params={{
-                  name: cell.getValue(),
-                  namespace: resource.metadata.namespace,
-                  pluralName: 'imagepolicies',
-                }}
-              >
-                {cell.getValue()}
-              </HeadlampLink>
-            ),
+            Cell: ({ cell }) => policyNameLink(cell.getValue(), resource?.metadata?.namespace),
           },
           {
             header: t('Image'),
-            accessorFn: item => item[1].name,
+            accessorFn: item => item[1]?.name,
           },
           {
             header: t('Tag'),
-            accessorFn: item => item[1].tag,
+            accessorFn: item => item[1]?.tag,
           },
         ]}
       />
