@@ -1,0 +1,130 @@
+# Runs the hubble-flows-adapter next to Hubble Relay. The Headlamp hubble plugin reaches
+# it through the API server's Service proxy:
+#   /api/v1/namespaces/kube-system/services/hubble-flows-adapter:http/proxy/v1/flows
+#
+# The adapter can't tell who is asking, because the API server doesn't pass the user on.
+# Anyone allowed to use services/proxy on this Service can read the flows of every
+# namespace, so only give that permission to cluster admins. The network policy at the
+# end keeps pods from going around that permission by calling the adapter directly.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hubble-flows-adapter
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble-flows-adapter
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hubble-flows-adapter
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble-flows-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hubble-flows-adapter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hubble-flows-adapter
+    spec:
+      serviceAccountName: hubble-flows-adapter
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: adapter
+          image: hubble-flows-adapter:dev
+          imagePullPolicy: IfNotPresent
+          args:
+            - -relay-address=hubble-relay.kube-system.svc:80
+            # When Relay's server TLS is on, Relay listens on port 443 instead. Use that
+            # port, mount the certificates (see volumeMounts and volumes below) and add:
+            # - -relay-tls-ca-file=/var/lib/hubble-relay/tls/ca.crt
+            # - -relay-tls-cert-file=/var/lib/hubble-relay/tls/tls.crt
+            # - -relay-tls-key-file=/var/lib/hubble-relay/tls/tls.key
+            # - -relay-tls-server-name=ui.hubble-relay.cilium.io
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # For Relay's server TLS:
+          # volumeMounts:
+          #   - name: relay-tls
+          #     mountPath: /var/lib/hubble-relay/tls
+          #     readOnly: true
+      # A Secret with the CA that signed Relay's certificate (ca.crt) and, when Relay
+      # asks for client certificates, one signed by the CA it trusts (tls.crt, tls.key):
+      # volumes:
+      #   - name: relay-tls
+      #     secret:
+      #       secretName: hubble-flows-adapter-relay-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hubble-flows-adapter
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble-flows-adapter
+spec:
+  selector:
+    app.kubernetes.io/name: hubble-flows-adapter
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# Only the API server's Service proxy and the adapter's own node may call the adapter.
+# Without this, any pod could read the flows by calling the Service or the adapter's pod
+# IP, which RBAC can't stop. The node (host) is let in for the kubelet's health checks.
+# Cilium on Kubernetes lets a node reach its own pods anyway, unless allow-localhost is
+# set to policy, so programs on that node that use the host network can still call it.
+#
+# If your API server reaches pods through a proxy like konnectivity, its requests come
+# from that proxy instead and are dropped. To see where they come from, run
+#   hubble observe --to-pod kube-system/hubble-flows-adapter --verdict DROPPED
+# and allow that source in the ingress rules below.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-flows-adapter
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble-flows-adapter
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: hubble-flows-adapter
+  ingress:
+    - fromEntities:
+        - kube-apiserver
+        - host
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
