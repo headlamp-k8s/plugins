@@ -2,6 +2,7 @@ import { KubeObject, KubeObjectInterface } from '@kinvolk/headlamp-plugin/lib/k8
 import { kueueApiVersions } from '../utils/kueueApi';
 import { kueueRoutePaths } from '../utils/kueueRoutes';
 import type { FairSharing, KueueCondition, ResourceQuantity, StopPolicy } from './clusterQueue';
+import { renderFairSharing } from './clusterQueueFormatters';
 import {
   getLocalQueueDetailRouteParams,
   renderClusterQueueName,
@@ -256,6 +257,10 @@ export class LocalQueue extends KubeObject<KubeLocalQueue> {
 
   get statusDisplay() {
     return renderLocalQueueStatus(this.activeCondition);
+  }
+
+  get fairSharingDisplay() {
+    return renderFairSharing(this.spec.fairSharing, this.status.fairSharing);
   }
 
   get detailRouteParams() {
