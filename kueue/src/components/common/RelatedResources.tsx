@@ -173,7 +173,8 @@ export function FlavorClusterQueuesSection({
           },
           {
             label: 'Cohort',
-            getter: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
+            getter: (clusterQueue: ClusterQueue) =>
+              renderCohortLink(clusterQueue.spec.cohortName, clusterQueue.cluster),
           },
           {
             label: 'Status',

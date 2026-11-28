@@ -19,7 +19,8 @@ export default function ClusterQueueList() {
             id: 'cohort',
             label: 'Cohort',
             getValue: (clusterQueue: ClusterQueue) => clusterQueue.cohortName,
-            render: (clusterQueue: ClusterQueue) => renderCohortLink(clusterQueue.spec.cohortName),
+            render: (clusterQueue: ClusterQueue) =>
+              renderCohortLink(clusterQueue.spec.cohortName, clusterQueue.cluster),
           },
           {
             id: 'queueingStrategy',

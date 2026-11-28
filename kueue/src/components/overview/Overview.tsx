@@ -62,7 +62,7 @@ export default function KueueOverview() {
               label: 'Cohort',
               getValue: (clusterQueue: ClusterQueue) => clusterQueue.cohortName,
               render: (clusterQueue: ClusterQueue) =>
-                renderCohortLink(clusterQueue.spec.cohortName),
+                renderCohortLink(clusterQueue.spec.cohortName, clusterQueue.cluster),
             },
             {
               id: 'pendingWorkloads',
