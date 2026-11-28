@@ -65,6 +65,7 @@ function prepareNameColumn(
           namespace: item.metadata.namespace,
           pluralName: PluralName(item.kind),
         }}
+        activeCluster={item.cluster}
       >
         {item.metadata.name}
       </Link>
@@ -91,6 +92,7 @@ export function Table(props: TableProps) {
                   params={{
                     name: item.metadata.namespace,
                   }}
+                  activeCluster={item.cluster}
                 >
                   {item.metadata.namespace}
                 </Link>
@@ -137,6 +139,7 @@ export function Table(props: TableProps) {
                       namespace: namespace ?? row.original.jsonData.metadata.namespace,
                       name: name,
                     }}
+                    activeCluster={row.original.cluster}
                   >
                     {name}
                   </Link>

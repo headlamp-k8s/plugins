@@ -47,6 +47,7 @@ function Alerts() {
                   namespace: item.metadata.namespace,
                   pluralName: 'alerts',
                 }}
+                activeCluster={item.cluster}
               >
                 {item?.jsonData?.metadata.name}
               </Link>
@@ -68,6 +69,7 @@ function Alerts() {
                     namespace: item?.metadata.namespace,
                     pluralName: 'providers',
                   }}
+                  activeCluster={item.cluster}
                 >
                   {item?.jsonData?.spec?.providerRef?.name}
                 </Link>
@@ -116,6 +118,7 @@ function Providers() {
                   namespace: item.metadata.namespace,
                   pluralName: 'providers',
                 }}
+                activeCluster={item.cluster}
               >
                 {item?.jsonData?.metadata.name}
               </Link>
@@ -129,6 +132,7 @@ function Providers() {
                 params={{
                   name: item.metadata.namespace,
                 }}
+                activeCluster={item.cluster}
               >
                 {item.metadata.namespace}
               </Link>
@@ -201,6 +205,7 @@ function Receivers() {
                   namespace: item.metadata.namespace,
                   pluralName: 'receivers',
                 }}
+                activeCluster={item.cluster}
               >
                 {item.jsonData.metadata.name}
               </Link>
@@ -215,6 +220,7 @@ function Receivers() {
                 params={{
                   name: item.metadata.namespace,
                 }}
+                activeCluster={item.cluster}
               >
                 {item.metadata.namespace}
               </Link>
@@ -247,6 +253,7 @@ function Receivers() {
                     name: item.jsonData.spec.secretRef.name,
                     namespace: item.metadata.namespace,
                   }}
+                  activeCluster={item.cluster}
                 >
                   {item.jsonData.spec.secretRef.name}
                 </Link>
